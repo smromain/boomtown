@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@boomtown/engine": "*",
-    "@boomtown/protocol": "*"
+    "@boomtown/protocol": "*",
+    "zustand": "^5.0.15"
   }
 }
