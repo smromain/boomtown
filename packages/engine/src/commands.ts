@@ -14,7 +14,8 @@ export type Command =
   | ChooseSurvivor
   | ChooseDefunctOrder
   | DisposeShares
-  | AnnounceEnd;
+  | AnnounceEnd
+  | EndTurn;
 
 export interface PlaceTile {
   readonly type: 'place-tile';
@@ -60,7 +61,17 @@ export interface DisposeShares {
   readonly trade: number;
 }
 
+/** Announce the end at the `end-check` step. The game ends after this turn. */
 export interface AnnounceEnd {
   readonly type: 'announce-end';
+  readonly seat: Seat;
+}
+
+/**
+ * Decline to announce the end at `end-check`, or skip a forced placement when no
+ * hand tile is playable. Advances the turn.
+ */
+export interface EndTurn {
+  readonly type: 'end-turn';
   readonly seat: Seat;
 }

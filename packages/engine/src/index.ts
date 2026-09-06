@@ -91,7 +91,10 @@ export type {
   ChooseDefunctOrder,
   DisposeShares,
   AnnounceEnd,
+  EndTurn,
 } from './commands.js';
+export { endConditionMet } from './reducer/endgame.js';
+export { finalSettlement } from './scoring.js';
 export type { EngineEvent, PlacementKind } from './events.js';
 export type { EngineError, EngineErrorCode } from './errors.js';
 export { reduce, replay } from './reducer/index.js';

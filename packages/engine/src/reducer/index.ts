@@ -2,6 +2,7 @@ import type { Command } from '../commands.js';
 import { err } from '../errors.js';
 import type { GameState } from '../state.js';
 import { applyBuyShares } from './buy.js';
+import { applyAnnounceEnd, applyEndTurn } from './endcheck.js';
 import { applyFoundCorporation } from './found.js';
 import { applyPlaceTile } from './place.js';
 import { resolveMergerCommand } from './merge/machine.js';
@@ -30,7 +31,9 @@ export function reduce(state: GameState, command: Command): ReduceResult {
     case 'dispose-shares':
       return resolveMergerCommand(draft, command);
     case 'announce-end':
-      return err('wrong-step', 'the end announcement is implemented in U6');
+      return applyAnnounceEnd(draft, command);
+    case 'end-turn':
+      return applyEndTurn(draft, command);
   }
 }
 
