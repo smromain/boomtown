@@ -102,3 +102,8 @@ export {
   isPlayable,
   isDead,
 } from './reducer/placement.js';
+export {
+  type Payout,
+  distributeBonuses,
+  PHANTOM_SEAT,
+} from './reducer/merge/bonuses.js';

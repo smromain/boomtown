@@ -56,6 +56,10 @@ export interface MergerSnapshot {
   defunctQueue: Industry[];
   /** The defunct corporation currently being disposed, and the clockwise seat order for it. */
   disposal: { readonly defunct: Industry; seatQueue: Seat[] } | null;
+  /** Tiles of defunct corporations, held until the survivor absorbs everything at completion. */
+  absorbedTiles: TileId[];
+  /** Defunct corporations in the order they were resolved — the survivor's `eaten` append order. */
+  resolvedOrder: Industry[];
   pending: PendingDecision | null;
 }
 
