@@ -1,0 +1,14 @@
+{
+  "name": "@boomtown/client-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Client state layer and transport abstraction, shared by local and networked play.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@boomtown/engine": "*",
+    "@boomtown/protocol": "*"
+  }
+}

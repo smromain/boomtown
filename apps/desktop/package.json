@@ -1,0 +1,11 @@
+{
+  "name": "@boomtown/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Boomtown Electron desktop app (scaffold — built out in Phase B).",
+  "dependencies": {
+    "@boomtown/client-core": "*",
+    "@boomtown/engine": "*"
+  }
+}

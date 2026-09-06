@@ -1,0 +1,13 @@
+{
+  "name": "@boomtown/engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Headless, deterministic Boomtown rules engine. No I/O.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run --dir packages/engine"
+  }
+}

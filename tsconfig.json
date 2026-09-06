@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "types": ["node"],
+    "paths": {
+      "@boomtown/engine": ["packages/engine/src/index.ts"],
+      "@boomtown/protocol": ["packages/protocol/src/index.ts"],
+      "@boomtown/ai": ["packages/ai/src/index.ts"],
+      "@boomtown/client-core": ["packages/client-core/src/index.ts"],
+      "@boomtown/server": ["packages/server/src/index.ts"]
+    }
+  },
+  "include": [
+    "packages/*/src",
+    "packages/*/test",
+    "apps/*/src",
+    "*.config.ts",
+    "eslint.config.js"
+  ]
+}

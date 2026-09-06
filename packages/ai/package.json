@@ -1,0 +1,13 @@
+{
+  "name": "@boomtown/ai",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Non-LLM Boomtown bots: a Policy over the engine's legal moves and evaluator.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@boomtown/engine": "*"
+  }
+}

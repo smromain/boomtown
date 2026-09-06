@@ -1,0 +1,13 @@
+{
+  "name": "@boomtown/protocol",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Wire contract shared by the Boomtown client and server.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@boomtown/engine": "*"
+  }
+}

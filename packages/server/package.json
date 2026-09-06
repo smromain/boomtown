@@ -1,0 +1,14 @@
+{
+  "name": "@boomtown/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Authoritative Boomtown multiplayer server: rooms, view filtering, event log.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@boomtown/engine": "*",
+    "@boomtown/protocol": "*"
+  }
+}
