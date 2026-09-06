@@ -21,6 +21,14 @@ export default tseslint.config(
   { ignores: ['**/dist/**', '**/node_modules/**', '**/*.dc.html', 'design/**'] },
   ...tseslint.configs.recommended,
   {
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+      ],
+    },
+  },
+  {
     files: ['packages/engine/src/**/*.ts', 'packages/ai/src/**/*.ts'],
     rules: determinismRules,
   },

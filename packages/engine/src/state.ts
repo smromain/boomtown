@@ -30,7 +30,7 @@ export type Cell =
   | { readonly kind: 'unincorporated' }
   | { readonly kind: 'corporation'; readonly industry: Industry };
 
-export type TurnStep = 'place' | 'buy' | 'draw' | 'sweep' | 'end-check';
+export type TurnStep = 'place' | 'found' | 'merge' | 'buy' | 'end-check';
 
 /** A decision the merger state machine is waiting on, addressed to one seat (R3, KTD3). */
 export type PendingDecision =
@@ -44,12 +44,18 @@ export type PendingDecision =
       readonly shares: number;
     };
 
-/** Live merger being resolved. Populated by U5; null the rest of the time. */
+/** Live merger being resolved (R3, KTD3). Null the rest of the time. */
 export interface MergerSnapshot {
   readonly placedTile: TileId;
+  /** Corporations adjacent to the placed tile — the ones party to this merger. */
+  readonly merging: readonly Industry[];
+  /** The placed tile plus connected unincorporated tiles. Joins the survivor once the merger completes. */
+  readonly group: readonly TileId[];
   survivor: Industry | null;
   /** Defunct corporations still to resolve, largest-first once ordered. */
   defunctQueue: Industry[];
+  /** The defunct corporation currently being disposed, and the clockwise seat order for it. */
+  disposal: { readonly defunct: Industry; seatQueue: Seat[] } | null;
   pending: PendingDecision | null;
 }
 
@@ -77,7 +83,11 @@ export interface GameState {
   /** Index into `turnOrder` for the active seat. */
   turnPointer: number;
   step: TurnStep;
+  /** Set while `step === 'found'`: the new unincorporated group awaiting a headquarters. */
+  pendingFound: { readonly group: readonly TileId[] } | null;
   status: 'playing' | 'over';
+  /** Set once a seat announces the end (U6). The game ends after that seat finishes its turn. */
+  endAnnouncedBy: Seat | null;
   /** Occupied cells only; absent key means an empty tile. */
   cells: Record<TileId, Cell>;
   corporations: Record<Industry, CorpState>;
@@ -161,6 +171,9 @@ export interface PlayerView {
   readonly drawPileCount: number;
   /** Only present when a pending merger decision is addressed to `you`. */
   readonly pendingDecision: PendingDecision | null;
+  /** Set for the active seat while a placement is awaiting a headquarters choice. */
+  readonly pendingFound: { readonly group: readonly TileId[] } | null;
+  readonly endAnnouncedBy: Seat | null;
   readonly result: GameResult | null;
 }
 
@@ -209,6 +222,8 @@ export function viewFor(state: GameState, you: Seat): PlayerView {
     companies: state.companies,
     drawPileCount: state.bag.length,
     pendingDecision: pending,
+    pendingFound: state.pendingFound,
+    endAnnouncedBy: state.endAnnouncedBy,
     result: state.result,
   };
 }

@@ -81,3 +81,24 @@ export {
 } from './state.js';
 
 export { type SetupOptions, createGame } from './setup.js';
+
+export type {
+  Command,
+  PlaceTile,
+  FoundCorporation,
+  BuyShares,
+  ChooseSurvivor,
+  ChooseDefunctOrder,
+  DisposeShares,
+  AnnounceEnd,
+} from './commands.js';
+export type { EngineEvent, PlacementKind } from './events.js';
+export type { EngineError, EngineErrorCode } from './errors.js';
+export { reduce, replay } from './reducer/index.js';
+export type { ReduceResult } from './reducer/result.js';
+export {
+  type Placement,
+  classifyPlacement,
+  isPlayable,
+  isDead,
+} from './reducer/placement.js';
