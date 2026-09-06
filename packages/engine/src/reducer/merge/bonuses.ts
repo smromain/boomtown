@@ -1,5 +1,5 @@
 import { bonusRow } from '../../pricing.js';
-import { INDUSTRIES, tierOf, type Industry } from '../../pool.js';
+import { tierOf, type Industry } from '../../pool.js';
 import type { Ruleset } from '../../ruleset/types.js';
 import type { GameState, Seat } from '../../state.js';
 import { parseTile } from '../../board.js';
@@ -120,25 +120,18 @@ export function distributeBonuses(
   return payouts;
 }
 
-/** Collect every holder of `industry`, including the phantom shareholder when the rule is active. */
-export function holdersOf(
-  state: GameState,
-  industry: Industry,
-): { holders: Holder[]; phantomShares: number } {
+/** Collect every holder of `industry`, including the phantom shareholder when the two-player rule is active. */
+export function holdersOf(state: GameState, industry: Industry): Holder[] {
   const holders: Holder[] = state.seats.map((seat, index) => ({
     seat: index,
     shares: seat.holdings[industry],
   }));
 
-  let phantomShares = 0;
   if (state.ruleset.phantomShareholderInTwoPlayer && state.seats.length === 2) {
     const draw = phantomHolding(state);
-    phantomShares = draw.shares;
     state.bag = draw.state.bag;
-    if (phantomShares > 0) holders.push({ seat: PHANTOM_SEAT, shares: phantomShares });
+    if (draw.shares > 0) holders.push({ seat: PHANTOM_SEAT, shares: draw.shares });
   }
 
-  return { holders, phantomShares };
+  return holders;
 }
-
-export { INDUSTRIES };

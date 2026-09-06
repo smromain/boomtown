@@ -55,7 +55,7 @@ function largest(state: GameState, options: readonly Industry[]): Industry[] {
 /** Pay bonuses for a defunct corporation and open its disposal queue. */
 function beginDefunct(state: GameState, defunct: Industry, events: EngineEvent[]): void {
   const size = corpSize(state, defunct);
-  const { holders } = holdersOf(state, defunct);
+  const holders = holdersOf(state, defunct);
   const payouts = distributeBonuses(holders, size, defunct, state.ruleset);
   for (const payout of payouts) {
     if (payout.seat !== PHANTOM_SEAT) state.seats[payout.seat]!.cash += payout.amount;
