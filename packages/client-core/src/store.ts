@@ -1,14 +1,15 @@
-import type { Command, EngineError, EngineEvent, PendingDecision, PlayerView, Seat } from '@boomtown/engine';
+import type { Command, EngineError, EngineEvent, PendingDecision, Seat } from '@boomtown/engine';
+import type { ClientView } from './view.js';
 
 /**
- * Everything the UI renders from. `views` holds the filtered `PlayerView` for
+ * Everything the UI renders from. `views` holds the filtered `ClientView` for
  * each seat this client controls; panels read the active seat's view for the
  * board, hand, market, and holdings. `inFlight` is the optimistic echo — a
  * command awaiting authoritative confirmation, used to disable inputs.
  */
 export interface GameClientState {
   status: 'connecting' | 'ready' | 'over';
-  views: Record<Seat, PlayerView>;
+  views: Record<Seat, ClientView>;
   /** Whose turn it is (or who owns the open decision). */
   activeSeat: Seat | null;
   /** An open merger decision, addressed to whichever controlled seat owns it. */
@@ -32,7 +33,7 @@ export function initialClientState(): GameClientState {
 }
 
 /** The active seat's filtered view, or null before the first update. */
-export function activeView(state: GameClientState): PlayerView | null {
+export function activeView(state: GameClientState): ClientView | null {
   return state.activeSeat == null ? null : (state.views[state.activeSeat] ?? null);
 }
 

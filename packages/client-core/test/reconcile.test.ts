@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, viewFor, type PlayerView } from '@boomtown/engine';
-import { initialClientState, reconcile } from '@boomtown/client-core';
-import type { TransportMessage } from '@boomtown/client-core';
+import { createGame } from '@boomtown/engine';
+import { clientView, initialClientState, reconcile } from '@boomtown/client-core';
+import type { ClientView, TransportMessage } from '@boomtown/client-core';
 
-const game = createGame({ seats: [{ name: 'A' }, { name: 'B' }], seed: 1 });
-const view0 = viewFor(game, 0);
-const view1 = viewFor(game, 1);
+const game = createGame({ seats: [{ name: 'A' }, { name: 'B' }], seed: 1, turnOrder: [0, 1] });
+const view0 = clientView(game, 0);
+const view1 = clientView(game, 1);
 
 const message = (over: Partial<TransportMessage>): TransportMessage => ({
   events: [],
@@ -41,7 +41,7 @@ describe('reconcile', () => {
   });
 
   it('surfaces a merger decision from whichever controlled seat owns it', () => {
-    const deciding: PlayerView = {
+    const deciding: ClientView = {
       ...view1,
       pendingDecision: { type: 'choose-survivor', seat: 1, options: ['books', 'video'] },
     };
@@ -50,7 +50,7 @@ describe('reconcile', () => {
   });
 
   it('flips to over when a view reports the game finished', () => {
-    const finished: PlayerView = { ...view0, status: 'over' };
+    const finished: ClientView = { ...view0, status: 'over' };
     const next = reconcile(initialClientState(), message({ views: { 0: finished, 1: view1 } }));
     expect(next.status).toBe('over');
   });

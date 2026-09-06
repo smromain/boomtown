@@ -1,11 +1,12 @@
-import type { Command, PlayerView, Seat, SetupOptions } from '@boomtown/engine';
+import type { Command, Seat, SetupOptions } from '@boomtown/engine';
 import { GameSession, type SessionResult } from '../session.js';
+import type { ClientView } from '../view.js';
 import type { GameTransport, TransportMessage } from './types.js';
 
 /** The slice of `GameSession` a transport needs — injectable so tests can supply a fake. */
 export interface LocalEngine {
   apply(command: Command): SessionResult;
-  viewsFor(seats: readonly Seat[]): Record<Seat, PlayerView>;
+  viewsFor(seats: readonly Seat[]): Record<Seat, ClientView>;
 }
 
 export interface LocalTransportOptions {

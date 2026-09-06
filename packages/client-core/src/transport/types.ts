@@ -1,13 +1,14 @@
-import type { Command, EngineError, EngineEvent, PlayerView, Seat } from '@boomtown/engine';
+import type { Command, EngineError, EngineEvent, Seat } from '@boomtown/engine';
+import type { ClientView } from '../view.js';
 
 /**
  * One authoritative update from the transport. `views` carries the filtered
- * `PlayerView` for each seat this client controls (all of them in hot-seat, one
+ * `ClientView` for each seat this client controls (all of them in hot-seat, one
  * online). `rejection` is set instead when the last `send` was refused.
  */
 export interface TransportMessage {
   readonly events: readonly EngineEvent[];
-  readonly views: Readonly<Record<Seat, PlayerView>>;
+  readonly views: Readonly<Record<Seat, ClientView>>;
   readonly rejection?: { readonly command: Command; readonly error: EngineError };
 }
 

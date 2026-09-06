@@ -1,4 +1,5 @@
 // @ts-check
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 /** Determinism guard: nothing under the engine or the bots may read wall-clock
@@ -31,5 +32,13 @@ export default tseslint.config(
   {
     files: ['packages/engine/src/**/*.ts', 'packages/ai/src/**/*.ts'],
     rules: determinismRules,
+  },
+  {
+    files: ['apps/desktop/src/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
   },
 );

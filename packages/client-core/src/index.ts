@@ -1,6 +1,12 @@
 // @boomtown/client-core — client state layer and transport abstraction (KTD5).
 
 export { GameSession, type SessionResult } from './session.js';
+export {
+  clientView,
+  type ClientView,
+  type HandTile,
+  type HandTileEffect,
+} from './view.js';
 export type { GameTransport, TransportMessage } from './transport/types.js';
 export {
   localTransport,

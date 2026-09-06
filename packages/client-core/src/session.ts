@@ -1,15 +1,14 @@
 import {
   createGame,
   reduce,
-  viewFor,
   type Command,
   type EngineError,
   type EngineEvent,
   type GameState,
-  type PlayerView,
   type Seat,
   type SetupOptions,
 } from '@boomtown/engine';
+import { clientView, type ClientView } from './view.js';
 
 export type SessionResult =
   | { readonly ok: true; readonly events: readonly EngineEvent[] }
@@ -41,9 +40,9 @@ export class GameSession {
   }
 
   /** Filtered views for the given seats — every seat in hot-seat, one seat online (KTD4). */
-  viewsFor(seats: readonly Seat[]): Record<Seat, PlayerView> {
-    const views: Record<number, PlayerView> = {};
-    for (const seat of seats) views[seat] = viewFor(this.state, seat);
+  viewsFor(seats: readonly Seat[]): Record<Seat, ClientView> {
+    const views: Record<number, ClientView> = {};
+    for (const seat of seats) views[seat] = clientView(this.state, seat);
     return views;
   }
 

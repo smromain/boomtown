@@ -1,8 +1,8 @@
-import type { PlayerView } from '@boomtown/engine';
 import type { GameClientState } from './store.js';
 import type { TransportMessage } from './transport/types.js';
+import type { ClientView } from './view.js';
 
-function firstView(views: Record<number, PlayerView>): PlayerView | undefined {
+function firstView(views: Record<number, ClientView>): ClientView | undefined {
   for (const key in views) return views[key];
   return undefined;
 }
