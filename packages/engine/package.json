@@ -8,6 +8,6 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "vitest run --dir packages/engine"
+    "test": "vitest run packages/engine"
   }
 }
