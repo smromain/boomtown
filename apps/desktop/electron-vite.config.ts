@@ -1,0 +1,43 @@
+import { fileURLToPath } from 'node:url';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'electron-vite';
+
+const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
+
+/**
+ * electron-vite builds three targets. Main runs as ESM (Electron 44). The
+ * preload is forced to CommonJS because a sandboxed preload (KTD9) cannot be an
+ * ES module. The renderer is a normal Vite + React build; workspace packages
+ * resolve to source so there is one rules code path.
+ */
+export default defineConfig({
+  main: {
+    build: {
+      outDir: 'out/main',
+      lib: { entry: r('./electron/main.ts') },
+      rollupOptions: { output: { entryFileNames: 'main.mjs' } },
+    },
+  },
+  preload: {
+    build: {
+      outDir: 'out/preload',
+      lib: { entry: r('./electron/preload.ts'), formats: ['cjs'] },
+      rollupOptions: { output: { entryFileNames: 'preload.cjs' } },
+    },
+  },
+  renderer: {
+    root: '.',
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@boomtown/engine': r('../../packages/engine/src/index.ts'),
+        '@boomtown/protocol': r('../../packages/protocol/src/index.ts'),
+        '@boomtown/client-core': r('../../packages/client-core/src/index.ts'),
+      },
+    },
+    build: {
+      outDir: 'out/renderer',
+      rollupOptions: { input: r('./index.html') },
+    },
+  },
+});

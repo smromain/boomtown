@@ -14,7 +14,8 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['packages/*/test/**/*.test.ts', 'apps/*/src/**/*.test.{ts,tsx}'],
+    name: 'engine',
+    include: ['packages/*/test/**/*.test.ts'],
     environment: 'node',
     passWithNoTests: true,
   },
