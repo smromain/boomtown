@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { edition2015, endConditionMet } from '@boomtown/engine';
+import { edition2015, endConditionMet, reduce } from '@boomtown/engine';
 import { blankGame, ok, rejects, seedCorp } from './helpers.js';
 
 const rows = 'ABCDEFGHI';
@@ -80,6 +80,16 @@ describe('announcing the end', () => {
     const state = ok(atEndCheck(), { type: 'announce-end', seat: 0 });
     expect(state.status).toBe('over');
     expect(state.result).not.toBeNull();
+  });
+
+  it('records which seat announced the end in the final state', () => {
+    const before = atEndCheck();
+    expect(before.endAnnouncedBy).toBeNull();
+    const result = reduce(before, { type: 'announce-end', seat: 0 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.endAnnouncedBy).toBe(0);
+    expect(result.events).toContainEqual({ type: 'end-announced', seat: 0 });
   });
 
   it('rejects an announcement when no end condition holds', () => {

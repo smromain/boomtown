@@ -88,6 +88,8 @@ export {
   type MergeNamingConfig,
   type EatenRecord,
   DEFAULT_MERGE_NAMING,
+  DEFAULT_BLOCKLIST,
+  isBlockedName,
   stem,
   fragment,
   fragmentCandidates,

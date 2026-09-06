@@ -31,12 +31,16 @@ interface Holder {
   readonly shares: number;
 }
 
+/**
+ * Split a combined bonus among `n` tied holders and snap to a whole $100 —
+ * Acquire money is always in $100 units, so a holder is never paid a fraction.
+ * 2015 rounds a split up ("round up to nearest 100", `docs/rules.md`); classic,
+ * which the rulebook leaves unspecified, rounds to the nearest $100.
+ */
 function roundSplit(total: number, n: number, ruleset: Ruleset): number {
-  const base = total / n;
-  if (base % 1 === 0) return base;
-  // 2015 rounds a split up to the nearest 100; classic is silent, so split exactly.
-  if (ruleset.splitRounding === 'up100') return Math.ceil(base / 100) * 100;
-  return base;
+  const hundreds = total / n / 100;
+  const snapped = ruleset.splitRounding === 'up100' ? Math.ceil(hundreds) : Math.round(hundreds);
+  return snapped * 100;
 }
 
 /** Group holders by share count, descending. */

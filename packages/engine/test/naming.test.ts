@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_BLOCKLIST,
   DEFAULT_MERGE_NAMING,
   POOL,
   accretedFlavour,
   displayName,
   fragment,
+  isBlockedName,
   stem,
   type EatenRecord,
 } from '@boomtown/engine';
@@ -156,6 +158,36 @@ describe('rules the module must respect', () => {
     expect(out).not.toBe('Megahitvilas');
     expect(out).not.toBe('MegahitviPan-Atlas');
     expect(out.startsWith('Megahitvi')).toBe(true);
+  });
+
+  it('displayName consults config.blocklist by default — no explicit predicate needed (the review finding)', () => {
+    expect(DEFAULT_MERGE_NAMING.blocklist).toBe(DEFAULT_BLOCKLIST);
+    expect(DEFAULT_BLOCKLIST.length).toBeGreaterThan(0);
+
+    const unguarded = displayName('Megahit Video', [rec('Pan-Atlas')], {
+      ...DEFAULT_MERGE_NAMING,
+      blocklist: [],
+    });
+    expect(unguarded).toBe('Megahitvilas');
+
+    // same call, but the assembled name now contains a blocked substring:
+    // the shortest fragment ('las') is rejected and the next boundary is used.
+    const guarded = displayName('Megahit Video', [rec('Pan-Atlas')], {
+      ...DEFAULT_MERGE_NAMING,
+      blocklist: ['vilas'],
+    });
+    expect(isBlockedName(guarded, ['vilas'])).toBe(false);
+    expect(guarded).not.toBe('Megahitvilas');
+    expect(guarded.startsWith('Megahitvi')).toBe(true);
+  });
+
+  it('the real DEFAULT_BLOCKLIST leaves the shipped pool names alone', () => {
+    for (const candidates of Object.values(POOL)) {
+      for (const candidate of candidates) {
+        expect(isBlockedName(candidate.baseName, DEFAULT_BLOCKLIST)).toBe(false);
+        expect(isBlockedName(stem(candidate.baseName), DEFAULT_BLOCKLIST)).toBe(false);
+      }
+    }
   });
 
   it('flavour accretes fully: own line plus every swallowed line', () => {

@@ -1,6 +1,8 @@
+import { DEFAULT_BLOCKLIST, isBlockedName } from './blocklist.js';
 import { asciiLetters, roundHalfToEven, syllables } from './syllables.js';
 
 export { syllables, asciiLetters } from './syllables.js';
+export { DEFAULT_BLOCKLIST, isBlockedName } from './blocklist.js';
 
 export interface MergeNamingConfig {
   readonly enabled: boolean;
@@ -9,6 +11,8 @@ export interface MergeNamingConfig {
   readonly minFragment: number;
   readonly maxFragment: number;
   readonly collapseSeam: boolean;
+  /** Substrings an assembled display name must never contain (`docs/naming.md`). */
+  readonly blocklist: readonly string[];
 }
 
 export const DEFAULT_MERGE_NAMING: MergeNamingConfig = {
@@ -17,6 +21,7 @@ export const DEFAULT_MERGE_NAMING: MergeNamingConfig = {
   minFragment: 3,
   maxFragment: 6,
   collapseSeam: true,
+  blocklist: DEFAULT_BLOCKLIST,
 };
 
 /**
@@ -83,30 +88,27 @@ function join(head: string, frag: string, config: MergeNamingConfig): string {
  * absorbed, in acquisition order. Never stored (R6). When `enabled` is false the
  * survivor keeps its own name.
  *
- * `isBlocked` lets a caller reject an assembled result; the last fragment then
- * falls back to the next syllable boundary, never to the unblended name.
+ * Every assembled candidate is checked against `config.blocklist` (or an
+ * explicit `isBlocked` override); a blocked result falls back to the next
+ * syllable boundary for that fragment, never to the unblended name.
  */
 export function displayName(
   baseName: string,
   eaten: readonly EatenRecord[],
   config: MergeNamingConfig = DEFAULT_MERGE_NAMING,
-  isBlocked: (name: string) => boolean = () => false,
+  isBlocked: (name: string) => boolean = (name) => isBlockedName(name, config.blocklist),
 ): string {
   if (!config.enabled || eaten.length === 0) return baseName;
 
   let head = stem(baseName, config);
-  for (let index = 0; index < eaten.length; index++) {
-    const isLast = index === eaten.length - 1;
-    const candidates = isLast
-      ? fragmentCandidates(eaten[index]!.displayName, config)
-      : [fragment(eaten[index]!.displayName, config)];
-
+  for (const record of eaten) {
+    // Try the shortest fragment first, then widen a syllable at a time until one
+    // is long enough and the assembled name is not blocked.
+    const candidates = fragmentCandidates(record.displayName, config);
     let next = join(head, candidates[0]!, config);
-    if (isLast) {
-      for (const candidate of candidates) {
-        next = join(head, candidate, config);
-        if (candidate.length >= config.minFragment && !isBlocked(next)) break;
-      }
+    for (const candidate of candidates) {
+      next = join(head, candidate, config);
+      if (candidate.length >= config.minFragment && !isBlocked(next)) break;
     }
     head = next;
   }

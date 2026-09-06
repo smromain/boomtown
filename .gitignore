@@ -4,3 +4,7 @@ dist/
 .DS_Store
 coverage/
 *.log
+
+# Python bytecode
+__pycache__/
+*.pyc

@@ -91,7 +91,7 @@ export interface GameState {
   /** Set while `step === 'found'`: the new unincorporated group awaiting a headquarters. */
   pendingFound: { readonly group: readonly TileId[] } | null;
   status: 'playing' | 'over';
-  /** Set once a seat announces the end (U6). The game ends after that seat finishes its turn. */
+  /** Which seat announced the end, recorded for replay and the post-game screen. Set in the step that ends the game. */
   endAnnouncedBy: Seat | null;
   /** Occupied cells only; absent key means an empty tile. */
   cells: Record<TileId, Cell>;
