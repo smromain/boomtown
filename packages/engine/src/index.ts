@@ -124,3 +124,5 @@ export {
   distributeBonuses,
   PHANTOM_SEAT,
 } from './reducer/merge/bonuses.js';
+export { legalMoves, legalMovesForSeat } from './queries/legalMoves.js';
+export { evaluate } from './queries/evaluate.js';
