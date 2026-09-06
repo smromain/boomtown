@@ -1,3 +1,5 @@
+import type { MergeNamingConfig } from '../naming/index.js';
+
 /**
  * A Boomtown ruleset expressed as data. The engine reads one `Ruleset`; the two
  * published editions ship as presets (`classic`, `edition2015`). Every key here
@@ -36,6 +38,9 @@ export interface Ruleset {
 
   /** Rounding applied when a tied bonus is split. */
   readonly splitRounding: 'none' | 'up100';
+
+  /** Merged-name accretion rules (`docs/naming.md`). */
+  readonly mergeNaming: MergeNamingConfig;
 }
 
 export type RulesetId = 'classic' | 'edition-2015';

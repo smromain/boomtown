@@ -1,3 +1,4 @@
+import { DEFAULT_MERGE_NAMING } from '../naming/index.js';
 import type { Ruleset } from './types.js';
 
 /**
@@ -16,4 +17,5 @@ export const edition2015: Ruleset = {
   deadTilePolicy: 'discardAndReplace',
   phantomShareholderInTwoPlayer: true,
   splitRounding: 'up100',
+  mergeNaming: DEFAULT_MERGE_NAMING,
 };

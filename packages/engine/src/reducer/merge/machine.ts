@@ -5,6 +5,7 @@ import type { EngineEvent } from '../../events.js';
 import { sharePrice } from '../../pricing.js';
 import { tierOf, type Industry } from '../../pool.js';
 import { activeSeat, corpSize, type GameState, type Seat } from '../../state.js';
+import { accretedFlavour, displayName } from '../../naming/index.js';
 import type { ReduceResult } from '../result.js';
 import { distributeBonuses, holdersOf, PHANTOM_SEAT } from './bonuses.js';
 
@@ -27,7 +28,7 @@ export function beginMerger(
     defunctQueue: [],
     disposal: null,
     absorbedTiles: [],
-    resolvedOrder: [],
+    resolvedRecords: [],
     pending: null,
   };
   events.push({ type: 'merger-started', placedTile, corporations: [...merging] });
@@ -67,8 +68,12 @@ function beginDefunct(state: GameState, defunct: Industry, events: EngineEvent[]
 function finalizeDefunct(state: GameState, defunct: Industry, events: EngineEvent[]): void {
   const merger = state.merger!;
   const corp = state.corporations[defunct];
+  const company = state.companies[defunct];
   merger.absorbedTiles.push(...corp.tiles);
-  merger.resolvedOrder.push(defunct);
+  merger.resolvedRecords.push({
+    displayName: displayName(company.baseName, corp.eaten, state.ruleset.mergeNaming),
+    flavours: accretedFlavour(company.flavour, corp.eaten),
+  });
   corp.founded = false;
   corp.hqTile = null;
   corp.tiles = [];
@@ -93,7 +98,7 @@ function completeMerger(state: GameState, events: EngineEvent[]): void {
       seen.add(tile);
     }
   }
-  corp.eaten.push(...merger.resolvedOrder);
+  corp.eaten.push(...merger.resolvedRecords);
 
   state.merger = null;
   state.step = 'buy';

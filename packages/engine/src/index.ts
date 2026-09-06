@@ -76,11 +76,25 @@ export {
   isSafe,
   activeCorporations,
   sharePriceOf,
+  displayNameOf,
+  flavourOf,
   emptyHoldings,
   viewFor,
 } from './state.js';
 
 export { type SetupOptions, createGame } from './setup.js';
+
+export {
+  type MergeNamingConfig,
+  type EatenRecord,
+  DEFAULT_MERGE_NAMING,
+  stem,
+  fragment,
+  fragmentCandidates,
+  displayName,
+  accretedFlavour,
+  syllables,
+} from './naming/index.js';
 
 export type {
   Command,

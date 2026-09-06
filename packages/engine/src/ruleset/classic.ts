@@ -1,3 +1,4 @@
+import { DEFAULT_MERGE_NAMING } from '../naming/index.js';
 import type { Ruleset } from './types.js';
 
 /**
@@ -15,4 +16,5 @@ export const classic: Ruleset = {
   deadTilePolicy: 'none',
   phantomShareholderInTwoPlayer: false,
   splitRounding: 'none',
+  mergeNaming: DEFAULT_MERGE_NAMING,
 };

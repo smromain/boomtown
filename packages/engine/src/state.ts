@@ -3,6 +3,7 @@ import { sharePrice } from './pricing.js';
 import { INDUSTRIES, INDUSTRY_INFO, type Candidate, type Industry } from './pool.js';
 import type { Ruleset } from './ruleset/types.js';
 import type { Rng } from './rng.js';
+import { accretedFlavour, displayName, type EatenRecord } from './naming/index.js';
 
 export type Seat = number;
 
@@ -22,8 +23,8 @@ export interface CorpState {
   hqTile: TileId | null;
   /** Member tiles. Length is the size. */
   tiles: TileId[];
-  /** Industries this corporation has absorbed, in acquisition order. Drives the derived display name (R6). */
-  eaten: Industry[];
+  /** Corporations this one has absorbed, in acquisition order. Drives the derived display name and accreted flavour (R6). */
+  eaten: EatenRecord[];
 }
 
 export type Cell =
@@ -58,8 +59,8 @@ export interface MergerSnapshot {
   disposal: { readonly defunct: Industry; seatQueue: Seat[] } | null;
   /** Tiles of defunct corporations, held until the survivor absorbs everything at completion. */
   absorbedTiles: TileId[];
-  /** Defunct corporations in the order they were resolved — the survivor's `eaten` append order. */
-  resolvedOrder: Industry[];
+  /** Defunct corporations in the order they were resolved — appended to the survivor's `eaten` at completion. */
+  resolvedRecords: EatenRecord[];
   pending: PendingDecision | null;
 }
 
@@ -132,6 +133,20 @@ export function sharePriceOf(state: GameState, industry: Industry): number | nul
   return sharePrice(corpSize(state, industry), INDUSTRY_INFO[industry].tier, state.ruleset);
 }
 
+/** The corporation's current derived display name (R6). */
+export function displayNameOf(state: GameState, industry: Industry): string {
+  return displayName(
+    state.companies[industry].baseName,
+    state.corporations[industry].eaten,
+    state.ruleset.mergeNaming,
+  );
+}
+
+/** The corporation's accreted flavour: its own line plus every line it has swallowed. */
+export function flavourOf(state: GameState, industry: Industry): string[] {
+  return accretedFlavour(state.companies[industry].flavour, state.corporations[industry].eaten);
+}
+
 export function emptyHoldings(): Record<Industry, number> {
   return Object.fromEntries(INDUSTRIES.map((i) => [i, 0])) as Record<Industry, number>;
 }
@@ -152,10 +167,15 @@ export interface CorpView {
   readonly size: number;
   readonly hqTile: TileId | null;
   readonly tiles: readonly TileId[];
-  readonly eaten: readonly Industry[];
   readonly sharePrice: number | null;
   readonly bankShares: number;
+  /** Identity — the drawn company name, fixed for the game. */
   readonly baseName: string;
+  /** Derived: stem + one fragment per absorbed corporation (R6). */
+  readonly displayName: string;
+  /** The corporation's own flavour line plus every line it has swallowed. */
+  readonly flavour: readonly string[];
+  readonly eatenCount: number;
 }
 
 export interface PlayerView {
@@ -193,10 +213,12 @@ export function viewFor(state: GameState, you: Seat): PlayerView {
         size: corp.tiles.length,
         hqTile: corp.hqTile,
         tiles: corp.tiles,
-        eaten: corp.eaten,
         sharePrice: sharePriceOf(state, industry),
         bankShares: state.bankShares[industry],
         baseName: state.companies[industry].baseName,
+        displayName: displayNameOf(state, industry),
+        flavour: flavourOf(state, industry),
+        eatenCount: corp.eaten.length,
       };
       return [industry, view];
     }),
