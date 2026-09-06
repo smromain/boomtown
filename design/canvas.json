@@ -1,0 +1,113 @@
+{
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Boomtown"
+    },
+    {
+      "id": "page-2",
+      "name": "Rules model"
+    },
+    {
+      "id": "page-3",
+      "name": "Earlier directions"
+    }
+  ],
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Table",
+      "page": "page-1"
+    },
+    {
+      "file": "Names.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1440,
+      "h": 2560,
+      "title": "Merged names",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
+      "file": "Pool.dc.html",
+      "x": 3120,
+      "y": 0,
+      "w": 1440,
+      "h": 1180,
+      "title": "The pool",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
+      "file": "RulesModel.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 4400,
+      "title": "Rules model",
+      "print": "flow",
+      "page": "page-2"
+    },
+    {
+      "file": "BoardRoom.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "A - Board Room",
+      "page": "page-3"
+    },
+    {
+      "file": "TradingFloor.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "C - Trading Floor",
+      "page": "page-3"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "note-table",
+      "x": 0,
+      "y": -210,
+      "w": 700,
+      "page": "page-1",
+      "text": "Turn 14. Tile 9F is selected and Blackcurrant is about to swallow Enrun - and be renamed Blackcurrun for it.\nThe board state is rule-checked: Chapter 11 at 11 tiles and Megahit Video at 12 are both safe, which is what makes 3F a permanently dead tile. 6A and 12H each found a corporation, and two headquarters are still free."
+    },
+    {
+      "id": "note-names",
+      "x": 760,
+      "y": -210,
+      "w": 660,
+      "page": "page-1",
+      "text": "Seven companies that were once unassailable and then got eaten - which is what happens to every corporation on this board. Parodies of defunct brands, not live ones. Nothing here has been trademark-searched, and the backwards R is trade dress rather than wordplay: swap it first if anyone gets nervous."
+    },
+    {
+      "id": "note-rules",
+      "x": 0,
+      "y": -150,
+      "w": 700,
+      "page": "page-2",
+      "text": "The sheet to argue with before any code exists. Every disagreement between the two rulebooks is listed as a config key rather than a fork."
+    },
+    {
+      "id": "note-earlier",
+      "x": 0,
+      "y": -170,
+      "w": 700,
+      "page": "page-3",
+      "text": "The two directions not taken, kept for reference. Board Room makes the board the subject; Trading Floor makes the money the subject. Both show the same position as the Boomtown table."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  }
+}
