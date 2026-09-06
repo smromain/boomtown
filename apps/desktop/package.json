@@ -29,6 +29,7 @@
     "@electron/fuses": "^1.8.0",
     "@react-three/test-renderer": "^9.1.1",
     "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.6.7",
     "eslint-plugin-react-hooks": "^7.1.1",
