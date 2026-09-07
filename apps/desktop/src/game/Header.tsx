@@ -3,6 +3,7 @@ import { activeView } from '@boomtown/client-core';
 import type { TurnStep } from '@boomtown/engine';
 import { useGameState } from '../client/GameClientProvider.js';
 import { useReference } from '../reference/ReferenceContext.js';
+import { editionLabel } from '../setup/editionLabel.js';
 import styles from './game.module.css';
 
 const PHASE: Record<TurnStep, string> = {
@@ -11,11 +12,6 @@ const PHASE: Record<TurnStep, string> = {
   merge: 'Resolve the merger',
   buy: 'Buy stock',
   'end-check': 'End the game?',
-};
-
-const EDITION: Record<string, string> = {
-  classic: 'Classic ruleset',
-  'edition-2015': '2015 Avalon Hill',
 };
 
 export function Header() {
@@ -43,7 +39,7 @@ export function Header() {
       </div>
       {view && (
         <div className={styles.status}>
-          <span>{EDITION[view.ruleset.id] ?? view.ruleset.id}</span>
+          <span>{editionLabel(view.ruleset.id)}</span>
           <span>
             Turn <span className="tabnum">{turn}</span>
           </span>

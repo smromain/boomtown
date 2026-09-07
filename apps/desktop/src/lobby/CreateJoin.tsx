@@ -130,7 +130,7 @@ export function CreateJoin({
               onChange={(e) => patch({ edition: e.target.value as GameConfig['edition'] })}
             >
               <option value="classic">Classic</option>
-              <option value="edition-2015">2015 Avalon Hill</option>
+              <option value="edition-2015">Modern</option>
             </select>
           </label>
 

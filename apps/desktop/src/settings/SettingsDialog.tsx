@@ -57,7 +57,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               onChange={(e) => patch({ edition: e.target.value as RulesetId })}
             >
               <option value="classic">Classic</option>
-              <option value="edition-2015">2015 Avalon Hill</option>
+              <option value="edition-2015">Modern</option>
             </select>
           </label>
 

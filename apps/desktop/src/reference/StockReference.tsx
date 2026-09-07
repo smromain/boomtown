@@ -1,12 +1,8 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { useAnyView } from '../client/GameClientProvider.js';
+import { editionLabel } from '../setup/editionLabel.js';
 import { corpsByTier, fullChart } from './priceReference.js';
 import styles from './reference.module.css';
-
-const EDITION: Record<string, string> = {
-  classic: 'Classic ruleset',
-  'edition-2015': '2015 Avalon Hill',
-};
 
 /**
  * The full stock-reference chart (the "stock reference" modal). The whole table
@@ -31,7 +27,7 @@ export function StockReference({ open, onClose }: { open: boolean; onClose: () =
             <div>
               <Dialog.Title className="serif">Stock reference</Dialog.Title>
               <p className={styles.sub}>
-                {EDITION[view.ruleset.id] ?? view.ruleset.id} · price and bonuses by corporation size ·
+                {editionLabel(view.ruleset.id)} rule set · price and bonuses by corporation size ·
                 highlighted rows are where the market stands now
               </p>
             </div>
