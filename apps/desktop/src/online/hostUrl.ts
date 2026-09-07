@@ -1,4 +1,4 @@
-const SETTING_KEY = 'boomtown.partykitHost';
+import { loadSettings } from '../settings/settings.js';
 
 /**
  * The PartyKit host the online client connects to. Precedence:
@@ -7,32 +7,13 @@ const SETTING_KEY = 'boomtown.partykitHost';
  *   3. `localhost:1999` — the `partykit dev` default, for a development build
  */
 export function partykitHost(): string {
-  try {
-    const override = localStorage.getItem(SETTING_KEY)?.trim();
-    if (override) return override;
-  } catch {
-    // localStorage unavailable — fall through
-  }
+  const override = loadSettings().partykitHost.trim();
+  if (override) return override;
+
   const baked = import.meta.env.VITE_PARTYKIT_HOST as string | undefined;
   if (baked && baked.trim()) return baked.trim();
+
   return 'localhost:1999';
-}
-
-export function setPartykitHostOverride(value: string): void {
-  try {
-    if (value.trim()) localStorage.setItem(SETTING_KEY, value.trim());
-    else localStorage.removeItem(SETTING_KEY);
-  } catch {
-    // ignore — a session without localStorage just uses the default
-  }
-}
-
-export function partykitHostOverride(): string {
-  try {
-    return localStorage.getItem(SETTING_KEY) ?? '';
-  } catch {
-    return '';
-  }
 }
 
 /** A short, shareable room code. */

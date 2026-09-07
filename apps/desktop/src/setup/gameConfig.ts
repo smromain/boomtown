@@ -1,4 +1,5 @@
 import { PRESETS, RULES, type RulesetId, type SetupOptions, type Visibility } from '@boomtown/engine';
+import { loadSettings } from '../settings/settings.js';
 
 export type SeatKind = 'human' | 'bot';
 
@@ -17,14 +18,18 @@ export interface GameConfig {
   readonly seed?: number;
 }
 
+/** A fresh config seeded from the player's saved preferences (U19). */
 export function defaultConfig(): GameConfig {
+  const s = loadSettings();
+  const count = Math.max(RULES.minPlayers, Math.min(RULES.maxPlayers, s.seatCount));
   return {
-    seats: [
-      { name: 'Player 1', kind: 'human', difficulty: 5 },
-      { name: 'Player 2', kind: 'human', difficulty: 5 },
-    ],
-    edition: 'classic',
-    visibility: 'open',
+    seats: Array.from({ length: count }, (_, i) => ({
+      name: `Player ${i + 1}`,
+      kind: 'human' as const,
+      difficulty: s.botDifficulty,
+    })),
+    edition: s.edition,
+    visibility: s.visibility,
   };
 }
 

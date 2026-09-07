@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain, session, shell } from 'electron';
 import { buildCsp } from './csp.js';
+import { checkForUpdates } from './updater.js';
 import { windowOptions } from './window.js';
 
 /** electron-vite sets this to the dev-server URL; absent in a packaged build. */
@@ -28,10 +29,12 @@ function registerWindowControls(win: BrowserWindow): void {
   ipcMain.on('window:close', () => win.close());
 }
 
-// Placeholder handlers — U19 replaces these with a real settings store and updater.
+// Renderer preferences live in the renderer's own localStorage (see
+// src/settings/settings.ts); these handlers remain for the window bridge's
+// shape but are not load-bearing. The update check is real (U19).
 ipcMain.handle('settings:get', () => ({}));
 ipcMain.handle('settings:set', (_event, patch: Record<string, unknown>) => patch);
-ipcMain.handle('update:check', () => ({ available: false }));
+ipcMain.handle('update:check', () => checkForUpdates());
 
 function runSmokeChecks(win: BrowserWindow): void {
   const fail = (why: string) => {
@@ -58,14 +61,16 @@ function runSmokeChecks(win: BrowserWindow): void {
 
   win.webContents.on('did-finish-load', async () => {
     try {
-      await waitFor(`(document.querySelector('#root')?.textContent ?? '').includes('New game')`, 'setup screen');
+      await waitFor(`(document.querySelector('#root')?.textContent ?? '').includes('Boomtown')`, 'main menu');
 
       const nodeGlobals = await evalJs<string[]>(
         `['require','process','module','global','Buffer'].filter((g) => g in globalThis)`,
       );
       if (nodeGlobals.length > 0) return fail(`Node globals leaked into the renderer: ${nodeGlobals.join(', ')}`);
 
-      // start a game and let the board render
+      // menu -> local setup -> start a game -> let the board render
+      await evalJs(`[...document.querySelectorAll('button')].find((b) => b.textContent === 'Local game')?.click()`);
+      await waitFor(`(document.querySelector('#root')?.textContent ?? '').includes('New game')`, 'setup screen');
       await evalJs(`[...document.querySelectorAll('button')].find((b) => b.textContent === 'Start game')?.click()`);
       await waitFor(
         `!!document.querySelector('canvas') && !!document.querySelector('[aria-label="Your tiles"]')`,
@@ -114,6 +119,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   applyCsp();
   createWindow();
+  if (!smoke) void checkForUpdates();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

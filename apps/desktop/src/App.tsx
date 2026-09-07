@@ -3,6 +3,7 @@ import { GameScreen } from './game/GameScreen.js';
 import { NewGame, type StartedGame } from './setup/NewGame.js';
 import { CreateJoin } from './lobby/CreateJoin.js';
 import { SeatList } from './lobby/SeatList.js';
+import { SettingsDialog } from './settings/SettingsDialog.js';
 import type { OnlineGame } from './online/onlineGame.js';
 import styles from './lobby/lobby.module.css';
 
@@ -17,6 +18,7 @@ type Screen =
 /** The renderer root: a small menu, then local setup / online lobby, then the board. */
 export function App() {
   const [screen, setScreen] = useState<Screen>({ kind: 'menu' });
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (screen.kind === 'playing-local') {
@@ -46,6 +48,10 @@ export function App() {
               Play online
             </button>
           </div>
+          <button type="button" className={styles.back} onClick={() => setSettingsOpen(true)}>
+            Settings
+          </button>
+          <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
         </section>
       );
 
