@@ -1,0 +1,31 @@
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 20rem;
+  grid-template-rows: 1fr auto;
+  grid-template-areas:
+    'board side'
+    'hand side';
+  gap: 0.75rem;
+  padding: 0.75rem;
+  height: 100%;
+}
+
+.board {
+  grid-area: board;
+  background: #0f0d09;
+  border-radius: 8px;
+  min-height: 0;
+}
+
+.side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.hand {
+  grid-area: hand;
+}
