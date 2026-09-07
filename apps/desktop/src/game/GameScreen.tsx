@@ -1,33 +1,47 @@
 import { Board } from '../board/Board.js';
-import { GameClientProvider } from '../client/GameClientProvider.js';
+import { GameClientProvider, useGameState } from '../client/GameClientProvider.js';
+import { activeView } from '@boomtown/client-core';
 import { DecisionModal } from '../decisions/DecisionModal.js';
 import { BuyControls } from '../panels/BuyControls.js';
-import { EventLog } from '../panels/EventLog.js';
-import { HandRack } from '../panels/HandRack.js';
-import { Holdings } from '../panels/Holdings.js';
-import { Market } from '../panels/Market.js';
 import type { StartedGame } from '../setup/NewGame.js';
+import { CorporationBand } from './CorporationBand.js';
+import { Header } from './Header.js';
+import { Shareholders } from './Shareholders.js';
+import { StoryCard } from './StoryCard.js';
+import { TileRack } from './TileRack.js';
 import styles from './game.module.css';
 
-/** The playing surface: the 3D board, the 2D panels, and the decision modal, all wired to one client. */
+/** The playing surface, laid out to the Main design artboard. */
 export function GameScreen({ game }: { game: StartedGame }) {
   return (
     <GameClientProvider client={game.client}>
-      <div className={styles.layout}>
-        <div className={styles.board}>
-          <Board />
+      <div className={styles.screen}>
+        <Header />
+        <div className={styles.body}>
+          <CorporationBand />
+          <div className={styles.middle}>
+            <div className={styles.board}>
+              <Board />
+            </div>
+            <div className={styles.column}>
+              <RightColumn />
+            </div>
+          </div>
+          <TileRack />
         </div>
-        <aside className={styles.side}>
-          <Market />
-          <Holdings />
-          <BuyControls />
-          <EventLog />
-        </aside>
-        <footer className={styles.hand}>
-          <HandRack />
-        </footer>
       </div>
       <DecisionModal />
     </GameClientProvider>
+  );
+}
+
+function RightColumn() {
+  const step = useGameState((state) => activeView(state)?.step);
+  return (
+    <>
+      {step === 'buy' && <BuyControls />}
+      <StoryCard />
+      <Shareholders />
+    </>
   );
 }

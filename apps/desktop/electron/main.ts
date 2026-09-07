@@ -67,7 +67,10 @@ function runSmokeChecks(win: BrowserWindow): void {
 
       // start a game and let the board render
       await evalJs(`[...document.querySelectorAll('button')].find((b) => b.textContent === 'Start game')?.click()`);
-      await waitFor(`!!document.querySelector('canvas') && !!document.querySelector('[aria-label="Market"]')`, 'game board');
+      await waitFor(
+        `!!document.querySelector('canvas') && !!document.querySelector('[aria-label="Your tiles"]')`,
+        'game board',
+      );
       await delay(1500); // let troika glyphs + the first frames settle
 
       if (process.env['BOOMTOWN_SMOKE_SHOT']) {

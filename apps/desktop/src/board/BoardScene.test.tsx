@@ -1,9 +1,9 @@
 import ReactThreeTestRenderer from '@react-three/test-renderer';
-import type { Mesh, MeshStandardMaterial } from 'three';
+import type { Mesh, MeshBasicMaterial } from 'three';
 import { INDUSTRY_INFO, classic, createGame } from '@boomtown/engine';
 import { clientView } from '@boomtown/client-core';
 import { describe, expect, it, vi } from 'vitest';
-import { BoardScene, type BoardSceneProps } from './BoardScene.js';
+import { BoardScene, type BoardSceneProps, type CellTarget } from './BoardScene.js';
 
 // troika's <Text> needs a browser font pipeline; stub it to a named object (vi.mock is hoisted above the import).
 vi.mock('@react-three/drei', async (importOriginal) => {
@@ -23,7 +23,7 @@ function props(over: Partial<BoardSceneProps> = {}): BoardSceneProps {
     ruleset: classic,
     cells: {},
     corporations: base.corporations,
-    playable: new Set(),
+    targets: new Map<string, CellTarget>(),
     onPick: vi.fn(),
     ...over,
   };
@@ -53,10 +53,10 @@ describe('BoardScene', () => {
     expect(named(renderer, 'cell:')).toHaveLength(108);
   });
 
-  it('clicking a playable cell calls onPick with that tile', async () => {
+  it('clicking a playable target cell calls onPick with that tile', async () => {
     const onPick = vi.fn();
     const renderer = await ReactThreeTestRenderer.create(
-      <BoardScene {...props({ playable: new Set(['6E']), onPick })} />,
+      <BoardScene {...props({ targets: new Map([['6E', 'playable']]), onPick })} />,
     );
     const cell = renderer.scene.find((node) => node.props.name === 'cell:6E');
     await renderer.fireEvent(cell, 'click');
@@ -71,18 +71,32 @@ describe('BoardScene', () => {
     expect(cell.props.color).toBe(INDUSTRY_INFO.video.color);
   });
 
-  it('a playable cell pulses — its colour changes over frames (the blink)', async () => {
+  it('a playable target ring pulses — its colour changes over frames (the blink)', async () => {
     const renderer = await ReactThreeTestRenderer.create(
-      <BoardScene {...props({ playable: new Set(['6E']) })} />,
+      <BoardScene {...props({ targets: new Map([['6E', 'playable']]) })} />,
     );
-    const cell = renderer.scene.find((node) => node.props.name === 'cell:6E');
-    const material = (cell.instance as Mesh).material as MeshStandardMaterial;
+    // the ring is the sibling mesh behind the clickable cell
+    const cellNode = renderer.scene.find((node) => node.props.name === 'cell:6E');
+    const ring = cellNode.parent!.allChildren.find(
+      (node) => node !== cellNode && (node.instance as Mesh).type === 'Mesh',
+    )!;
+    const material = (ring.instance as Mesh).material as MeshBasicMaterial;
     const before = material.color.getHexString();
     await renderer.advanceFrames(20, 1 / 30);
     expect(material.color.getHexString()).not.toBe(before);
   });
 
-  it('renders a headquarters marker for each founded corporation', async () => {
+  it('renders a strike bar over a dead target', async () => {
+    const renderer = await ReactThreeTestRenderer.create(
+      <BoardScene {...props({ targets: new Map([['6E', 'dead']]) })} />,
+    );
+    const planes = renderer.scene.findAll((node) => node.type === 'Mesh').filter((mesh) =>
+      mesh.allChildren.some((child) => child.type === 'PlaneGeometry'),
+    );
+    expect(planes.length).toBeGreaterThan(0);
+  });
+
+  it('renders a headquarters badge for each founded corporation', async () => {
     const corporations = {
       ...base.corporations,
       video: { ...base.corporations.video, founded: true, hqTile: '5E' },

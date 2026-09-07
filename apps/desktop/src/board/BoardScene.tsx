@@ -3,6 +3,7 @@ import { useMemo, useRef } from 'react';
 import { Instance, Instances, Text } from '@react-three/drei';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Color, type Mesh, type MeshBasicMaterial } from 'three';
+import { RoundedBoxGeometry } from 'three-stdlib';
 import {
   INDUSTRY_INFO,
   type Cell,
@@ -15,25 +16,28 @@ import fontMedium from '../assets/fonts/DMSans-Medium.ttf';
 import fontBold from '../assets/fonts/DMSans-Bold.ttf';
 import { boardCells, tileToWorld } from './coords.js';
 
-/** Saxon City board palette — see design/build.py, the "B" direction (contrast nudged for a live UI). */
+/** Saxon City board palette — design/build.py, `board()` in the "B" direction. */
 const CELL_EMPTY = '#f1eae0';
 const CELL_EMPTY_INK = '#8a7c68';
 const CELL_UNINC = '#b0a496';
 const ACCENT = '#a5361f';
+const RING = '#c6b8a6';
+const RING_HOT = '#d98a4e';
 const HEADER_INK = '#7a6f60';
-const BASE = '#e3d8c9';
-const HIGHLIGHT_HOT = '#e0a066';
+const HQ_BADGE = '#221e18';
 
 const ROW_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const emptyColor = new Color(CELL_EMPTY);
-const hotColor = new Color(HIGHLIGHT_HOT);
+const cool = new Color(RING);
+const hot = new Color(RING_HOT);
+
+export type CellTarget = 'playable' | 'dead';
 
 export interface BoardSceneProps {
   readonly ruleset: Ruleset;
   readonly cells: Readonly<Record<TileId, Cell>>;
   readonly corporations: Record<Industry, CorpView>;
-  /** Tiles the active seat can legally place this turn — pulsed and clickable. */
-  readonly playable: ReadonlySet<TileId>;
+  /** Legal-target cells for the active seat: a ring for `playable` (which blinks), struck red for `dead`. */
+  readonly targets: ReadonlyMap<TileId, CellTarget>;
   readonly onPick: (tile: TileId) => void;
 }
 
@@ -47,15 +51,18 @@ function labelInk(cell: Cell | undefined): string {
   return cell.kind === 'corporation' ? INDUSTRY_INFO[cell.industry].ink : '#ffffff';
 }
 
+const cellGeo = new RoundedBoxGeometry(0.94, 0.16, 0.94, 3, 0.14);
+const ringGeo = new RoundedBoxGeometry(0.98, 0.1, 0.98, 3, 0.14);
+
 /** The 3D contents only — no `<Canvas>`, so `@react-three/test-renderer` can mount it. */
-export function BoardScene({ ruleset, cells, corporations, playable, onPick }: BoardSceneProps) {
+export function BoardScene({ ruleset, cells, corporations, targets, onPick }: BoardSceneProps) {
   const tiles = useMemo(() => boardCells(ruleset), [ruleset]);
   const { cols, rows } = ruleset.board;
   const halfW = (cols - 1) / 2;
   const halfH = (rows - 1) / 2;
 
-  const staticTiles = tiles.filter((tile) => !playable.has(tile));
-  const playableTiles = tiles.filter((tile) => playable.has(tile));
+  const plainTiles = tiles.filter((tile) => !targets.has(tile));
+  const targeted = tiles.filter((tile) => targets.has(tile));
 
   const headquarters = useMemo(
     () =>
@@ -66,20 +73,14 @@ export function BoardScene({ ruleset, cells, corporations, playable, onPick }: B
   );
 
   return (
-    <group>
-      <ambientLight intensity={1.4} />
+    <group position={[0, 0, 0.9]}>
+      <ambientLight intensity={1.5} />
 
-      {/* base plate, a thin frame visible through the cell gaps */}
-      <mesh name="board-base" position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[cols + 0.16, rows + 0.16]} />
-        <meshBasicMaterial color={BASE} />
-      </mesh>
-
-      {/* one InstancedMesh for every non-highlighted cell (KTD8) */}
-      <Instances limit={tiles.length} range={staticTiles.length}>
-        <boxGeometry args={[0.94, 0.1, 0.94]} />
+      {/* every non-targeted cell, one InstancedMesh (KTD8) */}
+      <Instances range={plainTiles.length} limit={tiles.length}>
+        <primitive object={cellGeo} attach="geometry" />
         <meshBasicMaterial />
-        {staticTiles.map((tile) => {
+        {plainTiles.map((tile) => {
           const [x, , z] = tileToWorld(tile, ruleset);
           return (
             <Instance
@@ -96,21 +97,27 @@ export function BoardScene({ ruleset, cells, corporations, playable, onPick }: B
         })}
       </Instances>
 
-      <PulsingCells tiles={playableTiles} ruleset={ruleset} onPick={onPick} />
+      <TargetCells
+        tiles={targeted}
+        targets={targets}
+        cells={cells}
+        ruleset={ruleset}
+        onPick={onPick}
+      />
 
       {/* every cell's coordinate */}
       {tiles.map((tile) => {
         const [x, , z] = tileToWorld(tile, ruleset);
-        const highlighted = playable.has(tile);
+        const target = targets.get(tile);
         return (
           <Text
             key={tile}
             name={`label:${tile}`}
             font={fontMedium}
-            position={[x, 0.09, z]}
+            position={[x, 0.2, z]}
             rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={0.32}
-            color={highlighted ? ACCENT : labelInk(cells[tile])}
+            fontSize={0.3}
+            color={target ? ACCENT : labelInk(cells[tile])}
             anchorX="center"
             anchorY="middle"
           >
@@ -125,9 +132,9 @@ export function BoardScene({ ruleset, cells, corporations, playable, onPick }: B
           key={`col-${col}`}
           name={`header-col:${col}`}
           font={fontBold}
-          position={[col - 1 - halfW, 0.09, -halfH - 1]}
+          position={[col - 1 - halfW, 0.2, -halfH - 1]}
           rotation={[-Math.PI / 2, 0, 0]}
-          fontSize={0.42}
+          fontSize={0.4}
           color={HEADER_INK}
           anchorX="center"
           anchorY="middle"
@@ -140,9 +147,9 @@ export function BoardScene({ ruleset, cells, corporations, playable, onPick }: B
           key={`row-${letter}`}
           name={`header-row:${letter}`}
           font={fontBold}
-          position={[-halfW - 1, 0.09, index - halfH]}
+          position={[-halfW - 1, 0.2, index - halfH]}
           rotation={[-Math.PI / 2, 0, 0]}
-          fontSize={0.42}
+          fontSize={0.4}
           color={HEADER_INK}
           anchorX="center"
           anchorY="middle"
@@ -151,21 +158,21 @@ export function BoardScene({ ruleset, cells, corporations, playable, onPick }: B
         </Text>
       ))}
 
-      {/* headquarters coins */}
+      {/* headquarters: a dark circle badge with the corporation's initial */}
       {headquarters.map(({ industry, tile }) => {
         const [x, , z] = tileToWorld(tile, ruleset);
         return (
           <group key={industry} name={`hq:${industry}`} position={[x, 0.14, z]}>
-            <mesh>
-              <cylinderGeometry args={[0.28, 0.28, 0.12, 28]} />
-              <meshStandardMaterial color={INDUSTRY_INFO[industry].color} metalness={0.1} roughness={0.6} />
+            <mesh position={[0, 0.02, -0.05]}>
+              <cylinderGeometry args={[0.3, 0.3, 0.14, 32]} />
+              <meshBasicMaterial color={HQ_BADGE} />
             </mesh>
             <Text
               font={fontBold}
-              position={[0, 0.07, 0]}
+              position={[0, 0.16, -0.05]}
               rotation={[-Math.PI / 2, 0, 0]}
-              fontSize={0.28}
-              color={INDUSTRY_INFO[industry].ink}
+              fontSize={0.3}
+              color="#ffffff"
               anchorX="center"
               anchorY="middle"
             >
@@ -178,45 +185,66 @@ export function BoardScene({ ruleset, cells, corporations, playable, onPick }: B
   );
 }
 
-/** Playable cells rendered as individual meshes so their colour can pulse (the "blink"). */
-function PulsingCells({
+/** Legal targets: a rounded ring around the cell. `playable` rings blink cool↔warm; `dead` are red with a strike bar. */
+function TargetCells({
   tiles,
+  targets,
+  cells,
   ruleset,
   onPick,
 }: {
   tiles: readonly TileId[];
+  targets: ReadonlyMap<TileId, CellTarget>;
+  cells: Readonly<Record<TileId, Cell>>;
   ruleset: Ruleset;
   onPick: (tile: TileId) => void;
 }) {
-  const meshes = useRef<(Mesh | null)[]>([]);
+  const rings = useRef<(Mesh | null)[]>([]);
 
   useFrame(({ clock }) => {
     const t = 0.5 + 0.5 * Math.sin(clock.elapsedTime * 4.5);
-    for (const mesh of meshes.current) {
-      if (mesh) (mesh.material as MeshBasicMaterial).color.copy(emptyColor).lerp(hotColor, t);
-    }
+    tiles.forEach((tile, index) => {
+      const mesh = rings.current[index];
+      if (!mesh) return;
+      const material = mesh.material as MeshBasicMaterial;
+      if (targets.get(tile) === 'dead') material.color.set(ACCENT);
+      else material.color.copy(cool).lerp(hot, t);
+    });
   });
 
   return (
     <>
       {tiles.map((tile, index) => {
         const [x, , z] = tileToWorld(tile, ruleset);
+        const dead = targets.get(tile) === 'dead';
         return (
-          <mesh
-            key={tile}
-            name={`cell:${tile}`}
-            position={[x, 0.01, z]}
-            ref={(mesh) => {
-              meshes.current[index] = mesh;
-            }}
-            onClick={(event: ThreeEvent<MouseEvent>) => {
-              event.stopPropagation();
-              onPick(tile);
-            }}
-          >
-            <boxGeometry args={[0.94, 0.12, 0.94]} />
-            <meshBasicMaterial color={CELL_EMPTY} />
-          </mesh>
+          <group key={tile} position={[x, 0, z]}>
+            <mesh
+              ref={(mesh) => {
+                rings.current[index] = mesh;
+              }}
+            >
+              <primitive object={ringGeo} attach="geometry" />
+              <meshBasicMaterial color={RING} />
+            </mesh>
+            <mesh
+              name={`cell:${tile}`}
+              position={[0, 0.03, 0]}
+              onClick={(event: ThreeEvent<MouseEvent>) => {
+                event.stopPropagation();
+                onPick(tile);
+              }}
+            >
+              <primitive object={cellGeo} attach="geometry" />
+              <meshBasicMaterial color={cellColor(cells[tile])} />
+            </mesh>
+            {dead && (
+              <mesh position={[0, 0.22, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[0.7, 0.06]} />
+                <meshBasicMaterial color={ACCENT} />
+              </mesh>
+            )}
+          </group>
         );
       })}
     </>

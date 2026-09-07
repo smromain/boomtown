@@ -1,0 +1,148 @@
+.band {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  height: 190px;
+  flex-shrink: 0;
+}
+
+.card {
+  flex-basis: 0;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-top: 3px solid;
+  border-radius: 3px;
+  padding: 13px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.safe {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.name {
+  font-size: 19px;
+  line-height: 1.1;
+}
+
+.flavour {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--muted);
+  margin-top: 3px;
+  height: 29px;
+  overflow: hidden;
+}
+
+.priceRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.price {
+  font-size: 22px;
+}
+
+.priceRow .size {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.lineage {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-left: 9px;
+  margin-left: 3px;
+  border-left: 1px solid var(--rule);
+}
+
+.stake {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.stakeLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.bar {
+  height: 4px;
+  background: var(--rule);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+}
+
+.tray {
+  width: 168px;
+  flex-shrink: 0;
+  border: 1px dashed var(--rule);
+  border-radius: 3px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  overflow-y: auto;
+}
+
+/* when nothing is founded the tray is the whole band — lay it out wide */
+.band:has(.tray:only-child) .tray {
+  width: 100%;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  column-gap: 28px;
+}
+
+.band:has(.tray:only-child) .trayTitle,
+.band:has(.tray:only-child) .trayNote {
+  flex-basis: 100%;
+}
+
+.trayTitle {
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.trayItem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  opacity: 0.6;
+}
+
+.trayItem span {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.trayNote {
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--muted);
+  margin-top: auto;
+}
