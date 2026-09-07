@@ -52,6 +52,39 @@ export function corpsByTier(view: ClientView): Record<1 | 2 | 3, ChartMarker[]> 
   return out;
 }
 
+/** One unfounded corporation as a founding candidate, with what founding it is worth. */
+export interface FoundingOption {
+  readonly industry: Industry;
+  readonly name: string;
+  readonly color: string;
+  readonly tier: 1 | 2 | 3;
+  /** Share price at the opening size of 2 — the value of the founder's free share. */
+  readonly openingPrice: number;
+  /** Primary bonus if it went defunct at size 2 — the low end of its bonus ladder. */
+  readonly openingPrimary: number;
+}
+
+/**
+ * The unfounded corporations, richest tier first, with the opening share price
+ * and bonus each would carry — the "which is best to found" reference.
+ */
+export function foundingOptions(view: ClientView): FoundingOption[] {
+  return INDUSTRIES.filter((industry) => !view.corporations[industry].founded)
+    .map((industry) => {
+      const tier = tierOf(industry);
+      const opening = priceLadder(tier, view.ruleset)[0]!; // size-2 rung
+      return {
+        industry,
+        name: view.corporations[industry].baseName,
+        color: INDUSTRY_INFO[industry].color,
+        tier,
+        openingPrice: opening.price,
+        openingPrimary: opening.bonus.primary,
+      };
+    })
+    .sort((a, b) => b.tier - a.tier || b.openingPrice - a.openingPrice);
+}
+
 /**
  * The full reference matrix for the current ruleset — 11 price rows, each with
  * the band label per tier and any founded corporation sitting there.

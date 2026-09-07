@@ -180,7 +180,42 @@ describe('DecisionModal', () => {
 
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('Found a corporation')).toBeInTheDocument();
+    // one button per unfounded company (7), plus the reference toggle and minimize
     expect(within(dialog).getAllByRole('button').length).toBeGreaterThanOrEqual(7);
+  });
+
+  it('the founding reference toggle reveals each option’s tier and opening value', async () => {
+    const { client } = await renderPanel(<DecisionModal />, {
+      craft: (state) => {
+        state.cells['6F'] = { kind: 'unincorporated' };
+        state.hands[0] = ['6E'];
+      },
+    });
+    await place(client, '6E');
+    const dialog = screen.getByRole('dialog');
+
+    expect(dialog).not.toHaveTextContent(/tier \d · \$/);
+    await userEvent.click(within(dialog).getByRole('button', { name: /Show tier/ }));
+    expect(dialog).toHaveTextContent(/tier 3 · \$400\/share/); // a tier-3 corp opens at $400
+    await userEvent.click(within(dialog).getByRole('button', { name: /Hide tier/ }));
+    expect(dialog).not.toHaveTextContent(/tier \d · \$/);
+  });
+
+  it('the founding modal minimizes to a pill and restores', async () => {
+    const { client } = await renderPanel(<DecisionModal />, {
+      craft: (state) => {
+        state.cells['6F'] = { kind: 'unincorporated' };
+        state.hands[0] = ['6E'];
+      },
+    });
+    await place(client, '6E');
+
+    await userEvent.click(screen.getByRole('button', { name: /Peek at the board/ }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Resume founding/ }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(within(screen.getByRole('dialog')).getByText('Found a corporation')).toBeInTheDocument();
   });
 
   it('founds for the active seat even when it is not seat 0 (regression: not-your-turn)', async () => {
@@ -202,7 +237,7 @@ describe('DecisionModal', () => {
     expect(dialog).toHaveTextContent('Cy · new group'); // the active seat's name, not "Seat 0"
 
     await act(async () => {
-      await userEvent.click(within(dialog).getAllByRole('button')[0]!);
+      await userEvent.click(within(dialog).getByRole('button', { name: new RegExp(NAMES.video) }));
       await flush();
     });
     // the command was issued for seat 2 and accepted — no rejection, modal closed

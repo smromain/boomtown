@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { clientView } from '@boomtown/client-core';
 import { createGame } from '@boomtown/engine';
-import { corpReference, fullChart } from './priceReference.js';
+import { corpReference, foundingOptions, fullChart } from './priceReference.js';
 import { StockReference } from './StockReference.js';
 import { CorpReference } from './CorpReference.js';
 import { ReferenceProvider, useReference } from './ReferenceContext.js';
@@ -33,6 +33,19 @@ describe('priceReference helpers', () => {
     expect(data.payouts[0]).toMatchObject({ seat: 2, tier: 'primary' });
     expect(data.payouts[1]).toMatchObject({ seat: 0, tier: 'tertiary' }); // classic = 2-tier
     expect(data.ladder.find((r) => r.current)?.label).toBe('4');
+  });
+
+  it('foundingOptions lists unfounded corps richest tier first, with opening value', () => {
+    const state = createGame({ seats: [{ name: 'A' }, { name: 'B' }], seed: 1, turnOrder: [0, 1] });
+    seedCorp(state, 'books', ['2A', '3A']); // books founded -> excluded
+    const options = foundingOptions(clientView(state, 0));
+
+    expect(options.some((o) => o.industry === 'books')).toBe(false);
+    expect(options[0]!.tier).toBe(3); // sorted tier 3 -> 1
+    expect(options.at(-1)!.tier).toBe(1);
+    // opening price is the size-2 rung for the tier
+    expect(options[0]!.openingPrice).toBeGreaterThan(options.at(-1)!.openingPrice);
+    expect(options[0]!.openingPrimary).toBeGreaterThan(0);
   });
 });
 

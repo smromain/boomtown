@@ -56,6 +56,68 @@
   border-color: var(--accent);
 }
 
+.optionName {
+  display: block;
+}
+
+.optionRef {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.refToggle {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0 0 0.75rem;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* "Peek at the board" — top-right of the founding modal */
+.minimizeButton {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.9rem;
+  border: 1px solid var(--rule);
+  background: var(--input);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+}
+
+.minimizeButton:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+/* the pill shown while the founding modal is minimized */
+.minimizedPill {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  border-radius: 999px;
+  padding: 0.5rem 1.1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
 .split {
   display: grid;
   grid-template-columns: auto 1fr auto auto auto;

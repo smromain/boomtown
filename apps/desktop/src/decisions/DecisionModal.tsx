@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { localActiveView } from '@boomtown/client-core';
 import type { Seat } from '@boomtown/engine';
@@ -22,6 +23,13 @@ import styles from './decisions.module.css';
  * player's holdings and make their call. The hand-off is the modal's own
  * content, so it is always interactive (an interstitial rendered outside the
  * Radix portal is inert behind it).
+ *
+ * A founding choice can be **minimized** to a corner pill so the founder can
+ * study the board before picking. While minimized the modal renders no Dialog
+ * and no overlay at all — only the pill — so the board underneath is fully
+ * interactive (a modal overlay would make it inert). The founding placement is
+ * already committed to engine state, so peeking at the board is safe. Merger
+ * steps cannot be minimized: they are sequenced and the board is mid-change.
  */
 export function DecisionModal() {
   const local = useLocalSeats();
@@ -38,6 +46,21 @@ export function DecisionModal() {
   const owedSeat: Seat | null = decision?.seat ?? (needsFound ? view!.you : null);
   const handoff = needsHandoff(owedSeat);
 
+  // minimize is founding-only, and never while a hand-off is owed
+  const canMinimize = needsFound && !decision && !handoff;
+  const [minimized, setMinimized] = useState(false);
+  useEffect(() => {
+    if (!canMinimize) setMinimized(false);
+  }, [canMinimize]);
+
+  if (open && minimized && canMinimize) {
+    return (
+      <button type="button" className={styles.minimizedPill} onClick={() => setMinimized(false)}>
+        Resume founding ↑
+      </button>
+    );
+  }
+
   return (
     <Dialog.Root open={open}>
       <Dialog.Portal>
@@ -49,6 +72,16 @@ export function DecisionModal() {
           onInteractOutside={(e) => e.preventDefault()}
         >
           <Dialog.Title className={styles.srOnly}>Game decision</Dialog.Title>
+
+          {canMinimize && (
+            <button
+              type="button"
+              className={styles.minimizeButton}
+              onClick={() => setMinimized(true)}
+            >
+              Peek at the board ↓
+            </button>
+          )}
 
           {handoff && owedSeat != null ? (
             <div className={styles.handoff}>
