@@ -42,6 +42,16 @@ Run artifacts (this machine, transient): `/tmp/compound-engineering-501/ce-code-
 - **connection→seat is tracked in two places** (`room.ts` `seatByConnection` + `SeatTable`
   occupants). Pick one owner.
 
+## Deploy / packaging — done since (2026-09-07)
+
+The online room is deployed (`boomtown.smromain.partykit.dev`) and verified end to
+end; the host is baked via `apps/desktop/.env.production`; `hostUrl.ts` now throws
+in a release build with no host instead of falling back to localhost. `electron-builder`
+produces a working, fuse-hardened unsigned `.dmg` on this machine — the fuses
+(KTD9) are flipped by the new `electron/afterPack.mjs` (`afterPack.test.ts` guards
+the posture), which U19 had left unwired. The fake auto-update feed URL was
+removed; `updater.ts` stays a graceful no-op. See `docs/deploying.md`.
+
 ## Testing gaps still open
 
 - `apps/desktop/electron/updater.ts` has no test (P1-severity coverage gap): the packaged

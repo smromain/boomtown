@@ -9,12 +9,16 @@ directories:
   output: dist
   buildResources: build
 
+# Flip the Electron security fuses (KTD9) on the packed binary before signing.
+afterPack: electron/afterPack.mjs
+
+# electron-vite bundles the renderer and the main/preload processes from source
+# (workspace packages via the vite aliases, npm deps inlined), so the packaged
+# app is self-contained — only the build output and a minimal manifest ship.
 files:
   - out/**/*
   - package.json
 
-# The renderer bundles workspace packages from source at build time, so only
-# runtime deps that Electron itself loads need to ship.
 asarUnpack:
   - out/main/**
 
@@ -27,7 +31,7 @@ mac:
         - x64
   hardenedRuntime: true
   gatekeeperAssess: false
-  # Electron fuses (KTD9) stay on in the packaged build.
+  # Electron fuses (KTD9) are flipped by the afterPack hook above.
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
 
@@ -49,7 +53,13 @@ linux:
         - x64
   category: Game
 
-# Auto-update feed. `updater.ts` reads the generic provider on launch.
-publish:
-  provider: generic
-  url: https://updates.boomtown.example/desktop
+# Auto-update is wired in code (electron/updater.ts) but has no feed yet — that
+# needs a hosting decision (GitHub Releases, S3, a static host). Until then a
+# packaged build ships without an update channel and `checkForUpdates()` is a
+# graceful no-op. To enable: add a `publish:` block here (e.g.
+#   publish:
+#     provider: github
+#     owner: <org>
+#     repo: <repo>
+# ), and electron-builder will emit the `latest-*.yml` manifests on `npm run
+# package` / the release workflow.

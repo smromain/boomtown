@@ -84,7 +84,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               type="text"
               value={draft.partykitHost}
               aria-label="Online host"
-              placeholder="boomtown.example.partykit.dev"
+              placeholder="host.partykit.dev — leave blank for the built-in server"
               onChange={(e) => patch({ partykitHost: e.target.value })}
             />
           </label>

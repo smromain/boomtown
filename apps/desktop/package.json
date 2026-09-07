@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Boomtown Electron desktop app — hardened shell, basic 3D board, local play.",
+  "author": "Boomtown",
   "main": "out/main/main.mjs",
   "scripts": {
     "dev": "electron-vite dev",
@@ -14,23 +15,16 @@
     "smoke": "electron-vite build && cross-env BOOMTOWN_SMOKE=1 electron .",
     "package": "electron-vite build && electron-builder --config electron-builder.yml"
   },
-  "dependencies": {
+  "//dependencies": "electron-vite bundles the renderer and main process from source (workspace packages via the vite aliases, npm deps inlined), so the packaged app ships no node_modules. Everything the build needs is a devDependency; electron-builder then has nothing to trace out of the monorepo.",
+  "devDependencies": {
     "@boomtown/client-core": "*",
     "@boomtown/engine": "*",
+    "@electron/fuses": "^1.8.0",
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-slider": "^1.2.2",
     "@radix-ui/react-tooltip": "^1.1.6",
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "three": "^0.185.0",
-    "three-stdlib": "^2.36.1",
-    "troika-three-text": "^0.52.5",
-    "zustand": "^5.0.15"
-  },
-  "devDependencies": {
-    "@electron/fuses": "^1.8.0",
     "@react-three/test-renderer": "^9.1.1",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
@@ -41,11 +35,17 @@
     "@types/three": "^0.185.0",
     "@vitejs/plugin-react": "^4.3.4",
     "cross-env": "^7.0.3",
-    "electron": "^44.2.0",
+    "electron": "44.2.0",
     "electron-builder": "^25.1.8",
     "electron-updater": "^6.3.9",
     "electron-vite": "^4.0.1",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "jsdom": "^25.0.1"
+    "jsdom": "^25.0.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "three": "^0.185.0",
+    "three-stdlib": "^2.36.1",
+    "troika-three-text": "^0.52.5",
+    "zustand": "^5.0.15"
   }
 }

@@ -38,7 +38,9 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-          VITE_PARTYKIT_HOST: ${{ vars.PARTYKIT_HOST }}
+          # The online host is baked from apps/desktop/.env.production. To point a
+          # build at a different room, edit that file (an empty env var here would
+          # shadow it with a blank value — see src/online/hostUrl.ts).
 
       - uses: actions/upload-artifact@v4
         with:

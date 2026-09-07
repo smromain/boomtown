@@ -1,7 +1,7 @@
 import { act } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings.js';
 import { SettingsDialog } from './SettingsDialog.js';
 import { partykitHost } from '../online/hostUrl.js';
@@ -33,6 +33,22 @@ describe('partykitHost', () => {
   it('uses a non-blank Settings override', () => {
     saveSettings({ ...DEFAULT_SETTINGS, partykitHost: '  boomtown.example.partykit.dev  ' });
     expect(partykitHost()).toBe('boomtown.example.partykit.dev');
+  });
+
+  it('prefers the baked build var over the localhost fallback', () => {
+    vi.stubEnv('VITE_PARTYKIT_HOST', 'baked.partykit.dev');
+    expect(partykitHost()).toBe('baked.partykit.dev');
+    vi.unstubAllEnvs();
+  });
+
+  it('throws in a release build with no host configured (a packaging mistake)', () => {
+    vi.stubEnv('PROD', true);
+    vi.stubEnv('VITE_PARTYKIT_HOST', '');
+    expect(() => partykitHost()).toThrow(/No online host is configured/);
+    // an override still works even in that broken build
+    saveSettings({ ...DEFAULT_SETTINGS, partykitHost: 'rescue.partykit.dev' });
+    expect(partykitHost()).toBe('rescue.partykit.dev');
+    vi.unstubAllEnvs();
   });
 });
 
