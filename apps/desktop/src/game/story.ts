@@ -1,5 +1,35 @@
 import type { EngineEvent, Industry, Seat } from '@boomtown/engine';
 
+/** The corporation a log line is "about", so headline events can be tinted its colour. */
+export function eventIndustry(event: EngineEvent): Industry | null {
+  switch (event.type) {
+    case 'corporation-founded':
+    case 'corporation-grew':
+    case 'corporation-defunct':
+      return event.industry;
+    case 'survivor-chosen':
+    case 'merger-completed':
+      return event.survivor;
+    case 'bonus-paid':
+      return event.defunct;
+    default:
+      return null;
+  }
+}
+
+/** Whether a log line is a headline (a founding, a merger step) rather than routine. */
+export function isHeadline(event: EngineEvent): boolean {
+  return (
+    event.type === 'corporation-founded' ||
+    event.type === 'merger-started' ||
+    event.type === 'survivor-chosen' ||
+    event.type === 'corporation-defunct' ||
+    event.type === 'merger-completed' ||
+    event.type === 'end-announced' ||
+    event.type === 'game-over'
+  );
+}
+
 export interface BonusLine {
   readonly seats: readonly Seat[];
   readonly tier: 'primary' | 'secondary' | 'tertiary';

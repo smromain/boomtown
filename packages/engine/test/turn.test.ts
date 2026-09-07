@@ -134,16 +134,37 @@ describe('buying shares', () => {
 });
 
 describe('draw and turn advance', () => {
-  it('refills the hand to six after the buy step, and to fewer when the bag runs out', () => {
+  it('refills the hand to six after the buy step, keeping the tiles not placed (Scrabble rules)', () => {
     const game = blankGame();
     game.hands[0] = ['6E', '1A', '12I'];
     const placed = ok(game, { type: 'place-tile', seat: 0, tile: '6E' });
     const bagBefore = placed.bag.length;
     const next = ok(placed, { type: 'buy-shares', seat: 0, picks: {} });
     expect(next.hands[0]).toHaveLength(6);
+    expect(next.hands[0]).toEqual(expect.arrayContaining(['1A', '12I'])); // the unplaced tiles stay
+    expect(next.hands[0]).not.toContain('6E'); // only the placed tile leaves
     expect(next.bag.length).toBe(bagBefore - 4);
     expect(next.turnPointer).toBe(1);
     expect(next.step).toBe('place');
+  });
+
+  it('a seat keeps five of its six tiles when its turn comes round again', () => {
+    const game = blankGame();
+    game.hands[0] = ['1A', '2A', '3A', '4A', '5A', '6A'];
+    game.hands[1] = ['1I', '2I', '3I'];
+    const original = [...game.hands[0]];
+
+    // seat 0's whole turn
+    let state = ok(game, { type: 'place-tile', seat: 0, tile: '1A' });
+    state = ok(state, { type: 'buy-shares', seat: 0, picks: {} });
+    // seat 1's whole turn
+    state = ok(state, { type: 'place-tile', seat: 1, tile: '1I' });
+    state = ok(state, { type: 'buy-shares', seat: 1, picks: {} });
+
+    expect(state.turnPointer).toBe(0); // back to seat 0
+    const kept = original.filter((tile) => tile !== '1A' && state.hands[0]!.includes(tile));
+    expect(kept).toEqual(['2A', '3A', '4A', '5A', '6A']);
+    expect(state.hands[0]).toHaveLength(6); // the sixth is a fresh draw
   });
 
   it('does not draw when the bag is empty', () => {

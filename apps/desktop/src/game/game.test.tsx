@@ -1,12 +1,21 @@
 import { act } from 'react';
 import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { ActionBar } from './ActionBar.js';
 import { CorporationBand } from './CorporationBand.js';
 import { Shareholders } from './Shareholders.js';
 import { StoryCard } from './StoryCard.js';
 import { TileRack } from './TileRack.js';
+import { TurnHandoff } from './TurnHandoff.js';
+import { defaultConfig } from './../setup/gameConfig.js';
 import { latestMerger } from './story.js';
 import { flush, renderPanel, seedCorp } from '../testing/harness.js';
+
+const humans = (count: number) => ({
+  ...defaultConfig(),
+  seats: Array.from({ length: count }, (_, i) => ({ name: `P${i}`, kind: 'human' as const, difficulty: 5 })),
+});
 
 describe('CorporationBand', () => {
   it('shows a card per active corporation with the derived name; unfounded ones sit in the tray', async () => {
@@ -115,5 +124,71 @@ describe('latestMerger', () => {
       { type: 'merger-completed', survivor: 'video' },
     ]);
     expect(story).toMatchObject({ placedTile: '5E', survivor: 'video', defunct: ['books'], complete: true });
+  });
+});
+
+describe('TurnHandoff (hot-seat turn boundary)', () => {
+  it('does not block the opening player', async () => {
+    await renderPanel(<TurnHandoff config={humans(3)} />);
+    expect(screen.queryByRole('dialog', { name: 'Turn handoff' })).not.toBeInTheDocument();
+  });
+
+  it('blocks the screen when the turn passes to another human, until they confirm', async () => {
+    const { client } = await renderPanel(<TurnHandoff config={humans(3)} />);
+    // seat 0 plays a full turn -> turn passes to seat 1
+    const tile = client.store.getState().views[0]!.handTiles[0]!.tile;
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile });
+      await flush();
+      client.dispatch({ type: 'buy-shares', seat: 0, picks: {} });
+      await flush();
+    });
+
+    const dialog = screen.getByRole('dialog', { name: 'Turn handoff' });
+    expect(within(dialog).getByRole('heading', { name: 'Ben' })).toBeInTheDocument(); // seat 1's name
+
+    await act(async () => {
+      await userEvent.click(within(dialog).getByRole('button', { name: /show my turn/ }));
+    });
+    expect(screen.queryByRole('dialog', { name: 'Turn handoff' })).not.toBeInTheDocument();
+  });
+});
+
+describe('ActionBar', () => {
+  it('shows the buy controls during the buy step', async () => {
+    await renderPanel(<ActionBar />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['5H', '5I', '4I']);
+        state.step = 'buy';
+        state.hands[0] = [];
+      },
+    });
+    expect(screen.getByRole('region', { name: 'Buy stock' })).toBeInTheDocument();
+  });
+
+  it('offers the end-of-game choice at the end-check step', async () => {
+    const rowA = Array.from({ length: 11 }, (_, i) => `${i + 1}A`);
+    await renderPanel(<ActionBar />, {
+      craft: (state) => {
+        seedCorp(state, 'video', rowA); // safe, only corp -> end condition holds
+        state.step = 'end-check';
+      },
+    });
+    expect(screen.getByRole('button', { name: 'End the game' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Keep playing' })).toBeInTheDocument();
+  });
+
+  it('offers a skip when no hand tile is playable', async () => {
+    const rowA = Array.from({ length: 11 }, (_, i) => `${i + 1}A`);
+    const rowC = Array.from({ length: 11 }, (_, i) => `${i + 1}C`);
+    await renderPanel(<ActionBar />, {
+      craft: (state) => {
+        seedCorp(state, 'video', rowA);
+        seedCorp(state, 'books', rowC);
+        state.hands[0] = ['1B']; // between two safe corps -> dead, unplayable
+        state.bag = [];
+      },
+    });
+    expect(screen.getByRole('button', { name: 'Skip placement' })).toBeInTheDocument();
   });
 });

@@ -94,6 +94,75 @@
 
 .cardHeading {
   font-size: 15px;
+  flex-shrink: 0;
+}
+
+/* Story panel: a fixed size that scrolls, so it never squeezes the board. */
+.story {
+  height: 320px;
+  overflow-y: auto;
+}
+
+.headline {
+  font-weight: 600;
+}
+
+/* Bottom bar: tile rack on the left, the contextual action beside it. */
+.bottom {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+}
+
+.actionCard {
+  flex-grow: 1;
+  max-width: 22rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.actionPrompt {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.actionButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.primaryAction {
+  padding: 0.55rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.secondaryAction {
+  padding: 0.55rem 1rem;
+  font: inherit;
+  background: var(--input);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.primaryAction:disabled,
+.secondaryAction:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .quiet {
