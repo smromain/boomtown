@@ -1,4 +1,4 @@
-import type { EngineEvent, Industry, Seat } from '@boomtown/engine';
+import type { EngineEvent, Industry, PlayerView, Seat } from '@boomtown/engine';
 
 /** The corporation a log line is "about", so headline events can be tinted its colour. */
 export function eventIndustry(event: EngineEvent): Industry | null {
@@ -28,6 +28,38 @@ export function isHeadline(event: EngineEvent): boolean {
     event.type === 'end-announced' ||
     event.type === 'game-over'
   );
+}
+
+/**
+ * The design's merger sentence: what the placed tile does, then the size
+ * comparison that decides the survivor. Returns the two halves so the tile id
+ * can be emphasised in the middle.
+ */
+export function mergerProse(
+  merger: MergerStory,
+  view: PlayerView,
+): { readonly lead: string; readonly tile: string; readonly rest: string } | null {
+  // Only while unresolved: once complete, the survivor has already absorbed the
+  // defunct chains and view.corporations no longer holds the pre-merger sizes.
+  if (merger.complete || !merger.survivor) return null;
+  // corporation-defunct events only land at completion; mid-merger the defunct
+  // chains are every corporation in the merger except the chosen survivor.
+  const defunctIndustries = merger.corporations.filter((industry) => industry !== merger.survivor);
+  if (defunctIndustries.length === 0) return null;
+  const survivor = view.corporations[merger.survivor];
+  const defunct = defunctIndustries.map((industry) => view.corporations[industry]);
+  const smallest = defunct.reduce((a, b) => (b.size < a.size ? b : a));
+  const eaten = defunct.map((corp) => corp.baseName);
+  const eatenList =
+    eaten.length === 1 ? eaten[0] : `${eaten.slice(0, -1).join(', ')} and ${eaten.at(-1)}`;
+  return {
+    lead: `Placing `,
+    tile: merger.placedTile,
+    rest:
+      ` folds ${eatenList} into ${survivor.baseName}. ` +
+      `${survivor.baseName} is larger at ${survivor.size} tiles, ` +
+      `so ${smallest.baseName} is dissolved at ${smallest.size}.`,
+  };
 }
 
 export interface BonusLine {

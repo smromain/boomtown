@@ -3,16 +3,16 @@ import { activeView } from '@boomtown/client-core';
 import { useGameState } from '../client/GameClientProvider.js';
 import { describeEvent } from '../panels/eventText.js';
 import { IndustryMark } from './marks.js';
-import { eventIndustry, isHeadline, latestMerger } from './story.js';
+import { eventIndustry, isHeadline, latestMerger, mergerProse } from './story.js';
 import styles from './game.module.css';
 
 const TIER_LABEL = { primary: 'primary', secondary: 'secondary', tertiary: 'tertiary' } as const;
 
 /**
- * The story panel from the Main artboard — a fixed size that scrolls. When a
- * merger is in play it narrates it; otherwise it lists the event log, with
- * headline events (foundings, merger steps) tinted the acting corporation's
- * colour.
+ * The story panel from the Main artboard. When a merger is in play it narrates
+ * it — the sentence, the renamed survivor, the bonus split, exactly as the
+ * design lays it out. Otherwise it is a quiet recent-events list (no heading,
+ * no border), with headline events tinted the acting corporation's colour.
  */
 export function StoryCard() {
   const view = useGameState(activeView);
@@ -22,14 +22,14 @@ export function StoryCard() {
   if (!view) return null;
 
   if (!merger) {
+    const recent = log.slice(-6);
     return (
-      <section className={`${styles.card} ${styles.story}`} aria-label="Story">
-        <div className={`serif ${styles.cardHeading}`}>Table talk</div>
-        {log.length === 0 ? (
+      <section className={styles.quietLog} aria-label="Story">
+        {recent.length === 0 ? (
           <p className={styles.quiet}>No moves yet. Place a tile to begin.</p>
         ) : (
           <ol className={styles.log}>
-            {log.map((event, index) => {
+            {recent.map((event, index) => {
               const industry = eventIndustry(event);
               const headline = isHeadline(event);
               return (
@@ -51,6 +51,7 @@ export function StoryCard() {
   const survivorName = merger.survivor ? view.corporations[merger.survivor].displayName : '…';
   const survivorColor = merger.survivor ? INDUSTRY_INFO[merger.survivor].color : 'var(--ink)';
   const names = merger.corporations.map((industry) => view.corporations[industry].baseName);
+  const prose = mergerProse(merger, view);
 
   return (
     <section className={`${styles.card} ${styles.story}`} aria-label="Story">
@@ -60,6 +61,14 @@ export function StoryCard() {
         )}
         <span className="serif">{`${names.join(' + ')} merge at ${merger.placedTile}`}</span>
       </div>
+
+      {prose && (
+        <p className={styles.storyProse}>
+          {prose.lead}
+          <strong className="tabnum">{prose.tile}</strong>
+          {prose.rest}
+        </p>
+      )}
 
       {merger.survivor && (
         <div className={styles.rename}>

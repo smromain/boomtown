@@ -11,7 +11,11 @@ import { TileRack } from './TileRack.js';
 import { TurnHandoff } from './TurnHandoff.js';
 import styles from './game.module.css';
 
-/** The playing surface, laid out to the Main design artboard. */
+/**
+ * The playing surface, laid out to the Main design artboard: the board alone on
+ * the left at its natural size, and a right column that stacks the story, the
+ * shareholders table, the tile rack and the contextual action.
+ */
 export function GameScreen({ game }: { game: StartedGame }) {
   return (
     <GameClientProvider client={game.client}>
@@ -26,12 +30,10 @@ export function GameScreen({ game }: { game: StartedGame }) {
             <div className={styles.column}>
               <StoryCard />
               <Shareholders />
+              <TileRack />
+              <ActionBar />
             </div>
           </div>
-          <footer className={styles.bottom}>
-            <TileRack />
-            <ActionBar />
-          </footer>
         </div>
       </div>
       <DecisionModal />

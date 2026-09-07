@@ -105,6 +105,27 @@ describe('StoryCard', () => {
     expect(within(story).queryByText('Megahit Video', { exact: true })).not.toBeInTheDocument();
   });
 
+  it('spells out the merger sentence while it is unresolved', async () => {
+    const { client } = await renderPanel(<StoryCard />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']); // 3 -> survives
+        seedCorp(state, 'books', ['6E', '7E']); // 2 -> defunct
+        state.seats[0]!.holdings.books = 1; // a holder, so the merger pauses for disposal
+        state.hands[0] = ['5E'];
+      },
+    });
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+      await flush();
+    });
+
+    const story = screen.getByRole('region', { name: 'Story' });
+    expect(within(story).getByText(/folds Chapter Eleven into Megahit Video/)).toBeInTheDocument();
+    expect(
+      within(story).getByText(/Megahit Video is larger at 3 tiles, so Chapter Eleven is dissolved at 2/),
+    ).toBeInTheDocument();
+  });
+
   it('falls back to the recent log when there is no merger', async () => {
     await renderPanel(<StoryCard />);
     expect(screen.getByText(/No moves yet/)).toBeInTheDocument();
