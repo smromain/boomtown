@@ -56,46 +56,46 @@ export interface Candidate {
  */
 export const POOL: Record<Industry, readonly [Candidate, Candidate, Candidate, Candidate]> = {
   books: [
-    { baseName: 'Chapter Eleven', flavour: 'books, coffee, denial' },
-    { baseName: 'Woolyworth', flavour: 'everything, sort of, cheap' },
-    { baseName: 'Seers Roebeck', flavour: 'the catalogue was the internet' },
+    { baseName: 'Chapter Eleven', flavour: 'books, coffee, a deep sense of denial' },
+    { baseName: 'A-Mart', flavour: 'home of the green light bargain' },
+    { baseName: 'Seers Roebeck', flavour: 'you mean you can buy a house from there?' },
     { baseName: 'Waldenbust', flavour: 'the finest bookstore at your local airport' },
   ],
   electronics: [
-    { baseName: 'Radio Hut', flavour: 'batteries, phones and $70 HDMI cables' },
+    { baseName: 'Radio Hut', flavour: 'weird batteries and $70 HDMI cables' },
     { baseName: 'Circuit Village', flavour: 'the warranty is the product' },
     { baseName: 'Compuwas', flavour: 'beige boxes, bold promises' },
-    { baseName: 'Fried Electronics', flavour: "an aisle of cables you don't need" },
+    { baseName: 'Fried Electronics', flavour: "an aisle of the same cables you have in a box somewhere" },
   ],
   air: [
-    { baseName: 'Pan-Atlas', flavour: 'the glamour of air travel' },
+    { baseName: 'Pan-Canadian', flavour: 'catch them if you can, eh!' },
     { baseName: 'Transworld Air', flavour: 'wings over everywhere' },
-    { baseName: 'Braniffle', flavour: 'the plane is painted orange' },
+    { baseName: 'ValueJet', flavour: "costs a dollar to use the bathroom and two dollars to flush" },
     { baseName: 'Concordia', flavour: 'there at breakfast, broke by lunch' },
   ],
   energy: [
-    { baseName: 'Enrun', flavour: 'energy, creatively accounted' },
-    { baseName: 'Texicorps', flavour: 'a star, a pump, a lawsuit' },
+    { baseName: 'Enrun', flavour: 'energy, creatively accounted for' },
+    { baseName: 'English Petrochemical', flavour: 'with apologies to the seals' },
     { baseName: 'Standard Oyl', flavour: 'too big, then thirty-four pieces' },
-    { baseName: 'Wattage', flavour: 'power, unapologetically' },
+    { baseName: 'Tesler', flavour: 'are they the baddies?' },
   ],
   tech: [
-    { baseName: 'Blackcurrant', flavour: 'the keyboard people' },
+    { baseName: 'Blackcurrant', flavour: "a keyboard? on a phone? now i've seen everything" },
     { baseName: 'Noquia', flavour: 'indestructible, briefly essential' },
     { baseName: 'Palmistry', flavour: 'the future, in your palm, in 1998' },
     { baseName: 'Netscapade', flavour: 'we were the internet once' },
   ],
   video: [
-    { baseName: 'Megahit Video', flavour: 'be kind, rewind' },
-    { baseName: 'Tinseltown Video', flavour: "new releases and 42 copies of 'Next Friday'" },
+    { baseName: 'Webflicks', flavour: 'for when you want to barely pay attention to a movie' },
+    { baseName: 'Tinseltown Video', flavour: "1 copy of a new release and 42 copies of 'Never Been Smooched'" },
     { baseName: 'Fotomatic', flavour: 'one hour, one kiosk, one photo' },
-    { baseName: 'Tower of Records', flavour: 'listening booths, teenage employees and no returns' },
+    { baseName: 'The Record Empire', flavour: "where every day is Tex Hanning day!" },
   ],
   toys: [
-    { baseName: 'Toys Я Were', flavour: 'where a kid was a customer' },
+    { baseName: 'Toys Я Were', flavour: 'where a kid was a customer, and the giraffe is unemployed' },
     { baseName: 'Kaybee Toyworks', flavour: "the mall's loudest storefront" },
-    { baseName: 'Chuck E. Wheeze', flavour: 'animatronics and birthday grief' },
-    { baseName: 'Discovery Zonked', flavour: 'a ball pit of uncertain hygiene' },
+    { baseName: 'Chuck E. Wheeze', flavour: 'the rat casino where you gamble your life away for a sticky hand' },
+    { baseName: 'Discovery Zonked', flavour: 'come see our ball pit of uncertain hygiene' },
   ],
 };
 
