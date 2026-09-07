@@ -89,3 +89,78 @@
   opacity: 0.5;
   cursor: default;
 }
+
+/* How-to-play summary */
+.rules {
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  background: var(--input);
+}
+
+.rulesSummary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.rulesBody {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.rulesBody p {
+  margin: 0 0 0.75rem;
+}
+
+.rulesBody h3 {
+  margin: 1rem 0 0.4rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.rulesBody ol,
+.rulesBody ul {
+  margin: 0 0 0.75rem;
+  padding-left: 1.2rem;
+}
+
+.rulesBody li {
+  margin-bottom: 0.35rem;
+}
+
+.rulesNote {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.rulesTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+}
+
+.rulesTable th,
+.rulesTable td {
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+.rulesTable thead th {
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.72rem;
+}
+
+.rulesTable td:first-child {
+  color: var(--muted);
+}

@@ -8,6 +8,7 @@ import {
 } from '@boomtown/client-core';
 import { RULES, type GameState, type Seat } from '@boomtown/engine';
 import { dumpBotStuck } from '../debug/dump.js';
+import { RulesSummary } from './RulesSummary.js';
 import { SeatRow } from './SeatConfig.js';
 import {
   configError,
@@ -81,6 +82,8 @@ export function NewGame({ onStart }: { onStart: (game: StartedGame) => void }) {
     <section className={styles.screen} aria-label="New game">
       <h1>New game</h1>
 
+      <RulesSummary />
+
       <label className={styles.field}>
         <span>Seats</span>
         <select
@@ -113,7 +116,7 @@ export function NewGame({ onStart }: { onStart: (game: StartedGame) => void }) {
         <span>Edition</span>
         <select value={config.edition} onChange={(event) => patch({ edition: event.target.value as GameConfig['edition'] })}>
           <option value="classic">Classic</option>
-          <option value="edition-2015">2015 Avalon Hill</option>
+          <option value="edition-2015">Modern</option>
         </select>
       </label>
 

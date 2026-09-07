@@ -162,4 +162,19 @@ describe('NewGame screen', () => {
     expect(started!.detachBots).toBeUndefined();
     started!.client.disconnect();
   });
+
+  it('shows a rules summary covering both rule sets, naming no outside game', async () => {
+    render(<NewGame onStart={() => {}} />);
+
+    const rules = screen.getByText('How to play').closest('details')!;
+    expect(rules).toHaveTextContent(/A turn/);
+    expect(rules).toHaveTextContent(/Mergers/);
+    // the "differs" table names both rule sets and their key numbers
+    expect(rules).toHaveTextContent(/Classic/);
+    expect(rules).toHaveTextContent(/Modern/);
+    expect(rules).toHaveTextContent(`${classic.safeSize} tiles`);
+    expect(rules).toHaveTextContent(`${edition2015.endChainSize} tiles`);
+    // never the trademarked names
+    expect(rules).not.toHaveTextContent(/Acquire|Avalon Hill|Hasbro/i);
+  });
 });
