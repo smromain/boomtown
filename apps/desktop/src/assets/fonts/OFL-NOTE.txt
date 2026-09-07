@@ -1,0 +1,3 @@
+DM Sans — SIL Open Font License 1.1
+https://fonts.google.com/specimen/DM+Sans
+Bundled so drei <Text> renders under the strict renderer CSP (no CDN fetch).

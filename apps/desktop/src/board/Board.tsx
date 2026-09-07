@@ -4,7 +4,7 @@ import { activeView } from '@boomtown/client-core';
 import type { TileId } from '@boomtown/engine';
 import { useGameClient, useGameState } from '../client/GameClientProvider.js';
 import { BoardScene } from './BoardScene.js';
-import { ISO_CAMERA } from './camera.js';
+import { BOARD_CAMERA } from './camera.js';
 import { placementFor, playableTiles } from './pick.js';
 
 /**
@@ -29,7 +29,7 @@ export function Board() {
   return (
     <Canvas
       orthographic
-      camera={ISO_CAMERA}
+      camera={BOARD_CAMERA}
       onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
       style={{ width: '100%', height: '100%' }}
     >

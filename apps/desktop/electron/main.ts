@@ -39,31 +39,45 @@ function runSmokeChecks(win: BrowserWindow): void {
     app.exit(1);
   };
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const evalJs = <T,>(js: string) => win.webContents.executeJavaScript(js) as Promise<T>;
+  const waitFor = async (js: string, label: string, tries = 40): Promise<void> => {
+    for (let attempt = 0; attempt < tries; attempt++) {
+      if (await evalJs<boolean>(js)) return;
+      await delay(250);
+    }
+    fail(`timed out waiting for ${label}`);
+  };
 
   win.webContents.on('did-fail-load', (_e, code, desc) => fail(`renderer failed to load: ${code} ${desc}`));
   win.webContents.on('render-process-gone', (_e, details) => fail(`render process gone: ${details.reason}`));
+  win.webContents.on('console-message', (_e, level, message) => {
+    if (level >= 3 || /content security policy|troika|failed to load/i.test(message)) {
+      console.log(`[renderer:${level}] ${message}`);
+    }
+  });
+
   win.webContents.on('did-finish-load', async () => {
     try {
-      // In dev the app is served as ES modules that execute after did-finish-load,
-      // so poll for React to mount.
-      let rootText = '';
-      for (let attempt = 0; attempt < 40; attempt++) {
-        rootText = await win.webContents.executeJavaScript(
-          `document.querySelector('#root')?.textContent ?? ''`,
-        );
-        if (rootText.includes('New game')) break;
-        await delay(250);
-      }
-      const hasNodeGlobals = await win.webContents.executeJavaScript(
+      await waitFor(`(document.querySelector('#root')?.textContent ?? '').includes('New game')`, 'setup screen');
+
+      const nodeGlobals = await evalJs<string[]>(
         `['require','process','module','global','Buffer'].filter((g) => g in globalThis)`,
       );
-      if (!rootText.includes('New game')) {
-        return fail(`renderer did not mount the setup screen (root: ${JSON.stringify(rootText)})`);
+      if (nodeGlobals.length > 0) return fail(`Node globals leaked into the renderer: ${nodeGlobals.join(', ')}`);
+
+      // start a game and let the board render
+      await evalJs(`[...document.querySelectorAll('button')].find((b) => b.textContent === 'Start game')?.click()`);
+      await waitFor(`!!document.querySelector('canvas') && !!document.querySelector('[aria-label="Market"]')`, 'game board');
+      await delay(1500); // let troika glyphs + the first frames settle
+
+      if (process.env['BOOMTOWN_SMOKE_SHOT']) {
+        const image = await win.webContents.capturePage();
+        const { writeFileSync } = await import('node:fs');
+        writeFileSync(process.env['BOOMTOWN_SMOKE_SHOT'], image.toPNG());
+        console.log(`[smoke] wrote ${process.env['BOOMTOWN_SMOKE_SHOT']}`);
       }
-      if (Array.isArray(hasNodeGlobals) && hasNodeGlobals.length > 0) {
-        return fail(`Node globals leaked into the renderer: ${hasNodeGlobals.join(', ')}`);
-      }
-      console.log('[smoke] renderer mounted the setup screen, no Node globals — OK');
+
+      console.log('[smoke] setup screen + board rendered, no Node globals — OK');
       app.exit(0);
     } catch (error) {
       fail(`smoke check threw: ${String(error)}`);
