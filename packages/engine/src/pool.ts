@@ -58,14 +58,14 @@ export const POOL: Record<Industry, readonly [Candidate, Candidate, Candidate, C
   books: [
     { baseName: 'Chapter Eleven', flavour: 'books, coffee, a deep sense of denial' },
     { baseName: 'A-Mart', flavour: 'home of the green light bargain' },
-    { baseName: 'Seers Roebeck', flavour: 'you mean you can buy a house from there?' },
+    { baseName: 'Seers Roadbuck', flavour: 'for when you want to buy a wrench or an entire house' },
     { baseName: 'Waldenbust', flavour: 'the finest bookstore at your local airport' },
   ],
   electronics: [
     { baseName: 'Radio Hut', flavour: 'weird batteries and $70 HDMI cables' },
     { baseName: 'Circuit Village', flavour: 'the warranty is the product' },
-    { baseName: 'Compuwas', flavour: 'beige boxes, bold promises' },
-    { baseName: 'Fried Electronics', flavour: "an aisle of the same cables you have in a box somewhere" },
+    { baseName: 'Barbages', flavour: "used video games, consoles and inexplicably, crypto, i think?" },
+    { baseName: 'Fried Electronics', flavour: "aisles of the same cables you have in a box somewhere" },
   ],
   air: [
     { baseName: 'Pan-Canadian', flavour: 'catch them if you can, eh!' },
@@ -80,7 +80,7 @@ export const POOL: Record<Industry, readonly [Candidate, Candidate, Candidate, C
     { baseName: 'Tesler', flavour: 'are they the baddies?' },
   ],
   tech: [
-    { baseName: 'Blackcurrant', flavour: "a keyboard? on a phone? now i've seen everything" },
+    { baseName: 'Blackcurrant', flavour: "a keyboard? for a phone? now i've seen everything" },
     { baseName: 'Noquia', flavour: 'indestructible, briefly essential' },
     { baseName: 'Palmistry', flavour: 'the future, in your palm, in 1998' },
     { baseName: 'Netscapade', flavour: 'we were the internet once' },
@@ -88,11 +88,11 @@ export const POOL: Record<Industry, readonly [Candidate, Candidate, Candidate, C
   video: [
     { baseName: 'Webflicks', flavour: 'for when you want to barely pay attention to a movie' },
     { baseName: 'Tinseltown Video', flavour: "1 copy of a new release and 42 copies of 'Never Been Smooched'" },
-    { baseName: 'Fotomatic', flavour: 'one hour, one kiosk, one photo' },
+    { baseName: 'Fotomatic', flavour: "we promise we don't look at your pictures, wink wink" },
     { baseName: 'The Record Empire', flavour: "where every day is Tex Hanning day!" },
   ],
   toys: [
-    { baseName: 'Toys Я Were', flavour: 'where a kid was a customer, and the giraffe is unemployed' },
+    { baseName: 'Toys Я Were', flavour: 'where a kid was a customer, now the giraffe is unemployed' },
     { baseName: 'Kaybee Toyworks', flavour: "the mall's loudest storefront" },
     { baseName: 'Chuck E. Wheeze', flavour: 'the rat casino where you gamble your life away for a sticky hand' },
     { baseName: 'Discovery Zonked', flavour: 'come see our ball pit of uncertain hygiene' },
