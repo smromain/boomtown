@@ -1,6 +1,10 @@
 import type { Command, EngineError, EngineEvent, Seat } from '@boomtown/engine';
 import type { ClientView } from '../view.js';
 
+/** A rejected command's error. Usually an engine rejection; online it may also
+ * be a protocol error, whose `code` is then prefixed `protocol:`. */
+export type RejectionError = EngineError | { readonly code: string; readonly message: string };
+
 /**
  * One authoritative update from the transport. `views` carries the filtered
  * `ClientView` for each seat this client controls (all of them in hot-seat, one
@@ -9,7 +13,7 @@ import type { ClientView } from '../view.js';
 export interface TransportMessage {
   readonly events: readonly EngineEvent[];
   readonly views: Readonly<Record<Seat, ClientView>>;
-  readonly rejection?: { readonly command: Command; readonly error: EngineError };
+  readonly rejection?: { readonly command: Command; readonly error: RejectionError };
 }
 
 /**

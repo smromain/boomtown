@@ -140,15 +140,24 @@ export class SeatTable {
   }
 }
 
-/** Build the engine's `SetupOptions` from a room config. Seat order is play order. */
+/**
+ * Build the engine's `SetupOptions` from a room config. Seat order is play
+ * order. The config's seed MUST already be resolved to a concrete value —
+ * `GameRoom` does this in its constructor. A `setupOptionsFor` call that
+ * invented its own seed would deal a different game on every hibernation wake
+ * and permanently break replay (KTD13, R7).
+ */
 export function setupOptionsFor(config: RoomConfig): SetupOptions {
+  if (config.seed === undefined) {
+    throw new Error('setupOptionsFor requires a resolved seed (GameRoom resolves it at creation)');
+  }
   const seatCount = clampSeatCount(config.seatCount);
   return {
     seats: Array.from({ length: seatCount }, (_, i) => ({ name: `Seat ${i + 1}` })),
     ruleset: PRESETS[config.edition],
     visibility: config.visibility,
     turnOrder: Array.from({ length: seatCount }, (_, i) => i),
-    seed: config.seed ?? Math.floor(Math.random() * 0x7fffffff),
+    seed: config.seed,
   };
 }
 

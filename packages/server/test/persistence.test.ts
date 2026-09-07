@@ -39,6 +39,32 @@ describe('CommandLog', () => {
     await log.saveConfig(c);
     expect(await log.loadConfig()).toEqual(c);
   });
+
+  it('derives the head from the keys, so a failed write cannot make append overwrite a command', async () => {
+    // A store that fails the Nth put once, then behaves normally.
+    class FlakyStore extends MemoryStore {
+      puts = 0;
+      failOn = 3;
+      override put<T>(key: string, value: T): Promise<void> {
+        this.puts += 1;
+        if (this.puts === this.failOn) return Promise.reject(new Error('storage blip'));
+        return super.put(key, value);
+      }
+    }
+    const store = new FlakyStore();
+    const log = new CommandLog(store);
+    await log.append({ type: 'end-turn', seat: 0 });
+    await log.append({ type: 'end-turn', seat: 1 });
+    await expect(log.append({ type: 'end-turn', seat: 2 })).rejects.toThrow('storage blip');
+    // the log still has exactly the two committed commands, in order
+    expect(await log.count()).toBe(2);
+    // a later append lands at cmd:3, not overwriting cmd:2
+    await log.append({ type: 'end-turn', seat: 2 });
+    const all = await log.loadAll();
+    expect(all).toHaveLength(3);
+    expect(all[1]).toEqual({ type: 'end-turn', seat: 1 });
+  });
+
 });
 
 describe('GameRoom persistence', () => {
@@ -103,6 +129,49 @@ describe('GameRoom.rehydrate', () => {
     expect(woken).not.toBeNull();
     const wokenView = currentView(woken!, 0);
     expect(wokenView).toEqual(liveView);
+  });
+
+  it('rebuilds deep-equal even when the room was created with no explicit seed (the normal online case)', async () => {
+    const store = new MemoryStore();
+    // no `seed` — GameRoom must resolve one at creation and persist it
+    const cfg: RoomConfig = { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 1: 6, 2: 6 } };
+    const live = new GameRoom('S1', cfg, store);
+    await live.persistConfig();
+    live.join('Ana', 'tok-a', 'c1');
+    const started = await live.start();
+    if ('error' in started) throw new Error('start');
+
+    for (let i = 0; i < 4; i++) {
+      const view = currentView(live, 0);
+      if (!view || view.status === 'over') break;
+      const move =
+        view.step === 'place'
+          ? { type: 'place-tile' as const, seat: 0 as const, tile: view.yourHand[0]! }
+          : { type: 'end-turn' as const, seat: 0 as const };
+      await live.command(0, move);
+    }
+    const liveView = currentView(live, 0);
+
+    const woken = await GameRoom.rehydrate('S1', store);
+    expect(woken).not.toBeNull();
+    expect(currentView(woken!, 0)).toEqual(liveView);
+  });
+
+  it('parks the room read-only instead of throwing when the stored log cannot replay', async () => {
+    const store = new MemoryStore();
+    await new CommandLog(store).saveConfig(config());
+    // a log entry that will fail against a fresh game (buy at the place step)
+    await store.put('cmd:000000001', { type: 'buy-shares', seat: 0, picks: {} });
+
+    const woken = await GameRoom.rehydrate('BROKEN', store);
+    expect(woken).not.toBeNull(); // did NOT throw
+    expect(woken!.isPlaying()).toBe(false);
+    const out = await woken!.command(0, { type: 'end-turn', seat: 0 });
+    // every command is refused, not applied
+    expect(out).toHaveLength(1);
+    if (out[0]!.kind === 'to-seat' && out[0]!.message.type === 'update') {
+      expect(out[0]!.message.rejection).toBeDefined();
+    }
   });
 
   it('returns null when the store has no config (nothing to rehydrate)', async () => {

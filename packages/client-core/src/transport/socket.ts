@@ -31,10 +31,24 @@ export interface SocketTransportOptions {
     | { readonly kind: 'resume' };
 }
 
+/** A lobby / protocol error that is not tied to a game command. */
+export interface LobbyError {
+  readonly code: string;
+  readonly message: string;
+}
+
 /** Room-lobby state surfaced to the UI alongside the game view. */
 export interface SocketExtras {
-  onRoomState(cb: (state: RoomState) => void): void;
-  onConnectionChange(cb: (status: 'connecting' | 'open' | 'closed') => void): void;
+  /** Returns an unsubscribe. */
+  onRoomState(cb: (state: RoomState) => void): () => void;
+  /** Returns an unsubscribe. */
+  onConnectionChange(cb: (status: 'connecting' | 'open' | 'closed') => void): () => void;
+  /**
+   * Fired for every room `error` frame that is not a rejection of an
+   * outstanding command — room-full, wrong-version, "no such room", a stuck
+   * game. Returns an unsubscribe.
+   */
+  onLobbyError(cb: (error: LobbyError) => void): () => void;
   /** The seat this client was assigned, once `welcome` arrives. */
   seat(): Seat | null;
   /** The session token, once `welcome` arrives — persist it for reconnects. */
@@ -55,12 +69,25 @@ export function socketTransport(
   const handlers = new Set<(message: TransportMessage) => void>();
   const roomStateHandlers = new Set<(state: RoomState) => void>();
   const connectionHandlers = new Set<(status: 'connecting' | 'open' | 'closed') => void>();
+  const lobbyErrorHandlers = new Set<(error: LobbyError) => void>();
 
   let socket: PartySocket | null = null;
   let mySeat: Seat | null = null;
   let myToken: string | null = options.token ?? null;
-  /** The last command we sent, to attach to a rejection. */
-  let lastCommand: Command | null = null;
+  /** A command sent but not yet confirmed or rejected. Cleared on any update. */
+  let outstandingCommand: Command | null = null;
+  /**
+   * True once `welcome` has arrived. `partysocket` reconnects transparently and
+   * re-fires `open`; without this, the reconnect would re-send `create-room` /
+   * `join` and either error or grab a second seat.
+   */
+  let joined = false;
+  /**
+   * The pending `connect()` settlers. For a create/join intent `connect()`
+   * resolves on `welcome` and rejects on the room's `error`; for a resume it
+   * resolves on socket `open`. Cleared once settled.
+   */
+  let settleConnect: { resolve: () => void; reject: (e: Error) => void } | null = null;
 
   const notifyConnection = (status: 'connecting' | 'open' | 'closed') => {
     for (const cb of connectionHandlers) cb(status);
@@ -85,6 +112,9 @@ export function socketTransport(
       case 'welcome':
         mySeat = message.seat;
         myToken = message.token;
+        joined = true;
+        settleConnect?.resolve();
+        settleConnect = null;
         return;
       case 'room-state':
         for (const cb of roomStateHandlers) cb(message.state);
@@ -98,20 +128,31 @@ export function socketTransport(
             h(toTransportMessage(view, [], { command: message.rejection.command, error: mapError(message.rejection.error) }));
           }
         } else {
+          // A clean update confirms whatever command was outstanding.
+          outstandingCommand = null;
           for (const h of handlers) h(toTransportMessage(view, message.events));
         }
         return;
       }
-      case 'error':
-        // A protocol-level error with no view — surface it as a rejection of the
-        // last command if we have one, else drop (lobby errors go via room-state
-        // consumers / connection status).
-        if (lastCommand) {
+      case 'error': {
+        const err: LobbyError = { code: errorCode(message.error), message: errorText(message.error) };
+        if (outstandingCommand) {
+          // An error for a command we are actually waiting on.
+          const command = outstandingCommand;
+          outstandingCommand = null;
           for (const h of handlers) {
-            h({ events: [], views: {}, rejection: { command: lastCommand, error: mapError(message.error) } });
+            h({ events: [], views: {}, rejection: { command, error: mapError(message.error) } });
           }
+        } else if (!joined && settleConnect) {
+          // The room rejected our create/join before we ever got a seat.
+          settleConnect.reject(new Error(`${err.code}: ${err.message}`));
+          settleConnect = null;
+        } else {
+          // A lobby / room-level error with no command behind it.
+          for (const cb of lobbyErrorHandlers) cb(err);
         }
         return;
+      }
     }
   };
 
@@ -119,6 +160,8 @@ export function socketTransport(
     connect: () =>
       new Promise<void>((resolve, reject) => {
         notifyConnection('connecting');
+        const isResume = options.intent.kind === 'resume';
+        settleConnect = { resolve, reject };
         socket = new PartySocket({
           host: options.host,
           room: options.room,
@@ -132,13 +175,21 @@ export function socketTransport(
 
         socket.addEventListener('open', () => {
           notifyConnection('open');
-          if (options.intent.kind === 'create') {
-            send({ type: 'create-room', config: options.intent.config });
-          } else if (options.intent.kind === 'join') {
-            send({ type: 'join' });
+          // Only send the create/join once. `partysocket` re-fires `open` on a
+          // transparent reconnect; the room re-binds us on the query token then.
+          if (!joined) {
+            if (options.intent.kind === 'create') {
+              send({ type: 'create-room', config: options.intent.config });
+            } else if (options.intent.kind === 'join') {
+              send({ type: 'join' });
+            }
           }
-          // 'resume' sends nothing — the room re-binds on the query token.
-          resolve();
+          // Resume: the room re-binds silently on the token, so 'open' is the
+          // signal. Create/join wait for 'welcome' (or an 'error') below.
+          if (isResume || joined) {
+            settleConnect?.resolve();
+            settleConnect = null;
+          }
         });
 
         socket.addEventListener('message', (event) => {
@@ -152,7 +203,10 @@ export function socketTransport(
         socket.addEventListener('close', () => notifyConnection('closed'));
         socket.addEventListener('error', () => {
           notifyConnection('closed');
-          reject(new Error(`could not connect to ${options.host}`));
+          if (settleConnect) {
+            settleConnect.reject(new Error(`could not connect to ${options.host}`));
+            settleConnect = null;
+          }
         });
       }),
 
@@ -160,12 +214,13 @@ export function socketTransport(
       handlers.clear();
       roomStateHandlers.clear();
       connectionHandlers.clear();
+      lobbyErrorHandlers.clear();
       socket?.close();
       socket = null;
     },
 
     send: (command: Command) => {
-      lastCommand = command;
+      outstandingCommand = command;
       send({ type: 'command', command });
     },
 
@@ -176,10 +231,17 @@ export function socketTransport(
 
     onRoomState: (cb) => {
       roomStateHandlers.add(cb);
+      return () => roomStateHandlers.delete(cb);
+    },
+
+    onLobbyError: (cb) => {
+      lobbyErrorHandlers.add(cb);
+      return () => lobbyErrorHandlers.delete(cb);
     },
 
     onConnectionChange: (cb) => {
       connectionHandlers.add(cb);
+      return () => connectionHandlers.delete(cb);
     },
 
     seat: () => mySeat,
@@ -188,9 +250,22 @@ export function socketTransport(
   };
 }
 
+/**
+ * Map a wire error into a command rejection's error. An engine rejection passes
+ * through verbatim; a protocol error keeps its own code, prefixed `protocol:`
+ * so a consumer can tell it apart from a genuine engine code.
+ */
 function mapError(
   error: import('@boomtown/protocol').WireError,
-): import('@boomtown/engine').EngineError {
+): import('./types.js').RejectionError {
   if (error.kind === 'engine') return error.error;
-  return { code: 'game-over', message: `${error.code}: ${error.message}` };
+  return { code: `protocol:${error.code}`, message: error.message };
+}
+
+function errorCode(error: import('@boomtown/protocol').WireError): string {
+  return error.kind === 'engine' ? error.error.code : error.code;
+}
+
+function errorText(error: import('@boomtown/protocol').WireError): string {
+  return error.kind === 'engine' ? error.error.message : error.message;
 }

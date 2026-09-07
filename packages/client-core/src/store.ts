@@ -1,4 +1,5 @@
-import type { Command, EngineError, EngineEvent, PendingDecision, Seat } from '@boomtown/engine';
+import type { Command, EngineEvent, PendingDecision, Seat } from '@boomtown/engine';
+import type { RejectionError } from './transport/types.js';
 import type { ClientView } from './view.js';
 
 /**
@@ -16,7 +17,7 @@ export interface GameClientState {
   pendingDecision: PendingDecision | null;
   /** A command sent but not yet confirmed or rejected. */
   inFlight: Command | null;
-  lastError: EngineError | null;
+  lastError: RejectionError | null;
   log: EngineEvent[];
 }
 

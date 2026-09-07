@@ -9,16 +9,23 @@
  * Fast Refresh preamble it injects into the HTML; `'unsafe-eval'` is never
  * allowed. `style-src` always allows `'unsafe-inline'` because Radix and drei
  * inject positioning styles — a far smaller risk surface than script injection.
+ *
+ * `connect-src` allows `wss:` and `https:` in the packaged build so the online
+ * client can reach its PartyKit room (the host is a renderer-side setting the
+ * main process cannot see, and it is user-overridable for self-hosted
+ * deploys). The renderer has no other network code path, and `script-src`
+ * stays locked to `'self'`, so this does not widen the script-injection
+ * surface.
  */
 export interface CspOptions {
   /** Dev loads the renderer from the Vite dev server and needs its HMR socket + inline plugin preamble. */
   readonly dev: boolean;
-  /** Extra origins the renderer may open sockets to (the multiplayer server, added in U18). */
+  /** Extra origins the renderer may open sockets to. */
   readonly connectSrc?: readonly string[];
 }
 
 export function buildCsp({ dev, connectSrc = [] }: CspOptions): string {
-  const devConnect = dev ? ['ws://localhost:*', 'http://localhost:*'] : [];
+  const devConnect = dev ? ['ws://localhost:*', 'http://localhost:*'] : ['wss:', 'https:'];
   const scriptSrc = dev ? ["'self'", "'unsafe-inline'"] : ["'self'"];
 
   const directives: Record<string, readonly string[]> = {

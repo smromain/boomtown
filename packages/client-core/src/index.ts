@@ -31,4 +31,5 @@ export {
   socketTransport,
   type SocketTransportOptions,
   type SocketExtras,
+  type LobbyError,
 } from './transport/socket.js';

@@ -104,19 +104,30 @@ describe('SeatList', () => {
     game: OnlineGame;
     emitRoomState: (state: RoomState) => void;
     emitConnection: (status: 'connecting' | 'open' | 'closed') => void;
+    emitLobbyError: (error: { code: string; message: string }) => void;
     start: ReturnType<typeof vi.fn>;
   } {
     let roomStateCb: ((s: RoomState) => void) | null = null;
     let connCb: ((s: 'connecting' | 'open' | 'closed') => void) | null = null;
+    let lobbyErrCb: ((e: { code: string; message: string }) => void) | null = null;
     const start = vi.fn();
+    const noop = () => {};
     const game = {
       roomCode: 'ROOM01',
       isHost: true,
       transport: {
-        onRoomState: (cb: (s: RoomState) => void) => (roomStateCb = cb),
+        onRoomState: (cb: (s: RoomState) => void) => {
+          roomStateCb = cb;
+          return noop;
+        },
         onConnectionChange: (cb: (s: 'connecting' | 'open' | 'closed') => void) => {
           connCb = cb;
           cb('open');
+          return noop;
+        },
+        onLobbyError: (cb: (e: { code: string; message: string }) => void) => {
+          lobbyErrCb = cb;
+          return noop;
         },
         seat: () => 0,
         token: () => 'tok',
@@ -131,6 +142,7 @@ describe('SeatList', () => {
       game,
       emitRoomState: (s) => act(() => roomStateCb?.(s)),
       emitConnection: (s) => act(() => connCb?.(s)),
+      emitLobbyError: (e) => act(() => lobbyErrCb?.(e)),
       start,
     };
   }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { RoomState } from '@boomtown/protocol';
 import type { OnlineGame } from '../online/onlineGame.js';
-import { useConnectionStatus } from './useConnectionStatus.js';
+import { useConnectionStatus, useLobbyError } from './useConnectionStatus.js';
 import styles from './lobby.module.css';
 
 /**
@@ -20,13 +20,16 @@ export function SeatList({
 }) {
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const status = useConnectionStatus(game.transport);
+  const lobbyError = useLobbyError(game.transport);
 
-  useEffect(() => {
-    game.transport.onRoomState((state) => {
-      setRoomState(state);
-      if (state.phase === 'playing') onEnterGame();
-    });
-  }, [game, onEnterGame]);
+  useEffect(
+    () =>
+      game.transport.onRoomState((state) => {
+        setRoomState(state);
+        if (state.phase === 'playing') onEnterGame();
+      }),
+    [game, onEnterGame],
+  );
 
   const seats = roomState?.seats ?? [];
   const filled = seats.every((s) => s.kind !== 'open');
@@ -45,6 +48,12 @@ export function SeatList({
       {status !== 'open' && (
         <div className={styles.banner} data-status={status} role="status">
           {status === 'connecting' ? 'Connecting…' : 'Connection lost — retrying…'}
+        </div>
+      )}
+
+      {lobbyError && (
+        <div className={styles.banner} data-status="closed" role="alert">
+          {lobbyError.message}
         </div>
       )}
 

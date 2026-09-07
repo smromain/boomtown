@@ -13,7 +13,6 @@ export interface KeyValueStore {
   delete(key: string): Promise<void>;
 }
 
-const SEQ_KEY = 'seq';
 const CONFIG_KEY = 'config';
 const CMD_PREFIX = 'cmd:';
 
@@ -24,10 +23,15 @@ function cmdKey(seq: number): string {
 
 /**
  * The durable command log for one room. Each accepted command is one storage
- * entry under a sequential key; a `seq` counter tracks the head. On wake the
- * room lists the `cmd:` keys in order and replays them through the engine
- * (KTD13). A single growing array would breach the 128 KiB per-value cap in a
- * long game; per-command keys stay far under it.
+ * entry under a zero-padded sequential key (KTD13). On wake the room lists the
+ * `cmd:` keys in order and replays them through the engine. A single growing
+ * array would breach the 128 KiB per-value cap in a long game; per-command
+ * keys stay far under it.
+ *
+ * The head is derived from the keys themselves, never a separate counter —
+ * `room.storage` is not transactional, so a counter that got out of sync with
+ * the keys could let `append` overwrite a command that was already sent to
+ * clients. The trade is one `list()` per append; a whole game is ~200 keys.
  */
 export class CommandLog {
   constructor(private readonly store: KeyValueStore) {}
@@ -41,12 +45,25 @@ export class CommandLog {
     return this.store.get<T>(CONFIG_KEY);
   }
 
-  /** Append one command. Call this before dispatching its events (R7). */
+  /** The `cmd:` keys, sorted (application order). */
+  private async keys(): Promise<string[]> {
+    const entries = await this.store.list<Command>({ prefix: CMD_PREFIX });
+    return [...entries.keys()].sort();
+  }
+
+  /**
+   * Append one command. Call this before dispatching its events (R7). Throws
+   * if the next key already exists — the caller treats that as a persist
+   * failure and does not apply the command.
+   */
   async append(command: Command): Promise<void> {
-    const seq = (await this.store.get<number>(SEQ_KEY)) ?? 0;
-    const next = seq + 1;
-    await this.store.put(cmdKey(next), command);
-    await this.store.put(SEQ_KEY, next);
+    const keys = await this.keys();
+    const head = keys.length === 0 ? 0 : Number(keys[keys.length - 1]!.slice(CMD_PREFIX.length));
+    const key = cmdKey(head + 1);
+    if ((await this.store.get(key)) !== undefined) {
+      throw new Error(`command log key ${key} already exists`);
+    }
+    await this.store.put(key, command);
   }
 
   /** Every command in application order. */
@@ -56,7 +73,7 @@ export class CommandLog {
   }
 
   async count(): Promise<number> {
-    return (await this.store.get<number>(SEQ_KEY)) ?? 0;
+    return (await this.keys()).length;
   }
 }
 

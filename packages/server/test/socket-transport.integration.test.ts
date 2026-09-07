@@ -121,4 +121,25 @@ describe('socketTransport — GameTransport parity against a real room', () => {
     }, 10_000);
     expect(restored.views[0]!.yourHand).toHaveLength(6);
   }, 25_000);
+
+  it('connect() rejects when the room is full — a failed join is not a silent hang', async () => {
+    const room = uniqueRoom();
+    const small: RoomConfig = { ...config, seatCount: 2, bots: {} };
+    const host = createGameClient(
+      socketTransport({ host: HOST, room, name: 'Host', intent: { kind: 'create', config: small } }),
+    );
+    teardowns.push(() => host.disconnect());
+    await host.connect();
+
+    const p2 = createGameClient(
+      socketTransport({ host: HOST, room, name: 'P2', intent: { kind: 'join' } }),
+    );
+    teardowns.push(() => p2.disconnect());
+    await p2.connect();
+
+    // the 3rd joiner: room is full -> connect() rejects with the room's reason
+    const t3 = socketTransport({ host: HOST, room, name: 'P3', intent: { kind: 'join' } });
+    teardowns.push(() => t3.disconnect());
+    await expect(createGameClient(t3).connect()).rejects.toThrow(/room-full/);
+  }, 20_000);
 });

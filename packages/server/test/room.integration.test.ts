@@ -137,15 +137,12 @@ describe('PartyKit room — end to end', () => {
     expect(err.type === 'error' && err.error.kind === 'protocol' && err.error.code).toBe('room-full');
   });
 
-  it('a version-mismatched reconnect is rejected before the game', async () => {
-    // fresh connections with a token but no game -> not-in-room (the version gate
-    // only fires on a real reconnect; this covers the no-game path)
+  it('rejects a fresh connection with a stale protocol version, before it can create or join', async () => {
     const room = uniqueRoom();
-    const stray = client(room, { token: 'nope', v: '0' });
-    await stray.open;
-    stray.send({ type: 'hello', protocolVersion: '0', displayName: 'x', token: 'nope' });
-    const err = await stray.next('error');
-    expect(err.type === 'error' && err.error.kind === 'protocol').toBe(true);
+    const stale = client(room, { v: '0' });
+    await stale.open;
+    const err = await stale.next('error');
+    expect(err.type === 'error' && err.error.kind === 'protocol' && err.error.code).toBe('wrong-version');
   });
 
   it('plays a full game with 1 human + 2 bots to a ranked result', async () => {

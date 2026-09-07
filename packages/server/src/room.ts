@@ -1,6 +1,6 @@
 import type * as Party from 'partykit/server';
 import type { ClientMessage, RoomMessage } from '@boomtown/protocol';
-import { protocolError } from '@boomtown/protocol';
+import { PROTOCOL_VERSION, protocolError } from '@boomtown/protocol';
 import type { Seat } from '@boomtown/engine';
 import { GameRoom, type Outbound } from './game-room.js';
 import type { KeyValueStore } from './storage.js';
@@ -38,6 +38,12 @@ export default class BoomtownRoom implements Party.Server {
         this.game?.restoreSeat(state.seat, state.token, state.name ?? 'Player', connection.id);
       }
     }
+    // If the wake resumed bot turns, deliver those updates to the live seats.
+    if (this.game && this.game.pendingWakeUpdates.length > 0) {
+      const updates = this.game.pendingWakeUpdates;
+      this.game.pendingWakeUpdates = [];
+      this.dispatch(updates);
+    }
   }
 
   async onConnect(connection: Party.Connection, ctx: Party.ConnectionContext): Promise<void> {
@@ -45,14 +51,20 @@ export default class BoomtownRoom implements Party.Server {
     const token = url.searchParams.get('token') ?? undefined;
     const protocolVersion = url.searchParams.get('v') ?? '0';
 
+    // Version-gate every connection, not just reconnects — a fresh joiner with
+    // a stale protocol version must be turned away before it can create or
+    // join a room it cannot parse.
+    const versionError = protocolVersion === PROTOCOL_VERSION
+      ? null
+      : protocolError('wrong-version', `room speaks protocol ${PROTOCOL_VERSION}, client sent ${protocolVersion}`);
+    if (versionError) {
+      this.sendTo(connection, { type: 'error', error: versionError });
+      connection.close();
+      return;
+    }
+
     // A reconnect: the room already exists and the token matches a seat.
     if (this.game && token) {
-      const versionError = this.game.helloVersionError(protocolVersion);
-      if (versionError) {
-        this.sendTo(connection, { type: 'error', error: versionError });
-        connection.close();
-        return;
-      }
       const bound = this.game.reconnect(token, connection.id);
       if (bound) {
         const name = url.searchParams.get('name') ?? 'Player';

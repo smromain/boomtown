@@ -39,8 +39,17 @@ describe('buildCsp', () => {
     expect(buildCsp({ dev: false })).not.toContain('localhost');
   });
 
-  it('adds caller-supplied connect origins for online play', () => {
+  it('allows wss/https for connect-src in the packaged build (the online client, host unknown to main)', () => {
+    const connect = directives(buildCsp({ dev: false })).get('connect-src');
+    expect(connect).toContain("'self'");
+    expect(connect).toContain('wss:');
+    expect(connect).toContain('https:');
+    // script-src stays locked — this does not widen script injection
+    expect(directives(buildCsp({ dev: false })).get('script-src')).toEqual(["'self'"]);
+  });
+
+  it('still adds caller-supplied connect origins', () => {
     const csp = buildCsp({ dev: false, connectSrc: ['wss://play.boomtown.example'] });
-    expect(directives(csp).get('connect-src')).toEqual(["'self'", 'wss://play.boomtown.example']);
+    expect(directives(csp).get('connect-src')).toContain('wss://play.boomtown.example');
   });
 });
