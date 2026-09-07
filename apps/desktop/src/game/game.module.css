@@ -130,6 +130,54 @@
   background: var(--surface);
 }
 
+/* End screen — shown in the board slot when the game is over */
+.gameOver {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  padding: 24px;
+}
+
+.gameOver h2 {
+  font-size: 2rem;
+  margin: 0;
+  color: var(--ink);
+}
+
+.standings {
+  margin-top: 12px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.standings th,
+.standings td {
+  padding: 6px 14px;
+  text-align: right;
+  border-bottom: 1px solid var(--rule);
+}
+
+.standings th:nth-child(2),
+.standings td:nth-child(2) {
+  text-align: left;
+}
+
+.standings th {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.standings tr[data-winner='true'] td {
+  font-weight: 700;
+  color: var(--ink);
+}
+
 /* Rejected-command toast */
 .toast {
   position: fixed;

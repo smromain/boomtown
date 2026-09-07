@@ -97,7 +97,7 @@ export function App() {
       );
 
     case 'playing-local':
-      return <GameScreen game={screen.game} />;
+      return <GameScreen game={screen.game} onExit={() => setScreen({ kind: 'menu' })} />;
 
     case 'playing-online': {
       const seat = screen.room.transport.seat();
@@ -105,6 +105,7 @@ export function App() {
       return (
         <GameScreen
           game={{ client: screen.room.client, config: screen.room.config, localSeats }}
+          onExit={() => setScreen({ kind: 'menu' })}
         />
       );
     }

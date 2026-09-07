@@ -24,6 +24,8 @@ export {
   activeView,
   localActiveView,
   isLocalTurn,
+  anyView,
+  gameResult,
   decidingSeat,
 } from './store.js';
 export { reconcile } from './reconcile.js';

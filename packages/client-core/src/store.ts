@@ -65,6 +65,20 @@ export function isLocalTurn(state: GameClientState, local: Iterable<Seat>): bool
   return seats.has(state.activeSeat);
 }
 
+/** Any seat's view — they all carry the public board, the log tail, and (once
+ *  the game ends) the result. Use it for spectator-safe reads that don't depend
+ *  on whose turn it is. */
+export function anyView(state: GameClientState): ClientView | null {
+  for (const key in state.views) return state.views[key] ?? null;
+  return null;
+}
+
+/** The final result once the game is over, else null. */
+export function gameResult(state: GameClientState): ClientView['result'] {
+  if (state.status !== 'over') return null;
+  return anyView(state)?.result ?? null;
+}
+
 /** The controlled seat that owns the open decision, if any. */
 export function decidingSeat(state: GameClientState): Seat | null {
   if (!state.pendingDecision) return null;

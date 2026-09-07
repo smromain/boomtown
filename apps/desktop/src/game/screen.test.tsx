@@ -1,5 +1,5 @@
 import { act } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   GameSession,
@@ -53,5 +53,27 @@ describe('GameScreen turn gating', () => {
     expect(waiting).toHaveTextContent(/Bot/);
     // the public panels are still there — you can follow the game
     expect(screen.getByRole('region', { name: 'Story' })).toBeInTheDocument();
+  });
+
+  it('shows the end screen when the game is over, even on a bot seat turn', async () => {
+    const { client } = await mount([0, 2], 1); // bot seat 1 was on the clock
+    // the engine reports the game over on the bot's turn
+    await act(async () => {
+      const views = client.store.getState().views;
+      const over = Object.fromEntries(
+        Object.entries(views).map(([k, v]) => [
+          k,
+          { ...v, status: 'over' as const, result: { rankings: [{ seat: 2, cash: 5000, equity: 3000, total: 8000 }, { seat: 0, cash: 4000, equity: 1000, total: 5000 }, { seat: 1, cash: 3000, equity: 500, total: 3500 }], winners: [2] }, endAnnouncedBy: 1 },
+        ]),
+      );
+      client.store.setState((s) => ({ ...s, status: 'over', views: over }));
+    });
+
+    // no more "waiting for the bot" — the end screen instead
+    expect(screen.queryByRole('status', { name: 'Waiting for another player' })).not.toBeInTheDocument();
+    const end = screen.getByRole('dialog', { name: 'Game over' });
+    expect(end).toHaveTextContent('Cy wins');
+    expect(end).toHaveTextContent('Robo called the end.');
+    expect(within(end).getByRole('table')).toHaveTextContent('$8,000');
   });
 });
