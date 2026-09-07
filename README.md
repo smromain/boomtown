@@ -54,8 +54,9 @@ engine types; `client-core` and `server` depend on engine + protocol; `desktop` 
 ### Prerequisites
 
 - **Node 20+** (developed on 24). npm 10+.
-- A desktop OS with a display to actually run the Electron app. Headless CI can still install,
-  typecheck, lint, and run every test.
+- A desktop OS with a display to run the Electron app (`npm run dev` / `npm run smoke`). Headless
+  CI can still install, typecheck, lint, and run every unit test; the smoke boot needs `xvfb` on
+  headless Linux.
 
 ### Install
 
@@ -96,13 +97,20 @@ Tests run under a **Vitest workspace** with two projects:
 | `desktop` | jsdom | `apps/desktop/**/*.test.{ts,tsx}` — components via `@testing-library/react` and the R3F board via `@react-three/test-renderer` |
 
 ```bash
-npm test                # everything, once
+npm test                # everything, once (304 tests)
 npm run test:watch      # watch mode
 npm run test:engine     # just the node project
 npm run test:desktop    # just the jsdom project
 npm run typecheck       # tsc --noEmit for both tsconfigs
 npm run lint            # eslint (flat config)
+npm run smoke           # build + boot the real Electron app, verify it renders
 ```
+
+`npm run smoke` builds the app, launches Electron on the packaged output with
+`BOOMTOWN_SMOKE=1`, waits for React to mount the setup screen, asserts **no Node
+globals leaked into the renderer** (`require` / `process` / `module` / `global` /
+`Buffer`), then exits. It needs a display (or `xvfb` on headless Linux). The same
+check runs in `npm run dev` when `BOOMTOWN_SMOKE=1` is set.
 
 **What the engine tests guarantee** (`npm run test:engine`):
 

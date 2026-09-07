@@ -3,13 +3,15 @@
  * main process (see `main.ts`) so it applies to both the packaged `file://`
  * load and the dev server.
  *
- * `script-src` is `'self'` only — no `'unsafe-eval'`, no `'unsafe-inline'` — which
- * is the property U9's verification checks. `style-src` allows `'unsafe-inline'`
- * because Radix and drei inject positioning styles; style injection is a far
- * smaller risk surface than script injection.
+ * In the packaged build `script-src` is `'self'` only — no `'unsafe-eval'`, no
+ * `'unsafe-inline'` — which is the property U9's verification checks. The dev
+ * server additionally needs `'unsafe-inline'` for the `@vitejs/plugin-react`
+ * Fast Refresh preamble it injects into the HTML; `'unsafe-eval'` is never
+ * allowed. `style-src` always allows `'unsafe-inline'` because Radix and drei
+ * inject positioning styles — a far smaller risk surface than script injection.
  */
 export interface CspOptions {
-  /** Dev loads the renderer from the Vite dev server and needs its HMR socket + eval-free module serving. */
+  /** Dev loads the renderer from the Vite dev server and needs its HMR socket + inline plugin preamble. */
   readonly dev: boolean;
   /** Extra origins the renderer may open sockets to (the multiplayer server, added in U18). */
   readonly connectSrc?: readonly string[];
@@ -17,10 +19,11 @@ export interface CspOptions {
 
 export function buildCsp({ dev, connectSrc = [] }: CspOptions): string {
   const devConnect = dev ? ['ws://localhost:*', 'http://localhost:*'] : [];
+  const scriptSrc = dev ? ["'self'", "'unsafe-inline'"] : ["'self'"];
 
   const directives: Record<string, readonly string[]> = {
     'default-src': ["'self'"],
-    'script-src': ["'self'"],
+    'script-src': scriptSrc,
     'style-src': ["'self'", "'unsafe-inline'"],
     'img-src': ["'self'", 'data:', 'blob:'],
     'font-src': ["'self'", 'data:'],

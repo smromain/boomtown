@@ -11,12 +11,15 @@ function directives(csp: string): Map<string, string[]> {
 }
 
 describe('buildCsp', () => {
-  it('never allows unsafe-eval or unsafe-inline scripts (the U9 verification)', () => {
+  it('never allows unsafe-eval; the packaged build allows no inline scripts either (the U9 verification)', () => {
     for (const dev of [true, false]) {
-      const csp = buildCsp({ dev });
-      expect(csp).not.toContain("'unsafe-eval'");
-      expect(directives(csp).get('script-src')).toEqual(["'self'"]);
+      expect(buildCsp({ dev })).not.toContain("'unsafe-eval'");
     }
+    expect(directives(buildCsp({ dev: false })).get('script-src')).toEqual(["'self'"]);
+  });
+
+  it('the dev server allows the inline Vite/React preamble', () => {
+    expect(directives(buildCsp({ dev: true })).get('script-src')).toEqual(["'self'", "'unsafe-inline'"]);
   });
 
   it('locks down the dangerous fetch surfaces', () => {

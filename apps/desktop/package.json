@@ -10,7 +10,8 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run --project desktop"
+    "test": "vitest run --project desktop",
+    "smoke": "electron-vite build && cross-env BOOMTOWN_SMOKE=1 electron ."
   },
   "dependencies": {
     "@boomtown/client-core": "*",
@@ -37,6 +38,7 @@
     "@types/react-dom": "^19.2.0",
     "@types/three": "^0.185.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "cross-env": "^7.0.3",
     "electron": "^44.2.0",
     "electron-vite": "^4.0.1",
     "jsdom": "^25.0.1"

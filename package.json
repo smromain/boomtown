@@ -18,6 +18,7 @@
     "test:watch": "vitest",
     "test:engine": "vitest run --project engine",
     "test:desktop": "vitest run --project desktop",
+    "smoke": "npm run smoke --workspace @boomtown/desktop",
     "lint": "eslint ."
   },
   "devDependencies": {
