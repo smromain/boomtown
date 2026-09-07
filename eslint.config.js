@@ -19,7 +19,7 @@ const determinismRules = {
 };
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', '**/*.dc.html', 'design/**'] },
+  { ignores: ['**/dist/**', '**/out/**', '**/node_modules/**', '**/*.dc.html', 'design/**'] },
   ...tseslint.configs.recommended,
   {
     rules: {

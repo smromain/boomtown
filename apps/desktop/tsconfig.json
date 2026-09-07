@@ -11,5 +11,5 @@
       "@boomtown/client-core": ["../../packages/client-core/src/index.ts"]
     }
   },
-  "include": ["electron", "src", "electron-vite.config.ts", "vitest.config.ts"]
+  "include": ["electron", "src", "electron.vite.config.ts", "vitest.config.ts"]
 }
