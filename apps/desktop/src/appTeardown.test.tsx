@@ -15,7 +15,7 @@ vi.mock('./online/onlineGame.js', async (importActual) => {
 });
 const { createRoom } = await import('./online/onlineGame.js');
 
-// R3F Canvas: not under test here
+// the board isn't what this test exercises
 vi.mock('./board/Board.js', () => ({ Board: () => null }));
 
 let roomStateCb: ((s: RoomState) => void) | null = null;

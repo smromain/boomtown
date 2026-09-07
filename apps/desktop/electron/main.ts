@@ -98,10 +98,10 @@ function runSmokeChecks(win: BrowserWindow): void {
       await waitFor(`(document.querySelector('#root')?.textContent ?? '').includes('New game')`, 'setup screen');
       await evalJs(`[...document.querySelectorAll('button')].find((b) => b.textContent === 'Start game')?.click()`);
       await waitFor(
-        `!!document.querySelector('canvas') && !!document.querySelector('[aria-label="Your tiles"]')`,
+        `!!document.querySelector('[aria-label="Board"]') && !!document.querySelector('[aria-label="Your tiles"]')`,
         'game board',
       );
-      await delay(1500); // let troika glyphs + the first frames settle
+      await delay(400); // let the first frames settle
 
       if (process.env['BOOMTOWN_SMOKE_SHOT']) {
         const image = await win.webContents.capturePage();

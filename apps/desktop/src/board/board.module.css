@@ -1,0 +1,144 @@
+/* The design's flat grid (design/build.py `board()` in the "B" direction).
+   The board fills the width it is given; cells stay square via the grid's
+   aspect-ratio, so it scales with the layout. */
+
+.board {
+  /* the coordinate-header track, as a fraction of one cell track. Keep in sync
+     with HDR_FRACTION in Board.tsx (it computes aspect-ratio from cols/rows). */
+  --hdr: 1.5fr;
+  --gap: clamp(2px, 0.6cqw, 6px);
+
+  display: grid;
+  gap: var(--gap);
+  /* fit the box to whichever of width / height runs out first, keeping the
+     grid's aspect-ratio (set inline from cols/rows). The slot centres it. */
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
+  container-type: inline-size;
+  font-variant-numeric: tabular-nums;
+}
+
+.corner {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(8px, 1.4cqw, 12px);
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: clamp(3px, 1cqw, 10px);
+  font-size: clamp(7px, 1.35cqw, 12px);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  aspect-ratio: 1;
+  /* button reset */
+  border: 0;
+  font-family: inherit;
+  padding: 0;
+}
+
+.cell[data-kind='empty'] {
+  background: var(--cell-empty);
+  color: var(--cell-empty-ink);
+}
+
+.cell[data-kind='uninc'] {
+  background: var(--cell-uninc);
+  color: #fff;
+}
+
+.cell[data-kind='corp'] {
+  font-weight: 600;
+}
+
+.cell[data-kind='playable'] {
+  background: var(--cell-empty);
+  color: var(--cell-ring);
+  box-shadow: inset 0 0 0 2px var(--cell-ring);
+  cursor: pointer;
+  animation: boardPulse 1.6s ease-in-out infinite;
+}
+
+.cell[data-kind='playable']:hover:not(:disabled) {
+  color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  animation: none;
+}
+
+.cell[data-kind='playable']:disabled {
+  cursor: default;
+  animation: none;
+  opacity: 0.6;
+}
+
+.cell[data-kind='playable']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+@keyframes boardPulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 2px var(--cell-ring);
+  }
+  50% {
+    box-shadow: inset 0 0 0 2px #d98a4e;
+  }
+}
+
+.cell[data-kind='dead'] {
+  background: var(--cell-empty);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  opacity: 0.85;
+}
+
+.cell[data-kind='dead'] s {
+  text-decoration-thickness: 2px;
+}
+
+.cell[data-kind='merge-target'] {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* headquarters marker: a badge with the industry mark, over the tiny coord */
+.hq {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.hqBadge {
+  width: clamp(14px, 3cqw, 26px);
+  height: clamp(14px, 3cqw, 26px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hqBadge svg {
+  width: 62%;
+  height: 62%;
+}
+
+.hqCoord {
+  font-size: clamp(6px, 1.05cqw, 9px);
+  opacity: 0.85;
+  letter-spacing: 0.05em;
+}

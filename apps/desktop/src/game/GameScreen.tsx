@@ -76,7 +76,7 @@ function PlayArea({
         <CorporationBand />
         <div className={styles.middle}>
           <div className={styles.boardArea}>
-            <div className={styles.board}>{centre}</div>
+            <div className={styles.boardSlot}>{centre}</div>
             <OutOfPlay />
           </div>
           <div className={styles.column}>

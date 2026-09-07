@@ -1,6 +1,9 @@
 import type { ClientView } from '@boomtown/client-core';
 import type { Command, TileId } from '@boomtown/engine';
-import type { CellTarget } from './BoardScene.js';
+
+/** A legal-target cell for the active seat: `playable` (a pulsing ring) or
+ *  `dead` (struck red). */
+export type CellTarget = 'playable' | 'dead';
 
 /**
  * The cells to mark on the board for the active seat during the placement step:

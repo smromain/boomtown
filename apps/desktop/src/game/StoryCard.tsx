@@ -2,16 +2,16 @@ import { INDUSTRY_INFO } from '@boomtown/engine';
 import { useAnyView, useGameState } from '../client/GameClientProvider.js';
 import { describeEvent } from '../panels/eventText.js';
 import { IndustryMark } from './marks.js';
-import { eventIndustry, isHeadline, latestMerger, mergerProse } from './story.js';
+import { eventIndustry, isHeadline, latestMerger, mergerProse, type BonusLine } from './story.js';
 import styles from './game.module.css';
 
 const TIER_LABEL = { primary: 'primary', secondary: 'secondary', tertiary: 'tertiary' } as const;
 
 /**
  * The story panel from the Main artboard. When a merger is in play it narrates
- * it — the sentence, the renamed survivor, the bonus split, exactly as the
- * design lays it out. Otherwise it is a quiet recent-events list (no heading,
- * no border), with headline events tinted the acting corporation's colour.
+ * it — the sentence, the renamed survivor, and the bonus split, in the design's
+ * two-column layout. Otherwise it is a quiet recent-events feed with headline
+ * events tinted the acting corporation's colour.
  */
 export function StoryCard() {
   const view = useAnyView();
@@ -21,7 +21,7 @@ export function StoryCard() {
   if (!view) return null;
 
   if (!merger) {
-    const recent = log.slice(-6);
+    const recent = log.slice(-7);
     return (
       <section className={styles.quietLog} aria-label="Story">
         {recent.length === 0 ? (
@@ -31,10 +31,11 @@ export function StoryCard() {
             {recent.map((event, index) => {
               const industry = eventIndustry(event);
               const headline = isHeadline(event);
+              const turn = event.type === 'turn-advanced';
               return (
                 <li
                   key={index}
-                  className={headline ? styles.headline : undefined}
+                  className={turn ? styles.logTurn : headline ? styles.logHeadline : styles.logLine}
                   style={headline && industry ? { color: INDUSTRY_INFO[industry].color } : undefined}
                 >
                   {describeEvent(event, view)}
@@ -51,13 +52,12 @@ export function StoryCard() {
   const survivorColor = merger.survivor ? INDUSTRY_INFO[merger.survivor].color : 'var(--ink)';
   const names = merger.corporations.map((industry) => view.corporations[industry].baseName);
   const prose = mergerProse(merger, view);
+  const nameOf = (seat: number) => view.seats[seat]?.name ?? `Seat ${seat}`;
 
   return (
     <section className={`${styles.card} ${styles.story}`} aria-label="Story">
       <div className={styles.storyHeading} style={{ color: survivorColor }}>
-        {merger.survivor && (
-          <IndustryMark industry={merger.survivor} color={survivorColor} size={22} />
-        )}
+        {merger.survivor && <IndustryMark industry={merger.survivor} color={survivorColor} size={22} />}
         <span className="serif">{`${names.join(' + ')} merge at ${merger.placedTile}`}</span>
       </div>
 
@@ -71,31 +71,59 @@ export function StoryCard() {
 
       {merger.survivor && (
         <div className={styles.rename}>
-          <span className={styles.renameLabel}>The survivor{merger.complete ? ' is renamed' : ' will be'}</span>
-          <span className="serif" style={{ color: survivorColor }}>
+          <span className={styles.renameLabel}>
+            The survivor
+            <br />
+            {merger.complete ? 'is renamed' : 'will be'}
+          </span>
+          <span className={`serif ${styles.renameName}`} style={{ color: survivorColor }}>
             {survivorName}
+          </span>
+          <span className={styles.renameNote}>
+            The stem keeps everything it has ever eaten, and the card widens to hold it.
           </span>
         </div>
       )}
 
       {merger.bonuses.length > 0 && (
-        <div className={styles.bonuses}>
-          {merger.bonuses.map((line, index) => (
-            <div key={index} className={styles.bonusLine}>
-              <span className={styles.bonusWho}>
-                {line.seats.map((s) => view.seats[s]?.name ?? `Seat ${s}`).join(', ')} · {TIER_LABEL[line.tier]}
-              </span>
-              <span className="serif tabnum">${line.amount.toLocaleString()}</span>
-            </div>
+        <div className={styles.bonusSplit}>
+          {merger.bonuses.map((line, i) => (
+            <BonusColumn key={i} line={line} nameOf={nameOf} />
           ))}
         </div>
       )}
 
       <p className={styles.quiet}>
-        {merger.complete
-          ? `${survivorName} carries on; its card widens to hold everything it swallowed.`
-          : 'Resolve the merger in the prompt.'}
+        {bonusFootnote(merger.bonuses) ??
+          (merger.complete
+            ? `${survivorName} carries on; its card widens to hold everything it swallowed.`
+            : 'Resolve the merger in the prompt.')}
       </p>
     </section>
   );
+}
+
+function BonusColumn({ line, nameOf }: { line: BonusLine; nameOf: (seat: number) => string }) {
+  const split = line.seats.length > 1;
+  const who = split
+    ? `${line.seats.slice(0, -1).map(nameOf).join(', ')} and ${nameOf(line.seats.at(-1)!)}, tied at their shares`
+    : nameOf(line.seats[0]!);
+  return (
+    <div className={styles.bonusCol}>
+      <span className={styles.bonusWho}>
+        {who} · {TIER_LABEL[line.tier]}
+      </span>
+      <span className={`serif tabnum ${styles.bonusAmount}`}>
+        ${line.amount.toLocaleString()}
+        {split ? ' each' : ''}
+      </span>
+    </div>
+  );
+}
+
+function bonusFootnote(bonuses: readonly BonusLine[]): string | null {
+  if (bonuses.some((b) => b.seats.length > 1)) {
+    return 'Tied for a tier, so those bonuses are combined and split evenly.';
+  }
+  return null;
 }

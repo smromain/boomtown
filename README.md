@@ -16,7 +16,7 @@ same headless engine drives local hot‑seat, AI opponents, and (later) online p
 | Phase | Scope | State |
 |---|---|---|
 | **A — Engine** | Rules, ruleset config, price/bonus tables, board, seeded RNG, turn reducer, merger state machine, end‑game & scoring, merge‑naming, legal‑move enumeration + evaluator | **Done** — `packages/engine`, 224 tests, full `docs/rules.md` and `docs/naming.md` parity |
-| **B — Desktop** | Hardened Electron shell, `client-core` (transport + store), basic 3D board, 2D panels, merger‑decision UI, local game setup | **Done** — `apps/desktop` + `packages/client-core`, offline hot‑seat fully playable |
+| **B — Desktop** | Hardened Electron shell, `client-core` (transport + store), 2D board, 2D panels, merger‑decision UI, local game setup | **Done** — `apps/desktop` + `packages/client-core`, offline hot‑seat fully playable |
 | **C — AI** | Non‑LLM bot policy with a difficulty dial, auto‑play loop | Not started |
 | **D — Online** | `protocol` package, authoritative server, event‑log persistence + reconnection, socket transport + lobby | Not started |
 | **E — Packaging** | electron‑builder targets, auto‑update, settings, release workflow | Not started |
@@ -38,7 +38,7 @@ packages/
   client-core/   GameSession, GameTransport, LocalTransport, Zustand store, reconcile
   server/        authoritative multiplayer server (scaffold; built in Phase D)
 apps/
-  desktop/       Electron app — hardened shell, R3F board, 2D panels, decision modal
+  desktop/       Electron app — hardened shell, 2D board, 2D panels, decision modal
 docs/            rules model, naming system, decisions, and the architecture plan
 design/          build.py — generates the design canvas AND is the reference impl of the naming rules
 ```
@@ -94,7 +94,7 @@ Tests run under a **Vitest workspace** with two projects:
 | Project | Environment | Covers |
 |---|---|---|
 | `engine` | node | `packages/*/test/**` — the engine and `client-core` |
-| `desktop` | jsdom | `apps/desktop/**/*.test.{ts,tsx}` — components via `@testing-library/react` and the R3F board via `@react-three/test-renderer` |
+| `desktop` | jsdom | `apps/desktop/**/*.test.{ts,tsx}` — components via `@testing-library/react` |
 
 ```bash
 npm test                # everything, once (304 tests)
@@ -220,14 +220,14 @@ Worker to keep bot lookahead off the main thread; `SocketTransport` (Phase D) sp
 server. Everything above the interface — the Zustand store, dispatch, view reconciliation — is
 identical for all three.
 
-### Desktop first, basic 3D
+### Desktop first, 2D board
 
 The Electron app is the primary product, not a web app packaged later — though the transport split
-keeps a browser build reachable. The board renders in **deliberately basic 3D** (React Three
-Fiber): one instanced mesh for the 108‑cell grid, extruded prisms for tiles and headquarters
-markers, per‑industry colours, a fixed orthographic isometric camera, click‑to‑place. No glTF, no
-textures, no art pipeline. 2D panels use Radix primitives for accessible modals and CSS Modules
-for styling.
+keeps a browser build reachable. The board is a **flat CSS grid** (`apps/desktop/src/board/`): the
+108 cells sized by `aspect-ratio` so the board scales to fill its space, per‑industry colours,
+click‑to‑place, the industry mark on each headquarters. This reverses an earlier "deliberately
+basic 3D / React Three Fiber" call — see `docs/decisions.md`. Panels use Radix primitives for
+accessible modals and CSS Modules for styling.
 
 ### Electron hardening
 

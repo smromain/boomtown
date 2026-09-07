@@ -1,11 +1,17 @@
 import { INDUSTRIES, INDUSTRY_INFO, type Industry, type TileId } from '@boomtown/engine';
-import { useGameClient, useAnyView } from '../client/GameClientProvider.js';
+import { useGameClient, useLocalActiveView } from '../client/GameClientProvider.js';
 import styles from './decisions.module.css';
 
-/** After a founding placement: the founder picks which corporation to raise on the new group. */
+/**
+ * After a founding placement: the founder picks which corporation to raise on
+ * the new group. Uses the **local active view** — the founder is the active
+ * seat, and `DecisionModal` only opens this when that seat is local, so `you`
+ * is the seat that must issue the command (`useAnyView`'s `you` is any seat's
+ * and would send `found-corporation` for the wrong player — `not-your-turn`).
+ */
 export function FoundPrompt({ group }: { group: readonly TileId[] }) {
   const client = useGameClient();
-  const view = useAnyView();
+  const view = useLocalActiveView();
   if (!view) return null;
 
   const available = INDUSTRIES.filter((industry) => !view.corporations[industry].founded);
@@ -14,7 +20,9 @@ export function FoundPrompt({ group }: { group: readonly TileId[] }) {
   return (
     <div>
       <h2>Found a corporation</h2>
-      <p className={styles.seat}>Seat {view.you} · new group of {group.length} tiles</p>
+      <p className={styles.seat}>
+        {view.seats[view.you]?.name ?? `Seat ${view.you}`} · new group of {group.length} tiles
+      </p>
       <div className={styles.options}>
         {available.map((industry: Industry) => (
           <button

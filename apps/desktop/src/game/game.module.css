@@ -80,22 +80,25 @@
   min-height: 0;
 }
 
-/* The board sits alone on the left at its natural size (the design's
-   flex-shrink:0 grid); the right column takes whatever is left. The
-   out-of-play strip sits under it. */
+/* The board takes the space that's left of the right column and scales to fill
+   it (the grid sizes itself by aspect-ratio). The out-of-play strip sits under. */
 .boardArea {
-  width: 620px;
-  flex-shrink: 0;
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
   min-height: 0;
 }
 
-.board {
-  flex-grow: 1;
-  background: var(--bg);
+.boardSlot {
+  flex: 1;
   min-height: 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
 }
 
 /* Shown in the board slot while a bot / remote player is on the clock */
@@ -248,11 +251,11 @@
 }
 
 .column {
-  flex-grow: 1;
+  flex: 0 1 26rem;
+  min-width: 20rem;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  min-width: 0;
   overflow-y: auto;
 }
 
@@ -290,13 +293,9 @@
   font-weight: 700;
 }
 
-/* No-merger state: a quiet recent-events list — no card, no heading. */
+/* No-merger state: a quiet recent-events feed — no card, no heading. */
 .quietLog {
-  padding: 2px 0;
-}
-
-.headline {
-  font-weight: 600;
+  padding: 2px 2px 2px 0;
 }
 
 .actionCard {
@@ -431,47 +430,72 @@
   line-height: 1.35;
 }
 
-.bonuses {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  border-top: 1px solid var(--rule);
-  padding-top: 12px;
+.renameName {
+  font-size: 24px;
+  flex-shrink: 0;
 }
 
-.bonusLine {
+.renameNote {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+  flex-grow: 1;
+}
+
+/* Bonus split — the design's two-column "grouped by outcome, big numbers". */
+.bonusSplit {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-size: 12px;
+  gap: 26px;
+  border-top: 1px solid var(--rule);
+  padding-top: 13px;
+}
+
+.bonusCol {
+  flex: 1;
+  min-width: 0;
 }
 
 .bonusWho {
+  display: block;
+  font-size: 11px;
   color: var(--muted);
+  line-height: 1.35;
 }
 
-.bonusLine .serif {
-  font-size: 17px;
+.bonusAmount {
+  display: block;
+  font-size: 22px;
+  margin-top: 3px;
+  color: var(--ink);
 }
 
+/* Quiet recent-events feed */
 .log {
   list-style: none;
   margin: 0;
   padding: 0;
   font-size: 11.5px;
+  line-height: 1.5;
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 
-.log li {
-  padding: 3px 0;
-  border-bottom: 1px solid var(--rule);
+.logLine {
+  padding: 2px 0;
   color: var(--muted);
 }
 
-.log li:last-child {
-  border-bottom: none;
+.logHeadline {
+  padding: 3px 0;
+  font-weight: 600;
+}
+
+.logTurn {
+  padding: 6px 0 3px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
 }
 
 /* Tile rack */

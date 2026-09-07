@@ -18,6 +18,7 @@
 | Desktop packaging | electron-builder, three-OS CI matrix, unsigned by default | electron-vite bundles everything from source so the app ships no `node_modules`. Fuses (KTD9) flipped in `afterPack`. Signing/notarization secrets are wired in `release.yml` but not set. See `deploying.md`. |
 | Online host in the build | Baked from `apps/desktop/.env.production`, Settings can override per-user | A release build with neither is a packaging mistake and throws rather than silently falling back to `localhost`. |
 | Auto-update | Wired in code, **no feed** — graceful no-op until a hosting target is picked | GitHub Releases / S3 / static host is an open call; `updater.ts` already degrades cleanly. |
+| Board rendering | **2D CSS grid** (`apps/desktop/src/board/`) | Reverses KTD8's "deliberately basic 3D / React Three Fiber". The design canvas always drew a flat grid; a top-down R3F board added a fixed-zoom camera, a font pipeline (troika) and ~2.2 MB of bundle to reproduce it. The grid fills its container via `aspect-ratio`, so it scales with the space. R3F / three / troika removed. |
 
 ## Open
 

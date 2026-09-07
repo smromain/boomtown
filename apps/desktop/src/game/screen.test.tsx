@@ -1,6 +1,6 @@
 import { act } from 'react';
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   GameSession,
   createGameClient,
@@ -9,9 +9,6 @@ import {
 } from '@boomtown/client-core';
 import { GameScreen } from './GameScreen.js';
 import { defaultConfig, type GameConfig } from '../setup/gameConfig.js';
-
-// R3F Canvas doesn't render under jsdom; the board's content isn't what we test here.
-vi.mock('../board/Board.js', () => ({ Board: () => <div data-testid="board" /> }));
 
 const flush = () => act(() => new Promise<void>((r) => setTimeout(r, 0)));
 
@@ -39,14 +36,14 @@ async function mount(localSeats: number[], turnPointer: number) {
 describe('GameScreen turn gating', () => {
   it('shows the board and rack on a local seat turn', async () => {
     await mount([0, 2], 0);
-    expect(screen.getByTestId('board')).toBeInTheDocument();
+    expect(screen.getByRole('grid', { name: 'Board' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Your tiles' })).toBeInTheDocument();
     expect(screen.queryByRole('status', { name: 'Waiting for another player' })).not.toBeInTheDocument();
   });
 
   it('hides the board and rack and names the bot on its turn', async () => {
     await mount([0, 2], 1); // seat 1 (bot) on the clock
-    expect(screen.queryByTestId('board')).not.toBeInTheDocument();
+    expect(screen.queryByRole('grid', { name: 'Board' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Your tiles' })).not.toBeInTheDocument();
     const waiting = screen.getByRole('status', { name: 'Waiting for another player' });
     expect(waiting).toHaveTextContent('Robo');

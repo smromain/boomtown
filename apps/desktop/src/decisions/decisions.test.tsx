@@ -178,6 +178,34 @@ describe('DecisionModal', () => {
     expect(within(dialog).getAllByRole('button').length).toBeGreaterThanOrEqual(7);
   });
 
+  it('founds for the active seat even when it is not seat 0 (regression: not-your-turn)', async () => {
+    // seat 2 places a founding tile
+    const { client } = await renderPanel(<DecisionModal />, {
+      craft: (state) => {
+        state.turnPointer = 2;
+        state.cells['6F'] = { kind: 'unincorporated' };
+        state.hands[2] = ['6E'];
+      },
+    });
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 2, tile: '6E' });
+      await flush();
+    });
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Found a corporation')).toBeInTheDocument();
+    expect(dialog).toHaveTextContent('Cy · new group'); // the active seat's name, not "Seat 0"
+
+    await act(async () => {
+      await userEvent.click(within(dialog).getAllByRole('button')[0]!);
+      await flush();
+    });
+    // the command was issued for seat 2 and accepted — no rejection, modal closed
+    expect(client.store.getState().lastError).toBeNull();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(client.store.getState().views[2]!.step).toBe('buy');
+  });
+
   it('does not open for a merger decision addressed to a bot / remote seat', async () => {
     // seat 1 places a merging tile; seat 1 is not a local seat.
     const { client } = await renderPanel(<DecisionModal />, {
