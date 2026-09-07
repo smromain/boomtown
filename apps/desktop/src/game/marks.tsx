@@ -3,8 +3,8 @@ import type { Industry } from '@boomtown/engine';
 import {
   BoltIcon,
   BookOpenIcon,
-  ComputerDesktopIcon,
   CpuChipIcon,
+  DevicePhoneMobileIcon,
   FilmIcon,
   PaperAirplaneIcon,
   PuzzlePieceIcon,
@@ -16,7 +16,7 @@ const ICONS: Record<Industry, ComponentType<SVGProps<SVGSVGElement>>> = {
   electronics: CpuChipIcon,
   air: PaperAirplaneIcon,
   energy: BoltIcon,
-  tech: ComputerDesktopIcon,
+  tech: DevicePhoneMobileIcon,
   video: FilmIcon,
   toys: PuzzlePieceIcon,
 };
