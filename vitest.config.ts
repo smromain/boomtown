@@ -16,6 +16,9 @@ export default defineConfig({
   test: {
     name: 'engine',
     include: ['packages/*/test/**/*.test.ts'],
+    // Integration tests boot a real partykit dev server (workerd) — run them
+    // via `npm run test:server`, not in the fast default suite.
+    exclude: ['**/node_modules/**', '**/*.integration.test.ts'],
     environment: 'node',
     passWithNoTests: true,
   },

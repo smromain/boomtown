@@ -18,12 +18,16 @@
     "test:watch": "vitest",
     "test:engine": "vitest run --project engine",
     "test:desktop": "vitest run --project desktop",
+    "test:server": "vitest run --config packages/server/vitest.integration.config.ts",
     "smoke": "npm run smoke --workspace @boomtown/desktop",
+    "server:dev": "npm run dev --workspace @boomtown/server",
+    "server:deploy": "npm run deploy --workspace @boomtown/server",
     "lint": "eslint ."
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "eslint": "^9.17.0",
+    "partykit": "^0.0.115",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.1",
     "vitest": "^2.1.8"
@@ -34,6 +38,7 @@
   "allowScripts": {
     "esbuild@0.21.5": true,
     "esbuild@0.25.12": true,
-    "fsevents@2.3.3": true
+    "fsevents@2.3.3": true,
+    "workerd@1.20240718.0": true
   }
 }

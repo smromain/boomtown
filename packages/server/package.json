@@ -3,12 +3,21 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Authoritative Boomtown multiplayer server: rooms, view filtering, event log.",
+  "description": "The Boomtown online room: one PartyKit room object per game (KTD6).",
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "dev": "partykit dev",
+    "deploy": "partykit deploy"
+  },
   "dependencies": {
+    "@boomtown/ai": "*",
     "@boomtown/engine": "*",
     "@boomtown/protocol": "*"
+  },
+  "devDependencies": {
+    "partykit": "^0.0.115",
+    "partysocket": "^1.3.0"
   }
 }

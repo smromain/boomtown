@@ -1,0 +1,6 @@
+{
+  "$schema": "https://www.partykit.io/schema.json",
+  "name": "boomtown",
+  "main": "src/room.ts",
+  "compatibilityDate": "2024-07-18"
+}

@@ -6,6 +6,9 @@ out/
 coverage/
 *.log
 
+# PartyKit local dev state
+.partykit/
+
 # Python bytecode
 __pycache__/
 *.pyc
