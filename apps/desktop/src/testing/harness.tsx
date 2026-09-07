@@ -1,6 +1,6 @@
 import { render, type RenderResult } from '@testing-library/react';
 import type { ReactElement } from 'react';
-import { createGame, type GameState, type Visibility } from '@boomtown/engine';
+import { createGame, type Cell, type GameState, type Industry, type TileId, type Visibility } from '@boomtown/engine';
 import { GameSession, createGameClient, localTransport, type GameClient } from '@boomtown/client-core';
 import { GameClientProvider } from '../client/GameClientProvider.js';
 
@@ -12,7 +12,7 @@ export interface HarnessOptions {
   readonly craft?: (state: GameState) => void;
 }
 
-/** Render a panel wired to a live local game. Returns the client so tests can dispatch. */
+/** Render a component wired to a live local game. Returns the client so tests can dispatch. */
 export async function renderPanel(
   ui: ReactElement,
   options: HarnessOptions = {},
@@ -37,5 +37,14 @@ export async function renderPanel(
   return Object.assign(result, { client });
 }
 
-const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
-export { flush };
+/** Put tiles on the board as an existing corporation. */
+export function seedCorp(state: GameState, industry: Industry, tiles: TileId[]): void {
+  const corp = state.corporations[industry];
+  corp.founded = true;
+  corp.tiles = [...tiles];
+  corp.hqTile = tiles[0] ?? null;
+  for (const tile of tiles) state.cells[tile] = { kind: 'corporation', industry } satisfies Cell;
+}
+
+/** Drain the microtask + timer queue (LocalTransport delivers on a microtask). */
+export const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));

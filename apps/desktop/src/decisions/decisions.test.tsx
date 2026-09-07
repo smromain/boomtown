@@ -1,18 +1,10 @@
 import { act } from 'react';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Cell, GameState, Industry, TileId } from '@boomtown/engine';
 import { describe, expect, it } from 'vitest';
 import { DecisionModal } from './DecisionModal.js';
-import { flush, renderPanel } from '../panels/harness.js';
+import { flush, renderPanel, seedCorp } from '../testing/harness.js';
 
-function seedCorp(state: GameState, industry: Industry, tiles: TileId[]): void {
-  const corp = state.corporations[industry];
-  corp.founded = true;
-  corp.tiles = [...tiles];
-  corp.hqTile = tiles[0] ?? null;
-  for (const tile of tiles) state.cells[tile] = { kind: 'corporation', industry } satisfies Cell;
-}
 
 async function place(client: { dispatch: (c: { type: 'place-tile'; seat: number; tile: string }) => void }, tile: string) {
   await act(async () => {
