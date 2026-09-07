@@ -36,6 +36,26 @@ ipcMain.handle('settings:get', () => ({}));
 ipcMain.handle('settings:set', (_event, patch: Record<string, unknown>) => patch);
 ipcMain.handle('update:check', () => checkForUpdates());
 
+// Dev-only diagnostic: dump a game-state snapshot to disk so a stuck game (a
+// bot that never moves, a rejected command) can be replayed and root-caused.
+// Silently does nothing in a packaged build.
+ipcMain.handle('debug:dump', async (_event, label: string, payload: unknown) => {
+  if (!isDev) return null;
+  try {
+    const { writeFile, mkdir } = await import('node:fs/promises');
+    const dir = join(app.getPath('logs'), 'boomtown-debug');
+    await mkdir(dir, { recursive: true });
+    const safe = String(label).replace(/[^a-z0-9-]/gi, '_').slice(0, 40);
+    const file = join(dir, `${new Date().toISOString().replace(/[:.]/g, '-')}-${safe}.json`);
+    await writeFile(file, JSON.stringify(payload, null, 2), 'utf8');
+    console.log(`[debug] wrote ${file}`);
+    return file;
+  } catch (error) {
+    console.error('[debug] dump failed', error);
+    return null;
+  }
+});
+
 function runSmokeChecks(win: BrowserWindow): void {
   const fail = (why: string) => {
     console.error(`[smoke] ${why}`);

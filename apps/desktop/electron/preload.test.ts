@@ -20,7 +20,7 @@ describe('preload bridge', () => {
     expect(exposeInMainWorld).toHaveBeenCalledTimes(1);
     const [key, api] = exposeInMainWorld.mock.calls[0]!;
     expect(key).toBe('boomtown');
-    expect(Object.keys(api as object).sort()).toEqual(['settings', 'update', 'window']);
+    expect(Object.keys(api as object).sort()).toEqual(['debug', 'settings', 'update', 'window']);
   });
 
   it('window controls send fire-and-forget IPC, settings/update use invoke', async () => {

@@ -7,6 +7,7 @@ import {
   type GameClient,
 } from '@boomtown/client-core';
 import { RULES, type Seat } from '@boomtown/engine';
+import { dumpBotStuck } from '../debug/dump.js';
 import { SeatRow } from './SeatConfig.js';
 import {
   configError,
@@ -61,6 +62,7 @@ export function NewGame({ onStart }: { onStart: (game: StartedGame) => void }) {
       started.detachBots = attachBotDriver(client, {
         bots,
         snapshot: () => session.snapshot(),
+        onStuck: (report) => dumpBotStuck(report, client.store.getState().log),
         ...(config.seed !== undefined ? { seed: config.seed } : {}),
       });
     }

@@ -19,6 +19,12 @@ const api = {
   update: {
     check: (): Promise<{ available: boolean }> => ipcRenderer.invoke('update:check'),
   },
+  debug: {
+    /** Dev-only: write a game-state snapshot to the app's log directory for
+     *  post-hoc debugging. A no-op in a packaged build. Returns the file path. */
+    dump: (label: string, payload: unknown): Promise<string | null> =>
+      ipcRenderer.invoke('debug:dump', label, payload),
+  },
 } as const;
 
 contextBridge.exposeInMainWorld('boomtown', api);
