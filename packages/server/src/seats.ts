@@ -52,6 +52,14 @@ export class SeatTable {
   }
 
   /**
+   * Restore a seat occupant from persisted connection state after a hibernation
+   * wake (the in-memory map was lost; `connection.setState` survived).
+   */
+  restore(seat: number, token: string, name: string, connectionId: string): void {
+    this.humans.set(seat, { token, name, connectionId });
+  }
+
+  /**
    * Re-bind a reconnecting human by token. Returns the seat, or `null` when
    * the token matches no seat in this room.
    */

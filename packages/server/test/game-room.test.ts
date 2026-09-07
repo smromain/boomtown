@@ -86,21 +86,21 @@ describe('GameRoom — start and turns', () => {
     return new GameRoom('ABCD12', config, new MemoryStore());
   }
 
-  it('will not start until every human seat is filled', () => {
+  it('will not start until every human seat is filled', async () => {
     const r = room();
     r.join('Ana', 't1', 'c1');
     r.join('Bo', 't2', 'c2');
-    expect('error' in r.start()).toBe(true); // seat 2 still open
+    expect('error' in (await r.start())).toBe(true); // seat 2 still open
     r.join('Cy', 't3', 'c3');
-    expect('error' in r.start()).toBe(false);
+    expect('error' in (await r.start())).toBe(false);
   });
 
-  it('start deals and sends each seat its own filtered view', () => {
+  it('start deals and sends each seat its own filtered view', async () => {
     const r = room();
     r.join('Ana', 't1', 'c1');
     r.join('Bo', 't2', 'c2');
     r.join('Cy', 't3', 'c3');
-    const result = r.start();
+    const result = await r.start();
     if ('error' in result) throw new Error('should have started');
     const seatUpdates = result.updates.filter(
       (u): u is Extract<typeof u, { kind: 'to-seat' }> => u.kind === 'to-seat' && u.message.type === 'update',
@@ -118,7 +118,7 @@ describe('GameRoom — start and turns', () => {
     r.join('Ana', 't1', 'c1');
     r.join('Bo', 't2', 'c2');
     r.join('Cy', 't3', 'c3');
-    r.start();
+    await r.start();
 
     // seat 1 acts when it is seat 0's turn
     const out = await r.command(1, { type: 'buy-shares', seat: 1, picks: {} });
@@ -134,7 +134,7 @@ describe('GameRoom — start and turns', () => {
     r.join('Ana', 't1', 'c1');
     r.join('Bo', 't2', 'c2');
     r.join('Cy', 't3', 'c3');
-    r.start();
+    await r.start();
     const out = await r.command(0, { type: 'buy-shares', seat: 0, picks: {} }); // wrong step
     const msg = out[0]!;
     if (msg.kind === 'to-seat' && msg.message.type === 'update' && msg.message.rejection) {
@@ -150,7 +150,7 @@ describe('GameRoom — start and turns', () => {
     r.join('Ana', 't1', 'c1');
     r.join('Bo', 't2', 'c2');
     r.join('Cy', 't3', 'c3');
-    const started = r.start();
+    const started = await r.start();
     if ('error' in started) throw new Error('start');
     const seat0View = started.updates.find(
       (u) => u.kind === 'to-seat' && u.seat === 0 && u.message.type === 'update',
@@ -169,10 +169,10 @@ describe('GameRoom — start and turns', () => {
 });
 
 describe('GameRoom — bots inline', () => {
-  it('an all-bot room runs to a ranked result on start()', () => {
+  it('an all-bot room runs to a ranked result on start()', async () => {
     const r = new GameRoom('BOTS01', baseConfig({ seatCount: 3, bots: { 0: 4, 1: 4, 2: 4 }, seed: 5 }), new MemoryStore());
     // no human joins needed — all seats are bots
-    const result = r.start();
+    const result = await r.start();
     if ('error' in result) throw new Error(`start failed: ${JSON.stringify(result.error)}`);
     expect(r.isPlaying()).toBe(false); // game already over — bots played it all
     const lastUpdate = [...result.updates].reverse().find(
@@ -189,7 +189,7 @@ describe('GameRoom — bots inline', () => {
   it('a human + 2 bots: after the human plays, the bots take their turns and control returns to the human', async () => {
     const r = new GameRoom('MIX01', baseConfig({ seatCount: 3, bots: { 1: 8, 2: 8 }, seed: 9 }), new MemoryStore());
     r.join('Ana', 't1', 'c1');
-    const started = r.start();
+    const started = await r.start();
     if ('error' in started) throw new Error('start');
 
     // human is seat 0; play through its turn

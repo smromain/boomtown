@@ -114,12 +114,21 @@ export class GameRoom {
     return this.seats.reconnect(token, connectionId);
   }
 
+  /**
+   * Restore a seat<-token<-connection binding after a hibernation wake. The
+   * `SeatTable` is rebuilt empty from config on `rehydrate`; the adapter feeds
+   * each live connection's persisted `{ seat, token }` back through here.
+   */
+  restoreSeat(seat: Seat, token: string, name: string, connectionId: string): void {
+    this.seats.restore(seat, token, name, connectionId);
+  }
+
   markDisconnected(connectionId: string): void {
     this.seats.disconnect(connectionId);
   }
 
   /** Start the game. Returns the initial per-seat updates, or an error. */
-  start(): { updates: Outbound[] } | { error: WireError } {
+  async start(): Promise<{ updates: Outbound[] } | { error: WireError }> {
     if (this.phase !== 'lobby') {
       return { error: protocolError('game-not-started', 'game already started') };
     }
@@ -135,15 +144,16 @@ export class GameRoom {
       { kind: 'broadcast', message: { type: 'room-state', state: this.roomState() } },
       ...this.seatUpdates([]),
     ];
-    return { updates: [...updates, ...this.runBots()] };
+    return { updates: [...updates, ...(await this.runBots())] };
   }
 
   // --- play ------------------------------------------------------------
 
   /**
    * Apply one command from `fromSeat`. Rejects an out-of-turn or illegal
-   * command to that seat only (R3); otherwise persists it, applies it, sends
-   * each connection its filtered update, then plays any bot turns that follow.
+   * command to that seat only (R3); otherwise persists it (KTD13 — before its
+   * events are observable, R7), applies it, sends each connection its filtered
+   * update, then plays any bot turns that follow.
    */
   async command(fromSeat: Seat, command: Command): Promise<Outbound[]> {
     if (!this.state || this.phase !== 'playing') {
@@ -161,49 +171,49 @@ export class GameRoom {
       return [this.rejection(fromSeat, command, wireEngineError(result.error))];
     }
 
+    const updates = await this.applyAccepted(command, result.state, result.events);
+    return [...updates, ...(await this.runBots())];
+  }
+
+  /**
+   * Persist an accepted command, then commit it to state and build the per-seat
+   * updates. Append-before-commit (KTD13): a crash between the two loses
+   * nothing, because on wake `replay()` re-derives this exact state.
+   */
+  private async applyAccepted(
+    command: Command,
+    nextState: GameState,
+    events: readonly EngineEvent[],
+  ): Promise<Outbound[]> {
     await this.log.append(command);
-    this.state = result.state;
-    if (this.state.status === 'over') this.phase = 'over';
-
-    const updates = this.seatUpdates(result.events);
-    return [...updates, ...(await this.persistAndRunBots())];
+    this.state = nextState;
+    if (nextState.status === 'over') this.phase = 'over';
+    return this.seatUpdates(events);
   }
 
-  private async persistAndRunBots(): Promise<Outbound[]> {
+  /**
+   * Drive every consecutive bot seat until a human is on the clock or the game
+   * ends. Each bot command is persisted before its effects are observable, the
+   * same contract as a human command.
+   */
+  private async runBots(): Promise<Outbound[]> {
     const out: Outbound[] = [];
-    for (const step of this.botSteps()) {
-      await this.log.append(step.command);
-      out.push(...step.updates);
-    }
-    return out;
-  }
-
-  /** Synchronous bot loop for start() — no persistence needed pre-first-command. */
-  private runBots(): Outbound[] {
-    const out: Outbound[] = [];
-    for (const step of this.botSteps()) out.push(...step.updates);
-    return out;
-  }
-
-  /** Drive every consecutive bot seat until a human is on the clock or the game ends. */
-  private *botSteps(): Generator<{ command: Command; updates: Outbound[] }> {
     let guard = 0;
     while (this.state) {
       if (guard++ > 5000) throw new Error('bot loop did not terminate');
       const seat = seatOnClock(this.state);
-      if (seat === null || !this.seats.isBot(seat)) return;
+      if (seat === null || !this.seats.isBot(seat)) return out;
       const policy = this.policies.get(seat)!;
       const choice = policy.chooseMove(this.state, seat, this.botRngState);
-      if (!choice) return;
+      if (!choice) return out;
       this.botRngState = choice.rng;
       const result = reduce(this.state, choice.command);
       if (!result.ok) {
         throw new Error(`bot at seat ${seat} emitted an illegal ${choice.command.type}: ${result.error.code}`);
       }
-      this.state = result.state;
-      if (this.state.status === 'over') this.phase = 'over';
-      yield { command: choice.command, updates: this.seatUpdates(result.events) };
+      out.push(...(await this.applyAccepted(choice.command, result.state, result.events)));
     }
+    return out;
   }
 
   // --- outbound helpers ------------------------------------------------

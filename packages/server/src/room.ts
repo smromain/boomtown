@@ -12,16 +12,32 @@ import type { KeyValueStore } from './storage.js';
  * `partykit dev` and the integration test, not by unit tests.
  */
 export default class BoomtownRoom implements Party.Server {
+  /** Hibernate between messages; `onStart` replays the command log on wake (KTD13). */
+  readonly options = { hibernate: true };
+
   private game: GameRoom | null = null;
   /** seat <- connection id, mirrored here so onClose can find the seat fast. */
   private readonly seatByConnection = new Map<string, Seat>();
 
   constructor(readonly room: Party.Room) {}
 
-  /** Runs on cold start and on wake from hibernation — rehydrate if a game exists (KTD13, R7). */
+  /**
+   * Runs on cold start and on wake from hibernation. Rebuild the game from the
+   * command log (KTD13, R7), and rebuild the seat<-connection map from each
+   * live connection's persisted state — `this.seatByConnection` is in-memory
+   * and does not survive hibernation, but `connection.setState` does.
+   */
   async onStart(): Promise<void> {
     const store = this.room.storage as unknown as KeyValueStore;
     this.game = await GameRoom.rehydrate(this.room.id, store);
+    this.seatByConnection.clear();
+    for (const connection of this.room.getConnections<{ seat: Seat; token: string; name?: string }>()) {
+      const state = connection.state;
+      if (state && typeof state.seat === 'number' && typeof state.token === 'string') {
+        this.seatByConnection.set(connection.id, state.seat);
+        this.game?.restoreSeat(state.seat, state.token, state.name ?? 'Player', connection.id);
+      }
+    }
   }
 
   async onConnect(connection: Party.Connection, ctx: Party.ConnectionContext): Promise<void> {
@@ -39,8 +55,9 @@ export default class BoomtownRoom implements Party.Server {
       }
       const bound = this.game.reconnect(token, connection.id);
       if (bound) {
+        const name = url.searchParams.get('name') ?? 'Player';
         this.seatByConnection.set(connection.id, bound.seat);
-        connection.setState({ seat: bound.seat, token });
+        connection.setState({ seat: bound.seat, token, name });
         this.sendTo(connection, { type: 'welcome', seat: bound.seat, token });
         const view = this.game.currentUpdateFor(bound.seat);
         if (view) this.sendTo(connection, view);
@@ -89,7 +106,7 @@ export default class BoomtownRoom implements Party.Server {
 
       case 'start': {
         if (!this.game) return;
-        const result = this.game.start();
+        const result = await this.game.start();
         if ('error' in result) {
           this.sendTo(sender, { type: 'error', error: result.error });
           return;
@@ -100,7 +117,7 @@ export default class BoomtownRoom implements Party.Server {
 
       case 'command': {
         if (!this.game) return;
-        const seat = this.seatByConnection.get(sender.id);
+        const seat = this.seatByConnection.get(sender.id) ?? this.seatFromState(sender);
         if (seat === undefined) {
           this.sendTo(sender, { type: 'error', error: protocolError('not-in-room', 'no seat on this connection') });
           return;
@@ -120,6 +137,15 @@ export default class BoomtownRoom implements Party.Server {
 
   // --- helpers --------------------------------------------------------
 
+  /** Recover a seat from persisted connection state (after a hibernation wake). */
+  private seatFromState(connection: Party.Connection): Seat | undefined {
+    const state = connection.state as { seat?: Seat; token?: string; name?: string } | null;
+    if (!state || typeof state.seat !== 'number' || typeof state.token !== 'string') return undefined;
+    this.seatByConnection.set(connection.id, state.seat);
+    this.game?.restoreSeat(state.seat, state.token, state.name ?? 'Player', connection.id);
+    return state.seat;
+  }
+
   private joinSender(sender: Party.Connection): void {
     if (!this.game) return;
     const name = new URL(sender.uri).searchParams.get('name') ?? 'Player';
@@ -131,7 +157,7 @@ export default class BoomtownRoom implements Party.Server {
       return;
     }
     this.seatByConnection.set(sender.id, bound.seat);
-    sender.setState({ seat: bound.seat, token });
+    sender.setState({ seat: bound.seat, token, name });
     this.sendTo(sender, { type: 'welcome', seat: bound.seat, token });
     this.broadcastRoomState();
   }

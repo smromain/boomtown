@@ -175,6 +175,35 @@ describe('PartyKit room — end to end', () => {
     expect(view.view.result?.rankings).toHaveLength(3);
   }, 25_000);
 
+  it('a dropped client reconnects with its token and resumes the same seat (AE2)', async () => {
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 1: 6, 2: 6 }, seed: 3 },
+    });
+    const welcome = (await host.next('welcome')) as Extract<RoomMessage, { type: 'welcome' }>;
+    const token = welcome.token;
+    expect(welcome.seat).toBe(0);
+    host.send({ type: 'start' });
+    await host.next('update');
+
+    // drop
+    host.close();
+    await new Promise((r) => setTimeout(r, 300));
+
+    // reconnect with the token
+    const back = client(room, { token });
+    await back.open;
+    // onConnect re-binds on the token and pushes welcome + current view
+    const rewelcome = (await back.next('welcome')) as Extract<RoomMessage, { type: 'welcome' }>;
+    expect(rewelcome.seat).toBe(0);
+    const view = (await back.next('update')) as Extract<RoomMessage, { type: 'update' }>;
+    expect(view.view.you).toBe(0);
+    expect(view.view.status).toBe('playing');
+  });
+
   it('never leaks another seat\'s hand or the bag in a hidden-visibility game', async () => {
     const room = uniqueRoom();
     const host = client(room);
