@@ -1,43 +1,68 @@
-import type { EngineEvent } from '@boomtown/engine';
+import type { EngineEvent, Industry } from '@boomtown/engine';
+import type { ClientView } from '@boomtown/client-core';
 
-/** A short human line for the event log. Merger steps read as their own entries. */
-export function describeEvent(event: EngineEvent): string {
+/** A corporation's name for the log — its derived display name, never the
+ *  industry key. `baseName` is the fallback for a defunct chain whose display
+ *  name has been folded away. */
+function corp(view: ClientView | null | undefined, industry: Industry): string {
+  const c = view?.corporations[industry];
+  return c?.displayName || c?.baseName || industry;
+}
+
+/** A seat's name for the log, or "Seat N" before the first view. */
+function who(view: ClientView | null | undefined, seat: number): string {
+  return view?.seats[seat]?.name ?? `Seat ${seat}`;
+}
+
+/**
+ * A short human line for the event log. Merger steps read as their own entries.
+ * `view` supplies company and player names — without it the line falls back to
+ * industry keys and "Seat N".
+ */
+export function describeEvent(event: EngineEvent, view?: ClientView | null): string {
+  const p = (seat: number) => who(view, seat);
+  const co = (industry: Industry) => corp(view, industry);
+
   switch (event.type) {
     case 'tile-placed':
-      return `Seat ${event.seat} placed ${event.tile} (${event.outcome})`;
+      return `${p(event.seat)} placed ${event.tile} (${event.outcome})`;
     case 'corporation-founded':
-      return `${event.industry} founded at ${event.hqTile}${event.founderBonusPaid ? ' (+1 founder share)' : ''}`;
+      return `${co(event.industry)} founded at ${event.hqTile}${event.founderBonusPaid ? ' (+1 founder share)' : ''}`;
     case 'corporation-grew':
-      return `${event.industry} grew to ${event.newSize}`;
+      return `${co(event.industry)} grew to ${event.newSize}`;
     case 'shares-bought': {
-      const parts = Object.entries(event.picks).map(([industry, qty]) => `${qty} ${industry}`);
-      return parts.length ? `Seat ${event.seat} bought ${parts.join(', ')} for $${event.cost}` : `Seat ${event.seat} bought nothing`;
+      const parts = Object.entries(event.picks).map(([industry, qty]) => `${qty} ${co(industry as Industry)}`);
+      return parts.length
+        ? `${p(event.seat)} bought ${parts.join(', ')} for $${event.cost}`
+        : `${p(event.seat)} bought nothing`;
     }
     case 'tiles-drawn':
-      return `Seat ${event.seat} drew ${event.count} tile${event.count === 1 ? '' : 's'}`;
+      return `${p(event.seat)} drew ${event.count} tile${event.count === 1 ? '' : 's'}`;
     case 'dead-tiles-swept':
-      return `Seat ${event.seat} swept ${event.tiles.join(', ')}`;
+      return `${p(event.seat)} swept ${event.tiles.join(', ')}`;
     case 'merger-started':
-      return `Merger at ${event.placedTile}: ${event.corporations.join(' + ')}`;
+      return `Merger at ${event.placedTile}: ${event.corporations.map(co).join(' + ')}`;
     case 'survivor-chosen':
-      return `${event.survivor} survives the merger`;
+      return `${co(event.survivor)} survives the merger`;
     case 'defunct-order-set':
-      return `Defunct order: ${event.order.join(' then ')}`;
+      return `Defunct order: ${event.order.map(co).join(' then ')}`;
     case 'bonus-paid': {
-      const paid = event.payouts.map((p) => `seat ${p.seat} ${p.tier} $${p.amount}`).join(', ');
-      return `${event.defunct} bonuses — ${paid || 'none'}`;
+      const paid = event.payouts.map((x) => `${p(x.seat)} ${x.tier} $${x.amount}`).join(', ');
+      return `${co(event.defunct)} bonuses — ${paid || 'none'}`;
     }
     case 'shares-disposed':
-      return `Seat ${event.seat} disposed ${event.defunct}: hold ${event.hold}, sell ${event.sell}, trade ${event.trade}`;
+      return `${p(event.seat)} disposed ${co(event.defunct)}: hold ${event.hold}, sell ${event.sell}, trade ${event.trade}`;
     case 'corporation-defunct':
-      return `${event.industry} folded into ${event.absorbedInto}`;
+      return `${co(event.industry)} folded into ${co(event.absorbedInto)}`;
     case 'merger-completed':
-      return `Merger complete — ${event.survivor} carries on`;
+      return `Merger complete — ${co(event.survivor)} carries on`;
     case 'turn-advanced':
-      return `— Seat ${event.seat}'s turn —`;
+      return `— ${p(event.seat)}'s turn —`;
     case 'end-announced':
-      return `Seat ${event.seat} announced the end`;
+      return `${p(event.seat)} announced the end`;
     case 'game-over':
-      return `Game over — winner${event.result.winners.length > 1 ? 's' : ''} ${event.result.winners.join(', ')}`;
+      return `Game over — winner${event.result.winners.length > 1 ? 's' : ''} ${event.result.winners
+        .map((s) => who(view, s))
+        .join(', ')}`;
   }
 }

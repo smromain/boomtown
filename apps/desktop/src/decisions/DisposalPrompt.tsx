@@ -32,7 +32,7 @@ export function DisposalPrompt({ decision }: { decision: Decision }) {
     <div>
       <h2>Dispose of {view?.corporations[decision.defunct].displayName ?? decision.defunct} stock</h2>
       <p className={styles.seat}>
-        Seat {decision.seat} holds {decision.shares} · trade is 2-for-1 into{' '}
+        {view?.seats[decision.seat]?.name ?? `Seat ${decision.seat}`} holds {decision.shares} · trade is 2-for-1 into{' '}
         {view?.corporations[decision.survivor].displayName ?? decision.survivor} ({survivorBank} in bank)
       </p>
 

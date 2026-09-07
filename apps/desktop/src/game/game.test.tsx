@@ -171,6 +171,29 @@ describe('StoryCard', () => {
     await renderPanel(<StoryCard />);
     expect(screen.getByText(/No moves yet/)).toBeInTheDocument();
   });
+
+  it('the recent-events log uses company and player names, never industry keys', async () => {
+    const { client } = await renderPanel(<StoryCard />, {
+      craft: (state) => {
+        // one empty neighbour so placing 6E founds a corporation
+        state.cells['6F'] = { kind: 'unincorporated' };
+        state.hands[0] = ['6E'];
+      },
+    });
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '6E' });
+      await flush();
+      client.dispatch({ type: 'found-corporation', seat: 0, industry: 'video', hqTile: '6E' });
+      await flush();
+    });
+
+    const story = screen.getByRole('region', { name: 'Story' });
+    expect(within(story).getByText(/Megahit Video founded at 6E/)).toBeInTheDocument();
+    expect(within(story).getByText(/^Ana placed 6E/)).toBeInTheDocument();
+    // never the raw key or "Seat 0"
+    expect(within(story).queryByText(/\bvideo founded\b/)).not.toBeInTheDocument();
+    expect(within(story).queryByText(/^Seat 0 placed/)).not.toBeInTheDocument();
+  });
 });
 
 describe('latestMerger', () => {

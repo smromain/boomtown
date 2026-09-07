@@ -1,6 +1,5 @@
 import { INDUSTRY_INFO } from '@boomtown/engine';
-import { activeView } from '@boomtown/client-core';
-import { useGameState } from '../client/GameClientProvider.js';
+import { useAnyView, useGameState } from '../client/GameClientProvider.js';
 import { describeEvent } from '../panels/eventText.js';
 import { IndustryMark } from './marks.js';
 import { eventIndustry, isHeadline, latestMerger, mergerProse } from './story.js';
@@ -15,7 +14,7 @@ const TIER_LABEL = { primary: 'primary', secondary: 'secondary', tertiary: 'tert
  * no border), with headline events tinted the acting corporation's colour.
  */
 export function StoryCard() {
-  const view = useGameState(activeView);
+  const view = useAnyView();
   const log = useGameState((state) => state.log);
   const merger = latestMerger(log);
 
@@ -38,7 +37,7 @@ export function StoryCard() {
                   className={headline ? styles.headline : undefined}
                   style={headline && industry ? { color: INDUSTRY_INFO[industry].color } : undefined}
                 >
-                  {describeEvent(event)}
+                  {describeEvent(event, view)}
                 </li>
               );
             })}
@@ -84,8 +83,7 @@ export function StoryCard() {
           {merger.bonuses.map((line, index) => (
             <div key={index} className={styles.bonusLine}>
               <span className={styles.bonusWho}>
-                {line.seats.length > 1 ? `Seats ${line.seats.join(', ')}` : `Seat ${line.seats[0]}`} ·{' '}
-                {TIER_LABEL[line.tier]}
+                {line.seats.map((s) => view.seats[s]?.name ?? `Seat ${s}`).join(', ')} · {TIER_LABEL[line.tier]}
               </span>
               <span className="serif tabnum">${line.amount.toLocaleString()}</span>
             </div>

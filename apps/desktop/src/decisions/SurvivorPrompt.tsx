@@ -12,7 +12,7 @@ export function SurvivorPrompt({ decision }: { decision: Decision }) {
   return (
     <div>
       <h2>Choose the surviving corporation</h2>
-      <p className={styles.seat}>Seat {decision.seat} — the mergemaker</p>
+      <p className={styles.seat}>{view?.seats[decision.seat]?.name ?? `Seat ${decision.seat}`} — the mergemaker</p>
       <div className={styles.options}>
         {decision.options.map((industry) => (
           <button
