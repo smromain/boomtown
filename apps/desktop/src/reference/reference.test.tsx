@@ -7,8 +7,7 @@ import { corpReference, fullChart } from './priceReference.js';
 import { StockReference } from './StockReference.js';
 import { CorpReference } from './CorpReference.js';
 import { ReferenceProvider, useReference } from './ReferenceContext.js';
-import { renderPanel, seedCorp } from '../testing/harness.js';
-
+import { NAMES, renderPanel, seedCorp } from '../testing/harness.js';
 
 describe('priceReference helpers', () => {
   it('fullChart marks a founded corporation on the row it sits', () => {
@@ -53,7 +52,7 @@ describe('StockReference modal', () => {
     expect(within(dialog).getByText('$200')).toBeInTheDocument();
     expect(within(dialog).getByText('$1,200')).toBeInTheDocument();
     // the founded corp is chipped on its band row (books size 6 -> "6–10")
-    expect(within(dialog).getByText(/Radio Hut|Woolyworth|books/i)).toBeTruthy();
+    expect(within(dialog).getAllByText(NAMES.books).length).toBeGreaterThan(0);
   });
 
   it('shows a secondary bonus column under the 2015 edition', async () => {
@@ -77,7 +76,7 @@ describe('CorpReference modal', () => {
     );
     void client;
     const dialog = screen.getByRole('dialog');
-    expect(dialog).toHaveTextContent(/Megahit/); // company name
+    expect(dialog).toHaveTextContent(NAMES.video); // company name
     expect(dialog).toHaveTextContent('Tier 3 ladder');
     expect(dialog).toHaveTextContent('5 tiles');
     expect(dialog).toHaveTextContent('If it paid out today');
@@ -114,7 +113,7 @@ describe('ReferenceProvider wiring', () => {
     );
 
     await userEvent.click(screen.getByRole('button', { name: 'open corp' }));
-    expect(screen.getByRole('dialog')).toHaveTextContent(/Megahit/);
+    expect(screen.getByRole('dialog')).toHaveTextContent(NAMES.video);
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
 
     // its footer link swaps to the full chart (still only one dialog)

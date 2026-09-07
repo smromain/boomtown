@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { edition2015, reduce, replay, type Command } from '@boomtown/engine';
+import { POOL, edition2015, reduce, replay, type Command } from '@boomtown/engine';
 import { blankGame, ok, rejects, seedCorp } from '../helpers.js';
+
+/** Base names of the forced line-up (`blankGame` draws the first candidate per industry). */
+const AIR = POOL.air[0].baseName;
+const BOOKS = POOL.books[0].baseName;
 
 /**
  * Standard merger fixture: two corporations either side of tile `5E`.
@@ -23,7 +27,7 @@ describe('survivor selection', () => {
     expect(placed.corporations.books.founded).toBe(false);
     // video: 2E,3E,4E + books 6E,7E + placed 5E = 6
     expect(placed.corporations.video.tiles).toHaveLength(6);
-    expect(placed.corporations.video.eaten.map((e) => e.displayName)).toEqual(['Chapter Eleven']);
+    expect(placed.corporations.video.eaten.map((e) => e.displayName)).toEqual([BOOKS]);
     expect(placed.step).toBe('buy');
   });
 
@@ -93,7 +97,7 @@ describe('multi-corporation mergers', () => {
       .filter((e) => e.type === 'corporation-defunct')
       .map((e) => (e.type === 'corporation-defunct' ? e.industry : ''));
     expect(defunctEvents).toEqual(['books', 'air']); // 3 before 2
-    expect(result.state.corporations.video.eaten.map((e) => e.displayName)).toEqual(['Chapter Eleven', 'Pan-Atlas']);
+    expect(result.state.corporations.video.eaten.map((e) => e.displayName)).toEqual([BOOKS, AIR]);
   });
 
   it('pauses for the mergemaker to order two equally sized defunct chains', () => {
@@ -107,7 +111,7 @@ describe('multi-corporation mergers', () => {
     const ordered = ok(placed, { type: 'choose-defunct-order', seat: 0, next: 'air' });
     // air resolved first, then books
     const done = ordered.merger === null ? ordered : ordered;
-    expect(done.corporations.video.eaten.map((e) => e.displayName)).toEqual(['Pan-Atlas', 'Chapter Eleven']);
+    expect(done.corporations.video.eaten.map((e) => e.displayName)).toEqual([AIR, BOOKS]);
   });
 
   it('fully resolves one defunct chain before starting the next', () => {

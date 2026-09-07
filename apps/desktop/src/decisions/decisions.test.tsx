@@ -3,8 +3,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { DecisionModal } from './DecisionModal.js';
-import { flush, renderPanel, seedCorp } from '../testing/harness.js';
-
+import { NAMES, flush, renderPanel, seedCorp } from '../testing/harness.js';
 
 async function place(client: { dispatch: (c: { type: 'place-tile'; seat: number; tile: string }) => void }, tile: string) {
   await act(async () => {
@@ -27,7 +26,7 @@ describe('DecisionModal', () => {
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('Choose the surviving corporation')).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: /Chapter Eleven/ })).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: /Megahit Video/ })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: new RegExp(NAMES.video) })).toBeInTheDocument();
   });
 
   it('resolving the survivor prompt advances the machine and closes the modal', async () => {
@@ -41,7 +40,7 @@ describe('DecisionModal', () => {
     await place(client, '5E');
 
     await act(async () => {
-      await userEvent.click(screen.getByRole('button', { name: /Megahit Video/ }));
+      await userEvent.click(screen.getByRole('button', { name: new RegExp(NAMES.video) }));
       await flush();
     });
     // nobody holds books -> merger completes -> no dialog, buy step
@@ -63,7 +62,7 @@ describe('DecisionModal', () => {
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('Which corporation folds next?')).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: /Chapter Eleven/ })).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: /Pan-Atlas/ })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: new RegExp(NAMES.air) })).toBeInTheDocument();
   });
 
   it('the disposal prompt keeps confirm disabled until the split accounts for every share', async () => {
@@ -89,7 +88,7 @@ describe('DecisionModal', () => {
   it('names both corporations by company name, not the industry key', async () => {
     const { client } = await renderPanel(<DecisionModal />, {
       craft: (state) => {
-        seedCorp(state, 'video', ['2E', '3E', '4E']); // survives -> Megahit Video
+        seedCorp(state, 'video', ['2E', '3E', '4E']); // survives -> the video corp
         seedCorp(state, 'books', ['6E', '7E']); // defunct -> Chapter Eleven
         state.hands[0] = ['5E'];
         state.seats[0]!.holdings.books = 4;
@@ -99,7 +98,7 @@ describe('DecisionModal', () => {
 
     const dialog = screen.getByRole('dialog');
     expect(dialog).toHaveTextContent('Dispose of Chapter Eleven stock');
-    expect(dialog).toHaveTextContent(/trade is 2-for-1 into Megahit Video/);
+    expect(dialog).toHaveTextContent(new RegExp(`trade is 2-for-1 into ${NAMES.video}`));
     // never the raw industry keys
     expect(dialog).not.toHaveTextContent(/\bbooks\b/);
     expect(dialog).not.toHaveTextContent(/\bvideo\b/);
@@ -131,7 +130,7 @@ describe('DecisionModal', () => {
 
     const dialog = screen.getByRole('dialog');
     expect(dialog).toHaveTextContent('Dispose of Chapter Eleven stock');
-    expect(dialog).toHaveTextContent(/into Megahit Video/);
+    expect(dialog).toHaveTextContent(new RegExp(`into ${NAMES.video}`));
     expect(dialog).not.toHaveTextContent(/\bbooks\b/);
   });
 

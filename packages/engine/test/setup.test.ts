@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   INDUSTRIES,
+  POOL,
   RULES,
   TOTAL_SHARES,
   classic,
@@ -53,9 +54,9 @@ describe('createGame', () => {
   });
 
   it('honours a forced company line-up', () => {
-    const game = createGame({ seats, seed: 1, companyDraw: { video: 0, air: 0 } });
-    expect(game.companies.video.baseName).toBe('Megahit Video');
-    expect(game.companies.air.baseName).toBe('Pan-Atlas');
+    const game = createGame({ seats, seed: 1, companyDraw: { video: 3, air: 0 } });
+    expect(game.companies.video.baseName).toBe(POOL.video[3].baseName);
+    expect(game.companies.air.baseName).toBe(POOL.air[0].baseName);
   });
 });
 

@@ -18,7 +18,7 @@ export function blankGame(overrides?: { ruleset?: Ruleset; seats?: number }): Ga
     seed: 1,
     ...(overrides?.ruleset ? { ruleset: overrides.ruleset } : {}),
     turnOrder: Array.from({ length: seatCount }, (_, i) => i),
-    // fixed line-up: the first candidate for every industry (Megahit Video, Chapter Eleven, Pan-Atlas, ...)
+    // fixed line-up: the first candidate for every industry (see POOL[industry][0])
     companyDraw: { books: 0, electronics: 0, air: 0, energy: 0, tech: 0, video: 0, toys: 0 },
   });
   game.hands = game.hands.map(() => []);

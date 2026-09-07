@@ -1,6 +1,15 @@
 import { render, type RenderResult } from '@testing-library/react';
 import type { ReactElement } from 'react';
-import { createGame, type Cell, type GameState, type Industry, type TileId, type Visibility } from '@boomtown/engine';
+import {
+  POOL,
+  createGame,
+  displayName,
+  type Cell,
+  type GameState,
+  type Industry,
+  type TileId,
+  type Visibility,
+} from '@boomtown/engine';
 import { GameSession, createGameClient, localTransport, type GameClient } from '@boomtown/client-core';
 import { GameClientProvider } from '../client/GameClientProvider.js';
 import { HotSeatProvider } from '../game/HotSeatContext.js';
@@ -43,6 +52,24 @@ export async function renderPanel(
     </GameClientProvider>,
   );
   return Object.assign(result, { client });
+}
+
+/**
+ * The base name of the first candidate for each industry — the line-up
+ * `renderPanel` forces (`companyDraw: … 0`). Tests reference these instead of
+ * hardcoding a company name, so re-theming the pool in `packages/engine` can't
+ * break an unrelated UI test.
+ */
+export const NAMES: Record<Industry, string> = Object.fromEntries(
+  (Object.keys(POOL) as Industry[]).map((industry) => [industry, POOL[industry][0].baseName]),
+) as Record<Industry, string>;
+
+/** The display name a survivor takes after eating the given industries (first candidates). */
+export function mergedName(survivor: Industry, ...eaten: Industry[]): string {
+  return displayName(
+    NAMES[survivor],
+    eaten.map((industry) => ({ displayName: NAMES[industry], flavours: [] })),
+  );
 }
 
 /** Put tiles on the board as an existing corporation. */

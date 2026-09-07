@@ -14,7 +14,7 @@ import { TurnHandoff } from './TurnHandoff.js';
 import { DecisionModal } from '../decisions/DecisionModal.js';
 import { defaultConfig } from './../setup/gameConfig.js';
 import { latestMerger } from './story.js';
-import { flush, renderPanel, seedCorp } from '../testing/harness.js';
+import { NAMES, flush, mergedName, renderPanel, seedCorp } from '../testing/harness.js';
 
 const humans = (count: number) => ({
   ...defaultConfig(),
@@ -27,16 +27,17 @@ describe('CorporationBand', () => {
       craft: (state) => {
         seedCorp(state, 'video', ['2E', '3E', '4E', '5E', '6E', '7E', '8E', '9E', '2F', '3F', '4F', '5F']);
         state.corporations.video.eaten = [
-          { industry: 'air', displayName: 'Pan-Atlas', flavours: ['the glamour of air travel'] },
+          { industry: 'air', displayName: NAMES.air, flavours: ['the glamour of air travel'] },
         ];
       },
     });
 
     const band = screen.getByRole('region', { name: 'Corporations' });
-    // video ate air -> derived display name, not "Megahit Video"; the card is a
-    // button that opens the stock reference
+    // video ate air -> derived display name, not the plain base name; the card is
+    // a button that opens the stock reference
     const cards = within(band).getAllByRole('button');
-    expect(cards[0]).toHaveAttribute('aria-label', expect.stringMatching(/^Megahit.* — stock reference$/));
+    expect(cards[0]).toHaveAttribute('aria-label', `${mergedName('video', 'air')} — stock reference`);
+    expect(cards[0]!.getAttribute('aria-label')).not.toContain(NAMES.video);
     // an unfounded company is not a card in the band
     expect(within(band).queryByText(/Chapter Eleven/)).not.toBeInTheDocument();
   });
@@ -52,15 +53,15 @@ describe('CorporationBand', () => {
         seedCorp(state, 'video', ['2E', '3E', '4E']);
         seedCorp(state, 'books', ['6E', '7E']);
         state.corporations.video.eaten = [
-          { industry: 'air', displayName: 'Pan-Atlas', flavours: [] },
-          { industry: 'toys', displayName: 'Toys Я Were', flavours: [] },
+          { industry: 'air', displayName: NAMES.air, flavours: [] },
+          { industry: 'toys', displayName: NAMES.toys, flavours: [] },
         ];
       },
     });
     const cards = within(screen.getByRole('region', { name: 'Corporations' })).getAllByRole('button');
     const grow = (label: string) =>
-      Number(getComputedStyle(cards.find((c) => c.getAttribute('aria-label')!.match(label))!).flexGrow);
-    expect(grow('^Megahit')).toBe(3); // video + air + toys
+      Number(getComputedStyle(cards.find((c) => c.getAttribute('aria-label')!.includes(label))!).flexGrow);
+    expect(grow(mergedName('video', 'air', 'toys'))).toBe(3); // video + air + toys
     expect(grow('Chapter Eleven')).toBe(1); // books alone
   });
 });
@@ -74,7 +75,7 @@ describe('TrayStrip', () => {
     });
     const tray = screen.getByRole('region', { name: 'In the tray' });
     expect(within(tray).getByText(/Chapter Eleven/)).toBeInTheDocument(); // books, unfounded
-    expect(within(tray).queryByText(/Megahit Video/)).not.toBeInTheDocument(); // founded -> not here
+    expect(within(tray).queryByText(NAMES.video)).not.toBeInTheDocument(); // founded -> not here
   });
 
   it('renders nothing when every industry is founded', async () => {
@@ -142,10 +143,12 @@ describe('StoryCard', () => {
     });
 
     const story = screen.getByRole('region', { name: 'Story' });
-    expect(within(story).getByText(/Chapter Eleven \+ Megahit Video merge at 5E/)).toBeInTheDocument();
-    // survivor renamed — "Megahit Video" with its space is gone, replaced by the derived stem+fragment
-    expect(within(story).getAllByText(/Megahitvi/).length).toBeGreaterThan(0);
-    expect(within(story).queryByText('Megahit Video', { exact: true })).not.toBeInTheDocument();
+    expect(
+      within(story).getByText(new RegExp(`Chapter Eleven \\+ ${NAMES.video} merge at 5E`)),
+    ).toBeInTheDocument();
+    // survivor renamed — the base name is gone, replaced by the derived stem+fragment
+    expect(within(story).getAllByText(new RegExp(mergedName('video', 'books'))).length).toBeGreaterThan(0);
+    expect(within(story).queryByText(NAMES.video, { exact: true })).not.toBeInTheDocument();
   });
 
   it('spells out the merger sentence while it is unresolved', async () => {
@@ -163,9 +166,13 @@ describe('StoryCard', () => {
     });
 
     const story = screen.getByRole('region', { name: 'Story' });
-    expect(within(story).getByText(/folds Chapter Eleven into Megahit Video/)).toBeInTheDocument();
     expect(
-      within(story).getByText(/Megahit Video is larger at 3 tiles, so Chapter Eleven is dissolved at 2/),
+      within(story).getByText(new RegExp(`folds Chapter Eleven into ${NAMES.video}`)),
+    ).toBeInTheDocument();
+    expect(
+      within(story).getByText(
+        new RegExp(`${NAMES.video} is larger at 3 tiles, so Chapter Eleven is dissolved at 2`),
+      ),
     ).toBeInTheDocument();
   });
 
@@ -190,7 +197,7 @@ describe('StoryCard', () => {
     });
 
     const story = screen.getByRole('region', { name: 'Story' });
-    expect(within(story).getByText(/Megahit Video founded at 6E/)).toBeInTheDocument();
+    expect(within(story).getByText(new RegExp(`${NAMES.video} founded at 6E`))).toBeInTheDocument();
     expect(within(story).getByText(/^Ana placed 6E/)).toBeInTheDocument();
     // never the raw key or "Seat 0"
     expect(within(story).queryByText(/\bvideo founded\b/)).not.toBeInTheDocument();
@@ -285,7 +292,7 @@ describe('TurnHandoff (hot-seat turn boundary)', () => {
     // seat 0's own decision — handoff hidden, prompt shown
     expect(screen.queryByRole('dialog', { name: 'Turn handoff' })).not.toBeInTheDocument();
     await act(async () => {
-      await userEvent.click(screen.getByRole('button', { name: /Megahit Video/ }));
+      await userEvent.click(screen.getByRole('button', { name: new RegExp(NAMES.video) }));
       await flush();
       client.dispatch({ type: 'buy-shares', seat: 0, picks: {} });
       await flush();
@@ -353,7 +360,7 @@ describe('BuyModal', () => {
     });
     const dialog = screen.getByRole('dialog', { name: 'Buy stock' });
     // the row is labelled by the company name, not the industry key
-    expect(within(dialog).getByRole('button', { name: 'one more Megahit Video share' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: `one more ${NAMES.video} share` })).toBeInTheDocument();
     expect(within(dialog).queryByRole('button', { name: /video/ })).not.toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: /Buy nothing/ })).toBeInTheDocument();
   });
