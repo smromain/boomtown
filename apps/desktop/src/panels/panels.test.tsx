@@ -52,4 +52,16 @@ describe('BuyControls', () => {
     await userEvent.click(more);
     expect(more).toBeDisabled();
   });
+
+  it('shows how many shares are in the bank versus held', async () => {
+    await renderPanel(<BuyControls />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['5H', '5I', '4I']);
+        state.step = 'buy';
+        state.hands[0] = [];
+        state.bankShares.video = 18; // 25 - 18 = 7 held
+      },
+    });
+    expect(screen.getByText('18 in bank · 7 held')).toBeInTheDocument();
+  });
 });

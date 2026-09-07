@@ -79,6 +79,15 @@
   font: inherit;
 }
 
+/* the "N in bank · M held" float count under a corporation's name */
+.buyFloat {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: 0.1rem;
+}
+
 .buyGrid output {
   min-width: 1.5rem;
   text-align: center;

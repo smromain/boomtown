@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { RULES } from '@boomtown/engine';
 import { useGameClient, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import { buyCost, buyTotal, buyableCorporations, canIncrement, type BuyPicks } from './buying.js';
 import styles from '../decisions/decisions.module.css';
@@ -41,6 +42,8 @@ export function BuyControls() {
                 key={industry}
                 name={view.corporations[industry].displayName}
                 price={view.corporations[industry].sharePrice ?? 0}
+                inBank={view.corporations[industry].bankShares}
+                held={RULES.sharesPerCorporation - view.corporations[industry].bankShares}
                 qty={qty}
                 canAdd={canIncrement(view, picks, industry)}
                 onLess={() => bump(industry, -1)}
@@ -66,6 +69,8 @@ export function BuyControls() {
 function BuyRow({
   name,
   price,
+  inBank,
+  held,
   qty,
   canAdd,
   onLess,
@@ -73,6 +78,8 @@ function BuyRow({
 }: {
   name: string;
   price: number;
+  inBank: number;
+  held: number;
   qty: number;
   canAdd: boolean;
   onLess: () => void;
@@ -80,7 +87,12 @@ function BuyRow({
 }) {
   return (
     <>
-      <span>{name}</span>
+      <span>
+        {name}
+        <span className={styles.buyFloat}>
+          {inBank} in bank · {held} held
+        </span>
+      </span>
       <span className="tabnum">${price.toLocaleString()}</span>
       <button type="button" aria-label={`one fewer ${name} share`} disabled={qty === 0} onClick={onLess}>
         −
