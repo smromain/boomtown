@@ -9,10 +9,15 @@
     "apps/*"
   ],
   "scripts": {
+    "dev": "npm run dev --workspace @boomtown/desktop",
+    "app:build": "npm run build --workspace @boomtown/desktop",
+    "app:preview": "npm run start --workspace @boomtown/desktop",
     "build": "npm run typecheck",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p apps/desktop/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:engine": "vitest run --project engine",
+    "test:desktop": "vitest run --project desktop",
     "lint": "eslint ."
   },
   "devDependencies": {
