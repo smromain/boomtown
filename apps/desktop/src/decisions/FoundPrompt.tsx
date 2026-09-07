@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { INDUSTRY_INFO, type TileId } from '@boomtown/engine';
 import { useGameClient, useLocalActiveView } from '../client/GameClientProvider.js';
 import { foundingOptions } from '../reference/priceReference.js';
@@ -11,14 +10,13 @@ import styles from './decisions.module.css';
  * is the seat that must issue the command (`useAnyView`'s `you` is any seat's
  * and would send `found-corporation` for the wrong player — `not-your-turn`).
  *
- * A "Show tier & price" toggle expands the opening share price and bonus for
- * each option so the founder can judge which is worth the most, without
- * leaving the modal for the reference chart.
+ * Each option shows its tier, opening share price and opening bonus so the
+ * founder can judge which corporation is worth the most without leaving the
+ * modal for the reference chart. Options are ordered richest tier first.
  */
 export function FoundPrompt({ group }: { group: readonly TileId[] }) {
   const client = useGameClient();
   const view = useLocalActiveView();
-  const [showRef, setShowRef] = useState(false);
   if (!view) return null;
 
   const options = foundingOptions(view); // unfounded only, richest tier first
@@ -30,15 +28,6 @@ export function FoundPrompt({ group }: { group: readonly TileId[] }) {
       <p className={styles.seat}>
         {view.seats[view.you]?.name ?? `Seat ${view.you}`} · new group of {group.length} tiles
       </p>
-
-      <button
-        type="button"
-        className={styles.refToggle}
-        aria-expanded={showRef}
-        onClick={() => setShowRef((v) => !v)}
-      >
-        {showRef ? 'Hide' : 'Show'} tier &amp; opening value
-      </button>
 
       <div className={styles.options}>
         {options.map((option) => (
@@ -57,12 +46,10 @@ export function FoundPrompt({ group }: { group: readonly TileId[] }) {
             }
           >
             <span className={styles.optionName}>{option.name}</span>
-            {showRef && (
-              <span className={styles.optionRef}>
-                tier {option.tier} · ${option.openingPrice.toLocaleString()}/share ·{' '}
-                bonus from ${option.openingPrimary.toLocaleString()}
-              </span>
-            )}
+            <span className={styles.optionRef}>
+              tier {option.tier} · ${option.openingPrice.toLocaleString()}/share · bonus from $
+              {option.openingPrimary.toLocaleString()}
+            </span>
           </button>
         ))}
       </div>

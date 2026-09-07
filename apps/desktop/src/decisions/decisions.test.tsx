@@ -180,11 +180,11 @@ describe('DecisionModal', () => {
 
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('Found a corporation')).toBeInTheDocument();
-    // one button per unfounded company (7), plus the reference toggle and minimize
+    // one button per unfounded company (7), plus the minimize button
     expect(within(dialog).getAllByRole('button').length).toBeGreaterThanOrEqual(7);
   });
 
-  it('the founding reference toggle reveals each option’s tier and opening value', async () => {
+  it('each founding option shows its tier and opening value by default', async () => {
     const { client } = await renderPanel(<DecisionModal />, {
       craft: (state) => {
         state.cells['6F'] = { kind: 'unincorporated' };
@@ -194,11 +194,9 @@ describe('DecisionModal', () => {
     await place(client, '6E');
     const dialog = screen.getByRole('dialog');
 
-    expect(dialog).not.toHaveTextContent(/tier \d · \$/);
-    await userEvent.click(within(dialog).getByRole('button', { name: /Show tier/ }));
-    expect(dialog).toHaveTextContent(/tier 3 · \$400\/share/); // a tier-3 corp opens at $400
-    await userEvent.click(within(dialog).getByRole('button', { name: /Hide tier/ }));
-    expect(dialog).not.toHaveTextContent(/tier \d · \$/);
+    // a tier-3 corp opens at $400/share, bonus from $4,000 — shown without a toggle
+    expect(dialog).toHaveTextContent(/tier 3 · \$400\/share · bonus from \$4,000/);
+    expect(dialog).toHaveTextContent(/tier 1 · \$200\/share/);
   });
 
   it('the founding modal minimizes to a pill and restores', async () => {
