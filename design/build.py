@@ -1208,6 +1208,195 @@ def build_pool():
          "".join(p_group(k) for k in ORDER), R_MUTED, R_PANEL, R_RULE, R_ACC))
     write("Pool.dc.html", R_HELMET, body)
 
+
+# =============================================================== REFERENCE CHART
+def ladder(tier, edition="classic"):
+    """Every band a corporation of this tier can occupy, cheapest first."""
+    bands = BANDS_CLASSIC if edition == "classic" else BANDS_2015
+    out = []
+    for b, label in enumerate(bands):
+        r = b + (tier - 1)
+        out.append((label, PRICE_ROWS[r], PRIMARY[r], SECOND2015[r], TERTIARY[r], r))
+    return out
+
+def here_at(row, tier):
+    """Which corporations currently sit on this row of this tier's column."""
+    return [m for m in market() if m["tier"] == tier and m["size"] > 0
+            and row_index(m["size"], tier) == row]
+
+def r_chip(m, size=11):
+    return ('<span style="display:inline-flex;align-items:center;gap:5px;background:%s;color:#FFF;'
+            'border-radius:2px;padding:2px 7px;font-size:%dpx;font-weight:500;white-space:nowrap">'
+            '%s<span class="num" style="opacity:.75">%d</span></span>'
+            % (m["color"], size, m["display"], m["size"]))
+
+def ref_chart():
+    tiers = [(1, [m for m in market() if m["tier"] == 1]),
+             (2, [m for m in market() if m["tier"] == 2]),
+             (3, [m for m in market() if m["tier"] == 3])]
+    cols = "196px 196px 196px 104px 116px 116px"
+    head = ('<div style="display:grid;grid-template-columns:%s;border-bottom:2px solid %s">%s'
+            '<div style="padding:9px 12px;text-align:right;font-size:10px;letter-spacing:.12em;'
+            'text-transform:uppercase;color:%s;align-self:end">Share</div>'
+            '<div style="grid-column:span 2;padding:9px 12px;text-align:center;font-size:10px;'
+            'letter-spacing:.12em;text-transform:uppercase;color:%s;align-self:end;'
+            'border-left:1px solid %s">Shareholder bonus</div></div>'
+            % (cols, B_INK,
+               "".join('<div style="padding:9px 12px;border-right:1px solid %s;display:flex;'
+                       'flex-direction:column;gap:5px">'
+                       '<span style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:%s">'
+                       'Tier %d</span><div style="display:flex;flex-wrap:wrap;gap:4px">%s</div></div>'
+                       % (B_RULE, B_MUTED, t,
+                          "".join('<span style="font-size:11.5px;color:%s;%s">%s</span>'
+                                  % (m["color"] if m["size"] else B_MUTED,
+                                     "" if m["size"] else "opacity:.6",
+                                     m["display"] + ("," if i < len(ms) - 1 else ""))
+                                  for i, m in enumerate(ms)))
+                       for t, ms in tiers),
+               B_MUTED, B_MUTED, B_RULE))
+    rows = []
+    for r in range(11):
+        cells = []
+        for t in (1, 2, 3):
+            band = None
+            for label, price, maj, sec, mino, rr in ladder(t):
+                if rr == r:
+                    band = label
+            sitting = here_at(r, t) if band else []
+            cells.append(
+              '<div style="padding:0 12px;border-right:1px solid %s;display:flex;align-items:center;'
+              'gap:8px;min-height:40px;%s">'
+              '<span class="num" style="font-size:13px;color:%s;width:44px">%s</span>%s</div>'
+              % (B_RULE, "background:rgba(179,70,47,.045)" if sitting else "",
+                 B_INK if band else B_MUTED, band or "—",
+                 "".join(r_chip(m) for m in sitting)))
+        rows.append(
+          '<div style="display:grid;grid-template-columns:%s;border-bottom:1px solid %s">%s'
+          '<div style="padding:0 12px;display:flex;align-items:center;justify-content:flex-end;'
+          'font-size:14px;font-weight:700" class="num">%s</div>'
+          '<div style="padding:0 12px;display:flex;align-items:center;justify-content:flex-end;'
+          'font-size:13px;border-left:1px solid %s" class="num">%s</div>'
+          '<div style="padding:0 12px;display:flex;align-items:center;justify-content:flex-end;'
+          'font-size:13px;color:%s" class="num">%s</div></div>'
+          % (cols, "rgba(231,222,210,.7)", "".join(cells),
+             money(PRICE_ROWS[r]), B_RULE, money(PRIMARY[r]), B_MUTED, money(TERTIARY[r])))
+    return ('<div style="border:1px solid %s;border-radius:3px;overflow:hidden">%s%s</div>'
+            % (B_RULE, head, "".join(rows)))
+
+def ref_modal():
+    return (
+      '<div style="width:1000px;background:%s;border-radius:5px;box-shadow:0 24px 60px rgba(28,25,23,.35);'
+      'overflow:hidden">'
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;'
+      'border-bottom:1px solid %s">'
+      '<div><div class="ser" style="font-size:24px">Stock reference</div>'
+      '<div style="font-size:11.5px;color:%s;margin-top:3px">Classic ruleset · price and bonuses by '
+      'corporation size · highlighted rows are where the market stands now</div></div>'
+      '<div style="display:flex;align-items:center;gap:14px">'
+      '<span style="font-size:11px;color:%s">safe at 11 tiles</span>'
+      '<div style="width:30px;height:30px;border:1px solid %s;border-radius:3px;display:flex;'
+      'align-items:center;justify-content:center;color:%s">'
+      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+      'stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></div></div></div>'
+      '<div style="padding:20px 24px 22px">%s</div>'
+      '<div style="display:flex;gap:26px;padding:14px 24px 18px;border-top:1px solid %s;background:%s">'
+      '<div style="font-size:11px;line-height:1.5;color:%s;flex-grow:1">Majority is always ten times the '
+      'share price and minority five times. A merged corporation prices on the <strong>survivor\'s</strong> '
+      'tier — Megahitvilas is tier 3 whatever it swallows.</div>'
+      '<div style="font-size:11px;line-height:1.5;color:%s;width:300px">The whole table is generated from the '
+      'ruleset. The 2015 preset renders different bands and a third bonus column, from the same component.</div>'
+      '</div></div>'
+      % (B_PANEL, B_RULE, B_MUTED, B_MUTED, B_RULE, B_MUTED, ref_chart(), B_RULE, B_BG, B_MUTED, B_MUTED))
+
+def ref_company():
+    m = [x for x in market() if x["key"] == "video"][0]
+    cur = row_index(m["size"], m["tier"])
+    ns = next_step(m["size"], m["tier"])
+    holders = sorted(((p[0], p[2].get("video", 0)) for p in PLAYERS), key=lambda x: -x[1])
+    bonus = [money(PRIMARY[cur]), money(TERTIARY[cur])]
+    lad = "".join(
+      '<div style="display:grid;grid-template-columns:1fr 84px 96px 96px;align-items:center;height:31px;'
+      'padding:0 14px;border-bottom:1px solid rgba(231,222,210,.7);%s">'
+      '<div class="num" style="font-size:12.5px;color:%s">%s tiles</div>'
+      '<div class="num" style="text-align:right;font-size:13px;font-weight:%d">%s</div>'
+      '<div class="num" style="text-align:right;font-size:12px;color:%s">%s</div>'
+      '<div class="num" style="text-align:right;font-size:12px;color:%s">%s</div></div>'
+      % ("background:rgba(179,70,47,.07)" if rr == cur else "", B_INK if rr == cur else B_MUTED, label,
+         700 if rr == cur else 400, money(price), B_MUTED, money(maj), B_MUTED, money(mino))
+      for label, price, maj, sec, mino, rr in ladder(m["tier"]))
+    who = "".join(
+      '<div style="display:flex;align-items:center;justify-content:space-between;height:26px;font-size:12px">'
+      '<span style="color:%s">%s%s</span><span class="num" style="color:%s">%s</span></div>'
+      % (B_INK if n == "You" else B_MUTED, n,
+         " · primary" if i == 0 else (" · secondary" if i == 1 else ""),
+         B_INK if i < 2 else B_MUTED,
+         ("%d sh — %s" % (v, money(PRIMARY[cur] if i == 0 else TERTIARY[cur]))) if i < 2 and v else "%d sh" % v)
+      for i, (n, v) in enumerate(holders))
+    return (
+      '<div style="width:620px;background:%s;border-radius:5px;box-shadow:0 24px 60px rgba(28,25,23,.35);'
+      'overflow:hidden">'
+      '<div style="padding:20px 22px 16px;border-bottom:1px solid %s;display:flex;align-items:flex-start;gap:14px">'
+      '%s<div style="flex-grow:1"><div class="ser" style="font-size:23px;color:%s">%s</div>'
+      '<div style="font-size:11px;color:%s;margin-top:3px">%s</div></div>'
+      '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;letter-spacing:.1em;'
+      'text-transform:uppercase;color:%s">%s safe</span></div>'
+      '<div style="display:flex;border-bottom:1px solid %s">%s</div>'
+      '<div style="padding:14px 22px 6px;display:flex;align-items:baseline;justify-content:space-between">'
+      '<span style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:%s">Tier 3 ladder</span>'
+      '<span style="font-size:11px;color:%s">next step at <span class="num" style="color:%s">%d tiles</span> '
+      '→ <span class="num" style="color:%s">%s</span></span></div>'
+      '<div style="margin:8px 8px 0">%s</div>'
+      '<div style="padding:14px 22px 18px;border-top:1px solid %s;background:%s">'
+      '<div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:%s;margin-bottom:7px">'
+      'If it paid out today</div>%s</div></div>'
+      % (B_PANEL, B_RULE, b_mark("video", m["color"], 30), m["color"], m["display"], B_MUTED, m["flavor"],
+         m["color"], icon("safe", m["color"], 12), B_RULE,
+         "".join('<div style="flex-grow:1;padding:13px 22px;%s">'
+                 '<div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:%s">%s</div>'
+                 '<div class="ser num" style="font-size:22px;margin-top:3px;color:%s">%s</div></div>'
+                 % ("border-right:1px solid %s" % B_RULE if i < 2 else "", B_MUTED, a, c, b)
+                 for i, (a, b, c) in enumerate([("Size", "%d tiles" % m["size"], B_INK),
+                                                ("Share price", money(m["price"]), B_INK),
+                                                ("You hold", "%d — %s" % (m["mine"], money(m["mine"] * m["price"])), m["color"])])),
+         B_MUTED, B_MUTED, B_INK, ns[0] if ns else 0, m["color"], money(ns[1]) if ns else "—",
+         lad, B_RULE, B_BG, B_MUTED, who))
+
+def build_reference():
+    def screen(caption, note, modal):
+        return ('<div style="display:flex;flex-direction:column;gap:12px">'
+                '<div style="display:flex;align-items:baseline;gap:12px">'
+                '<span style="font-size:13px;font-weight:600">%s</span>'
+                '<span style="font-size:11.5px;color:%s">%s</span></div>'
+                '<div style="width:1440px;height:860px;position:relative;overflow:hidden;background:%s;'
+                'border:1px solid %s;border-radius:3px">'
+                '<div style="position:absolute;inset:0;padding:22px 36px;display:flex;flex-direction:column;gap:22px">'
+                '%s<div style="display:flex;gap:28px"><div style="flex-shrink:0">%s</div></div></div>'
+                '<div style="position:absolute;inset:0;background:rgba(28,25,23,.52)"></div>'
+                '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">'
+                '%s</div></div></div>'
+                % (caption, B_MUTED, note, B_BG, B_RULE, b_band(),
+                   board(cell=48, gap=5, hdr=22, empty_bg="#F1EAE0", empty_ink="#B6A897", grid_ink=B_RULE,
+                         uninc_bg="#B0A496", accent=B_ACCENT, radius=9, label_size=10, header_ink=B_MUTED,
+                         ring="#C6B8A6", font_w=500),
+                   modal))
+    body = (
+      '<div style="width:1440px;min-height:2100px;background:%s;color:%s;font-family:\'DM Sans\',Helvetica,Arial,sans-serif;'
+      'font-size:13px;padding:40px 0 48px;display:flex;flex-direction:column;gap:30px;align-items:center">'
+      '<div style="width:1440px;padding:0 36px;display:flex;flex-direction:column;gap:9px">'
+      '<span style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">Boomtown · web version</span>'
+      '<span class="ser" style="font-size:32px">Stock reference</span>'
+      '<span style="font-size:13px;line-height:1.5;color:%s;max-width:820px">The paper game ships a printed '
+      'reference card. The digital one can do the thing cardboard cannot: show where every corporation actually '
+      'stands right now, under the current names. Opens from the <strong>Reference</strong> button in the header, '
+      'from any price in the market, or with <strong>?</strong>; a single corporation card opens by clicking its '
+      'card in the band.</span></div>'
+      '%s%s</div>'
+      % (B_BG, B_INK, B_MUTED, B_MUTED,
+         screen("The full chart", "every tier, every band, with the market's live positions marked", ref_modal()),
+         screen("One corporation", "opened from its card in the band — its own ladder, and what it would pay today",
+                ref_company())))
+    write("Reference.dc.html", B_HELMET, body)
+
 # ---------------------------------------------------------------- canvas
 def build_canvas():
     doc = {
@@ -1216,9 +1405,10 @@ def build_canvas():
                 {"id": "page-3", "name": "Earlier directions"}],
       "artboards": [
         {"file": "Main.dc.html",  "x": 0, "y": 0, "w": 1440, "h": 900,  "title": "Table", "page": "page-1"},
-        {"file": "Names.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 2560, "title": "Merged names", "print": "flow", "page": "page-1"},
-        {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1180, "title": "The pool", "print": "flow", "page": "page-1"},
-        {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4400, "title": "Rules model",
+        {"file": "Names.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 2680, "title": "Merged names", "print": "flow", "page": "page-1"},
+        {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "The pool", "print": "flow", "page": "page-1"},
+        {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
+        {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4520, "title": "Rules model",
          "print": "flow", "page": "page-2"},
         {"file": "BoardRoom.dc.html",    "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "A - Board Room", "page": "page-3"},
         {"file": "TradingFloor.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "C - Trading Floor", "page": "page-3"},
@@ -1240,4 +1430,4 @@ def build_canvas():
     print("wrote canvas.json")
 
 if __name__ == "__main__":
-    build_a(); build_b(); build_c(); build_rules(); build_names(); build_pool(); build_canvas()
+    build_a(); build_b(); build_c(); build_rules(); build_names(); build_pool(); build_reference(); build_canvas()

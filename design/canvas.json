@@ -28,7 +28,7 @@
       "x": 1560,
       "y": 0,
       "w": 1440,
-      "h": 2560,
+      "h": 2680,
       "title": "Merged names",
       "print": "flow",
       "page": "page-1"
@@ -38,8 +38,18 @@
       "x": 3120,
       "y": 0,
       "w": 1440,
-      "h": 1180,
+      "h": 1300,
       "title": "The pool",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
+      "file": "Reference.dc.html",
+      "x": 4680,
+      "y": 0,
+      "w": 1440,
+      "h": 2210,
+      "title": "Stock reference",
       "print": "flow",
       "page": "page-1"
     },
@@ -48,7 +58,7 @@
       "x": 0,
       "y": 0,
       "w": 1440,
-      "h": 4400,
+      "h": 4520,
       "title": "Rules model",
       "print": "flow",
       "page": "page-2"

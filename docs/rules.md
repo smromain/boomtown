@@ -90,6 +90,14 @@ as data.** Verified against the rulebook's own worked example: a five-tile tier-
 | — | 41+ | 31–40 | — | 38+ | 28–37 | $1,100 | $11,000 | $7,700 | $5,500 |
 | — | — | 41+ | — | — | 38+ | $1,200 | $12,000 | $8,200 | $6,000 |
 
+### Surfacing the table in the UI
+
+The price/bonus table is player-facing, not just engine internals — it is the chart people reach
+for every turn. It renders as a **stock reference modal** built from the ruleset config rather than
+drawn, so it stays correct across editions. Two views: the full matrix (all tiers, with each
+corporation's current row marked), and a single-corporation ladder opened from its card in the
+band. A merged corporation prices on the **survivor's** tier.
+
 ## Edition configuration
 
 | Rule | 2015 Avalon Hill | Classic | Config key |
