@@ -81,9 +81,19 @@ build `--arm64` only for local testing.
 ### Security posture (KTD9)
 
 `electron/afterPack.mjs` flips the Electron fuses on the packed binary before
-signing: `RunAsNode` off, cookie encryption on, `NODE_OPTIONS`/`--inspect` off,
-asar integrity + `OnlyLoadAppFromAsar` on. `afterPack.test.ts` asserts the
-posture; verify a built app with `npx @electron/fuses read --app <path>.app`.
+signing, in two tiers:
+
+- **Every build** — `RunAsNode` off, cookie encryption on,
+  `NODE_OPTIONS`/`--inspect` off.
+- **Signed builds only** — `EnableEmbeddedAsarIntegrityValidation` +
+  `OnlyLoadAppFromAsar`. These verify the bundle against a hash in a
+  *code-signed* Info.plist; on an unsigned build there is no trustworthy
+  signature to anchor to and the app hangs on launch, so the hook omits them
+  (it detects signing from `CSC_LINK` / `WIN_CSC_LINK` / `APPLE_ID` /
+  `CSC_IDENTITY_AUTO_DISCOVERY`).
+
+`afterPack.test.ts` asserts both tiers and the per-platform binary path. Verify a
+built app with `npx @electron/fuses read --app <path>.app`.
 
 ### Signing
 

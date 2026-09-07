@@ -75,22 +75,46 @@ jobs:
         run: npm version --no-git-tag-version "${{ needs.prepare.outputs.version }}"
         working-directory: apps/desktop
 
+      # Export signing vars only when a cert secret is actually present. Passing
+      # an empty CSC_LINK makes electron-builder try to resolve a bogus cert
+      # source and fail ("not a file"); with no cert we turn signing off outright
+      # so it doesn't scan an empty keychain either. The afterPack fuse hook
+      # keys off the same signal (asar-integrity fuses need a real signature).
+      - name: Configure code signing
+        shell: bash
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID_SECRET: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PW: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_CSC_LINK_SECRET: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_PW: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          if [ -n "$MAC_CSC_LINK" ]; then
+            {
+              echo "CSC_LINK=$MAC_CSC_LINK"
+              echo "CSC_KEY_PASSWORD=$MAC_CSC_KEY_PASSWORD"
+              echo "APPLE_ID=$APPLE_ID_SECRET"
+              echo "APPLE_APP_SPECIFIC_PASSWORD=$APPLE_APP_PW"
+              echo "APPLE_TEAM_ID=$APPLE_TEAM"
+            } >> "$GITHUB_ENV"
+          else
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+          fi
+          if [ -n "$WIN_CSC_LINK_SECRET" ]; then
+            {
+              echo "WIN_CSC_LINK=$WIN_CSC_LINK_SECRET"
+              echo "WIN_CSC_KEY_PASSWORD=$WIN_CSC_PW"
+            } >> "$GITHUB_ENV"
+          fi
+
       - name: Package the desktop app
         working-directory: apps/desktop
         run: npm run package
-        env:
-          # Signing / notarization secrets — set per-repo. electron-builder
-          # produces unsigned artifacts when these are absent.
-          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-          # The online host is baked from apps/desktop/.env.production. To point a
-          # build at a different room, edit that file (an empty env var here would
-          # shadow it with a blank value — see src/online/hostUrl.ts).
+        # The online host is baked from apps/desktop/.env.production. To point a
+        # build at a different room, edit that file (an empty env var here would
+        # shadow it with a blank value — see src/online/hostUrl.ts).
 
       - uses: actions/upload-artifact@v4
         with:
