@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Boomtown Electron desktop app — hardened shell, basic 3D board, local play.",
-  "main": "out/main/index.js",
+  "main": "out/main/main.mjs",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
