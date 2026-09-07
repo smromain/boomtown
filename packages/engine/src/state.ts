@@ -104,6 +104,8 @@ export interface GameState {
   hands: TileId[][];
   /** Secret: the remaining draw pile, order is draw order. */
   bag: TileId[];
+  /** Public: tiles revealed face-up and taken out of play (the dead-tile sweep). */
+  removed: TileId[];
   rng: Rng;
   merger: MergerSnapshot | null;
   result: GameResult | null;
@@ -197,6 +199,8 @@ export interface PlayerView {
   readonly corporations: Record<Industry, CorpView>;
   readonly companies: Record<Industry, Candidate>;
   readonly drawPileCount: number;
+  /** Tiles revealed face-up and taken out of play by the dead-tile sweep. */
+  readonly removedTiles: readonly TileId[];
   /** Only present when a pending merger decision is addressed to `you`. */
   readonly pendingDecision: PendingDecision | null;
   /** Set for the active seat while a placement is awaiting a headquarters choice. */
@@ -251,6 +255,7 @@ export function viewFor(state: GameState, you: Seat): PlayerView {
     corporations,
     companies: state.companies,
     drawPileCount: state.bag.length,
+    removedTiles: [...state.removed],
     pendingDecision: pending,
     pendingFound: state.pendingFound,
     endAnnouncedBy: state.endAnnouncedBy,

@@ -6,6 +6,7 @@ import { ActionBar } from './ActionBar.js';
 import { BuyModal } from './BuyModal.js';
 import { CorporationBand, TrayStrip } from './CorporationBand.js';
 import { Header } from './Header.js';
+import { OutOfPlay } from './OutOfPlay.js';
 import { Shareholders } from './Shareholders.js';
 import { StoryCard } from './StoryCard.js';
 import { TileRack } from './TileRack.js';
@@ -25,8 +26,11 @@ export function GameScreen({ game }: { game: StartedGame }) {
         <div className={styles.body}>
           <CorporationBand />
           <div className={styles.middle}>
-            <div className={styles.board}>
-              <Board />
+            <div className={styles.boardArea}>
+              <div className={styles.board}>
+                <Board />
+              </div>
+              <OutOfPlay />
             </div>
             <div className={styles.column}>
               <StoryCard />

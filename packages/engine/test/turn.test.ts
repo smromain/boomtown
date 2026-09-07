@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { INDUSTRIES, classifyPlacement, edition2015, isPlayable, reduce } from '@boomtown/engine';
+import { INDUSTRIES, classifyPlacement, edition2015, isPlayable, reduce, viewFor } from '@boomtown/engine';
 import { blankGame, ok, rejects, seedCorp, seedUnincorporated } from './helpers.js';
 
 describe('placement outcomes', () => {
@@ -186,36 +186,46 @@ describe('draw and turn advance', () => {
   });
 });
 
-describe('dead-tile sweep (2015)', () => {
-  function twoSafeCorpsWithDeadTile() {
-    const game = blankGame({ ruleset: edition2015 });
-    seedCorp(game, 'video', Array.from({ length: 10 }, (_, i) => `${i + 1}A`));
-    seedCorp(game, 'books', Array.from({ length: 10 }, (_, i) => `${i + 1}C`));
+describe('dead-tile sweep', () => {
+  function twoSafeCorpsWithDeadTile(ruleset?: typeof edition2015) {
+    // both editions treat a tile that would merge two safe corps as dead;
+    // classic is safe at 11, 2015 at 10.
+    const size = ruleset ? 10 : 11;
+    const game = blankGame(ruleset ? { ruleset } : undefined);
+    seedCorp(game, 'video', Array.from({ length: size }, (_, i) => `${i + 1}A`));
+    seedCorp(game, 'books', Array.from({ length: size }, (_, i) => `${i + 1}C`));
     game.hands[0] = ['1B', '6E'];
     return game;
   }
 
   it('classifies a tile that would merge two safe corporations as dead', () => {
-    const game = twoSafeCorpsWithDeadTile();
-    expect(classifyPlacement(game, '1B').kind).toBe('dead');
+    expect(classifyPlacement(twoSafeCorpsWithDeadTile(), '1B').kind).toBe('dead');
+    expect(classifyPlacement(twoSafeCorpsWithDeadTile(edition2015), '1B').kind).toBe('dead');
   });
 
-  it('sweeps the dead tile and draws a replacement after the buy step', () => {
+  it('reveals the dead tile out of play and draws a replacement after the buy step', () => {
     const game = twoSafeCorpsWithDeadTile();
     const placed = ok(game, { type: 'place-tile', seat: 0, tile: '6E' });
     const next = ok(placed, { type: 'buy-shares', seat: 0, picks: {} });
     expect(next.hands[0]).not.toContain('1B');
     expect(next.hands[0]).toHaveLength(6);
+    expect(next.removed).toContain('1B');
   });
 
-  it('classic never sweeps: the dead tile stays in hand', () => {
-    const game = blankGame();
-    seedCorp(game, 'video', Array.from({ length: 11 }, (_, i) => `${i + 1}A`));
-    seedCorp(game, 'books', Array.from({ length: 11 }, (_, i) => `${i + 1}C`));
-    game.hands[0] = ['1B', '6E'];
+  it('sweeps under the 2015 edition too', () => {
+    const game = twoSafeCorpsWithDeadTile(edition2015);
     const placed = ok(game, { type: 'place-tile', seat: 0, tile: '6E' });
     const next = ok(placed, { type: 'buy-shares', seat: 0, picks: {} });
-    expect(next.hands[0]).toContain('1B');
+    expect(next.hands[0]).not.toContain('1B');
+    expect(next.removed).toContain('1B');
+  });
+
+  it('projects the removed tiles onto every seat view (they are face-up)', () => {
+    const game = twoSafeCorpsWithDeadTile();
+    const placed = ok(game, { type: 'place-tile', seat: 0, tile: '6E' });
+    const next = ok(placed, { type: 'buy-shares', seat: 0, picks: {} });
+    expect(viewFor(next, 0).removedTiles).toContain('1B');
+    expect(viewFor(next, 1).removedTiles).toContain('1B');
   });
 });
 

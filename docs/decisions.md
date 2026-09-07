@@ -12,6 +12,7 @@
 | Merged names | **Accrete**, never replace | A replacing rule threw away everything previously swallowed and converged on a stable stem. Accretion keeps the whole meal and gets sillier over a game. |
 | Long names | Solved by **card consolidation**, not truncation | Steve's idea. Cards are one slot wide per corporation they contain, so the band's total width is constant and a corporation earns its own room. |
 | Board geometry | 12 × 9 = 108, `1A`–`12I` | Classic is unambiguous; the 2015 rulebook says 100 tiles and never states the grid. |
+| Dead-tile sweep | **Both editions** — reveal, set out of play, replace | The classic rulebook does not spell it out, but the rule (a tile that would merge two safe corporations is unplayable and gets replaced) is the same in both; a tile that can never be played must not stay stuck in a hand. `deadTilePolicy` still exists as a config knob. |
 
 ## Open
 

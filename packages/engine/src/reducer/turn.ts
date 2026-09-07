@@ -1,3 +1,4 @@
+import type { TileId } from '../board.js';
 import { RULES } from '../constants.js';
 import type { EngineEvent } from '../events.js';
 import { activeSeat, type GameState } from '../state.js';
@@ -16,14 +17,16 @@ export function drawToFull(state: GameState, events: EngineEvent[]): void {
 }
 
 /**
- * 2015 dead-tile sweep: discard permanently-dead tiles face up and replace them.
- * A replacement that is itself dead is swept immediately (loop until stable).
+ * Dead-tile sweep: a permanently unplayable tile — one that would illegally
+ * merge two safe corporations — is revealed, set face-up out of play, and
+ * replaced from the bag. A replacement that is itself dead is swept immediately
+ * (loop until stable). Both editions do this (`deadTilePolicy`).
  */
 export function sweepDeadTiles(state: GameState, events: EngineEvent[]): void {
   if (state.ruleset.deadTilePolicy !== 'discardAndReplace') return;
   const seat = activeSeat(state);
   const hand = state.hands[seat]!;
-  const swept: string[] = [];
+  const swept: TileId[] = [];
 
   let changed = true;
   while (changed) {
@@ -38,7 +41,10 @@ export function sweepDeadTiles(state: GameState, events: EngineEvent[]): void {
     }
   }
 
-  if (swept.length > 0) events.push({ type: 'dead-tiles-swept', seat, tiles: swept });
+  if (swept.length > 0) {
+    state.removed.push(...swept);
+    events.push({ type: 'dead-tiles-swept', seat, tiles: swept });
+  }
 }
 
 /** Advance to the next seat and reset the turn to the placement step. */

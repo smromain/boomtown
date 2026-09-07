@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { INDUSTRIES } from '@boomtown/engine';
 import { ActionBar } from './ActionBar.js';
+import { OutOfPlay } from './OutOfPlay.js';
 import { BuyModal } from './BuyModal.js';
 import { CorporationBand, TrayStrip } from './CorporationBand.js';
 import { Shareholders } from './Shareholders.js';
@@ -226,6 +227,32 @@ describe('BuyModal', () => {
       },
     });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('OutOfPlay', () => {
+  it('shows nothing until a tile is removed', async () => {
+    await renderPanel(<OutOfPlay />);
+    expect(screen.queryByRole('region', { name: 'Out of play' })).not.toBeInTheDocument();
+  });
+
+  it('lists the removed tiles once the sweep has run', async () => {
+    // two safe corps + a dead tile in hand; finishing the turn sweeps it
+    const { client } = await renderPanel(<OutOfPlay />, {
+      craft: (state) => {
+        seedCorp(state, 'video', Array.from({ length: 11 }, (_, i) => `${i + 1}A`));
+        seedCorp(state, 'books', Array.from({ length: 11 }, (_, i) => `${i + 1}C`));
+        state.hands[0] = ['1B', '6E'];
+      },
+    });
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '6E' });
+      await flush();
+      client.dispatch({ type: 'buy-shares', seat: 0, picks: {} });
+      await flush();
+    });
+    const region = screen.getByRole('region', { name: 'Out of play' });
+    expect(within(region).getByText('1B')).toBeInTheDocument();
   });
 });
 

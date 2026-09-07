@@ -35,8 +35,10 @@ object; both editions are presets.
 2. **Buy stock** — optional, up to 3 shares total, active corporations only. Capped by cash and by
    bank stock.
 3. **Draw** back to six tiles.
-4. **Dead-tile sweep** *(2015 only)* — discard permanently unplayable tiles face-up, draw
-   replacements. New dead tiles wait until the next turn.
+4. **Dead-tile sweep** — a permanently unplayable tile (one that would illegally merge two safe
+   corporations) is revealed, set face-up out of play, and replaced from the bag. A replacement
+   that is itself dead is swept in the same pass. New dead tiles that appear mid-turn wait until
+   the next sweep.
 5. **End check** — the player *may* announce the end if a condition holds. Never forced.
 
 ## Merger resolution
@@ -98,7 +100,7 @@ as data.** Verified against the rulebook's own worked example: a five-tile tier-
 | Bonus tiers | primary · secondary · tertiary | majority · minority | `bonusTiers` |
 | Price bands | 2,3,4,5,6–7,8–17,18–27,28–37,38+ | 2,3,4,5,6–10,11–20,21–30,31–40,41+ | `priceBands` |
 | Sole shareholder | primary + tertiary | both bonuses | `soleHolderPolicy` |
-| Dead tiles | discarded face-up and replaced | not addressed | `deadTilePolicy` |
+| Dead tiles | discarded face-up and replaced | discarded face-up and replaced (from the same rule, applied to both) | `deadTilePolicy` |
 | Two-player rule | bank is a shareholder; its holding drawn from the tile pile each merger | not addressed | `phantomShareholder` |
 | Split rounding | round up to nearest 100 | silent | `splitRounding` |
 
@@ -113,8 +115,9 @@ never states the grid.
   No loans, no player-to-player trading.
 - **Broke is playable.** A player with no cash still places and draws. No elimination.
 - **Safe is permanent.** A safe corporation can still absorb others and keep growing.
-- **Two kinds of unplayable.** *Permanently dead* — would merge two safe corporations; discarded
-  and replaced (2015). *Temporarily blocked* — would found an eighth corporation; stays in hand.
+- **Two kinds of unplayable.** *Permanently dead* — would merge two safe corporations; revealed,
+  set out of play, and replaced. *Temporarily blocked* — would found an eighth corporation; stays
+  in hand.
 - **Ending is a choice.** A player may announce or keep playing, and finishes the turn after
   announcing.
 - **Final settlement.** Pay bonuses for every active corporation as if merging, then the bank buys

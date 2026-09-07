@@ -119,6 +119,7 @@ export function createGame(options: SetupOptions): GameState {
     bankShares,
     hands,
     bag,
+    removed: [],
     rng,
     merger: null,
     result: null,

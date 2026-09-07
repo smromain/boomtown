@@ -13,7 +13,7 @@ export const classic: Ruleset = {
   bonusTiers: 2,
   bandCuts: [2, 3, 4, 5, 10, 20, 30, 40],
   soleHolderPolicy: 'both',
-  deadTilePolicy: 'none',
+  deadTilePolicy: 'discardAndReplace',
   phantomShareholderInTwoPlayer: false,
   splitRounding: 'none',
   mergeNaming: DEFAULT_MERGE_NAMING,
