@@ -12,7 +12,7 @@
 
 .board {
   grid-area: board;
-  background: #0f0d09;
+  background: var(--board-bg);
   border-radius: 8px;
   min-height: 0;
 }

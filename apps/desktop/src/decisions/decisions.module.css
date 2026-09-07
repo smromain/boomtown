@@ -11,7 +11,7 @@
   transform: translate(-50%, -50%);
   width: min(28rem, 90vw);
   background: var(--surface);
-  border: 1px solid #4a443a;
+  border: 1px solid var(--rule);
   border-radius: 10px;
   padding: 1.25rem;
 }
@@ -35,9 +35,9 @@
 
 .option {
   padding: 0.6rem 0.8rem;
-  border: 1px solid #4a443a;
+  border: 1px solid var(--rule);
   border-radius: 6px;
-  background: #322d24;
+  background: var(--input);
   color: var(--ink);
   font: inherit;
   text-align: left;
@@ -69,7 +69,7 @@
 }
 
 .error {
-  color: #e08a8a;
+  color: var(--error);
   font-size: 0.8rem;
   min-height: 1.1em;
 }

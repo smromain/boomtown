@@ -36,13 +36,13 @@
   gap: 0.6rem;
   align-items: center;
   padding: 0.5rem 0;
-  border-bottom: 1px solid #3a352c;
+  border-bottom: 1px solid var(--rule);
 }
 
 .seat input[type='text'] {
   padding: 0.4rem 0.5rem;
-  background: #322d24;
-  border: 1px solid #4a443a;
+  background: var(--input);
+  border: 1px solid var(--rule);
   border-radius: 4px;
   color: var(--ink);
   font: inherit;
@@ -51,8 +51,8 @@
 .seat select,
 .field select {
   padding: 0.4rem;
-  background: #322d24;
-  border: 1px solid #4a443a;
+  background: var(--input);
+  border: 1px solid var(--rule);
   border-radius: 4px;
   color: var(--ink);
   font: inherit;
@@ -67,7 +67,7 @@
 }
 
 .error {
-  color: #e08a8a;
+  color: var(--error);
   min-height: 1.2em;
   margin: 0.5rem 0;
   font-size: 0.85rem;
@@ -79,7 +79,7 @@
   font: inherit;
   font-weight: 600;
   background: var(--accent);
-  color: #000;
+  color: var(--on-accent);
   border: 0;
   border-radius: 6px;
   cursor: pointer;

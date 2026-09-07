@@ -1,11 +1,27 @@
+/* Saxon City palette — see design/build.py, the "B" direction. */
 :root {
-  color-scheme: dark;
-  --bg: #14110c;
-  --surface: #211d15;
-  --ink: #f4efe4;
-  --muted: #a99f89;
-  --accent: #d9a425;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+
+  --bg: #faf6f0;
+  --surface: #ffffff;
+  --surface-2: #f1eae0;
+  --ink: #1c1917;
+  --muted: #867a6d;
+  --rule: #e7ded2;
+  --accent: #b3462f;
+  --on-accent: #ffffff;
+  --input: #fbf8f3;
+  --error: #b3462f;
+
+  /* board */
+  --board-bg: #faf6f0;
+  --cell-empty: #f1eae0;
+  --cell-empty-ink: #b6a897;
+  --cell-uninc: #b0a496;
+  --cell-ring: #c6b8a6;
+  --board-base: #e7ded2;
+
+  font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 * {

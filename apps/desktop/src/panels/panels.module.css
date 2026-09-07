@@ -23,7 +23,7 @@
   border-left: 4px solid;
   padding: 0.5rem 0.6rem;
   margin-bottom: 0.5rem;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--surface-2);
   border-radius: 4px;
 }
 
@@ -55,7 +55,7 @@
   font-size: 0.65rem;
   text-transform: uppercase;
   background: var(--accent);
-  color: #000;
+  color: var(--on-accent);
   padding: 0 0.35rem;
   border-radius: 3px;
 }
@@ -81,9 +81,9 @@
   align-items: center;
   min-width: 3.2rem;
   padding: 0.4rem;
-  border: 1px solid #4a443a;
+  border: 1px solid var(--rule);
   border-radius: 4px;
-  background: #322d24;
+  background: var(--input);
   color: var(--ink);
   cursor: pointer;
   font: inherit;
@@ -95,7 +95,7 @@
 }
 
 .tile[data-effect='dead'] {
-  border-color: #7a3b3b;
+  border-color: var(--accent);
   text-decoration: line-through;
 }
 
@@ -124,7 +124,7 @@
 .holdings td {
   padding: 0.2rem 0.4rem;
   text-align: right;
-  border-bottom: 1px solid #3a352c;
+  border-bottom: 1px solid var(--rule);
 }
 
 .holdings th:first-child,
@@ -133,7 +133,7 @@
 }
 
 .holdings tr[data-active='true'] {
-  background: rgba(217, 164, 37, 0.12);
+  background: rgba(179, 70, 47, 0.1);
 }
 
 /* Buy controls */
@@ -174,5 +174,5 @@
 
 .log li {
   padding: 0.15rem 0;
-  border-bottom: 1px solid #2f2a22;
+  border-bottom: 1px solid var(--rule);
 }
