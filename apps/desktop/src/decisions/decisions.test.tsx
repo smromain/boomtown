@@ -123,6 +123,12 @@ describe('DecisionModal', () => {
       await flush();
     });
 
+    // disposal is owed by seat 0, mergemaker is seat 1 -> hand-off first
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: /show my decision/ }));
+      await flush();
+    });
+
     const dialog = screen.getByRole('dialog');
     expect(dialog).toHaveTextContent('Dispose of Chapter Eleven stock');
     expect(dialog).toHaveTextContent(/into Megahit Video/);
@@ -225,5 +231,82 @@ describe('DecisionModal', () => {
     // the watching human sees no modal
     expect(client.store.getState().pendingDecision?.seat).toBe(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('DecisionModal — hot-seat hand-off', () => {
+  it("hands the machine to a disposing seat that isn't the mergemaker", async () => {
+    const { client } = await renderPanel(<DecisionModal />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']); // survives
+        seedCorp(state, 'books', ['6E', '7E']); // defunct
+        state.seats[2]!.holdings.books = 4; // Cy (seat 2) must dispose; mergemaker is seat 0
+        state.hands[0] = ['5E'];
+      },
+    });
+    await place(client, '5E');
+
+    const dialog = screen.getByRole('dialog');
+    // the hand-off screen, not the disposal controls
+    expect(dialog).toHaveTextContent('Hand the machine to');
+    expect(dialog).toHaveTextContent('Cy');
+    expect(within(dialog).queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument();
+    // Cy's holdings must not leak on the hand-off screen
+    expect(dialog).not.toHaveTextContent('holds 4');
+
+    await act(async () => {
+      await userEvent.click(within(dialog).getByRole('button', { name: /show my decision/ }));
+      await flush();
+    });
+
+    // now the disposal prompt for Cy
+    expect(screen.getByRole('dialog')).toHaveTextContent('Dispose of');
+    expect(screen.getByRole('dialog')).toHaveTextContent('Cy holds 4');
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
+  });
+
+  it('does not hand off when the decision belongs to the mergemaker (a size tie)', async () => {
+    const { client } = await renderPanel(<DecisionModal />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['3E', '4E']); // tied
+        seedCorp(state, 'books', ['6E', '7E']); // tied
+        state.hands[0] = ['5E'];
+      },
+    });
+    await place(client, '5E'); // seat 0 is the mergemaker and picks the survivor
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).not.toHaveTextContent('Hand the machine to');
+    expect(dialog).toHaveTextContent('Choose the surviving corporation');
+  });
+
+  it('re-hands the machine to each disposing seat in turn', async () => {
+    const { client } = await renderPanel(<DecisionModal />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']); // survives
+        seedCorp(state, 'books', ['6E', '7E']); // defunct
+        state.seats[1]!.holdings.books = 2; // Ben (seat 1)
+        state.seats[2]!.holdings.books = 2; // Cy (seat 2)
+        state.hands[0] = ['5E'];
+      },
+    });
+    await place(client, '5E');
+
+    // hand to Ben (clockwise from mergemaker seat 0: 0,1,2 -> seat 1 first)
+    let dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('Ben');
+    await act(async () => {
+      await userEvent.click(within(dialog).getByRole('button', { name: /show my decision/ }));
+      await flush();
+    });
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Confirm' })); // Ben holds 2
+      await flush();
+    });
+
+    // now hand to Cy — a fresh hand-off, not Ben's prompt again
+    dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('Hand the machine to');
+    expect(dialog).toHaveTextContent('Cy');
   });
 });

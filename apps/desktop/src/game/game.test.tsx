@@ -240,7 +240,9 @@ describe('TurnHandoff (hot-seat turn boundary)', () => {
     expect(screen.queryByRole('dialog', { name: 'Turn handoff' })).not.toBeInTheDocument();
   });
 
-  it('stays out of the way of a merger decision (regression: opaque inert overlay over the modal)', async () => {
+  it('does not render its own overlay while a decision modal is open', async () => {
+    // regression: TurnHandoff used to sit opaque + inert (outside the Radix
+    // portal) over a merger prompt. The DecisionModal now owns the hand-off.
     const { client } = await renderPanel(
       <>
         <DecisionModal />
@@ -248,8 +250,8 @@ describe('TurnHandoff (hot-seat turn boundary)', () => {
       </>,
       {
         craft: (state) => {
-          seedCorp(state, 'video', ['2E', '3E', '4E']); // survives
-          seedCorp(state, 'books', ['6E', '7E']); // defunct
+          seedCorp(state, 'video', ['2E', '3E', '4E']);
+          seedCorp(state, 'books', ['6E', '7E']);
           state.seats[2]!.holdings.books = 3; // Cy (not the mergemaker) must dispose
           state.hands[0] = ['5E'];
         },
@@ -259,19 +261,7 @@ describe('TurnHandoff (hot-seat turn boundary)', () => {
       client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
       await flush();
     });
-
-    // the decision prompt is the turn boundary here — no separate handoff overlay.
-    // (query the DOM directly: Radix's modal marks siblings aria-hidden, so a
-    // role query would miss the overlay while it still sits opaque on top.)
     expect(document.querySelector('[aria-label="Turn handoff"]')).toBeNull();
-    // and the disposal prompt is reachable
-    const confirm = screen.getByRole('button', { name: 'Confirm' });
-    await act(async () => {
-      await userEvent.click(confirm);
-      await flush();
-    });
-    expect(client.store.getState().pendingDecision).toBeNull();
-    expect(client.store.getState().views[0]!.step).toBe('buy');
   });
 
   it('does still hand off for a plain turn pass after a merger completes', async () => {

@@ -4,6 +4,14 @@
   background: rgba(0, 0, 0, 0.55);
 }
 
+/* Opaque while handing the machine to another player — the board and that
+   player's holdings must not be visible behind it. */
+.overlayOpaque {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+}
+
 .content {
   position: fixed;
   top: 50%;
@@ -117,4 +125,41 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Hot-seat hand-off, shown as the modal's own content before a decision that
+   belongs to a seat other than whoever last acted. */
+.handoff {
+  text-align: center;
+  padding: 1rem 0.5rem;
+}
+
+.handoffKicker {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 0.25rem;
+}
+
+.handoff h2 {
+  font-size: 1.75rem;
+  margin: 0 0 0.6rem;
+}
+
+.handoffHint {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0 0 1.4rem;
+}
+
+.handoffReady {
+  padding: 0.7rem 1.4rem;
+  font: inherit;
+  font-weight: 600;
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
 }
