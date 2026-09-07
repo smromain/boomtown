@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
@@ -10,9 +11,11 @@ const { BASE_FUSES, SIGNED_ONLY_FUSES, isSignedBuild, fusesFor, binaryPath, defa
   await import('./afterPack.mjs');
 const { flipFuses } = await import('@electron/fuses');
 
+const OUT = join('/tmp', 'out'); // platform-native separators, like the hook produces
+
 const ctx = (electronPlatformName: string, over: Record<string, unknown> = {}) => ({
   electronPlatformName,
-  appOutDir: '/tmp/out',
+  appOutDir: OUT,
   packager: { appInfo: { productFilename: 'Boomtown' }, executableName: 'boomtown', ...over },
 });
 
@@ -58,20 +61,20 @@ describe('fuse posture (KTD9)', () => {
 
 describe('binaryPath — the packed binary, post-rename', () => {
   it('macOS: inside the .app, named by productFilename', () => {
-    expect(binaryPath(ctx('darwin'))).toBe('/tmp/out/Boomtown.app/Contents/MacOS/Boomtown');
-    expect(binaryPath(ctx('mas'))).toBe('/tmp/out/Boomtown.app/Contents/MacOS/Boomtown');
+    expect(binaryPath(ctx('darwin'))).toBe(join(OUT, 'Boomtown.app', 'Contents', 'MacOS', 'Boomtown'));
+    expect(binaryPath(ctx('mas'))).toBe(join(OUT, 'Boomtown.app', 'Contents', 'MacOS', 'Boomtown'));
   });
 
   it('Windows: <executableName>.exe at the top level', () => {
-    expect(binaryPath(ctx('win32'))).toBe('/tmp/out/boomtown.exe');
+    expect(binaryPath(ctx('win32'))).toBe(join(OUT, 'boomtown.exe'));
   });
 
   it('Linux: <executableName> at the top level', () => {
-    expect(binaryPath(ctx('linux'))).toBe('/tmp/out/boomtown');
+    expect(binaryPath(ctx('linux'))).toBe(join(OUT, 'boomtown'));
   });
 
   it('falls back to lowercased productFilename when executableName is absent', () => {
-    expect(binaryPath(ctx('linux', { executableName: undefined }))).toBe('/tmp/out/boomtown');
+    expect(binaryPath(ctx('linux', { executableName: undefined }))).toBe(join(OUT, 'boomtown'));
   });
 
   it('throws on an unknown platform rather than silently skipping', () => {
@@ -84,7 +87,7 @@ describe('afterPack hook', () => {
     vi.mocked(flipFuses).mockClear();
     await afterPack(ctx('darwin'));
     expect(flipFuses).toHaveBeenCalledWith(
-      '/tmp/out/Boomtown.app/Contents/MacOS/Boomtown',
+      join(OUT, 'Boomtown.app', 'Contents', 'MacOS', 'Boomtown'),
       expect.objectContaining({ [FuseV1Options.RunAsNode]: false }),
     );
   });
