@@ -72,9 +72,7 @@ export function StoryCard() {
       {merger.survivor && (
         <div className={styles.rename}>
           <span className={styles.renameLabel}>
-            The survivor
-            <br />
-            {merger.complete ? 'is renamed' : 'will be'}
+            {merger.complete ? 'The survivor is renamed' : 'The survivor will be'}
           </span>
           <span className={`serif ${styles.renameName}`} style={{ color: survivorColor }}>
             {survivorName}
