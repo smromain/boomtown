@@ -8,6 +8,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@boomtown/ai": "*",
     "@boomtown/engine": "*",
     "@boomtown/protocol": "*",
     "zustand": "^5.0.15"

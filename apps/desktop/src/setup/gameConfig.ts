@@ -5,7 +5,7 @@ export type SeatKind = 'human' | 'bot';
 export interface SeatConfig {
   readonly name: string;
   readonly kind: SeatKind;
-  /** 1–10 (KTD7). Only meaningful for a bot seat; carried through even though bots are inert until U14. */
+  /** 1–10 (KTD7). Only meaningful for a bot seat. */
   readonly difficulty: number;
 }
 
@@ -29,16 +29,13 @@ export function defaultConfig(): GameConfig {
 }
 
 /**
- * Why a config cannot start a game, or null. `botsPlayable` is false until U14
- * lands the bot policy — an all-bot game would hang with no one to move.
+ * Why a config cannot start a game, or null. An all-bot table is allowed now
+ * that the bot driver can play every seat (KTD7) — it just runs on its own.
  */
-export function configError(config: GameConfig, botsPlayable = true): string | null {
+export function configError(config: GameConfig): string | null {
   if (config.seats.length < RULES.minPlayers) return `Need at least ${RULES.minPlayers} seats`;
   if (config.seats.length > RULES.maxPlayers) return `At most ${RULES.maxPlayers} seats`;
   if (config.seats.some((seat) => seat.name.trim() === '')) return 'Every seat needs a name';
-  if (!botsPlayable && config.seats.every((seat) => seat.kind === 'bot')) {
-    return 'No one can play an all-bot game yet';
-  }
   return null;
 }
 

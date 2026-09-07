@@ -579,7 +579,7 @@ The per-unit **Files** lists are authoritative; this tree is the intended shape.
   1. Pick seat count 2–6; per seat choose human or bot, and for a bot a difficulty (1–10 per KTD7).
   2. Choose the edition preset (classic default) and the table cash/holdings visibility setting (R13).
   3. On start, build the `Ruleset` and initial `setup` command and hand the game to `client-core` over `LocalTransport`.
-  4. The bot-seat option is inert until U14 lands the `Policy`; wire the difficulty value through from the start.
+  4. The bot-seat option is inert until U14 lands the `Policy`; wire the difficulty value through from the start. *(Done in U14: `NewGame` builds a shared `GameSession`, passes it to `localTransport` as the `engine` seam, and attaches `attachBotDriver` from `@boomtown/client-core` for the bot seats.)*
 - **Patterns to follow:** the `setup.ts` contract from U3; the settings shape from U19.
 - **Test scenarios:**
   - A 3-human / 2-bot game starts with the chosen seat order and bot difficulties.
@@ -614,6 +614,12 @@ The per-unit **Files** lists are authoritative; this tree is the intended shape.
   - Given a fixed seed and difficulty, the bot's moves are reproducible (R7).
   - An all-bot game runs to a ranked result.
 - **Verification:** `pnpm --filter ai test` passes; the statistical difficulty harness runs in CI at a reduced sample and nightly at full sample.
+
+**First-cut deviations (2026-09-07):**
+- `Policy.chooseMove(state, seat, rng) -> { command, rng }` takes the full `GameState` (not the view) and an immutable `Rng` threaded by the caller, mirroring the engine's own RNG pattern so a seeded bot game replays exactly (R7). The reducer and `evaluate` both need `GameState`; the bot driver runs where the authoritative state lives (client in hot-seat, server online).
+- `heuristic.ts` is greedy one-ply: enumerate the seat's legal moves, apply each with `reduce`, score with `evaluate`, take the best. Difficulty (`difficulty.ts`) maps the 1–10 dial to a **blunder rate** (random legal move instead of best; dial 1 → 0.5, dial 10 → 0) and **lookahead plies** (0 below dial 7, 1 at 7–8, 2 at 9–10; self-lookahead only, no opponent model yet).
+- **Determinization deferred** — `determinize.ts` not built; sample count is effectively 0 (the plan permits this). `lookahead.ts` folded into `heuristic.ts`. `worker.ts` deferred: the bot loop runs on the main thread with a `thinkMs` delay (`attachBotDriver` in `@boomtown/client-core`), which is enough for hot-seat; the off-thread worker is a later refinement, and the server (U16) will reuse `heuristicPolicy` in a `worker_thread` directly.
+- The difficulty-monotonicity test runs a **reduced** 12-game sample inline (strong side won >60% of decided pairings); the full statistical harness and its CI/nightly split are still to wire up.
 
 ---
 

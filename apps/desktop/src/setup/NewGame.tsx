@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { createGameClient, localTransport, type GameClient } from '@boomtown/client-core';
+import {
+  GameSession,
+  attachBotDriver,
+  createGameClient,
+  localTransport,
+  type GameClient,
+} from '@boomtown/client-core';
 import { RULES } from '@boomtown/engine';
 import { SeatRow } from './SeatConfig.js';
 import {
@@ -14,24 +20,43 @@ import styles from './setup.module.css';
 export interface StartedGame {
   readonly client: GameClient;
   readonly config: GameConfig;
+  /** Tears down the bot driver; absent when the table has no bots. */
+  detachBots?: () => void;
 }
-
-/** Bots cannot actually take a turn until U14; block an all-bot game until then. */
-const BOTS_PLAYABLE = false;
 
 export function NewGame({ onStart }: { onStart: (game: StartedGame) => void }) {
   const [config, setConfig] = useState<GameConfig>(defaultConfig);
-  const error = configError(config, BOTS_PLAYABLE);
+  const error = configError(config);
 
   const patch = (over: Partial<GameConfig>) => setConfig((current) => ({ ...current, ...over }));
 
   const start = () => {
     if (error) return;
     const options = toSetupOptions(config);
+    const seats = options.seats.map((_, index) => index);
+
+    // One session, shared: the transport applies commands to it, the bot driver
+    // reads its state to choose moves.
+    const session = new GameSession(options);
     const client = createGameClient(
-      localTransport({ setup: options, controls: options.seats.map((_, index) => index) }),
+      localTransport({ setup: options, controls: seats, engine: session }),
     );
-    void client.connect().then(() => onStart({ client, config }));
+
+    const bots = config.seats
+      .map((seat, index) => ({ seat: index, kind: seat.kind, level: seat.difficulty }))
+      .filter((s) => s.kind === 'bot')
+      .map(({ seat, level }) => ({ seat, level }));
+
+    const started: StartedGame = { client, config };
+    if (bots.length > 0) {
+      started.detachBots = attachBotDriver(client, {
+        bots,
+        snapshot: () => session.snapshot(),
+        ...(config.seed !== undefined ? { seed: config.seed } : {}),
+      });
+    }
+
+    void client.connect().then(() => onStart(started));
   };
 
   return (

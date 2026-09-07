@@ -2,7 +2,7 @@ import { act } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { classic, edition2015 } from '@boomtown/engine';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { NewGame, type StartedGame } from './NewGame.js';
 import {
   configError,
@@ -31,10 +31,9 @@ describe('configError', () => {
     expect(configError(config({ seats }))).toMatch(/name/);
   });
 
-  it('blocks an all-bot game while bots are inert', () => {
+  it('allows an all-bot game now that the bot driver can play every seat', () => {
     const seats = defaultConfig().seats.map((s) => ({ ...s, kind: 'bot' as const }));
-    expect(configError(config({ seats }), false)).toMatch(/all-bot/);
-    expect(configError(config({ seats }), true)).toBeNull(); // allowed once U14 lands
+    expect(configError(config({ seats }))).toBeNull();
   });
 });
 
@@ -95,15 +94,56 @@ describe('NewGame screen', () => {
     expect(view.ruleset).toBe(edition2015);
   });
 
-  it('blocks starting an all-bot game and shows why', async () => {
-    const onStart = vi.fn();
-    render(<NewGame onStart={onStart} />);
+  it('starts an all-bot game and hands back a bot-driver teardown', async () => {
+    let started: StartedGame | undefined;
+    render(<NewGame onStart={(game) => (started = game)} />);
     await userEvent.selectOptions(screen.getByLabelText('Seat 1 type'), 'bot');
     await userEvent.selectOptions(screen.getByLabelText('Seat 2 type'), 'bot');
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/all-bot/);
-    expect(screen.getByRole('button', { name: 'Start game' })).toBeDisabled();
-    await userEvent.click(screen.getByRole('button', { name: 'Start game' }));
-    expect(onStart).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('');
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Start game' }));
+      await flush();
+    });
+
+    expect(started).toBeDefined();
+    expect(started!.detachBots).toBeTypeOf('function');
+    started!.detachBots!();
+    started!.client.disconnect();
+  });
+
+  it('the attached driver actually plays: an all-bot game advances on its own', async () => {
+    let started: StartedGame | undefined;
+    render(<NewGame onStart={(game) => (started = game)} />);
+    await userEvent.selectOptions(screen.getByLabelText('Seat 1 type'), 'bot');
+    await userEvent.selectOptions(screen.getByLabelText('Seat 2 type'), 'bot');
+
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Start game' }));
+      await flush();
+    });
+
+    const store = started!.client.store;
+    expect(store.getState().activeSeat).toBe(0);
+    const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+    await act(async () => {
+      for (let i = 0; i < 30 && store.getState().activeSeat === 0; i++) await wait(100);
+    });
+    expect(store.getState().activeSeat).not.toBe(0); // a bot moved the game on
+    started!.detachBots!();
+    started!.client.disconnect();
+  }, 10000);
+
+  it('does not attach a bot driver for an all-human table', async () => {
+    let started: StartedGame | undefined;
+    render(<NewGame onStart={(game) => (started = game)} />);
+
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Start game' }));
+      await flush();
+    });
+
+    expect(started!.detachBots).toBeUndefined();
+    started!.client.disconnect();
   });
 });

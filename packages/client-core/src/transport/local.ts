@@ -1,4 +1,4 @@
-import type { Command, Seat, SetupOptions } from '@boomtown/engine';
+import type { Command, GameState, Seat, SetupOptions } from '@boomtown/engine';
 import { GameSession, type SessionResult } from '../session.js';
 import type { ClientView } from '../view.js';
 import type { GameTransport, TransportMessage } from './types.js';
@@ -7,6 +7,8 @@ import type { GameTransport, TransportMessage } from './types.js';
 export interface LocalEngine {
   apply(command: Command): SessionResult;
   viewsFor(seats: readonly Seat[]): Record<Seat, ClientView>;
+  /** The authoritative state — the bot driver reads it to choose moves. */
+  snapshot(): GameState;
 }
 
 export interface LocalTransportOptions {

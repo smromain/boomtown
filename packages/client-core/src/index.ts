@@ -26,3 +26,4 @@ export {
 } from './store.js';
 export { reconcile } from './reconcile.js';
 export { createGameClient, type GameClient } from './dispatch.js';
+export { attachBotDriver, type BotDriverOptions, type BotSeat } from './bots.js';
