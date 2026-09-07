@@ -176,6 +176,27 @@ describe('StoryCard', () => {
     ).toBeInTheDocument();
   });
 
+  it('labels bonus tiers majority/minority under the classic ruleset, never tertiary', async () => {
+    const { client } = await renderPanel(<StoryCard />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']); // survives
+        seedCorp(state, 'books', ['6E', '7E']); // defunct, two holder groups
+        state.seats[0]!.holdings.books = 3; // top holder
+        state.seats[1]!.holdings.books = 1; // second holder
+        state.hands[0] = ['5E'];
+      },
+    });
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+      await flush();
+    });
+
+    const story = screen.getByRole('region', { name: 'Story' });
+    expect(within(story).getByText(/majority/)).toBeInTheDocument();
+    expect(within(story).getByText(/minority/)).toBeInTheDocument();
+    expect(within(story).queryByText(/primary|secondary|tertiary/)).not.toBeInTheDocument();
+  });
+
   it('falls back to the recent log when there is no merger', async () => {
     await renderPanel(<StoryCard />);
     expect(screen.getByText(/No moves yet/)).toBeInTheDocument();

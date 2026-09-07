@@ -5,7 +5,16 @@ import { IndustryMark } from './marks.js';
 import { eventIndustry, isHeadline, latestMerger, mergerProse, type BonusLine } from './story.js';
 import styles from './game.module.css';
 
-const TIER_LABEL = { primary: 'primary', secondary: 'secondary', tertiary: 'tertiary' } as const;
+/**
+ * The engine's payout tiers are always `primary | secondary | tertiary`, but
+ * the *classic* ruleset only pays two bonuses — there "primary" reads as
+ * majority and anything below it as minority (matching the stock-reference
+ * chart). The 2015 edition uses all three words.
+ */
+function tierWord(tier: BonusLine['tier'], bonusTiers: 2 | 3): string {
+  if (bonusTiers === 3) return tier;
+  return tier === 'primary' ? 'majority' : 'minority';
+}
 
 /**
  * The story panel from the Main artboard. When a merger is in play it narrates
@@ -86,7 +95,7 @@ export function StoryCard() {
       {merger.bonuses.length > 0 && (
         <div className={styles.bonusSplit}>
           {merger.bonuses.map((line, i) => (
-            <BonusColumn key={i} line={line} nameOf={nameOf} />
+            <BonusColumn key={i} line={line} nameOf={nameOf} bonusTiers={view.ruleset.bonusTiers} />
           ))}
         </div>
       )}
@@ -101,7 +110,15 @@ export function StoryCard() {
   );
 }
 
-function BonusColumn({ line, nameOf }: { line: BonusLine; nameOf: (seat: number) => string }) {
+function BonusColumn({
+  line,
+  nameOf,
+  bonusTiers,
+}: {
+  line: BonusLine;
+  nameOf: (seat: number) => string;
+  bonusTiers: 2 | 3;
+}) {
   const split = line.seats.length > 1;
   const who = split
     ? `${line.seats.slice(0, -1).map(nameOf).join(', ')} and ${nameOf(line.seats.at(-1)!)}, tied at their shares`
@@ -109,7 +126,7 @@ function BonusColumn({ line, nameOf }: { line: BonusLine; nameOf: (seat: number)
   return (
     <div className={styles.bonusCol}>
       <span className={styles.bonusWho}>
-        {who} · {TIER_LABEL[line.tier]}
+        {who} · {tierWord(line.tier, bonusTiers)}
       </span>
       <span className={`serif tabnum ${styles.bonusAmount}`}>
         ${line.amount.toLocaleString()}
