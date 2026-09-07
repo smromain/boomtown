@@ -1,2 +1,15 @@
-// @boomtown/ai — scaffold. Built out in a later phase.
-export {};
+// @boomtown/ai — non-LLM Boomtown bots: a Policy over the engine's legal moves
+// and evaluator (KTD7). Difficulty is a single 1–10 dial.
+
+export {
+  type Policy,
+  type HeuristicPolicyOptions,
+  heuristicPolicy,
+  botRng,
+} from './policy.js';
+export {
+  type DifficultyKnobs,
+  difficulty,
+  normalizeDifficulty,
+} from './difficulty.js';
+export { scoreMove, bestScore, ownMoves } from './heuristic.js';
