@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import { createGame, type Cell, type GameState, type Industry, type TileId, type Visibility } from '@boomtown/engine';
 import { GameSession, createGameClient, localTransport, type GameClient } from '@boomtown/client-core';
 import { GameClientProvider } from '../client/GameClientProvider.js';
+import { HotSeatProvider } from '../game/HotSeatContext.js';
 
 const SEATS = [{ name: 'Ana' }, { name: 'Ben' }, { name: 'Cy' }];
 
@@ -38,7 +39,7 @@ export async function renderPanel(
 
   const result = render(
     <GameClientProvider client={client} localSeats={options.localSeats ?? [0, 1, 2]}>
-      {ui}
+      <HotSeatProvider>{ui}</HotSeatProvider>
     </GameClientProvider>,
   );
   return Object.assign(result, { client });

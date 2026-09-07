@@ -293,6 +293,53 @@ describe('TurnHandoff (hot-seat turn boundary)', () => {
     // now the turn passes to Ben -> handoff appears
     expect(screen.getByRole('dialog', { name: 'Turn handoff' })).toHaveTextContent('Ben');
   });
+
+  it('hands the machine back to the mergemaker for the buy step (regression: disposer bought)', async () => {
+    const { client } = await renderPanel(
+      <>
+        <DecisionModal />
+        <BuyModal />
+        <TurnHandoff config={humans(3)} />
+      </>,
+      {
+        craft: (state) => {
+          seedCorp(state, 'video', ['2E', '3E', '4E']); // survives
+          seedCorp(state, 'books', ['6E', '7E']); // defunct
+          state.seats[2]!.holdings.books = 4; // Cy (seat 2) disposes; mergemaker is seat 0
+          state.hands[0] = ['5E'];
+        },
+      },
+    );
+    // Ana (seat 0) is the mergemaker and holds the machine. She places the tile.
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+      await flush();
+    });
+    // hand to Cy for the disposal, Cy confirms it
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: /show my decision/ }));
+      await flush();
+    });
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+      await flush();
+    });
+
+    // merger done -> buy step, active seat is the mergemaker (0)
+    expect(client.store.getState().views[0]!.step).toBe('buy');
+    // the machine is still with Cy -> hand it back to Ana before the buy is actionable
+    const handback = screen.getByRole('dialog', { name: 'Turn handoff' });
+    expect(handback).toHaveTextContent('Ana');
+    // the buy controls are not reachable until Ana takes the machine
+    expect(screen.queryByRole('button', { name: /Buy nothing/ })).not.toBeInTheDocument();
+
+    await act(async () => {
+      await userEvent.click(within(handback).getByRole('button', { name: /show my turn/ }));
+      await flush();
+    });
+    // now Ana's buy
+    expect(screen.getByRole('dialog', { name: 'Buy stock' })).toBeInTheDocument();
+  });
 });
 
 describe('BuyModal', () => {
