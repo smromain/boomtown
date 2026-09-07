@@ -87,6 +87,23 @@ describe('CorpReference modal', () => {
     await renderPanel(<CorpReference industry={null} onClose={() => {}} onOpenChart={() => {}} />);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+
+  it('reports the seat on the clock, not seat 0 (regression: showed Player 1 on Player 2’s turn)', async () => {
+    await renderPanel(<CorpReference industry="video" onClose={() => {}} onOpenChart={() => {}} />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2A', '3A', '4A', '5A', '6A']); // tier 3, size 5 -> $700
+        state.turnPointer = 1; // Ben is on the clock
+        state.seats[1]!.holdings.video = 3; // Ben holds; Ana (seat 0) holds nothing
+      },
+    });
+    const dialog = screen.getByRole('dialog');
+    // "You hold" is Ben's 3 (3 * $700 = $2,100), not Ana's 0
+    expect(dialog).toHaveTextContent('3');
+    expect(dialog).toHaveTextContent('$2,100');
+    // the primary-holder row names Ben, never Ana
+    expect(dialog).toHaveTextContent(/Ben/);
+    expect(dialog).not.toHaveTextContent(/Ana/);
+  });
 });
 
 describe('ReferenceProvider wiring', () => {

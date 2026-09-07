@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import type { Industry } from '@boomtown/engine';
-import { useAnyView } from '../client/GameClientProvider.js';
+import { activeView } from '@boomtown/client-core';
+import { useGameState } from '../client/GameClientProvider.js';
 import { IndustryMark } from '../game/marks.js';
 import { corpReference } from './priceReference.js';
 import styles from './reference.module.css';
@@ -11,6 +12,11 @@ const TIER_WORD = { primary: 'primary', secondary: 'secondary', tertiary: 'terti
  * The single-corporation stock reference — its own tier ladder with the current
  * row marked, and what every shareholder would collect if it went defunct now.
  * Opened by clicking a corporation card in the band.
+ *
+ * Reads the **active seat's** view (like the band that opens it), not
+ * `useAnyView` — that returns the first seat's projection, so "You hold" and
+ * the primary-holder row would always report seat 0's holdings regardless of
+ * who is actually playing.
  */
 export function CorpReference({
   industry,
@@ -21,7 +27,7 @@ export function CorpReference({
   onClose: () => void;
   onOpenChart: () => void;
 }) {
-  const view = useAnyView();
+  const view = useGameState(activeView);
   const data = industry && view ? corpReference(view, industry) : null;
 
   return (
