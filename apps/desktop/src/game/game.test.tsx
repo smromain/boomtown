@@ -11,6 +11,7 @@ import { Shareholders } from './Shareholders.js';
 import { StoryCard } from './StoryCard.js';
 import { TileRack } from './TileRack.js';
 import { TurnHandoff } from './TurnHandoff.js';
+import { DecisionModal } from '../decisions/DecisionModal.js';
 import { defaultConfig } from './../setup/gameConfig.js';
 import { latestMerger } from './story.js';
 import { flush, renderPanel, seedCorp } from '../testing/harness.js';
@@ -237,6 +238,70 @@ describe('TurnHandoff (hot-seat turn boundary)', () => {
       await userEvent.click(within(dialog).getByRole('button', { name: /show my turn/ }));
     });
     expect(screen.queryByRole('dialog', { name: 'Turn handoff' })).not.toBeInTheDocument();
+  });
+
+  it('stays out of the way of a merger decision (regression: opaque inert overlay over the modal)', async () => {
+    const { client } = await renderPanel(
+      <>
+        <DecisionModal />
+        <TurnHandoff config={humans(3)} />
+      </>,
+      {
+        craft: (state) => {
+          seedCorp(state, 'video', ['2E', '3E', '4E']); // survives
+          seedCorp(state, 'books', ['6E', '7E']); // defunct
+          state.seats[2]!.holdings.books = 3; // Cy (not the mergemaker) must dispose
+          state.hands[0] = ['5E'];
+        },
+      },
+    );
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+      await flush();
+    });
+
+    // the decision prompt is the turn boundary here — no separate handoff overlay.
+    // (query the DOM directly: Radix's modal marks siblings aria-hidden, so a
+    // role query would miss the overlay while it still sits opaque on top.)
+    expect(document.querySelector('[aria-label="Turn handoff"]')).toBeNull();
+    // and the disposal prompt is reachable
+    const confirm = screen.getByRole('button', { name: 'Confirm' });
+    await act(async () => {
+      await userEvent.click(confirm);
+      await flush();
+    });
+    expect(client.store.getState().pendingDecision).toBeNull();
+    expect(client.store.getState().views[0]!.step).toBe('buy');
+  });
+
+  it('does still hand off for a plain turn pass after a merger completes', async () => {
+    const { client } = await renderPanel(
+      <>
+        <DecisionModal />
+        <TurnHandoff config={humans(3)} />
+      </>,
+      {
+        craft: (state) => {
+          seedCorp(state, 'video', ['3E', '4E']); // 2, tied
+          seedCorp(state, 'books', ['6E', '7E']); // 2, tied
+          state.hands[0] = ['5E'];
+        },
+      },
+    );
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' }); // size tie -> survivor prompt for seat 0
+      await flush();
+    });
+    // seat 0's own decision — handoff hidden, prompt shown
+    expect(screen.queryByRole('dialog', { name: 'Turn handoff' })).not.toBeInTheDocument();
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: /Megahit Video/ }));
+      await flush();
+      client.dispatch({ type: 'buy-shares', seat: 0, picks: {} });
+      await flush();
+    });
+    // now the turn passes to Ben -> handoff appears
+    expect(screen.getByRole('dialog', { name: 'Turn handoff' })).toHaveTextContent('Ben');
   });
 });
 

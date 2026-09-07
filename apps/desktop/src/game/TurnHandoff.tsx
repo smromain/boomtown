@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { activeView } from '@boomtown/client-core';
 import type { Seat } from '@boomtown/engine';
-import { useGameState } from '../client/GameClientProvider.js';
+import { useGameState, useLocalSeats } from '../client/GameClientProvider.js';
 import type { GameConfig } from '../setup/gameConfig.js';
 import styles from './turnHandoff.module.css';
 
@@ -11,13 +11,23 @@ import styles from './turnHandoff.module.css';
  * opaque interstitial between turns: the incoming player confirms before the
  * board (and the previous player's remaining tiles) are shown.
  *
- * "Whose input is needed" is the pending decision's seat during a merger,
- * otherwise the active seat.
+ * It steps aside while a decision prompt is open. `DecisionModal` is a Radix
+ * modal — it marks the rest of the document `aria-hidden` and `pointer-events:
+ * none`, so an interstitial rendered outside it would sit opaque and *inert*
+ * over the prompt (a real hot-seat lock-up on a merger). During a merger step
+ * or a founding, the prompt itself is the turn boundary — it names who acts.
  */
 export function TurnHandoff({ config }: { config: GameConfig }) {
   const view = useGameState(activeView);
   const decisionSeat = useGameState((state) => state.pendingDecision?.seat ?? null);
+  const local = useLocalSeats();
   const over = useGameState((state) => state.status === 'over');
+
+  // a decision prompt (merger step, or the founding choice) owns the screen
+  const promptOpen =
+    (decisionSeat != null && local.includes(decisionSeat)) ||
+    (view?.step === 'found' && view.pendingFound != null);
+
   const actor: Seat | null = decisionSeat ?? view?.activeSeat ?? null;
 
   const [ready, setReady] = useState<Seat | null>(null);
@@ -25,7 +35,7 @@ export function TurnHandoff({ config }: { config: GameConfig }) {
     if (ready === null && actor !== null) setReady(actor);
   }, [actor, ready]);
 
-  if (over || actor === null || actor === ready) return null;
+  if (over || promptOpen || actor === null || actor === ready) return null;
   if (config.seats[actor]?.kind !== 'human') return null; // bots don't pass the machine
 
   const name = view?.seats[actor]?.name ?? `Player ${actor + 1}`;
