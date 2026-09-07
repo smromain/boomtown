@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --project desktop",
     "smoke": "electron-vite build && cross-env BOOMTOWN_SMOKE=1 electron .",
-    "package": "electron-vite build && electron-builder --config electron-builder.yml"
+    "package": "electron-vite build && electron-builder --config electron-builder.yml --publish never"
   },
   "//dependencies": "electron-vite bundles the renderer and main process from source (workspace packages via the vite aliases, npm deps inlined), so the packaged app ships no node_modules. Everything the build needs is a devDependency; electron-builder then has nothing to trace out of the monorepo.",
   "devDependencies": {

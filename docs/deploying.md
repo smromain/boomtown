@@ -37,9 +37,9 @@ suite against a local `partykit dev`; the deployed room runs the same code.
 
 ### CI
 
-`.github/workflows/release.yml`'s `deploy-party` job runs `npx partykit deploy`
-on every `v*` tag, using the `PARTYKIT_TOKEN` repo secret (create one at
-partykit.io → account → tokens).
+The `deploy-party` job in the release workflow (below) runs `npx partykit deploy`
+using the **`PARTYKIT_TOKEN`** repo secret — create one at partykit.io → account →
+tokens, then GitHub → repo Settings → Secrets and variables → Actions.
 
 ## The desktop app (Electron)
 
@@ -104,7 +104,26 @@ comment there) once a hosting target (GitHub Releases, S3, …) is chosen.
 
 ### Release
 
-Push a `v*` tag → `release.yml` builds all three OSes, packages, uploads the
-installers as workflow artifacts, and deploys the PartyKit room. It does **not**
-create a GitHub Release or attach the installers to one yet — that's a manual
-step (or a follow-up to the workflow) pending the auto-update decision.
+`.github/workflows/release.yml`. Two ways to trigger it:
+
+- **Manual** — Actions tab → **Release** → *Run workflow*, enter a version like
+  `1.0.0` (no leading `v`). The workflow creates the `v1.0.0` tag at the current
+  commit of the default branch, then builds.
+- **Tag push** — `git tag v1.0.0 && git push origin v1.0.0`.
+
+Then, for that version, it:
+
+1. **`prepare`** — validates the version is semver, creates the tag (manual only).
+2. **`build`** (matrix: macOS / Windows / Linux) — `npm ci`, typecheck, full test
+   suite, stamps the version into `apps/desktop/package.json` *for that build
+   only* (not committed), `npm run package`, uploads the installers as artifacts.
+3. **`release`** — downloads every OS's installers and publishes a **GitHub
+   Release** for the tag with them attached (`softprops/action-gh-release`,
+   auto-generated notes, marked prerelease if the version has a `-suffix`). Uses
+   the built-in `GITHUB_TOKEN` — no PAT needed.
+4. **`deploy-party`** — `npx partykit deploy` (needs `PARTYKIT_TOKEN`).
+
+The repo's `package.json` version stays `0.0.0` until you bump it by hand between
+releases; the workflow only stamps it transiently per build. Unsigned unless the
+signing secrets above are set. No auto-update manifests until a `publish:` block
+is added to `electron-builder.yml`.
