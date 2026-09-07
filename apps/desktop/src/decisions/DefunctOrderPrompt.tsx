@@ -1,5 +1,5 @@
 import type { PendingDecision } from '@boomtown/engine';
-import { useGameClient, useLocalActiveView } from '../client/GameClientProvider.js';
+import { useGameClient, useAnyView } from '../client/GameClientProvider.js';
 import styles from './decisions.module.css';
 
 type Decision = Extract<PendingDecision, { type: 'choose-defunct-order' }>;
@@ -7,7 +7,7 @@ type Decision = Extract<PendingDecision, { type: 'choose-defunct-order' }>;
 /** Equal-sized defunct chains: the mergemaker picks which resolves next (R3). */
 export function DefunctOrderPrompt({ decision }: { decision: Decision }) {
   const client = useGameClient();
-  const view = useLocalActiveView();
+  const view = useAnyView();
 
   return (
     <div>

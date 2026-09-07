@@ -104,4 +104,22 @@ describe('BoardScene', () => {
     const renderer = await ReactThreeTestRenderer.create(<BoardScene {...props({ corporations })} />);
     expect(renderer.scene.find((node) => node.props.name === 'hq:video')).toBeTruthy();
   });
+
+  it('the HQ badge falls back to the company initial, not the industry letter, when no canvas', async () => {
+    // jsdom has no 2D canvas, so HqMark takes the <Text> fallback path
+    const corporations = {
+      ...base.corporations,
+      video: {
+        ...base.corporations.video,
+        founded: true,
+        hqTile: '5E',
+        baseName: 'Megahit Video',
+      },
+    };
+    const renderer = await ReactThreeTestRenderer.create(<BoardScene {...props({ corporations })} />);
+    const hq = renderer.scene.find((node) => node.props.name === 'hq:video')!;
+    const text = hq.findAll((n) => n.props.userData?.text != null).map((n) => n.props.userData.text);
+    expect(text).toContain('M'); // company initial
+    expect(text).not.toContain('V'); // not industry[0] of "video"
+  });
 });

@@ -86,6 +86,49 @@ describe('DecisionModal', () => {
     expect(confirm).toBeEnabled();
   });
 
+  it('names both corporations by company name, not the industry key', async () => {
+    const { client } = await renderPanel(<DecisionModal />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']); // survives -> Megahit Video
+        seedCorp(state, 'books', ['6E', '7E']); // defunct -> Chapter Eleven
+        state.hands[0] = ['5E'];
+        state.seats[0]!.holdings.books = 4;
+      },
+    });
+    await place(client, '5E');
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('Dispose of Chapter Eleven stock');
+    expect(dialog).toHaveTextContent(/trade is 2-for-1 into Megahit Video/);
+    // never the raw industry keys
+    expect(dialog).not.toHaveTextContent(/\bbooks\b/);
+    expect(dialog).not.toHaveTextContent(/\bvideo\b/);
+  });
+
+  it('still names the corporations when the disposing seat is not the active seat', async () => {
+    // seat 1 places the merging tile; seat 0 holds the defunct stock. The
+    // disposal decision belongs to seat 0, whose turn it is *not* — the prompt
+    // must still resolve the corporation names (they are public).
+    const { client } = await renderPanel(<DecisionModal />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']);
+        seedCorp(state, 'books', ['6E', '7E']);
+        state.turnPointer = 1;
+        state.hands[1] = ['5E'];
+        state.seats[0]!.holdings.books = 3;
+      },
+    });
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 1, tile: '5E' });
+      await flush();
+    });
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('Dispose of Chapter Eleven stock');
+    expect(dialog).toHaveTextContent(/into Megahit Video/);
+    expect(dialog).not.toHaveTextContent(/\bbooks\b/);
+  });
+
   it('trade is disabled when the survivor has no bank stock left', async () => {
     const { client } = await renderPanel(<DecisionModal />, {
       craft: (state) => {

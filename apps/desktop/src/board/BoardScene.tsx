@@ -15,6 +15,7 @@ import {
 import fontMedium from '../assets/fonts/DMSans-Medium.ttf';
 import fontBold from '../assets/fonts/DMSans-Bold.ttf';
 import { boardCells, tileToWorld } from './coords.js';
+import { companyInitial, hqMarkTexture } from './industryTexture.js';
 
 /** Saxon City board palette — design/build.py, `board()` in the "B" direction. */
 const CELL_EMPTY = '#f1eae0';
@@ -68,7 +69,7 @@ export function BoardScene({ ruleset, cells, corporations, targets, onPick }: Bo
     () =>
       (Object.entries(corporations) as [Industry, CorpView][])
         .filter(([, corp]) => corp.founded && corp.hqTile)
-        .map(([industry, corp]) => ({ industry, tile: corp.hqTile! })),
+        .map(([industry, corp]) => ({ industry, tile: corp.hqTile!, baseName: corp.baseName })),
     [corporations],
   );
 
@@ -158,8 +159,8 @@ export function BoardScene({ ruleset, cells, corporations, targets, onPick }: Bo
         </Text>
       ))}
 
-      {/* headquarters: a dark circle badge with the corporation's initial */}
-      {headquarters.map(({ industry, tile }) => {
+      {/* headquarters: a dark circle badge carrying the corporation's industry mark */}
+      {headquarters.map(({ industry, tile, baseName }) => {
         const [x, , z] = tileToWorld(tile, ruleset);
         return (
           <group key={industry} name={`hq:${industry}`} position={[x, 0.14, z]}>
@@ -167,21 +168,50 @@ export function BoardScene({ ruleset, cells, corporations, targets, onPick }: Bo
               <cylinderGeometry args={[0.3, 0.3, 0.14, 32]} />
               <meshBasicMaterial color={HQ_BADGE} />
             </mesh>
-            <Text
-              font={fontBold}
-              position={[0, 0.16, -0.05]}
-              rotation={[-Math.PI / 2, 0, 0]}
-              fontSize={0.3}
-              color="#ffffff"
-              anchorX="center"
-              anchorY="middle"
-            >
-              {industry[0]!.toUpperCase()}
-            </Text>
+            <HqMark industry={industry} baseName={baseName} />
           </group>
         );
       })}
     </group>
+  );
+}
+
+/**
+ * The industry mark on a headquarters badge: the `marks.tsx` pictogram
+ * rasterised to a texture and laid flat on a small plane. Falls back to the
+ * company's initial (the design's badge glyph) when a 2D canvas isn't available
+ * — jsdom in tests, or a locked-down environment.
+ */
+function HqMark({ industry, baseName }: { industry: Industry; baseName: string }) {
+  const texture = useMemo(() => {
+    try {
+      return hqMarkTexture(industry);
+    } catch {
+      return null;
+    }
+  }, [industry]);
+
+  if (texture) {
+    return (
+      <mesh position={[0, 0.16, -0.05]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.44, 0.44]} />
+        <meshBasicMaterial map={texture} transparent />
+      </mesh>
+    );
+  }
+
+  return (
+    <Text
+      font={fontBold}
+      position={[0, 0.16, -0.05]}
+      rotation={[-Math.PI / 2, 0, 0]}
+      fontSize={0.3}
+      color="#ffffff"
+      anchorX="center"
+      anchorY="middle"
+    >
+      {companyInitial(baseName)}
+    </Text>
   );
 }
 

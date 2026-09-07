@@ -226,7 +226,9 @@ describe('BuyModal', () => {
       },
     });
     const dialog = screen.getByRole('dialog', { name: 'Buy stock' });
-    expect(within(dialog).getByRole('button', { name: 'more video' })).toBeInTheDocument();
+    // the row is labelled by the company name, not the industry key
+    expect(within(dialog).getByRole('button', { name: 'one more Megahit Video share' })).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: /video/ })).not.toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: /Buy nothing/ })).toBeInTheDocument();
   });
 

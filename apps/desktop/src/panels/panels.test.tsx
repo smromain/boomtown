@@ -17,7 +17,7 @@ describe('BuyControls', () => {
 
   it('caps the total at three shares', async () => {
     await atBuyStep();
-    const more = screen.getByRole('button', { name: 'more video' });
+    const more = screen.getByRole('button', { name: 'one more Megahit Video share' });
     await userEvent.click(more);
     await userEvent.click(more);
     await userEvent.click(more);
@@ -34,7 +34,7 @@ describe('BuyControls', () => {
         state.seats[0]!.cash = 500;
       },
     });
-    const more = screen.getByRole('button', { name: 'more video' });
+    const more = screen.getByRole('button', { name: 'one more Megahit Video share' });
     await userEvent.click(more);
     expect(more).toBeDisabled();
   });
@@ -48,7 +48,7 @@ describe('BuyControls', () => {
         state.bankShares.video = 1;
       },
     });
-    const more = screen.getByRole('button', { name: 'more video' });
+    const more = screen.getByRole('button', { name: 'one more Megahit Video share' });
     await userEvent.click(more);
     expect(more).toBeDisabled();
   });

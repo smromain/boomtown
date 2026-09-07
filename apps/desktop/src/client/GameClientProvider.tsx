@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useStore } from 'zustand';
 import {
+  anyView,
   localActiveView,
   isLocalTurn,
   type ClientView,
@@ -66,4 +67,16 @@ export function useLocalActiveView(): ClientView | null {
 export function useIsLocalTurn(): boolean {
   const local = useLocalSeats();
   return useGameState((state) => isLocalTurn(state, local));
+}
+
+/**
+ * Any seat's view — for reading **public** state (the board, corporation names
+ * and sizes, the result) regardless of whose turn it is. Merger prompts use
+ * this: `DecisionModal` already gates whether the modal opens on the decision
+ * being local, and a corporation's display name is public, so the prompt must
+ * not depend on the *active* seat also being local (during a merger it often
+ * is not — the seat disposing shares is not the mergemaker).
+ */
+export function useAnyView(): ClientView | null {
+  return useGameState(anyView);
 }

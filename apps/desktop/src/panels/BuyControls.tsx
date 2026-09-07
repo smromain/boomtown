@@ -39,8 +39,7 @@ export function BuyControls() {
             return (
               <BuyRow
                 key={industry}
-                industry={industry}
-                label={view.corporations[industry].displayName}
+                name={view.corporations[industry].displayName}
                 price={view.corporations[industry].sharePrice ?? 0}
                 qty={qty}
                 canAdd={canIncrement(view, picks, industry)}
@@ -65,16 +64,14 @@ export function BuyControls() {
 }
 
 function BuyRow({
-  industry,
-  label,
+  name,
   price,
   qty,
   canAdd,
   onLess,
   onMore,
 }: {
-  industry: string;
-  label: string;
+  name: string;
   price: number;
   qty: number;
   canAdd: boolean;
@@ -83,13 +80,13 @@ function BuyRow({
 }) {
   return (
     <>
-      <span>{label}</span>
+      <span>{name}</span>
       <span className="tabnum">${price.toLocaleString()}</span>
-      <button type="button" aria-label={`fewer ${industry}`} disabled={qty === 0} onClick={onLess}>
+      <button type="button" aria-label={`one fewer ${name} share`} disabled={qty === 0} onClick={onLess}>
         −
       </button>
-      <output>{qty}</output>
-      <button type="button" aria-label={`more ${industry}`} disabled={!canAdd} onClick={onMore}>
+      <output aria-label={`${name} shares to buy`}>{qty}</output>
+      <button type="button" aria-label={`one more ${name} share`} disabled={!canAdd} onClick={onMore}>
         +
       </button>
     </>
