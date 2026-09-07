@@ -4,7 +4,7 @@ import { DecisionModal } from '../decisions/DecisionModal.js';
 import type { StartedGame } from '../setup/NewGame.js';
 import { ActionBar } from './ActionBar.js';
 import { BuyModal } from './BuyModal.js';
-import { CorporationBand } from './CorporationBand.js';
+import { CorporationBand, TrayStrip } from './CorporationBand.js';
 import { Header } from './Header.js';
 import { Shareholders } from './Shareholders.js';
 import { StoryCard } from './StoryCard.js';
@@ -35,6 +35,7 @@ export function GameScreen({ game }: { game: StartedGame }) {
               <ActionBar />
             </div>
           </div>
+          <TrayStrip />
         </div>
       </div>
       <DecisionModal />

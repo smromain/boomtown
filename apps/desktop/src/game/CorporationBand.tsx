@@ -8,14 +8,23 @@ import styles from './band.module.css';
  * The corporation band from the Main artboard: one card per active corporation,
  * its width proportional to how many corporations it contains (itself plus what
  * it has eaten), so a merged corporation earns its own room (`docs/naming.md`
- * card consolidation). Unfounded corporations sit in the tray.
+ * card consolidation). Unfounded corporations live in the tray strip at the
+ * bottom of the screen, not here — with all seven founded the band is already
+ * full.
  */
 export function CorporationBand() {
   const view = useGameState(activeView);
   if (!view) return null;
 
   const active = INDUSTRIES.filter((industry) => view.corporations[industry].founded);
-  const tray = INDUSTRIES.filter((industry) => !view.corporations[industry].founded);
+
+  if (active.length === 0) {
+    return (
+      <section className={styles.bandEmpty} aria-label="Corporations">
+        No corporations founded yet. Place two adjacent tiles to start one.
+      </section>
+    );
+  }
 
   return (
     <section className={styles.band} aria-label="Corporations">
@@ -27,16 +36,28 @@ export function CorporationBand() {
           mine={view.yourHoldings[industry]}
         />
       ))}
-      <div className={styles.tray}>
-        <div className={styles.trayTitle}>In the tray</div>
-        {tray.map((industry) => (
-          <div key={industry} className={styles.trayItem}>
-            <IndustryMark industry={industry} color={INDUSTRY_INFO[industry].color} size={17} />
-            <span className="serif">{view.corporations[industry].baseName}</span>
-          </div>
-        ))}
-        <div className={styles.trayNote}>Free to found again, under their own names.</div>
-      </div>
+    </section>
+  );
+}
+
+/** The unfounded companies, as a slim strip. Placed at the foot of the screen. */
+export function TrayStrip() {
+  const view = useGameState(activeView);
+  if (!view) return null;
+
+  const tray = INDUSTRIES.filter((industry) => !view.corporations[industry].founded);
+  if (tray.length === 0) return null;
+
+  return (
+    <section className={styles.tray} aria-label="In the tray">
+      <span className={styles.trayTitle}>In the tray</span>
+      {tray.map((industry) => (
+        <span key={industry} className={styles.trayItem}>
+          <IndustryMark industry={industry} color={INDUSTRY_INFO[industry].color} size={15} />
+          <span className="serif">{view.corporations[industry].baseName}</span>
+        </span>
+      ))}
+      <span className={styles.trayNote}>Free to found again, under their own names.</span>
     </section>
   );
 }

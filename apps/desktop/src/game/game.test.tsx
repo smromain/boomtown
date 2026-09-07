@@ -2,9 +2,10 @@ import { act } from 'react';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { INDUSTRIES } from '@boomtown/engine';
 import { ActionBar } from './ActionBar.js';
 import { BuyModal } from './BuyModal.js';
-import { CorporationBand } from './CorporationBand.js';
+import { CorporationBand, TrayStrip } from './CorporationBand.js';
 import { Shareholders } from './Shareholders.js';
 import { StoryCard } from './StoryCard.js';
 import { TileRack } from './TileRack.js';
@@ -19,7 +20,7 @@ const humans = (count: number) => ({
 });
 
 describe('CorporationBand', () => {
-  it('shows a card per active corporation with the derived name; unfounded ones sit in the tray', async () => {
+  it('shows a card per active corporation with the derived name', async () => {
     await renderPanel(<CorporationBand />, {
       craft: (state) => {
         seedCorp(state, 'video', ['2E', '3E', '4E', '5E', '6E', '7E', '8E', '9E', '2F', '3F', '4F', '5F']);
@@ -33,7 +34,13 @@ describe('CorporationBand', () => {
     // video ate air -> derived display name, not "Megahit Video"
     const cards = within(band).getAllByRole('article');
     expect(cards[0]).toHaveAttribute('aria-label', expect.stringMatching(/^Megahit/));
-    expect(within(band).getByText(/Chapter Eleven/)).toBeInTheDocument(); // books, in the tray
+    // an unfounded company is not a card in the band
+    expect(within(band).queryByText(/Chapter Eleven/)).not.toBeInTheDocument();
+  });
+
+  it('says so when nothing is founded yet', async () => {
+    await renderPanel(<CorporationBand />);
+    expect(screen.getByText(/No corporations founded yet/)).toBeInTheDocument();
   });
 
   it('widens a card in proportion to how many corporations it contains', async () => {
@@ -52,6 +59,28 @@ describe('CorporationBand', () => {
       Number(getComputedStyle(cards.find((c) => c.getAttribute('aria-label')!.match(label))!).flexGrow);
     expect(grow('^Megahit')).toBe(3); // video + air + toys
     expect(grow('Chapter Eleven')).toBe(1); // books alone
+  });
+});
+
+describe('TrayStrip', () => {
+  it('lists the unfounded companies, and not the founded ones', async () => {
+    await renderPanel(<TrayStrip />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']);
+      },
+    });
+    const tray = screen.getByRole('region', { name: 'In the tray' });
+    expect(within(tray).getByText(/Chapter Eleven/)).toBeInTheDocument(); // books, unfounded
+    expect(within(tray).queryByText(/Megahit Video/)).not.toBeInTheDocument(); // founded -> not here
+  });
+
+  it('renders nothing when every industry is founded', async () => {
+    await renderPanel(<TrayStrip />, {
+      craft: (state) => {
+        INDUSTRIES.forEach((industry, i) => seedCorp(state, industry, [`${i + 1}I`]));
+      },
+    });
+    expect(screen.queryByRole('region', { name: 'In the tray' })).not.toBeInTheDocument();
   });
 });
 
