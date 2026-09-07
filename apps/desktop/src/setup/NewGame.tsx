@@ -6,7 +6,7 @@ import {
   localTransport,
   type GameClient,
 } from '@boomtown/client-core';
-import { RULES, type Seat } from '@boomtown/engine';
+import { RULES, type GameState, type Seat } from '@boomtown/engine';
 import { dumpBotStuck } from '../debug/dump.js';
 import { SeatRow } from './SeatConfig.js';
 import {
@@ -27,6 +27,11 @@ export interface StartedGame {
   readonly localSeats: readonly Seat[];
   /** Tears down the bot driver; absent when the table has no bots. */
   detachBots?: () => void;
+  /** Forces the bot on the clock to move now — a manual unstick for the UI.
+   *  Absent when the table has no bots. */
+  nudgeBots?: () => void;
+  /** The authoritative state, for dev diagnostics. Local games only. */
+  snapshot?: () => GameState;
 }
 
 export function NewGame({ onStart }: { onStart: (game: StartedGame) => void }) {
@@ -57,14 +62,16 @@ export function NewGame({ onStart }: { onStart: (game: StartedGame) => void }) {
       .filter((s) => s.kind === 'human')
       .map((s) => s.index);
 
-    const started: StartedGame = { client, config, localSeats };
+    const started: StartedGame = { client, config, localSeats, snapshot: () => session.snapshot() };
     if (bots.length > 0) {
-      started.detachBots = attachBotDriver(client, {
+      const driver = attachBotDriver(client, {
         bots,
         snapshot: () => session.snapshot(),
         onStuck: (report) => dumpBotStuck(report, client.store.getState().log),
         ...(config.seed !== undefined ? { seed: config.seed } : {}),
       });
+      started.detachBots = driver.detach;
+      started.nudgeBots = driver.nudge;
     }
 
     void client.connect().then(() => onStart(started));

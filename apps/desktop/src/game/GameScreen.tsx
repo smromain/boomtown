@@ -14,6 +14,7 @@ import { TileRack } from './TileRack.js';
 import { TurnHandoff } from './TurnHandoff.js';
 import { WaitingForSeat } from './Waiting.js';
 import type { GameConfig } from '../setup/gameConfig.js';
+import type { GameState } from '@boomtown/engine';
 import styles from './game.module.css';
 
 /**
@@ -24,7 +25,7 @@ import styles from './game.module.css';
 export function GameScreen({ game }: { game: StartedGame }) {
   return (
     <GameClientProvider client={game.client} localSeats={game.localSeats}>
-      <PlayArea config={game.config} />
+      <PlayArea config={game.config} nudgeBots={game.nudgeBots} snapshot={game.snapshot} />
       <DecisionModal />
       <BuyModal />
       <TurnHandoff config={game.config} />
@@ -33,7 +34,15 @@ export function GameScreen({ game }: { game: StartedGame }) {
   );
 }
 
-function PlayArea({ config }: { config: GameConfig }) {
+function PlayArea({
+  config,
+  nudgeBots,
+  snapshot,
+}: {
+  config: GameConfig;
+  nudgeBots: (() => void) | undefined;
+  snapshot: (() => GameState) | undefined;
+}) {
   const localTurn = useIsLocalTurn();
 
   return (
@@ -43,7 +52,13 @@ function PlayArea({ config }: { config: GameConfig }) {
         <CorporationBand />
         <div className={styles.middle}>
           <div className={styles.boardArea}>
-            <div className={styles.board}>{localTurn ? <Board /> : <WaitingForSeat config={config} />}</div>
+            <div className={styles.board}>
+              {localTurn ? (
+                <Board />
+              ) : (
+                <WaitingForSeat config={config} nudge={nudgeBots} snapshot={snapshot} />
+              )}
+            </div>
             <OutOfPlay />
           </div>
           <div className={styles.column}>

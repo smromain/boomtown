@@ -50,6 +50,15 @@ export interface BotStuckReport {
   readonly state?: GameState;
 }
 
+export interface BotDriver {
+  /** Detach the driver and stop all timers. */
+  detach: () => void;
+  /** Force an immediate move attempt for whichever bot owes the next command.
+   *  A manual escape hatch for the UI if a bot ever appears stuck. No-op when no
+   *  bot is on the clock. */
+  nudge: () => void;
+}
+
 /**
  * Drives the bot seats of a local game. It subscribes to the client store and,
  * whenever the seat that owes a command is a bot, asks that bot's policy and
@@ -64,16 +73,22 @@ export interface BotStuckReport {
  * the bot), a throwing decision is caught and retried rather than killing the
  * subscription, and a watchdog forces a retry if a bot has been owed a move for
  * far longer than it should take.
+ *
+ * Returns a `BotDriver`. For backwards compatibility the return value is also
+ * directly callable as the detach function.
  */
-export function attachBotDriver(client: GameClient, options: BotDriverOptions): () => void {
+export function attachBotDriver(
+  client: GameClient,
+  options: BotDriverOptions,
+): BotDriver & (() => void) {
   const policies = new Map<Seat, Policy>(
     options.bots.map(({ seat, level }) => [seat, heuristicPolicy({ level })]),
   );
   const thinkMs = options.thinkMs ?? 600;
-  // How long a bot may be owed a move before the watchdog steps in. Generous
-  // enough that a slow deep-search decision never trips it, capped so a real
-  // wedge is caught within a few seconds rather than never.
-  const watchdogMs = options.watchdogMs ?? Math.min(15_000, Math.max(4000, thinkMs * 8));
+  // How long a bot may be owed a move before the watchdog steps in. Deep-search
+  // decisions at the top difficulty take well under a second, so a few seconds
+  // is generous; kept tight so a real wedge is caught quickly rather than never.
+  const watchdogMs = options.watchdogMs ?? Math.max(5000, thinkMs * 6);
   let rng: Rng = makeRng(options.seed ?? (Date.now() & 0x7fffffff));
   let pending: ReturnType<typeof setTimeout> | null = null;
   /** The seat the pending timer was scheduled for, so a re-entrant step() knows
@@ -177,10 +192,20 @@ export function attachBotDriver(client: GameClient, options: BotDriverOptions): 
 
   step(); // in case a bot is already on the clock at attach time
 
-  return () => {
+  const detach = () => {
     stopped = true;
     clearPending();
     if (watchdog !== null) clearInterval(watchdog);
     unsubscribe();
   };
+
+  const nudge = () => {
+    const seat = botToMove();
+    if (seat === null) return;
+    clearPending();
+    owedSince = Date.now();
+    fire(seat);
+  };
+
+  return Object.assign(detach, { detach, nudge });
 }

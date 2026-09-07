@@ -69,6 +69,42 @@ describe('bot driver robustness', () => {
     detach();
   }, 8000);
 
+  it('nudge() forces the owed bot to move immediately', async () => {
+    const { session, client } = bench();
+    const driver = attachBotDriver(client, {
+      bots: [{ seat: 0, level: 5 }],
+      snapshot: () => session.snapshot(),
+      seed: 1,
+      thinkMs: 999_999, // the normal timer will not fire
+    });
+    await client.connect();
+    await flush();
+    expect(client.store.getState().log.length).toBe(0);
+
+    driver.nudge();
+    for (let i = 0; i < 50 && client.store.getState().log.length === 0; i++) await flush();
+    expect(client.store.getState().log.length).toBeGreaterThan(0);
+
+    // still callable as the bare detach function (back-compat)
+    expect(typeof driver).toBe('function');
+    driver.detach();
+  });
+
+  it('nudge() is a no-op when no bot is on the clock', async () => {
+    const { session, client } = bench();
+    const driver = attachBotDriver(client, {
+      bots: [{ seat: 1, level: 5 }], // seat 0 is human and on the clock
+      snapshot: () => session.snapshot(),
+      seed: 1,
+      thinkMs: 10,
+    });
+    await client.connect();
+    await flush();
+    expect(() => driver.nudge()).not.toThrow();
+    expect(client.store.getState().log.length).toBe(0);
+    driver.detach();
+  });
+
   it('the watchdog reports (and force-retries) a bot owed a move whose timer never fires', async () => {
     const { session, client } = bench();
     const reports: BotStuckReport[] = [];

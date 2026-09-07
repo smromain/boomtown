@@ -30,6 +30,7 @@ export { reconcile } from './reconcile.js';
 export { createGameClient, type GameClient } from './dispatch.js';
 export {
   attachBotDriver,
+  type BotDriver,
   type BotDriverOptions,
   type BotSeat,
   type BotStuckReport,

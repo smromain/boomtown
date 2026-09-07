@@ -9,6 +9,9 @@ coverage/
 # PartyKit local dev state
 .partykit/
 
+# Dev-only stuck-game snapshots (apps/desktop/electron/main.ts debug:dump)
+debug-dumps/
+
 # Python bytecode
 __pycache__/
 *.pyc

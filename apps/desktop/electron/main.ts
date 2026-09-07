@@ -39,16 +39,21 @@ ipcMain.handle('update:check', () => checkForUpdates());
 // Dev-only diagnostic: dump a game-state snapshot to disk so a stuck game (a
 // bot that never moves, a rejected command) can be replayed and root-caused.
 // Silently does nothing in a packaged build.
+//
+// In dev, electron-vite runs with cwd = apps/desktop, so dumps land in
+// apps/desktop/debug-dumps/ right in the repo (gitignored) where they are easy
+// to find — the app's platform log dir is unpredictable under `electron-vite dev`.
+const debugDumpDir = join(process.cwd(), 'debug-dumps');
+
 ipcMain.handle('debug:dump', async (_event, label: string, payload: unknown) => {
   if (!isDev) return null;
   try {
     const { writeFile, mkdir } = await import('node:fs/promises');
-    const dir = join(app.getPath('logs'), 'boomtown-debug');
-    await mkdir(dir, { recursive: true });
+    await mkdir(debugDumpDir, { recursive: true });
     const safe = String(label).replace(/[^a-z0-9-]/gi, '_').slice(0, 40);
-    const file = join(dir, `${new Date().toISOString().replace(/[:.]/g, '-')}-${safe}.json`);
+    const file = join(debugDumpDir, `${new Date().toISOString().replace(/[:.]/g, '-')}-${safe}.json`);
     await writeFile(file, JSON.stringify(payload, null, 2), 'utf8');
-    console.log(`[debug] wrote ${file}`);
+    console.log(`\n[debug] game snapshot written:\n  ${file}\n`);
     return file;
   } catch (error) {
     console.error('[debug] dump failed', error);

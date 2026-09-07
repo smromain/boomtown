@@ -108,6 +108,7 @@ describe('NewGame screen', () => {
 
     expect(started).toBeDefined();
     expect(started!.detachBots).toBeTypeOf('function');
+    expect(started!.nudgeBots).toBeTypeOf('function');
     started!.detachBots!();
     started!.client.disconnect();
   });
