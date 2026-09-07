@@ -71,6 +71,7 @@ function finalizeDefunct(state: GameState, defunct: Industry, events: EngineEven
   const company = state.companies[defunct];
   merger.absorbedTiles.push(...corp.tiles);
   merger.resolvedRecords.push({
+    industry: defunct,
     displayName: displayName(company.baseName, corp.eaten, state.ruleset.mergeNaming),
     flavours: accretedFlavour(company.flavour, corp.eaten),
   });

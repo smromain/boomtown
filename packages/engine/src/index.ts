@@ -60,6 +60,7 @@ export {
   type Visibility,
   type SeatState,
   type CorpState,
+  type AbsorbedCorp,
   type Cell,
   type TurnStep,
   type PendingDecision,

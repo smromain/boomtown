@@ -5,6 +5,9 @@ import type { Ruleset } from './ruleset/types.js';
 import type { Rng } from './rng.js';
 import { accretedFlavour, displayName, type EatenRecord } from './naming/index.js';
 
+/** An `EatenRecord` plus which industry the absorbed corporation belonged to (for lineage marks). */
+export type AbsorbedCorp = EatenRecord & { readonly industry: Industry };
+
 export type Seat = number;
 
 /** Table setting: whether opponent cash and holdings are visible. Not a rule. */
@@ -24,7 +27,7 @@ export interface CorpState {
   /** Member tiles. Length is the size. */
   tiles: TileId[];
   /** Corporations this one has absorbed, in acquisition order. Drives the derived display name and accreted flavour (R6). */
-  eaten: EatenRecord[];
+  eaten: AbsorbedCorp[];
 }
 
 export type Cell =
@@ -60,7 +63,7 @@ export interface MergerSnapshot {
   /** Tiles of defunct corporations, held until the survivor absorbs everything at completion. */
   absorbedTiles: TileId[];
   /** Defunct corporations in the order they were resolved — appended to the survivor's `eaten` at completion. */
-  resolvedRecords: EatenRecord[];
+  resolvedRecords: AbsorbedCorp[];
   pending: PendingDecision | null;
 }
 
@@ -175,7 +178,8 @@ export interface CorpView {
   readonly displayName: string;
   /** The corporation's own flavour line plus every line it has swallowed. */
   readonly flavour: readonly string[];
-  readonly eatenCount: number;
+  /** Industries this corporation has absorbed, in order — one lineage mark per entry. */
+  readonly eaten: readonly Industry[];
 }
 
 export interface PlayerView {
@@ -218,7 +222,7 @@ export function viewFor(state: GameState, you: Seat): PlayerView {
         baseName: state.companies[industry].baseName,
         displayName: displayNameOf(state, industry),
         flavour: flavourOf(state, industry),
-        eatenCount: corp.eaten.length,
+        eaten: corp.eaten.map((record) => record.industry),
       };
       return [industry, view];
     }),
