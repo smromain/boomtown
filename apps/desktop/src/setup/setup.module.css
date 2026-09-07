@@ -90,6 +90,17 @@
   cursor: default;
 }
 
+.back {
+  display: block;
+  margin: 1rem auto 0;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
 /* How-to-play summary */
 .rules {
   margin-bottom: 1.5rem;

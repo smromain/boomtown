@@ -11,10 +11,14 @@ describe('App shell', () => {
     expect(screen.getByRole('button', { name: 'Play online' })).toBeInTheDocument();
   });
 
-  it('goes to local setup on "Local game"', async () => {
+  it('goes to local setup on "Local game" and back to the menu on "Back"', async () => {
     render(<App />);
     await userEvent.click(screen.getByRole('button', { name: 'Local game' }));
     expect(screen.getByRole('heading', { name: 'New game' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('img', { name: 'Boomtown' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Local game' })).toBeInTheDocument();
   });
 
   it('goes to the online create/join screen on "Play online"', async () => {

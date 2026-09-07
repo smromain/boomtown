@@ -78,7 +78,12 @@ export function App() {
       );
 
     case 'local-setup':
-      return <NewGame onStart={(game) => setScreen({ kind: 'playing-local', game })} />;
+      return (
+        <NewGame
+          onStart={(game) => setScreen({ kind: 'playing-local', game })}
+          onBack={() => setScreen({ kind: 'menu' })}
+        />
+      );
 
     case 'online-setup':
       return (

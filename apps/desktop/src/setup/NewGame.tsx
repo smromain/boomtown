@@ -35,7 +35,13 @@ export interface StartedGame {
   snapshot?: () => GameState;
 }
 
-export function NewGame({ onStart }: { onStart: (game: StartedGame) => void }) {
+export function NewGame({
+  onStart,
+  onBack,
+}: {
+  onStart: (game: StartedGame) => void;
+  onBack?: () => void;
+}) {
   const [config, setConfig] = useState<GameConfig>(defaultConfig);
   const error = configError(config);
 
@@ -138,6 +144,12 @@ export function NewGame({ onStart }: { onStart: (game: StartedGame) => void }) {
       <button type="button" className={styles.start} disabled={error != null} onClick={start}>
         Start game
       </button>
+
+      {onBack && (
+        <button type="button" className={styles.back} onClick={onBack}>
+          Back
+        </button>
+      )}
     </section>
   );
 }
