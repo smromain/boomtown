@@ -100,6 +100,7 @@ export {
   fragmentCandidates,
   displayName,
   accretedFlavour,
+  blendedFlavour,
   syllables,
 } from './naming/index.js';
 

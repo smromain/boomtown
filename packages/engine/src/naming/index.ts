@@ -119,3 +119,36 @@ export function displayName(
 export function accretedFlavour(ownFlavour: string, eaten: readonly EatenRecord[]): string[] {
   return [ownFlavour, ...eaten.flatMap((record) => record.flavours)];
 }
+
+/** Front slice of a flavour line: the first `frac` of its words (at least one). */
+function flavourHead(line: string, frac: number): string {
+  const words = line.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '';
+  const keep = Math.max(1, Math.round(frac * words.length));
+  return words.slice(0, keep).join(' ');
+}
+
+/** Back slice of a flavour line: the last `frac` of its words (at least one). */
+function flavourTail(line: string, frac: number): string {
+  const words = line.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '';
+  const keep = Math.max(1, Math.round(frac * words.length));
+  return words.slice(words.length - keep).join(' ');
+}
+
+/**
+ * The derived flavour line, spliced the way `displayName` splices names: the
+ * head of the survivor's own line, then the tail of every line it has
+ * swallowed, in acquisition order. It will not make sense — that is the joke
+ * (`docs/naming.md`). An unmerged corporation keeps its line verbatim.
+ */
+export function blendedFlavour(ownFlavour: string, eaten: readonly EatenRecord[]): string {
+  const lines = accretedFlavour(ownFlavour, eaten);
+  if (lines.length === 1) return ownFlavour;
+  const [own, ...swallowed] = lines;
+  const parts = [flavourHead(own!, 0.55), ...swallowed.map((line) => flavourTail(line, 0.5))];
+  return parts
+    .filter(Boolean)
+    .map((part) => part.replace(/[,;:]+$/, ''))
+    .join(', ');
+}

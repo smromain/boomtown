@@ -100,7 +100,7 @@ export function fullChart(view: ClientView): ChartRow[] {
 export interface CorpReferenceData {
   readonly industry: Industry;
   readonly name: string;
-  readonly flavour: readonly string[];
+  readonly flavour: string;
   readonly color: string;
   readonly ink: string;
   readonly tier: 1 | 2 | 3;

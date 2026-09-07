@@ -88,7 +88,7 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
 
       <div>
         <div className={`serif ${styles.name}`}>{corp.displayName}</div>
-        <div className={styles.flavour}>{corp.flavour.join(' · ')}</div>
+        <div className={styles.flavour}>{corp.flavour}</div>
       </div>
 
       <div className={styles.priceRow}>

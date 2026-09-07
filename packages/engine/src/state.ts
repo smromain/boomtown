@@ -3,7 +3,7 @@ import { sharePrice } from './pricing.js';
 import { INDUSTRIES, INDUSTRY_INFO, type Candidate, type Industry } from './pool.js';
 import type { Ruleset } from './ruleset/types.js';
 import type { Rng } from './rng.js';
-import { accretedFlavour, displayName, type EatenRecord } from './naming/index.js';
+import { blendedFlavour, displayName, type EatenRecord } from './naming/index.js';
 
 /** An `EatenRecord` plus which industry the absorbed corporation belonged to (for lineage marks). */
 export type AbsorbedCorp = EatenRecord & { readonly industry: Industry };
@@ -147,9 +147,13 @@ export function displayNameOf(state: GameState, industry: Industry): string {
   );
 }
 
-/** The corporation's accreted flavour: its own line plus every line it has swallowed. */
-export function flavourOf(state: GameState, industry: Industry): string[] {
-  return accretedFlavour(state.companies[industry].flavour, state.corporations[industry].eaten);
+/**
+ * The corporation's flavour line: verbatim while unmerged, and spliced —
+ * head of its own line plus the tail of every swallowed line — once it has
+ * eaten anything. Nonsense by design, like the derived display name.
+ */
+export function flavourOf(state: GameState, industry: Industry): string {
+  return blendedFlavour(state.companies[industry].flavour, state.corporations[industry].eaten);
 }
 
 export function emptyHoldings(): Record<Industry, number> {
@@ -178,8 +182,8 @@ export interface CorpView {
   readonly baseName: string;
   /** Derived: stem + one fragment per absorbed corporation (R6). */
   readonly displayName: string;
-  /** The corporation's own flavour line plus every line it has swallowed. */
-  readonly flavour: readonly string[];
+  /** Flavour line — verbatim while unmerged, spliced nonsense once it has eaten (R6). */
+  readonly flavour: string;
   /** Industries this corporation has absorbed, in order — one lineage mark per entry. */
   readonly eaten: readonly Industry[];
 }

@@ -37,9 +37,7 @@ export function CorpReference({
                   <Dialog.Title className="serif" style={{ color: data.color }}>
                     {data.name}
                   </Dialog.Title>
-                  {data.flavour.length > 0 && (
-                    <p className={styles.corpFlavour}>{data.flavour.join(' · ')}</p>
-                  )}
+                  {data.flavour && <p className={styles.corpFlavour}>{data.flavour}</p>}
                 </div>
                 {data.safe && (
                   <span className={styles.safeTag} style={{ color: data.color }}>

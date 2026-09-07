@@ -4,6 +4,7 @@ import {
   DEFAULT_MERGE_NAMING,
   POOL,
   accretedFlavour,
+  blendedFlavour,
   displayName,
   fragment,
   isBlockedName,
@@ -197,5 +198,40 @@ describe('rules the module must respect', () => {
       'the glamour of air travel',
       'wings over everywhere',
     ]);
+  });
+});
+
+describe('blendedFlavour (spliced like the display name)', () => {
+  it('an unmerged corporation keeps its line verbatim', () => {
+    expect(blendedFlavour('be kind, rewind', [])).toBe('be kind, rewind');
+  });
+
+  it('splices the head of the survivor onto the tail of each swallowed line', () => {
+    // head 55% of "be kind, rewind" (3 words -> 2) = "be kind," -> trailing comma trimmed
+    // tail 50% of "the glamour of air travel" (5 words -> 3) = "of air travel"
+    expect(blendedFlavour('be kind, rewind', [rec('Panatl', ['the glamour of air travel'])])).toBe(
+      'be kind, of air travel',
+    );
+  });
+
+  it('adds one tail per swallowed line, in acquisition order', () => {
+    const eaten = [
+      rec('Panatl', ['the glamour of air travel']),
+      rec('Radioh', ['weird batteries and $70 HDMI cables']),
+    ];
+    const blended = blendedFlavour('be kind, rewind', eaten);
+    expect(blended.startsWith('be kind, ')).toBe(true);
+    expect(blended).toContain('of air travel');
+    expect(blended).toContain('$70 HDMI cables');
+    // order: survivor head, then air, then electronics
+    expect(blended.indexOf('air travel')).toBeLessThan(blended.indexOf('HDMI'));
+  });
+
+  it('carries a swallowed corporation’s own accreted lines through', () => {
+    // Panatl had itself eaten "wings over everywhere" before being swallowed
+    const eaten = [rec('Panatl', ['the glamour of air travel', 'wings over everywhere'])];
+    const blended = blendedFlavour('be kind, rewind', eaten);
+    expect(blended).toContain('air travel');
+    expect(blended).toContain('over everywhere');
   });
 });
