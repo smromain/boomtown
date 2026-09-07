@@ -3,11 +3,11 @@ import type { Industry } from '@boomtown/engine';
 import {
   BoltIcon,
   BookOpenIcon,
+  CakeIcon,
   CpuChipIcon,
   DevicePhoneMobileIcon,
   FilmIcon,
   PaperAirplaneIcon,
-  PuzzlePieceIcon,
 } from '@heroicons/react/24/solid';
 
 /** One Heroicon per industry — the seven are fixed, so this map is total. */
@@ -18,7 +18,7 @@ const ICONS: Record<Industry, ComponentType<SVGProps<SVGSVGElement>>> = {
   energy: BoltIcon,
   tech: DevicePhoneMobileIcon,
   video: FilmIcon,
-  toys: PuzzlePieceIcon,
+  toys: CakeIcon,
 };
 
 export function IndustryMark({ industry, color, size = 24 }: { industry: Industry; color: string; size?: number }) {
