@@ -13,7 +13,13 @@ export {
   wireEngineError,
 } from './errors.js';
 
-export type { PlayerViewDTO, EngineEventDTO } from './dto.js';
+export type {
+  PlayerViewDTO,
+  EngineEventDTO,
+  ClientViewDTO,
+  HandTile,
+  HandTileEffect,
+} from './dto.js';
 
 export type {
   ClientMessage,

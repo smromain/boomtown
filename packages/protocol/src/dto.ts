@@ -1,4 +1,4 @@
-import type { EngineEvent, PlayerView } from '@boomtown/engine';
+import type { Command, EngineEvent, PlayerView, TileId } from '@boomtown/engine';
 
 /**
  * The serialized shape of one seat's view. `PlayerView` is already a pure
@@ -11,6 +11,26 @@ export type PlayerViewDTO = PlayerView;
 
 /** Events are likewise plain data (KTD2); this is their wire name. */
 export type EngineEventDTO = EngineEvent;
+
+/** What placing a hand tile would do this turn. `blocked` = would found an eighth corporation. */
+export type HandTileEffect = 'nothing' | 'found' | 'grow' | 'merge' | 'dead' | 'blocked';
+
+export interface HandTile {
+  readonly tile: TileId;
+  readonly effect: HandTileEffect;
+  readonly playable: boolean;
+}
+
+/**
+ * A `PlayerView` plus the two things the UI cannot re-derive without the full
+ * `GameState` (R8): the active seat's legal moves, and what each hand tile
+ * would do. Online the room computes these and sends the whole `ClientViewDTO`;
+ * locally `client-core`'s `clientView()` builds the same shape from state.
+ */
+export interface ClientViewDTO extends PlayerView {
+  readonly legalMoves: readonly Command[];
+  readonly handTiles: readonly HandTile[];
+}
 
 /**
  * Compile-time guard: every leaf of the DTO must be a JSON primitive — no
@@ -34,3 +54,4 @@ type DeepJsonSafe<T> = T extends JsonPrimitive
 
 type _PlayerViewIsJson = PlayerViewDTO extends DeepJsonSafe<PlayerViewDTO> ? true : never;
 type _EngineEventIsJson = EngineEventDTO extends DeepJsonSafe<EngineEventDTO> ? true : never;
+type _ClientViewIsJson = ClientViewDTO extends DeepJsonSafe<ClientViewDTO> ? true : never;

@@ -27,3 +27,8 @@ export {
 export { reconcile } from './reconcile.js';
 export { createGameClient, type GameClient } from './dispatch.js';
 export { attachBotDriver, type BotDriverOptions, type BotSeat } from './bots.js';
+export {
+  socketTransport,
+  type SocketTransportOptions,
+  type SocketExtras,
+} from './transport/socket.js';

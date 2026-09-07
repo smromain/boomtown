@@ -3,12 +3,12 @@ import {
   createGame,
   reduce,
   replay,
-  viewFor,
   type Command,
   type EngineEvent,
   type GameState,
   type Seat,
 } from '@boomtown/engine';
+import { clientView } from '@boomtown/client-core';
 import { heuristicPolicy, botRng, type Policy } from '@boomtown/ai';
 import {
   PROTOCOL_VERSION,
@@ -225,13 +225,13 @@ export class GameRoom {
     return this.seats.liveConnections().map(({ seat }) => ({
       kind: 'to-seat' as const,
       seat,
-      message: { type: 'update' as const, view: viewFor(state, seat), events },
+      message: { type: 'update' as const, view: clientView(state, seat), events },
     }));
   }
 
   currentUpdateFor(seat: Seat): RoomMessage | null {
     if (!this.state) return null;
-    return { type: 'update', view: viewFor(this.state, seat), events: [] };
+    return { type: 'update', view: clientView(this.state, seat), events: [] };
   }
 
   private rejection(seat: Seat, command: Command, error: WireError): Outbound {
@@ -239,7 +239,7 @@ export class GameRoom {
     return {
       kind: 'to-seat',
       seat,
-      message: { type: 'update', view: viewFor(this.state, seat), events: [], rejection: { command, error } },
+      message: { type: 'update', view: clientView(this.state, seat), events: [], rejection: { command, error } },
     };
   }
 

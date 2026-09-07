@@ -1,5 +1,5 @@
 import type { Command, Seat } from '@boomtown/engine';
-import type { EngineEventDTO, PlayerViewDTO } from './dto.js';
+import type { ClientViewDTO, EngineEventDTO } from './dto.js';
 import type { WireError } from './errors.js';
 
 /**
@@ -64,12 +64,12 @@ export interface RoomStateMessage {
   readonly state: RoomState;
 }
 
-/** One authoritative game update. `view` is this connection's filtered view;
- * `events` is what changed. `rejection` is set instead when the last command
- * was refused. */
+/** One authoritative game update. `view` is this connection's filtered view,
+ * with legal moves and hand-tile effects the room computed (R8); `events` is
+ * what changed. `rejection` is set instead when the last command was refused. */
 export interface Update {
   readonly type: 'update';
-  readonly view: PlayerViewDTO;
+  readonly view: ClientViewDTO;
   readonly events: readonly EngineEventDTO[];
   readonly rejection?: { readonly command: Command; readonly error: WireError };
 }

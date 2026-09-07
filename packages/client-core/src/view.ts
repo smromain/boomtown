@@ -2,32 +2,22 @@ import {
   classifyPlacement,
   legalMoves,
   viewFor,
-  type Command,
   type GameState,
-  type PlayerView,
   type Seat,
   type TileId,
 } from '@boomtown/engine';
-
-/** What placing a hand tile would do this turn. `blocked` = would found an eighth corporation. */
-export type HandTileEffect = 'nothing' | 'found' | 'grow' | 'merge' | 'dead' | 'blocked';
-
-export interface HandTile {
-  readonly tile: TileId;
-  readonly effect: HandTileEffect;
-  readonly playable: boolean;
-}
+import type { ClientViewDTO, HandTile, HandTileEffect } from '@boomtown/protocol';
 
 /**
- * A `PlayerView` plus the two things the UI cannot re-derive without the full
- * `GameState` (R8): the active seat's legal moves, and what each hand tile would
- * do. The board highlights playable tiles; the hand rack labels every tile.
+ * The client's per-seat view. The wire shape lives in `@boomtown/protocol`
+ * (`ClientViewDTO`) so the room and the client agree on it; `ClientView` is
+ * that shape under the client-core name. `clientView()` builds it from
+ * authoritative state — used by `localTransport` and by the room object
+ * (via `@boomtown/protocol`'s shape). Online the room sends a `ClientViewDTO`
+ * directly and no rebuild is needed.
  */
-export interface ClientView extends PlayerView {
-  /** Legal commands for the active seat; empty in every other seat's view. */
-  readonly legalMoves: readonly Command[];
-  readonly handTiles: readonly HandTile[];
-}
+export type ClientView = ClientViewDTO;
+export type { HandTile, HandTileEffect };
 
 export function clientView(state: GameState, seat: Seat): ClientView {
   const base = viewFor(state, seat);
@@ -36,11 +26,12 @@ export function clientView(state: GameState, seat: Seat): ClientView {
   return {
     ...base,
     legalMoves: isActive ? legalMoves(state) : [],
-    handTiles: base.yourHand.map((tile) => toHandTile(state, tile)),
+    handTiles: base.yourHand.map((tile) => handTileOf(state, tile)),
   };
 }
 
-function toHandTile(state: GameState, tile: TileId): HandTile {
+/** What placing one hand tile would do this turn — the rack's per-tile label. */
+export function handTileOf(state: GameState, tile: TileId): HandTile {
   const kind = classifyPlacement(state, tile).kind;
   const effect: HandTileEffect =
     kind === 'found-blocked' ? 'blocked' : kind === 'dead' ? 'dead' : kind;

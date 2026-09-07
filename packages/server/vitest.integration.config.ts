@@ -16,6 +16,7 @@ export default defineConfig({
       '@boomtown/engine': r('../engine/src/index.ts'),
       '@boomtown/protocol': r('../protocol/src/index.ts'),
       '@boomtown/ai': r('../ai/src/index.ts'),
+      '@boomtown/client-core': r('../client-core/src/index.ts'),
       '@boomtown/server': r('./src/index.ts'),
     },
   },

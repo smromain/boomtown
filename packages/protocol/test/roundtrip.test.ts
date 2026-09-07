@@ -1,15 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, reduce, viewFor, type Command } from '@boomtown/engine';
+import { createGame, legalMoves, reduce, viewFor, type Command, type GameState, type Seat } from '@boomtown/engine';
 import {
   PROTOCOL_VERSION,
   protocolError,
   wireEngineError,
   type ClientMessage,
+  type ClientViewDTO,
   type RoomMessage,
   type WireMessage,
 } from '@boomtown/protocol';
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
+/** A `ClientViewDTO` for one seat, the shape the room actually sends. */
+function view(state: GameState, seat: Seat): ClientViewDTO {
+  const base = viewFor(state, seat);
+  return {
+    ...base,
+    legalMoves: base.activeSeat === seat && base.status === 'playing' ? legalMoves(state) : [],
+    handTiles: base.yourHand.map((tile) => ({ tile, effect: 'nothing' as const, playable: true })),
+  };
+}
 
 function game() {
   return createGame({
@@ -76,7 +87,7 @@ describe('message round-trips', () => {
     });
     const update: RoomMessage = {
       type: 'update',
-      view: viewFor(hidden, 1),
+      view: view(hidden, 1),
       events: placed.events,
     };
     const round = clone(update);
@@ -113,7 +124,7 @@ describe('message round-trips', () => {
     const command: Command = { type: 'buy-shares', seat: 1, picks: {} };
     const update: RoomMessage = {
       type: 'update',
-      view: viewFor(game(), 0),
+      view: view(game(), 0),
       events: [],
       rejection: { command, error: protocolError('not-in-room', 'seat 1 has no connection') },
     };

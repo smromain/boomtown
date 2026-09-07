@@ -10,6 +10,7 @@ export default defineConfig({
     alias: {
       '@boomtown/engine': r('../../packages/engine/src/index.ts'),
       '@boomtown/protocol': r('../../packages/protocol/src/index.ts'),
+      '@boomtown/ai': r('../../packages/ai/src/index.ts'),
       '@boomtown/client-core': r('../../packages/client-core/src/index.ts'),
     },
   },
