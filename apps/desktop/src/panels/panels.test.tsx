@@ -22,7 +22,7 @@ describe('BuyControls', () => {
     await userEvent.click(more);
     await userEvent.click(more);
     expect(more).toBeDisabled();
-    expect(screen.getByText('Buy 3 for $1500')).toBeInTheDocument();
+    expect(screen.getByText('Buy 3 for $1,500')).toBeInTheDocument();
   });
 
   it('stops incrementing when the next share is unaffordable', async () => {

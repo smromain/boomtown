@@ -1,22 +1,17 @@
 import { activeView } from '@boomtown/client-core';
 import { useGameClient, useGameState } from '../client/GameClientProvider.js';
-import { BuyControls } from '../panels/BuyControls.js';
 import styles from './game.module.css';
 
 /**
- * The contextual action beside the tile rack: buy stock during the buy step, the
- * end‑of‑game choice at the end‑check step, or a skip when nothing is playable.
- * Kept next to the rack so it does not fight the story card for space.
+ * The contextual action beside the tile rack: the end‑of‑game choice at the
+ * end‑check step, or a skip when nothing is playable. The buy step has its own
+ * modal (`BuyModal`), so it is not handled here.
  */
 export function ActionBar() {
   const view = useGameState(activeView);
   const busy = useGameState((state) => state.inFlight != null);
   const client = useGameClient();
   if (!view) return null;
-
-  if (view.step === 'buy') {
-    return <BuyControls />;
-  }
 
   if (view.step === 'end-check') {
     return (

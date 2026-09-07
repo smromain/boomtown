@@ -3,6 +3,7 @@ import { GameClientProvider } from '../client/GameClientProvider.js';
 import { DecisionModal } from '../decisions/DecisionModal.js';
 import type { StartedGame } from '../setup/NewGame.js';
 import { ActionBar } from './ActionBar.js';
+import { BuyModal } from './BuyModal.js';
 import { CorporationBand } from './CorporationBand.js';
 import { Header } from './Header.js';
 import { Shareholders } from './Shareholders.js';
@@ -37,6 +38,7 @@ export function GameScreen({ game }: { game: StartedGame }) {
         </div>
       </div>
       <DecisionModal />
+      <BuyModal />
       <TurnHandoff config={game.config} />
     </GameClientProvider>
   );

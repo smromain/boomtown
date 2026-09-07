@@ -3,6 +3,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ActionBar } from './ActionBar.js';
+import { BuyModal } from './BuyModal.js';
 import { CorporationBand } from './CorporationBand.js';
 import { Shareholders } from './Shareholders.js';
 import { StoryCard } from './StoryCard.js';
@@ -175,18 +176,31 @@ describe('TurnHandoff (hot-seat turn boundary)', () => {
   });
 });
 
-describe('ActionBar', () => {
-  it('shows the buy controls during the buy step', async () => {
-    await renderPanel(<ActionBar />, {
+describe('BuyModal', () => {
+  it('opens on the buy step with the buy controls inside', async () => {
+    await renderPanel(<BuyModal />, {
       craft: (state) => {
         seedCorp(state, 'video', ['5H', '5I', '4I']);
         state.step = 'buy';
         state.hands[0] = [];
       },
     });
-    expect(screen.getByRole('region', { name: 'Buy stock' })).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: 'Buy stock' });
+    expect(within(dialog).getByRole('button', { name: 'more video' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /Buy nothing/ })).toBeInTheDocument();
   });
 
+  it('stays closed outside the buy step', async () => {
+    await renderPanel(<BuyModal />, {
+      craft: (state) => {
+        state.step = 'place';
+      },
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('ActionBar', () => {
   it('offers the end-of-game choice at the end-check step', async () => {
     const rowA = Array.from({ length: 11 }, (_, i) => `${i + 1}A`);
     await renderPanel(<ActionBar />, {

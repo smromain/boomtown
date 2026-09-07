@@ -56,6 +56,27 @@
   margin: 1rem 0;
 }
 
+/* Buy step: corporation name (grows) · price · − · qty · + */
+.buyGrid {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto auto;
+  gap: 0.55rem 0.85rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+.buyGrid button {
+  width: 1.8rem;
+  height: 1.8rem;
+  font: inherit;
+}
+
+.buyGrid output {
+  min-width: 1.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 .split button {
   width: 1.8rem;
   height: 1.8rem;
