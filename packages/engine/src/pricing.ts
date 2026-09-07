@@ -47,3 +47,68 @@ export function bonusRow(size: number, tier: Tier, ruleset: Ruleset): BonusRow |
     tertiary: TERTIARY[row]!,
   };
 }
+
+/**
+ * The nine size-band labels for a ruleset, derived from `bandCuts` — `"2"`,
+ * `"3"`, …, `"6–10"`, …, `"41+"`. Band `i` covers `bandCuts[i-1]+1 … bandCuts[i]`
+ * (band 0 is just `bandCuts[0]`, the last band is open-ended).
+ */
+export function bandLabels(ruleset: Ruleset): string[] {
+  const cuts = ruleset.bandCuts;
+  return Array.from({ length: cuts.length + 1 }, (_, band) => {
+    if (band === 0) return String(cuts[0]);
+    if (band === cuts.length) return `${cuts[cuts.length - 1]! + 1}+`;
+    const lo = cuts[band - 1]! + 1;
+    const hi = cuts[band]!;
+    return lo === hi ? String(lo) : `${lo}–${hi}`;
+  });
+}
+
+/** One rung of the price ladder: a size band and everything it pays. */
+export interface LadderRung {
+  /** 0–8, the band; 0–10 shifted by tier for the price/bonus lookup. */
+  readonly band: number;
+  readonly row: number;
+  readonly label: string;
+  readonly price: number;
+  readonly bonus: BonusRow;
+}
+
+/**
+ * The full price ladder for a `tier` under a ruleset — every band a corporation
+ * of that tier can occupy, cheapest first. This is the "stock reference" chart,
+ * generated from the ruleset rather than a printed card.
+ */
+export function priceLadder(tier: Tier, ruleset: Ruleset): LadderRung[] {
+  const labels = bandLabels(ruleset);
+  return labels.map((label, band) => {
+    const row = band + (tier - 1);
+    return {
+      band,
+      row,
+      label,
+      price: PRICE_ROWS[row]!,
+      bonus: {
+        primary: PRIMARY[row]!,
+        secondary: ruleset.bonusTiers === 3 ? SECONDARY_2015[row]! : null,
+        tertiary: TERTIARY[row]!,
+      },
+    };
+  });
+}
+
+/**
+ * The next band up for a corporation of `size` in a `tier` — the size that
+ * reaches it and the share price there. Null when already in the top band or
+ * not on the board.
+ */
+export function nextPriceStep(
+  size: number,
+  tier: Tier,
+  ruleset: Ruleset,
+): { readonly atSize: number; readonly price: number } | null {
+  const band = bandIndex(size, ruleset);
+  if (band === null || band >= ruleset.bandCuts.length) return null;
+  const atSize = ruleset.bandCuts[band]! + 1;
+  return { atSize, price: PRICE_ROWS[band + 1 + (tier - 1)]! };
+}

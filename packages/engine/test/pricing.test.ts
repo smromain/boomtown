@@ -5,9 +5,12 @@ import {
   SECONDARY_2015,
   TERTIARY,
   bandIndex,
+  bandLabels,
   bonusRow,
   classic,
   edition2015,
+  nextPriceStep,
+  priceLadder,
   rowIndex,
   sharePrice,
 } from '@boomtown/engine';
@@ -106,5 +109,50 @@ describe.each([
       secondary: ruleset.bonusTiers === 3 ? SECONDARY_2015[row] : null,
       tertiary: TERTIARY[row],
     });
+  });
+});
+
+describe('bandLabels', () => {
+  it('classic: the nine bands the printed card shows', () => {
+    expect(bandLabels(classic)).toEqual(['2', '3', '4', '5', '6–10', '11–20', '21–30', '31–40', '41+']);
+  });
+
+  it('edition-2015: different cutoffs, same shape', () => {
+    expect(bandLabels(edition2015)).toEqual(['2', '3', '4', '5', '6–7', '8–17', '18–27', '28–37', '38+']);
+  });
+});
+
+describe('priceLadder', () => {
+  it('classic tier 1 is the raw table, band-labelled', () => {
+    const ladder = priceLadder(1, classic);
+    expect(ladder).toHaveLength(9);
+    expect(ladder[0]).toMatchObject({ label: '2', row: 0, price: 200, bonus: { primary: 2000, secondary: null, tertiary: 1000 } });
+    expect(ladder[8]).toMatchObject({ label: '41+', row: 8, price: 1000 });
+  });
+
+  it('classic tier 3 is shifted two rows up the price table', () => {
+    const ladder = priceLadder(3, classic);
+    expect(ladder[0]).toMatchObject({ label: '2', row: 2, price: 400 });
+    expect(ladder[8]).toMatchObject({ label: '41+', row: 10, price: 1200 });
+  });
+
+  it('edition-2015 carries a secondary bonus column', () => {
+    const rung = priceLadder(1, edition2015)[4]!; // "6–7", row 4
+    expect(rung.bonus).toEqual({ primary: PRIMARY[4], secondary: SECONDARY_2015[4], tertiary: TERTIARY[4] });
+  });
+});
+
+describe('nextPriceStep', () => {
+  it('classic tier 3, size 12 (band 5, "11–20") -> next at 21 tiles', () => {
+    // tier 3 row for band 6 is 6 + 2 = 8 -> $900
+    expect(nextPriceStep(12, 3, classic)).toEqual({ atSize: 21, price: PRICE_ROWS[8] });
+  });
+
+  it('is null in the top band', () => {
+    expect(nextPriceStep(50, 1, classic)).toBeNull();
+  });
+
+  it('is null off the board', () => {
+    expect(nextPriceStep(1, 1, classic)).toBeNull();
   });
 });

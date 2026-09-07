@@ -32,9 +32,10 @@ describe('CorporationBand', () => {
     });
 
     const band = screen.getByRole('region', { name: 'Corporations' });
-    // video ate air -> derived display name, not "Megahit Video"
-    const cards = within(band).getAllByRole('article');
-    expect(cards[0]).toHaveAttribute('aria-label', expect.stringMatching(/^Megahit/));
+    // video ate air -> derived display name, not "Megahit Video"; the card is a
+    // button that opens the stock reference
+    const cards = within(band).getAllByRole('button');
+    expect(cards[0]).toHaveAttribute('aria-label', expect.stringMatching(/^Megahit.* — stock reference$/));
     // an unfounded company is not a card in the band
     expect(within(band).queryByText(/Chapter Eleven/)).not.toBeInTheDocument();
   });
@@ -55,7 +56,7 @@ describe('CorporationBand', () => {
         ];
       },
     });
-    const cards = within(screen.getByRole('region', { name: 'Corporations' })).getAllByRole('article');
+    const cards = within(screen.getByRole('region', { name: 'Corporations' })).getAllByRole('button');
     const grow = (label: string) =>
       Number(getComputedStyle(cards.find((c) => c.getAttribute('aria-label')!.match(label))!).flexGrow);
     expect(grow('^Megahit')).toBe(3); // video + air + toys

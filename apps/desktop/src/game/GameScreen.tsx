@@ -18,6 +18,7 @@ import { StoryCard } from './StoryCard.js';
 import { TileRack } from './TileRack.js';
 import { TurnHandoff } from './TurnHandoff.js';
 import { WaitingForSeat } from './Waiting.js';
+import { ReferenceProvider } from '../reference/ReferenceContext.js';
 import type { GameConfig } from '../setup/gameConfig.js';
 import type { GameState } from '@boomtown/engine';
 import styles from './game.module.css';
@@ -30,16 +31,18 @@ import styles from './game.module.css';
 export function GameScreen({ game, onExit }: { game: StartedGame; onExit?: () => void }) {
   return (
     <GameClientProvider client={game.client} localSeats={game.localSeats}>
-      <PlayArea
-        config={game.config}
-        nudgeBots={game.nudgeBots}
-        snapshot={game.snapshot}
-        onExit={onExit}
-      />
-      <DecisionModal />
-      <BuyModal />
-      <TurnHandoff config={game.config} />
-      <ErrorToast />
+      <ReferenceProvider>
+        <PlayArea
+          config={game.config}
+          nudgeBots={game.nudgeBots}
+          snapshot={game.snapshot}
+          onExit={onExit}
+        />
+        <DecisionModal />
+        <BuyModal />
+        <TurnHandoff config={game.config} />
+        <ErrorToast />
+      </ReferenceProvider>
     </GameClientProvider>
   );
 }

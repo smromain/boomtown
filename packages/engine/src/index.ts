@@ -19,10 +19,14 @@ export {
   PRIMARY,
   SECONDARY_2015,
   TERTIARY,
+  type LadderRung,
   bandIndex,
   rowIndex,
   sharePrice,
   bonusRow,
+  bandLabels,
+  priceLadder,
+  nextPriceStep,
 } from './pricing.js';
 
 export {

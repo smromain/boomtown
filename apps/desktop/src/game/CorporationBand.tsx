@@ -2,6 +2,7 @@ import { INDUSTRIES, INDUSTRY_INFO, type CorpView, type Industry } from '@boomto
 import { activeView } from '@boomtown/client-core';
 import { useGameState } from '../client/GameClientProvider.js';
 import { IndustryMark } from './marks.js';
+import { useReference } from '../reference/ReferenceContext.js';
 import styles from './band.module.css';
 
 /**
@@ -66,12 +67,15 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
   const color = INDUSTRY_INFO[industry].color;
   const issued = 25 - corp.bankShares;
   const pct = issued > 0 ? Math.round((mine / issued) * 100) : 0;
+  const { openCorp } = useReference();
 
   return (
-    <article
+    <button
+      type="button"
       className={styles.card}
       style={{ flexGrow: corp.eaten.length + 1, borderTopColor: color }}
-      aria-label={corp.displayName}
+      aria-label={`${corp.displayName} — stock reference`}
+      onClick={() => openCorp(industry)}
     >
       <div className={styles.cardTop}>
         <IndustryMark industry={industry} color={color} size={26} />
@@ -115,6 +119,6 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
           <div className={styles.barFill} style={{ width: `${pct}%`, background: color }} />
         </div>
       </div>
-    </article>
+    </button>
   );
 }
