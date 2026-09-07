@@ -1,12 +1,11 @@
 import { INDUSTRIES, INDUSTRY_INFO, type Industry, type TileId } from '@boomtown/engine';
-import { activeView } from '@boomtown/client-core';
-import { useGameClient, useGameState } from '../client/GameClientProvider.js';
+import { useGameClient, useLocalActiveView } from '../client/GameClientProvider.js';
 import styles from './decisions.module.css';
 
 /** After a founding placement: the founder picks which corporation to raise on the new group. */
 export function FoundPrompt({ group }: { group: readonly TileId[] }) {
   const client = useGameClient();
-  const view = useGameState(activeView);
+  const view = useLocalActiveView();
   if (!view) return null;
 
   const available = INDUSTRIES.filter((industry) => !view.corporations[industry].founded);

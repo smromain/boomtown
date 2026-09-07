@@ -134,6 +134,21 @@ describe('NewGame screen', () => {
     started!.client.disconnect();
   }, 10000);
 
+  it('localSeats is the human seats only — a bot seat is not a local seat', async () => {
+    let started: StartedGame | undefined;
+    render(<NewGame onStart={(game) => (started = game)} />);
+    await userEvent.selectOptions(screen.getByLabelText('Seat 2 type'), 'bot');
+
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Start game' }));
+      await flush();
+    });
+
+    expect(started!.localSeats).toEqual([0, 2]); // "Seat 2" is index 1 -> the bot
+    started!.detachBots!();
+    started!.client.disconnect();
+  });
+
   it('does not attach a bot driver for an all-human table', async () => {
     let started: StartedGame | undefined;
     render(<NewGame onStart={(game) => (started = game)} />);

@@ -6,7 +6,7 @@ import {
   localTransport,
   type GameClient,
 } from '@boomtown/client-core';
-import { RULES } from '@boomtown/engine';
+import { RULES, type Seat } from '@boomtown/engine';
 import { SeatRow } from './SeatConfig.js';
 import {
   configError,
@@ -20,6 +20,10 @@ import styles from './setup.module.css';
 export interface StartedGame {
   readonly client: GameClient;
   readonly config: GameConfig;
+  /** Seats the person at this screen plays. Hot-seat: every human seat. Online:
+   *  the one own seat. A turn on any other seat (a bot, a remote player) shows a
+   *  waiting state, not an actionable board. */
+  readonly localSeats: readonly Seat[];
   /** Tears down the bot driver; absent when the table has no bots. */
   detachBots?: () => void;
 }
@@ -47,7 +51,12 @@ export function NewGame({ onStart }: { onStart: (game: StartedGame) => void }) {
       .filter((s) => s.kind === 'bot')
       .map(({ seat, level }) => ({ seat, level }));
 
-    const started: StartedGame = { client, config };
+    const localSeats = config.seats
+      .map((seat, index) => ({ index, kind: seat.kind }))
+      .filter((s) => s.kind === 'human')
+      .map((s) => s.index);
+
+    const started: StartedGame = { client, config, localSeats };
     if (bots.length > 0) {
       started.detachBots = attachBotDriver(client, {
         bots,

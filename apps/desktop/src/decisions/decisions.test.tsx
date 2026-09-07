@@ -134,4 +134,25 @@ describe('DecisionModal', () => {
     expect(within(dialog).getByText('Found a corporation')).toBeInTheDocument();
     expect(within(dialog).getAllByRole('button').length).toBeGreaterThanOrEqual(7);
   });
+
+  it('does not open for a merger decision addressed to a bot / remote seat', async () => {
+    // seat 1 places a merging tile; seat 1 is not a local seat.
+    const { client } = await renderPanel(<DecisionModal />, {
+      localSeats: [0],
+      craft: (state) => {
+        seedCorp(state, 'video', ['3E', '4E']);
+        seedCorp(state, 'books', ['6E', '7E']);
+        state.turnPointer = 1;
+        state.hands[1] = ['5E'];
+      },
+    });
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 1, tile: '5E' });
+      await flush();
+    });
+    // the pending decision belongs to seat 1 -> that seat's driver answers it,
+    // the watching human sees no modal
+    expect(client.store.getState().pendingDecision?.seat).toBe(1);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });

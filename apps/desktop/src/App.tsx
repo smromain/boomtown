@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { Seat } from '@boomtown/engine';
 import { GameScreen } from './game/GameScreen.js';
 import { NewGame, type StartedGame } from './setup/NewGame.js';
 import { CreateJoin } from './lobby/CreateJoin.js';
@@ -20,20 +21,40 @@ export function App() {
   const [screen, setScreen] = useState<Screen>({ kind: 'menu' });
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // A local game's client/bot-driver and an online room's socket live outside
+  // React. They must be torn down when that game is actually left (back to the
+  // menu, or the window closes) — never on the incidental re-render a screen
+  // transition within the same game causes (lobby -> playing, a turn advancing).
+  const running = useRef<{ local?: StartedGame; room?: OnlineGame }>({});
+  if (screen.kind === 'playing-local') running.current = { local: screen.game };
+  if (screen.kind === 'online-lobby' || screen.kind === 'playing-online') {
+    running.current = { room: screen.room };
+  }
+
+  const inAGame =
+    screen.kind === 'playing-local' ||
+    screen.kind === 'online-lobby' ||
+    screen.kind === 'playing-online';
+
+  // Left the game family (back to the menu) — tear down what was running.
   useEffect(() => {
-    if (screen.kind === 'playing-local') {
-      const g = screen.game;
-      return () => {
-        g.detachBots?.();
-        g.client.disconnect();
-      };
-    }
-    if (screen.kind === 'online-lobby' || screen.kind === 'playing-online') {
-      const room = screen.room;
-      return () => room.disconnect();
-    }
-    return undefined;
-  }, [screen]);
+    if (inAGame) return;
+    const { local, room } = running.current;
+    local?.detachBots?.();
+    local?.client.disconnect();
+    room?.disconnect();
+    running.current = {};
+  }, [inAGame]);
+
+  // Window closing / component unmount — tear down whatever is still running.
+  useEffect(() => {
+    return () => {
+      const { local, room } = running.current;
+      local?.detachBots?.();
+      local?.client.disconnect();
+      room?.disconnect();
+    };
+  }, []);
 
   switch (screen.kind) {
     case 'menu':
@@ -78,7 +99,14 @@ export function App() {
     case 'playing-local':
       return <GameScreen game={screen.game} />;
 
-    case 'playing-online':
-      return <GameScreen game={{ client: screen.room.client, config: screen.room.config }} />;
+    case 'playing-online': {
+      const seat = screen.room.transport.seat();
+      const localSeats: Seat[] = seat == null ? [] : [seat];
+      return (
+        <GameScreen
+          game={{ client: screen.room.client, config: screen.room.config, localSeats }}
+        />
+      );
+    }
   }
 }

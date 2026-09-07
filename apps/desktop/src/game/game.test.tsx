@@ -113,6 +113,16 @@ describe('TileRack', () => {
     expect(dead).toBeDisabled();
     expect(screen.getByRole('button', { name: /6E/ })).toBeEnabled();
   });
+
+  it('renders nothing when the active seat is not a local seat', async () => {
+    await renderPanel(<TileRack />, {
+      localSeats: [0],
+      craft: (state) => {
+        state.turnPointer = 1; // a bot / remote seat
+      },
+    });
+    expect(screen.queryByRole('region', { name: 'Your tiles' })).not.toBeInTheDocument();
+  });
 });
 
 describe('StoryCard', () => {
@@ -228,6 +238,18 @@ describe('BuyModal', () => {
     });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+
+  it('stays closed on a bot / remote seat buy step — the modal is not the human\'s', async () => {
+    await renderPanel(<BuyModal />, {
+      localSeats: [0], // seats 1 & 2 are not local
+      craft: (state) => {
+        seedCorp(state, 'video', ['5H', '5I', '4I']);
+        state.turnPointer = 1;
+        state.step = 'buy';
+      },
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });
 
 describe('OutOfPlay', () => {
@@ -281,5 +303,20 @@ describe('ActionBar', () => {
       },
     });
     expect(screen.getByRole('button', { name: 'Skip placement' })).toBeInTheDocument();
+  });
+
+  it('renders nothing when the seat on the clock is not a local seat (a bot / remote turn)', async () => {
+    const rowA = Array.from({ length: 11 }, (_, i) => `${i + 1}A`);
+    await renderPanel(<ActionBar />, {
+      localSeats: [0, 1], // seat 2 is a bot
+      craft: (state) => {
+        seedCorp(state, 'video', rowA);
+        state.turnPointer = 2; // bot on the clock
+        state.step = 'end-check';
+      },
+    });
+    // the bug: the watching human saw (and could click) "End the game" for the bot
+    expect(screen.queryByRole('button', { name: 'End the game' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Keep playing' })).not.toBeInTheDocument();
   });
 });

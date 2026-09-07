@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { activeView } from '@boomtown/client-core';
-import { useGameState } from '../client/GameClientProvider.js';
+import { localActiveView } from '@boomtown/client-core';
+import { useGameState, useLocalSeats } from '../client/GameClientProvider.js';
 import { BuyControls } from '../panels/BuyControls.js';
 import styles from '../decisions/decisions.module.css';
 
@@ -11,7 +11,8 @@ import styles from '../decisions/decisions.module.css';
  * always escapable through BuyControls' own "Buy nothing and end turn".
  */
 export function BuyModal() {
-  const open = useGameState((state) => activeView(state)?.step === 'buy');
+  const local = useLocalSeats();
+  const open = useGameState((state) => localActiveView(state, local)?.step === 'buy');
 
   return (
     <Dialog.Root open={open}>

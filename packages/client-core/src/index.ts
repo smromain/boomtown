@@ -22,6 +22,8 @@ export {
   type GameClientState,
   initialClientState,
   activeView,
+  localActiveView,
+  isLocalTurn,
   decidingSeat,
 } from './store.js';
 export { reconcile } from './reconcile.js';

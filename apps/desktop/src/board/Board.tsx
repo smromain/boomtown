@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { activeView } from '@boomtown/client-core';
 import type { TileId } from '@boomtown/engine';
-import { useGameClient, useGameState } from '../client/GameClientProvider.js';
+import { useGameClient, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import { BoardScene } from './BoardScene.js';
 import { BOARD_CAMERA } from './camera.js';
 import { cellTargets, placementFor } from './pick.js';
@@ -14,7 +13,7 @@ import { cellTargets, placementFor } from './pick.js';
  */
 export function Board() {
   const client = useGameClient();
-  const view = useGameState(activeView);
+  const view = useLocalActiveView();
   const busy = useGameState((state) => state.inFlight != null);
 
   const targets = useMemo(() => cellTargets(view), [view]);

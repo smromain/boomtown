@@ -1,5 +1,4 @@
-import { activeView } from '@boomtown/client-core';
-import { useGameClient, useGameState } from '../client/GameClientProvider.js';
+import { useGameClient, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import styles from './game.module.css';
 
 /**
@@ -8,7 +7,7 @@ import styles from './game.module.css';
  * modal (`BuyModal`), so it is not handled here.
  */
 export function ActionBar() {
-  const view = useGameState(activeView);
+  const view = useLocalActiveView();
   const busy = useGameState((state) => state.inFlight != null);
   const client = useGameClient();
   if (!view) return null;

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { PendingDecision } from '@boomtown/engine';
-import { activeView } from '@boomtown/client-core';
-import { useGameClient, useGameState } from '../client/GameClientProvider.js';
+import { useGameClient, useLocalActiveView } from '../client/GameClientProvider.js';
 import { checkDisposal } from './disposal.js';
 import styles from './decisions.module.css';
 
@@ -14,7 +13,7 @@ type Decision = Extract<PendingDecision, { type: 'dispose-shares' }>;
  */
 export function DisposalPrompt({ decision }: { decision: Decision }) {
   const client = useGameClient();
-  const view = useGameState(activeView);
+  const view = useLocalActiveView();
   const survivorBank = view?.corporations[decision.survivor].bankShares ?? 0;
 
   const [sell, setSell] = useState(0);

@@ -10,6 +10,9 @@ export interface HarnessOptions {
   readonly visibility?: Visibility;
   /** Mutate the freshly-created game state before play — seed corporations, hands, cells. */
   readonly craft?: (state: GameState) => void;
+  /** Seats a local player controls. Defaults to all three (hot-seat). Pass a
+   *  subset to simulate a bot / remote seat being on the clock. */
+  readonly localSeats?: readonly number[];
 }
 
 /** Render a component wired to a live local game. Returns the client so tests can dispatch. */
@@ -33,7 +36,11 @@ export async function renderPanel(
   );
   await client.connect();
 
-  const result = render(<GameClientProvider client={client}>{ui}</GameClientProvider>);
+  const result = render(
+    <GameClientProvider client={client} localSeats={options.localSeats ?? [0, 1, 2]}>
+      {ui}
+    </GameClientProvider>,
+  );
   return Object.assign(result, { client });
 }
 

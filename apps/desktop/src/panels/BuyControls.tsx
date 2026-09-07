@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { activeView } from '@boomtown/client-core';
-import { useGameClient, useGameState } from '../client/GameClientProvider.js';
+import { useGameClient, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import { buyCost, buyTotal, buyableCorporations, canIncrement, type BuyPicks } from './buying.js';
 import styles from '../decisions/decisions.module.css';
 
 /** Pick up to 3 shares across founded corporations; the + button disables past the cash and bank caps. */
 export function BuyControls() {
-  const view = useGameState(activeView);
+  const view = useLocalActiveView();
   const busy = useGameState((state) => state.inFlight != null);
   const client = useGameClient();
   const [picks, setPicks] = useState<BuyPicks>({});

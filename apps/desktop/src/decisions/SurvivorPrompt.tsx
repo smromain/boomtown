@@ -1,6 +1,5 @@
 import type { PendingDecision } from '@boomtown/engine';
-import { activeView } from '@boomtown/client-core';
-import { useGameClient, useGameState } from '../client/GameClientProvider.js';
+import { useGameClient, useLocalActiveView } from '../client/GameClientProvider.js';
 import styles from './decisions.module.css';
 
 type Decision = Extract<PendingDecision, { type: 'choose-survivor' }>;
@@ -8,7 +7,7 @@ type Decision = Extract<PendingDecision, { type: 'choose-survivor' }>;
 /** A size tie: the mergemaker picks which corporation survives (R3). */
 export function SurvivorPrompt({ decision }: { decision: Decision }) {
   const client = useGameClient();
-  const view = useGameState(activeView);
+  const view = useLocalActiveView();
 
   return (
     <div>

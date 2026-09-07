@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createGameClient, localTransport, type GameClient } from '@boomtown/client-core';
+import {
+  createGameClient,
+  isLocalTurn,
+  localActiveView,
+  localTransport,
+  type GameClient,
+} from '@boomtown/client-core';
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
@@ -66,6 +72,30 @@ describe('createGameClient', () => {
 
     const open = await client('open');
     expect(open.store.getState().views[0]!.seats[1]?.cash).toBe(6000);
+  });
+
+  describe('localActiveView / isLocalTurn', () => {
+    it('returns the active seat view when that seat is local, null when it is not', async () => {
+      const c = await client(); // seat 0 is on the clock
+      expect(localActiveView(c.store.getState(), [0, 2])?.you).toBe(0);
+      expect(isLocalTurn(c.store.getState(), [0, 2])).toBe(true);
+
+      // seat 0 not among the local seats — e.g. it is a bot, or a remote player
+      expect(localActiveView(c.store.getState(), [1, 2])).toBeNull();
+      expect(isLocalTurn(c.store.getState(), [1, 2])).toBe(false);
+    });
+
+    it('accepts a Set as well as an array', async () => {
+      const c = await client();
+      expect(localActiveView(c.store.getState(), new Set([0]))?.you).toBe(0);
+      expect(isLocalTurn(c.store.getState(), new Set([1]))).toBe(false);
+    });
+
+    it('is null before the first update, whatever the seat set', () => {
+      const c = createGameClient(localTransport({ setup: { seats: [{ name: 'A' }, { name: 'B' }], seed: 1, turnOrder: [0, 1] }, controls: [0, 1] }));
+      expect(localActiveView(c.store.getState(), [0, 1])).toBeNull();
+      expect(isLocalTurn(c.store.getState(), [0, 1])).toBe(false);
+    });
   });
 
   it('disconnect detaches the store from further updates', async () => {

@@ -38,6 +38,33 @@ export function activeView(state: GameClientState): ClientView | null {
   return state.activeSeat == null ? null : (state.views[state.activeSeat] ?? null);
 }
 
+/**
+ * The active seat's view **only when that seat is one a local player controls**
+ * — otherwise null. `local` is the set of seats the person at this screen plays:
+ * every human seat in hot-seat, the one own seat online. A bot's turn (or, online,
+ * a remote player's turn) yields null so the UI can show a waiting state instead
+ * of the active seat's board and prompts (which would otherwise be clickable and
+ * dispatch commands for a seat the player doesn't own).
+ *
+ * The engine still rejects a wrong-seat command; this keeps the surface that
+ * produces one off the screen in the first place.
+ */
+export function localActiveView(
+  state: GameClientState,
+  local: Iterable<Seat>,
+): ClientView | null {
+  if (state.activeSeat == null) return null;
+  const seats = local instanceof Set ? local : new Set(local);
+  return seats.has(state.activeSeat) ? (state.views[state.activeSeat] ?? null) : null;
+}
+
+/** Whether the seat on the clock is one a local player controls. */
+export function isLocalTurn(state: GameClientState, local: Iterable<Seat>): boolean {
+  if (state.activeSeat == null) return false;
+  const seats = local instanceof Set ? local : new Set(local);
+  return seats.has(state.activeSeat);
+}
+
 /** The controlled seat that owns the open decision, if any. */
 export function decidingSeat(state: GameClientState): Seat | null {
   if (!state.pendingDecision) return null;
