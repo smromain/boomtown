@@ -79,7 +79,9 @@ The user has since fixed four directions: the Electron desktop app is the primar
 - The engine's characterization suite reproduces every worked example in `docs/rules.md` and the merge-naming lineage table in `docs/naming.md`.
 - 10,000 random legal-move playouts complete without the engine throwing and each terminates with a ranked result.
 - Over a large seeded sample, a higher bot difficulty setting beats a lower one materially more often than chance.
+- A full classic-edition game is played across two machines in an online room, ending with a correct ranking, including at least one multi-corporation merger resolved through the pending-decision flow.
 - In an online game, a payload capture shows no client ever receives another seat's hand tiles or the bag contents.
+- A player who drops mid-game (closes the laptop lid) reconnects with their token and finishes the game; a mid-game room-object teardown replays the command log and continues without corruption.
 - Signed desktop builds launch on macOS, Windows, and Linux.
 
 ### Scope Boundaries
@@ -88,9 +90,11 @@ The user has since fixed four directions: the Electron desktop app is the primar
 
 #### Deferred to Follow-Up Work
 
-- Asynchronous and persistent games (long-lived rooms, turn notifications) — the event-log substrate (KTD2) is chosen to make this addable without re-architecture.
+- Asynchronous and persistent games (long-lived rooms, turn notifications, rejoining a room hours later). The command log is already durable per-session (KTD13); what is missing is lobby UX for rejoining an old room.
 - A stronger search-based bot policy (MCTS / POMCP as sketched in `docs/initial-design-doc.md`) behind the same `Policy` interface (KTD7).
-- A replay / spectate viewer built on the event log.
+- A replay / spectate viewer built on the stored command log.
+- Public games, matchmaking, moderation, and per-turn server-enforced timers — online play is friends-only, code shared out-of-band (KTD6 decision record).
+- Automatic bot takeover of a permanently-departed human seat. Bot *seats* configured at room creation are in scope (U16); a dropped human's seat waits.
 - Tournament and table-rules presets beyond the two editions.
 - Resolving the 2015 board dimensions (unspecified in that rulebook) if the 2015 preset is ever wanted for real play rather than rules parity.
 
@@ -100,34 +104,40 @@ The user has since fixed four directions: the Electron desktop app is the primar
 - `docs/naming.md` — corporation pool, merge-naming rules, config keys; `design/build.py` holds the reference implementation of `stem`, `fragment`, `_syls`, `display_name`, `game_lineage`.
 - `docs/decisions.md` — settled decisions and the traps hit during design (2015 secondary column is not a formula; a naive syllable splitter returns whole words).
 - `docs/initial-design-doc.md` — an earlier technical handoff. Its rules analysis and AI strategic postures are useful; its 3D-fidelity and stack recommendations are superseded by the session-settled decisions above.
-- boardgame.io ([boardgame.io](https://boardgame.io/), [github.com/boardgameio/boardgame.io](https://github.com/boardgameio/boardgame.io)) and Colyseus ([colyseus.io/learn](https://docs.colyseus.io/learn)) — evaluated as the multiplayer substrate; see KTD1 and KTD6 for why the engine is custom.
+- boardgame.io ([boardgame.io](https://boardgame.io/)) and Colyseus ([colyseus.io/learn](https://docs.colyseus.io/learn)) — evaluated as the multiplayer substrate and rejected for state-shape coupling; see KTD1 and Alternative Approaches.
+- PartyKit ([docs.partykit.io](https://docs.partykit.io/)) — the chosen online substrate (KTD6). `Party.Server` lifecycle, `party.storage` (128 KiB per value, not transactional), hibernation, `partysocket`, `partykit deploy`.
+- `docs/plans/2026-09-07-0631-refactor-online-multiplayer-substrate-plan.md` — the requirements-only decision record for the Phase D replan.
 
 ---
 
 ## Planning Contract
 
+**Revision note (2026-09-07):** Phase D (online multiplayer) was replanned to run on PartyKit. Product Contract unchanged — R12 and R13 hold as written; only KTD6, the new KTD13, and units U15–U19 changed. The WHAT record for the revision is `docs/plans/2026-09-07-0631-refactor-online-multiplayer-substrate-plan.md`.
+
 ### Key Technical Decisions
 
-- KTD1. **Custom headless engine, not boardgame.io or a framework's game logic.** The engine is a pure-TypeScript package with no I/O. boardgame.io was the closest fit — turn-based, authoritative server, hidden state via `playerView`, generated bots — but its phase/stage model fights Boomtown's nested interruptible merger resolution (R3), and it couples game state to its own server and storage, which breaks the "engine is the source of truth for all three modes and the AI" constraint. boardgame.io and Colyseus patterns still inform the server (KTD6). Governs R1, R3, R8.
+- KTD1. **Custom headless engine, not boardgame.io or a framework's game logic.** The engine is a pure-TypeScript package with no I/O. boardgame.io was the closest fit — turn-based, authoritative server, hidden state via `playerView`, generated bots — but its phase/stage model fights Boomtown's nested interruptible merger resolution (R3), and it couples game state to its own server and storage, which breaks the "engine is the source of truth for all three modes and the AI" constraint. The same coupling objection rules out both as the online substrate; KTD6 uses PartyKit, which frames a transport around the engine rather than owning its state shape. Governs R1, R3, R8.
 - KTD2. **Command/event model with a deterministic reducer and a seeded PRNG.** Every action is a typed command. The reducer validates it against state and returns events plus the next state, or a typed rejection. The ordered event log is both the persistence substrate and the replay/resync mechanism. A single seeded PRNG (a small PCG or xorshift, carried in state) is the only randomness. Governs R7.
 - KTD3. **Merger resolution is an explicit, serializable state machine.** It yields typed pending-decision states — `choose-survivor`, `choose-defunct-order`, `dispose-shares` — each naming the seat that owns the decision. The turn loop suspends on a pending decision and resumes on the matching command. Hot-seat UI, bots, and the server all satisfy pending decisions through the same command interface. Governs R3.
 - KTD4. **Public/secret state split with a `viewFor(seat)` projection.** State is `publicState` + `secretState` per seat (hand tiles) + `bag`. `viewFor(seat)` returns public state plus that seat's secret state plus counts (bag size, others' hand sizes), and applies the table's cash/holdings visibility setting. The server serializes only `viewFor(seat)` to each client. Governs R12, R13.
-- KTD5. **`GameTransport` interface abstracts local and networked play.** `LocalTransport` runs the engine in-process (a renderer Web Worker). `SocketTransport` speaks to the server over WebSocket. `client-core` — store, dispatch, view reconciliation, pending-decision surfacing — is identical across both. Governs R10, R12, R14.
-- KTD6. **Authoritative Node server: a minimal custom WebSocket layer, a room manager, and an append-only event-log store.** Colyseus was considered and rejected: its schema-sync assumes the server owns the state shape, which would re-couple the engine to the transport. The server imports the engine package, holds the authoritative state, reduces commands, and dispatches per-seat filtered events. The event log (SQLite, or JSON-lines for the simplest start) gives crash recovery and reconnection. Governs R12.
+- KTD5. **`GameTransport` interface abstracts local and networked play.** `LocalTransport` runs the engine in-process (a renderer Web Worker). `SocketTransport` speaks to the PartyKit room over WebSocket (via `partysocket`). `client-core` — store, dispatch, view reconciliation, pending-decision surfacing — is identical across both. Governs R10, R12, R14.
+- KTD6. **One PartyKit room object per game is the authoritative `GameSession`.** PartyKit — a thin framework over Cloudflare Durable Objects — routes a WebSocket for a room code to that room's single instance, so the room manager, the crash-recovery store, and the deploy host all become platform features. The room object imports `@boomtown/engine`, holds the authoritative `GameState`, reduces every command, and serializes only `viewFor(seat)` to each client. It persists its command log to `party.storage` and replays it on wake (KTD13). Colyseus and boardgame.io stay rejected for the same reasons as KTD1 — both couple game state to their own state-sync shape. Governs R12. (session-settled: user-directed — chosen over a self-hosted Node `ws` server, and over a zero-infrastructure peer-to-peer host: no server to operate, uptime, or patch, and the room-per-object model collapses the room manager and event-log store into platform features. See `docs/plans/2026-09-07-0631-refactor-online-multiplayer-substrate-plan.md` for the full decision record.)
 - KTD7. **Bots are a `Policy` interface over the engine's legal moves and evaluator.** The v1 policy is a weighted heuristic evaluation (stock-value delta, merger expected value with majority/minority awareness, early founding, endgame rush — the postures in `docs/initial-design-doc.md` section 5.3) with optional shallow lookahead and determinized sampling of hidden tiles. Difficulty scales three knobs: lookahead plies, determinization sample count (0 = pure heuristic), and a blunder rate. It runs off the main thread. A search-based policy can replace it behind the same interface. Governs R11. (session-settled: user-directed — chosen over deferring bots and over an LLM-backed bot: see the Key Decision.)
 - KTD8. **Rendering: React + React Three Fiber, instanced meshes.** One instanced mesh for the 108-cell grid, extruded prisms for tiles and headquarters markers, per-industry colours, an orthographic isometric camera, raycast picking for placement. 2D React panels for market, hand, holdings, and log. No glTF assets, no texture pipeline. Governs R15. (session-settled: user-directed — chosen over a 2D board: see the Key Decision.)
 - KTD9. **Electron hardening.** `contextIsolation` on, `nodeIntegration` off, a narrow preload bridge, Electron fuses enabled, a strict renderer CSP. Offline games run the engine in a renderer Web Worker; the main process owns window lifecycle and auto-update only. Governs R14.
 - KTD10. **Merge-naming is ported from `design/build.py`, not reimplemented from prose.** Port `stem`, `fragment`, `_syls`, `display_name`, and the `game_lineage` replay into the `naming` module, then add the assembled-result blocklist check with a next-syllable-boundary fallback. `docs/decisions.md` records that prose reimplementation already failed once (whole-word fragments). Governs R6.
 - KTD11. **Online identity is a per-seat session token, not an account.** Creating or joining a room mints a token; reconnection presents it. No password, no email, no persistence beyond the active game. Governs R12. (session-settled: user-approved — see the Key Decision.)
 - KTD12. **Build sequencing: engine-first, offline hot-seat desktop build before any server.** Phase A delivers the engine; Phase B a fully offline hot-seat desktop app; Phase C bots; Phase D the server and online play; Phase E packaging. Governs the phase order below. (session-settled: user-approved — chosen over client-server from the first commit.)
+- KTD13. **The room's durable state is a per-command key sequence, replayed on wake.** Each accepted command is written to `party.storage` under a sequential key (`cmd:<n>`) with a `seq` counter, before its events are dispatched. On any wake the room lists the `cmd:` keys in order and folds them through `replay()` to rebuild `GameState`. `party.storage` caps each value at 128 KiB, so a single growing command array is unsafe in a long game; per-command keys stay well under the cap and match the KTD2 event-log model. Governs R12. (session-settled: user-directed — chosen over one array value and over per-command keys plus periodic full-state snapshots: simplest shape that fits the storage cap; snapshot compaction is premature for a ~45-minute game.)
 
 ### Assumptions
 
 These are tooling defaults, not user-confirmed. An implementer may substitute an equivalent.
 
-- Monorepo tooling: pnpm workspaces, TypeScript project references, Vitest for tests, electron-vite (Vite) for the desktop build, electron-builder for packaging.
-- The event-log store starts as JSON-lines on disk and moves to SQLite (`better-sqlite3`) when reconnection and crash recovery land (U17); nothing above the store interface depends on which.
-- WebSocket layer: the `ws` library on the server; the browser's native `WebSocket` in the client.
+- Monorepo tooling: npm workspaces, Vitest for tests, electron-vite (Vite) for the desktop build, electron-builder for packaging. (The plan was drafted assuming pnpm; the repo uses npm workspaces — an equivalent substitution.)
+- Online play runs on PartyKit (Cloudflare). The maintainer holds a PartyKit account and runs `partykit deploy`; the free tier is assumed sufficient for friends-scale use. Durability is per-session, not cross-day (see `docs/plans/2026-09-07-0631-refactor-online-multiplayer-substrate-plan.md`).
+- WebSocket layer: PartyKit's room object on the server side; `partysocket` (a WebSocket-compatible client with built-in reconnect/backoff) in the desktop client.
+- The engine and `ai` packages are edge-runtime clean — verified: `packages/engine/src` and `packages/ai/src` import no Node built-ins, `process`, `Buffer`, or `crypto` — so the room object imports them directly (U1's no-Node-built-ins constraint holds).
 - Target OS versions are current macOS, Windows 10+, and a mainstream Linux desktop; no 32-bit builds.
 - English-only UI; no internationalization framework in v1.
 - The two-player phantom-shareholder rule (R2) is implemented in the engine but gets minimal dedicated UI in v1 — the bank's holdings surface in the market panel like any other holder.
@@ -147,7 +157,7 @@ flowchart TB
     core[client-core: store, dispatch, view reconciliation, GameTransport]
     desktop[desktop Electron: R3F 3D board + 2D panels]
   end
-  server[server: authoritative rooms, viewFor filtering, event log]
+  server[server: PartyKit room object — authoritative GameSession, viewFor filtering, command-log storage]
 
   engine --> protocol
   engine --> ai
@@ -163,7 +173,7 @@ flowchart TB
   server -->|viewFor seat events| core
 ```
 
-The engine has no dependency on any other package. `protocol` depends only on engine types. `client-core` and `server` both depend on engine + protocol. `desktop` depends on client-core. Bots load in the client (local games) and in the server (online games).
+The engine has no dependency on any other package. `protocol` depends only on engine types. `client-core` and `server` both depend on engine + protocol (`server` also on `ai`, and reuses `client-core`'s `GameSession`). `desktop` depends on client-core. Bots load in the client for local games and inside the room object for online games.
 
 #### Turn and merger state machine
 
@@ -197,19 +207,20 @@ Every `Await*` state is a pending decision that names an owning seat. `DefunctLo
 ```mermaid
 sequenceDiagram
   participant C as Client (seat A)
-  participant S as Server (authoritative)
+  participant R as PartyKit room object (authoritative)
   participant E as Engine reducer
-  participant O as Other clients
-  C->>S: command (place 9F)
-  S->>E: reduce(command, fullState)
-  E-->>S: events + nextState  (or typed rejection)
-  S-->>C: viewFor(A) events
-  S-->>O: viewFor(seat) events
-  Note over S,O: a pending decision is pushed only to the seat that owns it
-  S->>S: append command to event log
+  participant O as Other connections
+  C->>R: command (place 9F)
+  R->>R: append cmd:<seq> to party.storage
+  R->>E: reduce(command, GameState)
+  E-->>R: events + nextState  (or typed rejection)
+  R-->>C: viewFor(A) events
+  R-->>O: viewFor(seat) events
+  Note over R,O: a pending decision is pushed only to the connection whose seat owns it
+  Note over R,E: if the next seat is a bot, the room calls heuristicPolicy inline and repeats
 ```
 
-Local play runs the identical `reduce` call in a renderer worker via `LocalTransport`; there is no second code path for rules.
+The command is persisted before its events are dispatched (KTD13), so a crash between the two loses nothing. On wake the room replays `cmd:` keys through `replay()` to rebuild `GameState`. Local play runs the identical `reduce` call in a renderer worker via `LocalTransport`; there is no second code path for rules.
 
 ### Output Structure
 
@@ -240,13 +251,14 @@ boomtown/
     protocol/
       src/                      messages.ts, dto.ts, errors.ts, version.ts
     ai/
-      src/                      policy.ts, heuristic.ts, lookahead.ts, determinize.ts, difficulty.ts, worker.ts
+      src/                      policy.ts, heuristic.ts, difficulty.ts  (built; lookahead folded in, determinize + worker deferred)
       test/
     client-core/
       src/                      store.ts, dispatch.ts, reconcile.ts, transport/ (local.ts, socket.ts, types.ts)
       test/
-    server/
-      src/                      ws.ts, rooms.ts, session.ts, dispatch.ts, log/ (jsonl.ts, sqlite.ts, store.ts)
+    server/                     the PartyKit room object (repurposed from the planned Node server)
+      partykit.json
+      src/                      room.ts (default export), storage.ts, seats.ts
       test/
   apps/
     desktop/
@@ -265,8 +277,9 @@ The per-unit **Files** lists are authoritative; this tree is the intended shape.
 
 ### Stakeholder and Impact Notes
 
-- **Players** are the only external stakeholder. The load-bearing experience risks are merger correctness (a wrong payout is unrecoverable mid-game) and bot move latency.
-- **Implementers** benefit from the engine being buildable and testable with zero UI or network — Phase A is fully verifiable on its own.
+- **Players** are the only external stakeholder. The load-bearing experience risks are merger correctness (a wrong payout is unrecoverable mid-game), bot move latency, and — online — an interrupted game surviving a drop or a room redeploy.
+- **The maintainer** operates one thing for online play: a PartyKit deployment (`partykit deploy`, a Cloudflare account). No VPS, no TLS, no server patching.
+- **Implementers** benefit from the engine being buildable and testable with zero UI or network — Phase A is fully verifiable on its own. Phase D reuses `GameSession`, `viewFor`, and `replay()` unchanged; the room object is glue, not new rules.
 - **System-wide:** determinism is a cross-cutting invariant (R7). A single unseeded `Math.random`, `Date.now`, or order-dependent iteration anywhere under `packages/engine` or `packages/ai` breaks replay, reconnection, and bot reproducibility at once. It is enforced by lint and a CI replay check, not by convention.
 
 ---
@@ -293,8 +306,8 @@ The per-unit **Files** lists are authoritative; this tree is the intended shape.
 | U20 | Local game-setup screen | `apps/desktop/src/setup/` | U10, U12 |
 | U14 | Bot policy + difficulty | `packages/ai/src/` | U8, U10 |
 | U15 | protocol package | `packages/protocol/src/` | U4 |
-| U16 | Authoritative server | `packages/server/src/` | U15, U5 |
-| U17 | Event-log persistence + reconnection | `packages/server/src/log/`, `session.ts` | U16 |
+| U16 | PartyKit room object | `packages/server/partykit.json`, `src/room.ts`, `seats.ts` | U15, U5, U14 |
+| U17 | Command-log persistence + reconnection | `packages/server/src/storage.ts`, `room.ts` | U16 |
 | U18 | SocketTransport + lobby UI | `packages/client-core/src/transport/socket.ts`, `apps/desktop/src/lobby/` | U16, U10 |
 | U19 | Packaging, auto-update, settings | `apps/desktop/electron-builder.yml`, `updater.ts` | U13, U18 |
 
@@ -618,89 +631,101 @@ The per-unit **Files** lists are authoritative; this tree is the intended shape.
 **First-cut deviations (2026-09-07):**
 - `Policy.chooseMove(state, seat, rng) -> { command, rng }` takes the full `GameState` (not the view) and an immutable `Rng` threaded by the caller, mirroring the engine's own RNG pattern so a seeded bot game replays exactly (R7). The reducer and `evaluate` both need `GameState`; the bot driver runs where the authoritative state lives (client in hot-seat, server online).
 - `heuristic.ts` is greedy one-ply: enumerate the seat's legal moves, apply each with `reduce`, score with `evaluate`, take the best. Difficulty (`difficulty.ts`) maps the 1–10 dial to a **blunder rate** (random legal move instead of best; dial 1 → 0.5, dial 10 → 0) and **lookahead plies** (0 below dial 7, 1 at 7–8, 2 at 9–10; self-lookahead only, no opponent model yet).
-- **Determinization deferred** — `determinize.ts` not built; sample count is effectively 0 (the plan permits this). `lookahead.ts` folded into `heuristic.ts`. `worker.ts` deferred: the bot loop runs on the main thread with a `thinkMs` delay (`attachBotDriver` in `@boomtown/client-core`), which is enough for hot-seat; the off-thread worker is a later refinement, and the server (U16) will reuse `heuristicPolicy` in a `worker_thread` directly.
+- **Determinization deferred** — `determinize.ts` not built; sample count is effectively 0 (the plan permits this). `lookahead.ts` folded into `heuristic.ts`. `worker.ts` deferred: the bot loop runs on the main thread with a `thinkMs` delay (`attachBotDriver` in `@boomtown/client-core`), which is enough for hot-seat. Online, the PartyKit room object (U16) calls `heuristicPolicy` inline — the edge runtime has no worker threads and the policy is synchronous, so no worker is needed there either.
 - The difficulty-monotonicity test runs a **reduced** 12-game sample inline (strong side won >60% of decided pairings); the full statistical harness and its CI/nightly split are still to wire up.
 
 ---
 
 ### Phase D — Online multiplayer
 
+Phase D was replanned on 2026-09-07 to run on PartyKit instead of a hand-rolled `ws` server. See KTD6, KTD13, and the decision record `docs/plans/2026-09-07-0631-refactor-online-multiplayer-substrate-plan.md`. The Product Contract (R12, R13) is unchanged. `AE1`–`AE6` cited in the units below are the Acceptance Examples in that decision record.
+
 ### U15. protocol package
 
-- **Goal:** One wire contract shared by client and server.
+- **Goal:** One application-level wire contract shared by the desktop client and the room object.
 - **Requirements:** R12.
 - **Dependencies:** U4.
-- **Files:** `packages/protocol/src/messages.ts`, `dto.ts`, `errors.ts`, `version.ts`, `packages/protocol/test/roundtrip.test.ts`.
+- **Files:** `packages/protocol/src/messages.ts`, `dto.ts`, `errors.ts`, `version.ts`, `packages/protocol/src/index.ts`, `packages/protocol/test/roundtrip.test.ts`.
 - **Approach:**
-  1. Message envelopes: `command`, `events`, `pending-decision`, `error`, `room-state`, `hello`/`welcome`.
-  2. `dto.ts`: the serialized shape of `viewFor(seat)` and of events; no engine-internal types cross the wire raw.
-  3. `version.ts`: a protocol version in `hello`; a mismatch is rejected with a typed error.
-- **Patterns to follow:** engine `events.ts` / `commands.ts` as the source types.
+  1. `messages.ts`: the message union carried inside PartyKit frames — `command`, `events`, `pending-decision`, `error`, `room-state`, `hello`/`welcome`. PartyKit owns the socket framing; this is only the JSON payload contract.
+  2. `dto.ts`: the serialized shape of `viewFor(seat)` and of `EngineEvent`. No engine-internal type crosses the wire raw; the DTO is a structural projection of `PlayerView`.
+  3. `version.ts`: a protocol version string sent in `hello`; the room rejects a mismatch with a typed `error`.
+  4. `errors.ts`: the typed error codes the room can send — `wrong-version`, `room-full`, `bad-token`, plus a passthrough for the engine's own `EngineError`.
+- **Patterns to follow:** engine `events.ts` / `commands.ts` / `state.ts` as the source types; keep the DTO a pure re-export or structural alias where the engine type is already serializable.
 - **Test scenarios:**
-  - Every message type serializes and deserializes to an equal value.
-  - A `hello` with a wrong protocol version is rejected.
-  - A `viewFor` DTO contains no secret field names.
-- **Verification:** `pnpm --filter protocol test` passes.
+  - Every message type round-trips through `JSON.parse(JSON.stringify(x))` to an equal value.
+  - A `hello` carrying a wrong protocol version produces a `wrong-version` error.
+  - A `viewFor` DTO built from a real `GameState` contains no `bag`, no other seat's `hand`, and no hidden cash/holdings when visibility is `hidden`.
+  - An `EngineError` from `reduce` serializes into the `error` envelope and back without loss.
+- **Verification:** `npm test` passes the `packages/protocol` suite; the DTO type is asserted assignable from `PlayerView` at compile time.
 
-### U16. Authoritative server
+### U16. PartyKit room object
 
-- **Goal:** The server owns the game; clients only see their view.
+- **Goal:** One room object per game holds the authoritative state, filters each client's view, and plays bot seats.
 - **Requirements:** R12, R13.
-- **Dependencies:** U15, U5.
-- **Files:** `packages/server/src/ws.ts`, `rooms.ts`, `dispatch.ts`, `seats.ts`, `packages/server/test/*.test.ts`.
+- **Dependencies:** U15, U5, U14.
+- **Files:** `packages/server/partykit.json`, `packages/server/src/room.ts`, `seats.ts`, `packages/server/src/index.ts`, `packages/server/package.json`, `packages/server/test/room.test.ts`, root `package.json` (dev/deploy scripts), root `.gitignore` (`.partykit/`).
 - **Approach:**
-  1. `ws.ts`: a `ws` server; one connection maps to one seat in one room.
-  2. `rooms.ts`: create a room (returns a code), join by code, assign seats, mark ready, start when full or on host start, close on empty.
-  3. `dispatch.ts`: receive a command, reject it if it is out of turn or illegal per `reduce`, otherwise apply it and send `viewFor(seat)` events to each connected client; push a pending decision only to the owning seat.
-  4. Bots for empty or bot seats run in `worker_thread`s (U14).
-  5. Optional per-turn clock; on timeout the server plays a safe default or a bot move (config).
-- **Patterns to follow:** boardgame.io's master/transport split and Colyseus's room lifecycle, reimplemented minimally (KTD6).
+  1. `partykit.json`: `name` and `main: src/room.ts`. One party (`main`); no extra parties.
+  2. `room.ts` default-exports a `Party.Server` class. It reuses `GameSession` from `@boomtown/client-core` as the one-per-room `reduce` holder (KTD4, KTD6) — or imports `reduce`/`viewFor` directly if pulling `client-core` into the edge bundle is heavier than the engine alone; the implementer decides at build time.
+  3. `onConnect`: read the room code from `room.id`, the session token and display name from the connection query string (`ctx.request`). A fresh join with capacity mints a token, assigns an open seat via `seats.ts`, stores `{ seat, token }` on the connection with `connection.setState` (survives hibernation), and broadcasts `room-state`. A join carrying a known token re-binds that seat (R12 reconnect). Over capacity → `room-full` error, connection closed (per R12 — see U15 for the error type).
+  4. `onMessage`: parse a `command`; reject it if it is out of turn or `reduce` rejects it (typed `error` to the sender only); otherwise persist it (KTD13), apply it, and send `viewFor(seat)` `events` to each connection — a `pending-decision` only to the connection whose seat owns it.
+  5. After any applied command, if the seat now on turn (or owning the pending decision) is a bot, call `heuristicPolicy` inline and loop from step 4 until a human seat is on the clock. Bot difficulty comes from room-creation config held in room state.
+  6. `seats.ts`: seat assignment, capacity check, and the open/hidden visibility setting passed to `viewFor` (R13). Pure, unit-testable without a live room.
+- **Patterns to follow:** `packages/client-core/src/session.ts` (`GameSession` as the `reduce` holder); `packages/client-core/src/transport/local.ts` for how `viewFor` results are shaped into a client update; PartyKit's `Party.Server` lifecycle.
+- **Execution note:** PartyKit ships a test harness that runs a room object in-process. Build the integration test (step below) early — it is the fastest proof the connect/dispatch/bot loop works end to end.
 - **Test scenarios:**
-  - An out-of-turn command is rejected without mutating state.
-  - An illegal command is rejected with the engine's typed error.
-  - Each client receives only its own `viewFor`; a captured payload for seat B contains none of seat A's hand tiles or the bag (Success Criteria).
-  - A pending merger decision reaches only the owning seat.
-  - Room lifecycle: create, join to full, reject an over-capacity join, close on last leave.
-  - A bot seat plays its turns via a worker thread.
-- **Verification:** `pnpm --filter server test` passes; an integration test runs a full 3-seat game (2 human sockets + 1 bot) to a ranked result.
+  - Covers AE5. An out-of-turn `command` is rejected with a typed error and no state changes.
+  - An illegal `command` (e.g. buying at the place step) is rejected with the engine's `EngineError` code.
+  - Covers AE1. In a 3-seat game with visibility `hidden`, the message stream captured for seat B over a full turn contains none of seat A's or C's hand tiles, no bag contents, and no opponent cash/holdings.
+  - A `pending-decision` from a merger reaches only the connection owning that seat; other connections get `events` without it.
+  - Covers AE4. A join to a room whose seats are full is rejected with `room-full` and seat state is unchanged.
+  - A bot seat plays its whole turn (place, buy, end-check) inline with no external prompt; a bot resolves a merger disposal decision without stalling.
+  - An all-bot room runs to a ranked result.
+- **Verification:** `npm test` passes the `packages/server` suite; an integration test runs a full 3-seat game (2 simulated sockets + 1 bot) through the room object to a ranked result; `partykit dev` serves the room locally on port 1999.
 
-### U17. Event-log persistence and reconnection
+### U17. Command-log persistence and reconnection
 
-- **Goal:** A game survives a server restart and a client drop.
-- **Requirements:** R12, R7.
+- **Goal:** A game survives a client drop and a room-object eviction or redeploy within a session.
+- **Requirements:** R7 (determinism — the command log replays to an identical state), R12 (reconnect and resume).
 - **Dependencies:** U16.
-- **Files:** `packages/server/src/log/store.ts`, `log/jsonl.ts`, `log/sqlite.ts`, `session.ts`, `packages/server/test/recovery.test.ts`.
+- **Files:** `packages/server/src/storage.ts`, `packages/server/test/recovery.test.ts`, additions to `room.ts`.
 - **Approach:**
-  1. `store.ts` is an append-only interface; `jsonl.ts` is the first implementation, `sqlite.ts` the durable one (Assumptions).
-  2. Every accepted command is appended with its room, seat, and sequence number before events go out.
-  3. On startup the server replays each room's log through `reduce` to reconstruct authoritative state (R7).
-  4. `session.ts`: a per-seat token minted at join; reconnection within the game presents the token and receives the current `viewFor`.
-- **Patterns to follow:** KTD2 — the event log is already the substrate.
+  1. `storage.ts` wraps `room.storage`: `append(command)` writes `cmd:<seq>` and bumps a `seq` counter; `loadAll()` lists `cmd:` keys in order and returns the command array (KTD13).
+  2. `room.ts` `onMessage` calls `append` before dispatching events — a crash between the two loses nothing.
+  3. `onStart` (fires on cold start and on wake from hibernation) calls `loadAll()` and folds the commands through `replay()` from `@boomtown/engine` to rebuild `GameState` before serving any connection.
+  4. Reconnection is already handled in U16's `onConnect` (token re-bind); this unit adds the state-rebuild half so the reconnecting client gets a correct current `viewFor` even after an eviction.
+- **Patterns to follow:** KTD2 and `replay()` in `packages/engine` — the command log is already the substrate and `replay` already exists and is tested.
 - **Test scenarios:**
-  - Killing and restarting the server replays the log to a deep-equal authoritative state.
-  - A client that drops and reconnects with a valid token resumes its seat and receives the current view.
-  - A reconnect with an unknown or wrong-room token is rejected.
-  - A command is durably logged before its events are dispatched (crash between the two loses nothing).
-  - The log replay produces the same state as the live run for a recorded game (cross-check with U8's fuzz playouts).
-- **Verification:** `pnpm --filter server test` passes; a restart-mid-merger test resumes correctly.
+  - Covers AE3. A game paused on a pending merger disposal, then the room object is torn down and `onStart` re-runs: the pending decision is still open, addressed to the same seat, and play continues correctly.
+  - `loadAll()` after N appends returns the N commands in application order.
+  - A command is in storage before its events are observed by any connection (append-before-dispatch).
+  - Replaying a recorded command log reproduces a `GameState` deep-equal to the live run (cross-check against an engine fuzz playout).
+  - Covers AE2. A connection drops and reconnects with its seat-2 token after an eviction; it re-binds seat 2 and receives the current view including any pending decision it owns.
+  - A reconnect with an unknown token is rejected with `bad-token`.
+- **Verification:** `npm test` passes the `packages/server` recovery suite; a tear-down-mid-merger test resumes correctly.
 
 ### U18. SocketTransport and lobby UI
 
-- **Goal:** The desktop app plays online through the same client-core.
+- **Goal:** The desktop app plays an online game through the same `client-core` and store as local play.
 - **Requirements:** R12, R14.
 - **Dependencies:** U16, U10.
-- **Files:** `packages/client-core/src/transport/socket.ts`, `apps/desktop/src/lobby/CreateJoin.tsx`, `SeatList.tsx`, `apps/desktop/src/lobby/lobby.test.tsx`.
+- **Files:** `packages/client-core/src/transport/socket.ts`, `packages/client-core/src/index.ts`, `packages/client-core/package.json` (`partysocket` dep), `packages/client-core/test/socket-transport.test.ts`, `apps/desktop/src/lobby/CreateJoin.tsx`, `SeatList.tsx`, `apps/desktop/src/lobby/lobby.module.css`, `apps/desktop/src/lobby/lobby.test.tsx`, `apps/desktop/src/App.tsx` (route to lobby).
 - **Approach:**
-  1. `socket.ts` implements `GameTransport` over `WebSocket`, with reconnect-and-resume using the session token and a keepalive ping.
-  2. `CreateJoin.tsx`: host a room (show the code) or join with a code and a display name.
-  3. `SeatList.tsx`: seats, ready state, bot seats, host start; a disconnect banner with auto-retry.
-- **Patterns to follow:** the `LocalTransport` contract from U10 — the store must not tell the two apart.
+  1. `socket.ts` implements `GameTransport` (KTD5) over `partysocket`: `connect()` opens a `PartySocket({ host, room: code, query: async () => ({ token, name }) })` and resolves on first `open`; `send(command)` posts a `command` message; `onMessage` parses room messages into the existing `TransportMessage` shape (`{ events, views, rejection? }`) that `reconcile` already consumes unchanged. `partysocket` owns reconnect and backoff; a `close`/`open` pair surfaces to the store as a connection-status field for the banner.
+  2. The host URL comes from a resolver: a build-time default (`import.meta.env`), overridden by a value from desktop settings (U19), falling back to `localhost:1999` in dev.
+  3. `CreateJoin.tsx`: create a room (generate a code, show it to copy) or join with a code and a display name. Room-creation options (seat count, editions, visibility, bot seats + difficulty) reuse the `gameConfig` shape from `apps/desktop/src/setup`.
+  4. `SeatList.tsx`: seats, which are filled, bot seats, the creator's start control, and a non-blocking reconnect banner driven by the store's connection-status field.
+- **Patterns to follow:** `packages/client-core/src/transport/local.ts` and `test/local-transport.test.ts` — `SocketTransport` satisfies the identical `GameTransport` contract; `packages/client-core/src/reconcile.ts` is already transport-agnostic and needs no change. `apps/desktop/src/setup/NewGame.tsx` and `setup.test.tsx` for the create/join screen and its tests.
+- **Execution note:** The reconnect banner's exact copy and placement is a UI detail — a non-blocking bar in the lobby / game screen keyed off the connection-status field. Do not block the unit on visual polish.
 - **Test scenarios:**
-  - `SocketTransport` satisfies the same `GameTransport` contract tests as `LocalTransport`.
-  - A dropped socket reconnects and the view is restored without a page reload.
-  - Joining with a bad code shows a clear error.
-  - The store behaves identically whether wired to `LocalTransport` or `SocketTransport` for a scripted turn.
-- **Verification:** `pnpm --filter client-core test` and `pnpm --filter desktop test` pass; a manual two-instance game on one machine completes.
+  - Covers AE6. `SocketTransport` passes the same `GameTransport` contract assertions as `LocalTransport` (mirror `local-transport.test.ts`), against a room object under the PartyKit test harness.
+  - A scripted non-merge turn produces identical store state transitions whether wired to `LocalTransport` or `SocketTransport`.
+  - A dropped socket reconnects (via `partysocket`) and the store's view is restored without a reload; the banner shows then clears.
+  - Joining with an unknown room code surfaces a clear error in the join screen.
+  - Joining with a version-mismatched client shows the `wrong-version` error.
+  - The create screen carries seat count, edition, visibility, and bot difficulty into the room-creation message.
+- **Verification:** `npm test` passes the `packages/client-core` and `apps/desktop` suites; a manual two-instance game on one machine (two Electron windows against `partykit dev`) completes with a correct ranking.
 
 ---
 
@@ -715,11 +740,11 @@ The per-unit **Files** lists are authoritative; this tree is the intended shape.
 - **Approach:**
   1. electron-builder targets: macOS (dmg, arm64 + x64), Windows (nsis), Linux (AppImage).
   2. `updater.ts`: check an update feed on launch; download and prompt to restart.
-  3. `Settings.tsx`: table cash/holdings visibility, default bot difficulty, edition preset (classic / 2015), seat count.
-  4. Release workflow builds and signs on tag.
+  3. `Settings.tsx`: table cash/holdings visibility, default bot difficulty, edition preset (classic / 2015), seat count, and the PartyKit host URL (blank = use the build-time default; a value overrides it, for a self-hosted deployment — U18 reads this).
+  4. Release workflow builds and signs on tag; the build embeds the maintainer's PartyKit host as the default.
 - **Patterns to follow:** electron-builder defaults; KTD9 fuses stay on in the packaged build.
-- **Test scenarios:** Test expectation: none — packaging. Smoke checks below.
-- **Verification:** signed builds launch on macOS, Windows, and Linux (Success Criteria); the update check runs on launch; settings persist across restarts.
+- **Test scenarios:** Test expectation: none — packaging. Smoke checks below, plus one assertion that a non-blank host-URL setting is what `SocketTransport`'s resolver returns.
+- **Verification:** signed builds launch on macOS, Windows, and Linux (Success Criteria); the update check runs on launch; settings persist across restarts; a custom host URL set in Settings is used for the next online game.
 
 ---
 
@@ -727,17 +752,19 @@ The per-unit **Files** lists are authoritative; this tree is the intended shape.
 
 | Gate | Command | Applies to |
 |---|---|---|
-| Type + build | `pnpm -r build` | all units |
-| Unit + integration tests | `pnpm -r test` | all units |
-| Engine rules parity | `pnpm --filter engine test` | U2–U8 — must reproduce every `docs/rules.md` worked example and the `docs/naming.md` lineage table |
-| Determinism replay | engine + server replay check in CI | U3, U5, U16, U17 |
+| Type + build | `npm run typecheck` | all units |
+| Unit + integration tests | `npm test` | all units |
+| Engine rules parity | `npm run test:engine` | U2–U8 — must reproduce every `docs/rules.md` worked example and the `docs/naming.md` lineage table |
+| Determinism replay | engine `replay()` cross-check; room-object recovery test | U3, U5, U16, U17 |
 | Property playouts | 10,000 random legal-move games terminate with no throw | U8 |
-| Bot difficulty harness | `pnpm --filter ai test` (reduced in CI, full nightly) | U14 |
-| Hidden-state leak check | payload assertion in server integration tests | U16, U17 |
-| Desktop smoke | `pnpm --filter desktop dev` boots; renderer has no Node globals | U9, U11–U13 |
+| Bot difficulty harness | `npm test` ai suite (reduced inline; full harness still to wire) | U14 |
+| Hidden-state leak check | payload assertion in the room-object integration test (AE1) | U16, U17 |
+| Desktop smoke | `npm run smoke` boots; renderer has no Node globals | U9, U11–U13 |
 | Packaging smoke | signed builds launch on the three OSes | U19 |
 
-No repo test commands exist yet; U1 establishes `pnpm -r test` and CI. There is no `release:validate` — release verification is the packaging smoke in U19.
+Repo scripts (`package.json`): `npm test`, `npm run typecheck`, `npm run test:engine`, `npm run test:desktop`, `npm run smoke`, `npm run lint`. There is no `release:validate` — release verification is the packaging smoke in U19. The PartyKit room object has no CI deploy gate; `partykit deploy` is a maintainer step (U16).
+
+The plan was drafted assuming pnpm; the repo shipped on npm workspaces. Units U1–U14 (already built) still show `pnpm --filter X test` in their Verification lines — read those as the equivalent `npm test` / `npm run test:<project>`. This table and the U15–U19 units use the real commands.
 
 ---
 
@@ -760,19 +787,21 @@ No repo test commands exist yet; U1 establishes `pnpm -r test` and CI. There is 
 ## Risks & Mitigations
 
 - **Merger resolution is the highest-risk area.** A wrong payout or ordering is unrecoverable mid-game. Mitigation: U5 is built test-first, one `docs/rules.md` example at a time; property playouts (U8) exercise it at volume; the state machine is serializable so any failure is reproducible from the command log.
-- **Determinism leaks.** A single `Math.random`, `Date.now`, or order-dependent iteration under `engine`/`ai` silently breaks replay, reconnection, and bot reproducibility. Mitigation: lint gate (U1), seeded PRNG in state (U3), CI replay check (U17).
+- **Determinism leaks.** A single `Math.random`, `Date.now`, or order-dependent iteration under `engine`/`ai` silently breaks replay, reconnection, and bot reproducibility. Mitigation: lint gate (U1), seeded PRNG in state (U3), `replay()` cross-check and the room-object recovery test (U17).
 - **3D scope creep and performance.** 108 instanced cells plus picking plus overlays can regress on low-end GPUs, and "basic 3D" can drift toward asset work. Mitigation: KTD8 fixes the technique (instancing, flat materials, no assets); a frame-time budget is part of U11's manual check.
 - **Bot strength and difficulty tuning are playtest-driven.** Mitigation: difficulty is three exposed knobs (U14), not a black box; the statistical harness catches regressions; a stronger policy is a deferred drop-in behind `Policy`.
-- **Reimplementing matchmaking and persistence** (the cost of not using boardgame.io). Mitigation: scope is deliberately small — room codes, session tokens, an append-only log — and the event-log substrate was already needed for replay.
+- **PartyKit as a dependency.** PartyKit was independent and is now Cloudflare-owned; the standalone product's long-term shape is uncertain. Mitigation: the room object is ~one file over the engine, `partysocket` is a plain WebSocket client, and KTD5's `GameTransport` seam means a move to raw Durable Objects (or back to a self-hosted `ws` server) changes only `packages/server` and one transport file — nothing above the seam. `party.storage`'s 128 KiB per-value cap is handled by KTD13.
 - **Electron security misconfiguration.** Mitigation: KTD9 (context isolation, fuses, CSP), asserted in U9's verification and kept in the packaged build (U19).
-- **Hidden-state leak in online views.** Mitigation: the server serializes only `viewFor(seat)` (KTD4); U16/U17 assert no secret keys in any non-owner payload.
+- **Hidden-state leak in online views.** Mitigation: the room object serializes only `viewFor(seat)` (KTD4); U16 asserts no secret keys in any non-owner payload (AE1).
 
 ---
 
 ## Alternative Approaches Considered
 
-- **boardgame.io as the engine and server.** Fastest path to online turn-based play with generated bots and matchmaking. Rejected: its phase/stage model does not express Boomtown's nested interruptible merger resolution cleanly, and it couples game state to its own server/storage, which conflicts with the engine being the shared source of truth for hot-seat, bots, and online alike. Its patterns still inform KTD6.
-- **Colyseus as the multiplayer substrate.** Strong room lifecycle and state sync. Rejected as the primary substrate: schema-sync assumes the server owns the state shape, re-coupling the engine to the transport. A minimal custom WebSocket layer keeps the engine transport-agnostic; Colyseus's room model is the reference for U16.
+- **boardgame.io as the engine and server.** Fastest path to online turn-based play with generated bots and matchmaking. Rejected: its phase/stage model does not express Boomtown's nested interruptible merger resolution cleanly, and it couples game state to its own server/storage, which conflicts with the engine being the shared source of truth for hot-seat, bots, and online alike.
+- **Colyseus as the multiplayer substrate.** Strong room lifecycle and state sync. Rejected: schema-sync assumes the server owns the state shape, re-coupling the engine to the transport.
+- **A self-hosted minimal `ws` server** (the original KTD6). A ~200-line Node server on a cheap VPS: `ws` socket layer, room map, per-seat filtered dispatch, JSON-lines log. Rejected on revisiting (2026-09-07): for a friends-only hobby game it is a process to write, host, TLS-terminate, patch, and pay for, with no benefit over a platform where a room is already a first-class object. PartyKit (KTD6) keeps the same authoritative model with none of the operational surface.
+- **Raw Cloudflare Durable Objects** (no PartyKit). Same edge model without the framework layer. Rejected for now: ~50–80 lines of connection plumbing PartyKit provides free, and no matching client library. The `GameTransport` seam keeps this a cheap future switch if PartyKit's direction sours.
 - **2D board (DOM/SVG or 2D canvas).** Simpler, lighter, and the direction the design canvas and `docs/initial-design-doc.md` assume. Not chosen — the user prefers a deliberately basic 3D build (Key Decision).
 - **Web-app-first with Electron packaging on top.** Would make a hosted browser build cheap later. Not chosen — desktop is the primary product (Key Decision); the browser build is a deferred possibility, and the `GameTransport` split (KTD5) keeps it reachable.
 - **Client-server from the first commit.** Avoids a later transport-integration step. Not chosen — proving the engine in a fully offline hot-seat build first (KTD12) de-risks the crux (merger resolution) before any network complexity.
