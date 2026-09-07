@@ -27,6 +27,12 @@
   font-size: 24px;
 }
 
+.brandLogo {
+  height: 34px;
+  width: auto;
+  display: block;
+}
+
 .tagline {
   font-size: 12px;
   color: var(--muted);

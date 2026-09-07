@@ -4,6 +4,7 @@ import type { TurnStep } from '@boomtown/engine';
 import { useGameState } from '../client/GameClientProvider.js';
 import { useReference } from '../reference/ReferenceContext.js';
 import { editionLabel } from '../setup/editionLabel.js';
+import logoUrl from '../assets/boomtown-logo.png';
 import styles from './game.module.css';
 
 const PHASE: Record<TurnStep, string> = {
@@ -34,7 +35,7 @@ export function Header() {
   return (
     <header className={styles.header}>
       <div className={styles.brand}>
-        <span className="serif">Boomtown</span>
+        <img src={logoUrl} alt="Boomtown" className={styles.brandLogo} />
         <span className={styles.tagline}>seven start-ups, one skyline</span>
       </div>
       {view && (

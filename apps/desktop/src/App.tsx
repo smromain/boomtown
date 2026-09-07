@@ -6,6 +6,7 @@ import { CreateJoin } from './lobby/CreateJoin.js';
 import { SeatList } from './lobby/SeatList.js';
 import { SettingsDialog } from './settings/SettingsDialog.js';
 import type { OnlineGame } from './online/onlineGame.js';
+import logoUrl from './assets/boomtown-logo.png';
 import styles from './lobby/lobby.module.css';
 
 type Screen =
@@ -60,7 +61,7 @@ export function App() {
     case 'menu':
       return (
         <section className={styles.screen} aria-label="Main menu">
-          <h1>Boomtown</h1>
+          <img src={logoUrl} alt="Boomtown" className={styles.logo} />
           <div className={styles.choice}>
             <button type="button" onClick={() => setScreen({ kind: 'local-setup' })}>
               Local game

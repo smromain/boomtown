@@ -6,7 +6,7 @@ import { App } from './App.js';
 describe('App shell', () => {
   it('mounts on the main menu with local and online choices', () => {
     render(<App />);
-    expect(screen.getByRole('heading', { name: 'Boomtown' }).tagName).toBe('H1');
+    expect(screen.getByRole('img', { name: 'Boomtown' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Local game' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Play online' })).toBeInTheDocument();
   });
