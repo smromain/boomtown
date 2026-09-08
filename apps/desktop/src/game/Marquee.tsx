@@ -17,11 +17,14 @@ const EDGE_PAUSE = 1.6; // seconds held at each end
 export function Marquee({
   children,
   className,
+  style,
   axis = 'x',
   lines = 2,
 }: {
   children: ReactNode;
   className?: string | undefined;
+  /** Applied to the viewport — e.g. a `color` the inner text keys its halo off. */
+  style?: CSSProperties | undefined;
   axis?: 'x' | 'y';
   lines?: number;
 }) {
@@ -54,7 +57,9 @@ export function Marquee({
   const duration = scrolls ? (overflow / SPEED) * 2 + EDGE_PAUSE * 2 : 0;
 
   const viewportStyle: CSSProperties | undefined =
-    axis === 'y' ? ({ '--marquee-lines': String(lines) } as CSSProperties) : undefined;
+    axis === 'y' || style
+      ? ({ ...style, ...(axis === 'y' ? { '--marquee-lines': String(lines) } : {}) } as CSSProperties)
+      : undefined;
 
   const innerStyle: CSSProperties | undefined = scrolls
     ? ({

@@ -2,6 +2,7 @@ import { INDUSTRY_INFO } from '@boomtown/engine';
 import { useAnyView, useGameState } from '../client/GameClientProvider.js';
 import { describeEvent } from '../panels/eventText.js';
 import { IndustryMark } from './marks.js';
+import { Marquee } from './Marquee.js';
 import { eventIndustry, isHeadline, latestMerger, mergerProse, type BonusLine } from './story.js';
 import styles from './game.module.css';
 
@@ -83,9 +84,9 @@ export function StoryCard() {
           <span className={styles.renameLabel}>
             {merger.complete ? 'Now trading as' : 'Will trade as'}
           </span>
-          <span className={`serif ${styles.renameName}`} style={{ color: survivorColor }}>
+          <Marquee className={`serif ${styles.renameName}`} style={{ color: survivorColor }}>
             {survivorName}
-          </span>
+          </Marquee>
           <span className={styles.renameNote}>
             Its name grows with a piece of every company it takes over. Your shares in it stay
             yours.
