@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { act } from 'react';
@@ -5,6 +8,8 @@ import { describe, expect, it } from 'vitest';
 import { INDUSTRY_INFO } from '@boomtown/engine';
 import { Board } from './Board.js';
 import { NAMES, flush, renderPanel, seedCorp } from '../testing/harness.js';
+
+const boardCss = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'board.module.css'), 'utf8');
 
 describe('Board', () => {
   it('renders every cell plus the perimeter headers', async () => {
@@ -22,7 +27,11 @@ describe('Board', () => {
     });
     // the accessible name carries "<coord> — <company name>"
     const cell = screen.getByRole('gridcell', { name: new RegExp(`^6E — ${NAMES.video}`) });
-    expect(cell).toHaveStyle({ background: INDUSTRY_INFO.video.color });
+    // the crafted lit-paper treatment (U8) is a gradient, not a flat fill, but
+    // it's built from the industry's own colour and carries visible thickness.
+    expect(cell.style.background).toContain(INDUSTRY_INFO.video.color);
+    expect(cell.style.transform).toMatch(/translateZ/);
+    expect(cell.style.boxShadow).not.toBe('');
   });
 
   it('the headquarters cell shows the industry mark and the coordinate', async () => {
@@ -65,5 +74,16 @@ describe('Board', () => {
       },
     });
     expect(screen.queryByRole('grid', { name: 'Board' })).not.toBeInTheDocument();
+  });
+
+  it('has visible depth styling (transform + shadow) and no wood/felt/plastic texture image (U8, AE1)', () => {
+    expect(boardCss).toMatch(/rotateX\(/);
+    expect(boardCss).toMatch(/box-shadow:\s*\n?\s*var\(--elev-3\)/);
+    expect(boardCss).not.toMatch(/wood|felt|plastic|canvas\.png|paper\.jpg/i);
+  });
+
+  it('reduces the tilt under prefers-reduced-motion (U8, U12)', () => {
+    const reducedBlock = boardCss.slice(boardCss.indexOf('@media (prefers-reduced-motion: reduce) {'));
+    expect(reducedBlock).toMatch(/\.board\s*{\s*\n\s*transform:\s*none;/);
   });
 });
