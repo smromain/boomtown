@@ -167,6 +167,7 @@ describe('NewGame screen', () => {
     render(<NewGame onStart={() => {}} />);
 
     const rules = screen.getByText('How to play').closest('details')!;
+    expect(rules).not.toHaveAttribute('open'); // collapsed on load
     expect(rules).toHaveTextContent(/A turn/);
     expect(rules).toHaveTextContent(/Mergers/);
     // the "differs" table names both rule sets and their key numbers

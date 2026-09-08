@@ -9,7 +9,7 @@ import styles from './setup.module.css';
  */
 export function RulesSummary() {
   return (
-    <details className={styles.rules} open>
+    <details className={styles.rules}>
       <summary className={styles.rulesSummary}>How to play</summary>
 
       <div className={styles.rulesBody}>
