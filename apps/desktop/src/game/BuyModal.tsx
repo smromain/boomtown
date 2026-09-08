@@ -27,7 +27,7 @@ export function BuyModal() {
       <Dialog.Portal>
         <Dialog.Overlay className={styles.overlay} />
         <Dialog.Content
-          className={styles.content}
+          className={`${styles.content} ${styles.buyContent}`}
           aria-describedby={undefined}
           onEscapeKeyDown={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}

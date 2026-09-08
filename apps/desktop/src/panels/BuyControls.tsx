@@ -87,7 +87,7 @@ function BuyRow({
 }) {
   return (
     <>
-      <span>
+      <span className={styles.buyName}>
         {name}
         <span className={styles.buyFloat}>
           {inBank} in bank · {held} held

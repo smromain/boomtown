@@ -24,6 +24,14 @@
   padding: 1.25rem;
 }
 
+/* The buy modal grows with its content — long derived names widen the grid —
+   from a comfortable minimum up to a cap, then the name column wraps. */
+.buyContent {
+  width: max-content;
+  min-width: min(28rem, 90vw);
+  max-width: 90vw;
+}
+
 .content h2 {
   margin: 0 0 0.25rem;
   font-size: 1rem;
@@ -114,13 +122,18 @@
   margin: 1rem 0;
 }
 
-/* Buy step: corporation name (grows) · price · − · qty · + */
+/* Buy step: corporation name (sizes to content) · price · − · qty · + */
 .buyGrid {
   display: grid;
-  grid-template-columns: 1fr auto auto auto auto;
+  grid-template-columns: minmax(0, auto) auto auto auto auto;
   gap: 0.55rem 0.85rem;
   align-items: center;
   margin: 1rem 0;
+}
+
+.buyName {
+  /* wrap only once the modal has grown to its max width */
+  overflow-wrap: anywhere;
 }
 
 .buyGrid button {
