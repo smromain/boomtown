@@ -1,4 +1,5 @@
 import { useGameClient, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
+import { Button } from '../ui/Button.js';
 import styles from './game.module.css';
 
 /**
@@ -17,22 +18,12 @@ export function ActionBar() {
       <div className={styles.actionCard} aria-label="End of game">
         <p className={styles.actionPrompt}>A corporation is safe or at the end size.</p>
         <div className={styles.actionButtons}>
-          <button
-            type="button"
-            className={styles.primaryAction}
-            disabled={busy}
-            onClick={() => client.dispatch({ type: 'announce-end', seat: view.you })}
-          >
+          <Button variant="primary" disabled={busy} onClick={() => client.dispatch({ type: 'announce-end', seat: view.you })}>
             End the game
-          </button>
-          <button
-            type="button"
-            className={styles.secondaryAction}
-            disabled={busy}
-            onClick={() => client.dispatch({ type: 'end-turn', seat: view.you })}
-          >
+          </Button>
+          <Button variant="secondary" disabled={busy} onClick={() => client.dispatch({ type: 'end-turn', seat: view.you })}>
             Keep playing
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -42,14 +33,9 @@ export function ActionBar() {
     return (
       <div className={styles.actionCard} aria-label="No playable tile">
         <p className={styles.actionPrompt}>No tile in hand can be placed this turn.</p>
-        <button
-          type="button"
-          className={styles.primaryAction}
-          disabled={busy}
-          onClick={() => client.dispatch({ type: 'end-turn', seat: view.you })}
-        >
+        <Button variant="primary" disabled={busy} onClick={() => client.dispatch({ type: 'end-turn', seat: view.you })}>
           Skip placement
-        </button>
+        </Button>
       </div>
     );
   }

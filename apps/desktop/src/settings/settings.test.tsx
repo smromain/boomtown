@@ -23,6 +23,36 @@ describe('settings store', () => {
     expect(loaded.edition).toBe('edition-2015');
     expect(loaded.visibility).toBe('open'); // untouched default
   });
+
+  it('sound is on (muted: false) by default (R9)', () => {
+    expect(loadSettings().muted).toBe(false);
+  });
+
+  it('round-trips muted', () => {
+    saveSettings({ ...DEFAULT_SETTINGS, muted: true });
+    expect(loadSettings().muted).toBe(true);
+  });
+
+  it('a session with no localStorage falls back to defaults without throwing', () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'localStorage')!;
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: () => {
+          throw new Error('no localStorage here');
+        },
+        setItem: () => {
+          throw new Error('no localStorage here');
+        },
+      },
+      configurable: true,
+    });
+    try {
+      expect(loadSettings()).toEqual(DEFAULT_SETTINGS);
+      expect(() => saveSettings({ ...DEFAULT_SETTINGS, muted: true })).not.toThrow();
+    } finally {
+      Object.defineProperty(window, 'localStorage', original);
+    }
+  });
 });
 
 describe('partykitHost', () => {

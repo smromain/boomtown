@@ -3,7 +3,8 @@
   margin: 3rem auto;
   padding: 1.5rem;
   background: var(--surface);
-  border-radius: 12px;
+  border-radius: 8px;
+  box-shadow: var(--elev-2);
 }
 
 .screen h1 {

@@ -17,6 +17,8 @@ export interface Settings {
   readonly seatCount: number;
   /** Override for the PartyKit host; blank = use the build-time default. */
   readonly partykitHost: string;
+  /** Sound effects (R9). Sound ships on by default; the header mute control persists this. */
+  readonly muted: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -25,6 +27,7 @@ export const DEFAULT_SETTINGS: Settings = {
   edition: 'classic',
   seatCount: 3,
   partykitHost: '',
+  muted: false,
 };
 
 const KEY = 'boomtown.settings';

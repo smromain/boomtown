@@ -6,7 +6,8 @@
   color: var(--ink);
 }
 
-/* Header */
+/* Header — the ink-chrome bar (Direction D's baseline chrome), not the light
+   web-app header the flat design started with (R5). */
 .header {
   height: 64px;
   flex-shrink: 0;
@@ -14,28 +15,63 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 28px;
-  border-bottom: 1px solid var(--rule);
+  background: var(--chrome-bg);
+  color: var(--chrome-ink);
+  box-shadow: 0 14px 30px -18px rgba(28, 25, 23, 0.85);
 }
 
 .brand {
   display: flex;
-  align-items: baseline;
-  gap: 12px;
+  align-items: center;
+  gap: 14px;
 }
 
 .brand .serif {
-  font-size: 24px;
+  font-size: 22px;
 }
 
 .brandLogo {
-  height: 34px;
+  height: 30px;
   width: auto;
   display: block;
+  filter: brightness(1.9) saturate(0.85);
+}
+
+.brandDivider {
+  width: 1px;
+  height: 20px;
+  background: var(--chrome-rule);
 }
 
 .tagline {
-  font-size: 12px;
-  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--chrome-muted);
+}
+
+.muteButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--chrome-muted);
+  cursor: pointer;
+}
+
+.muteButton:hover {
+  color: var(--chrome-ink);
+  background: color-mix(in srgb, var(--chrome-ink) 10%, transparent);
+}
+
+.muteButton[aria-pressed='true'] {
+  color: var(--accent);
 }
 
 .status {
@@ -43,29 +79,43 @@
   align-items: center;
   gap: 20px;
   font-size: 12px;
-  color: var(--muted);
+  color: var(--chrome-muted);
+}
+
+.statusLabel {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.turnReadout {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.turnReadout .serif {
+  font-size: 19px;
+  color: var(--chrome-ink);
 }
 
 .reference {
-  font: inherit;
-  font-size: 12px;
-  color: var(--ink);
-  background: transparent;
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 5px 12px;
-  cursor: pointer;
-}
-
-.reference:hover {
-  background: var(--surface-2);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  padding: 7px 14px;
 }
 
 .phase {
   background: var(--accent);
   color: var(--on-accent);
-  padding: 6px 13px;
-  border-radius: 20px;
+  padding: 8px 16px;
+  border-radius: 3px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
 }
 
 /* Body */
@@ -265,15 +315,13 @@
   overflow-y: auto;
 }
 
-/* Generic card */
+/* Generic card layout — background/border/elevation come from <Panel> (U6);
+   this class is the padding/layout half of the pair. */
 .card {
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 3px;
-  padding: 16px 18px;
+  padding: 12px 14px 9px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .cardHeading {
@@ -306,8 +354,8 @@
 
 .actionCard {
   background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 3px;
+  border-radius: 4px;
+  box-shadow: var(--elev-1);
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
@@ -323,33 +371,6 @@
 .actionButtons {
   display: flex;
   gap: 8px;
-}
-
-.primaryAction {
-  padding: 0.55rem 1rem;
-  font: inherit;
-  font-weight: 600;
-  background: var(--accent);
-  color: var(--on-accent);
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.secondaryAction {
-  padding: 0.55rem 1rem;
-  font: inherit;
-  background: var(--input);
-  color: var(--ink);
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.primaryAction:disabled,
-.secondaryAction:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 .quiet {
@@ -549,8 +570,8 @@
 }
 
 .rackTileId {
-  width: 50px;
-  height: 50px;
+  width: 52px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -560,6 +581,9 @@
   background: var(--surface);
   color: var(--ink);
   border: 1px solid var(--rule);
+  box-shadow:
+    0 3px 0 var(--rule),
+    0 8px 14px -6px rgba(60, 45, 30, 0.4);
 }
 
 .rackTile:not(:disabled):hover .rackTileId {

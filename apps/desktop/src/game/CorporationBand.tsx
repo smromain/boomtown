@@ -23,7 +23,14 @@ export function CorporationBand() {
   if (active.length === 0) {
     return (
       <section className={styles.bandEmpty} aria-label="Corporations">
-        No corporations founded yet. Place two adjacent tiles to start one.
+        <div className={styles.bandEmptyMarks}>
+          {INDUSTRIES.map((industry) => (
+            <span key={industry} className={styles.bandEmptyMark} style={{ color: INDUSTRY_INFO[industry].color }}>
+              <IndustryMark industry={industry} color={INDUSTRY_INFO[industry].color} size={13} />
+            </span>
+          ))}
+        </div>
+        <span>No corporations founded yet. Place two adjacent tiles to start one.</span>
       </section>
     );
   }
@@ -65,7 +72,7 @@ export function TrayStrip() {
 }
 
 function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView; mine: number }) {
-  const color = INDUSTRY_INFO[industry].color;
+  const { color, ink, tier } = INDUSTRY_INFO[industry];
   const issued = 25 - corp.bankShares;
   const pct = issued > 0 ? Math.round((mine / issued) * 100) : 0;
   const { openCorp } = useReference();
@@ -74,52 +81,55 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
     <button
       type="button"
       className={styles.card}
-      style={{ flexGrow: corp.eaten.length + 1, borderTopColor: color }}
+      style={{ flexGrow: corp.eaten.length + 1 }}
       aria-label={`${corp.displayName} — stock reference`}
       onClick={() => openCorp(industry)}
     >
-      <div className={styles.cardTop}>
-        <IndustryMark industry={industry} color={color} size={26} />
-        {corp.safe && (
-          <span className={styles.safe} style={{ color }}>
-            ◇ safe
-          </span>
-        )}
+      {/* Cap band (U1 framing device): a colour-filled strip holding the
+          ink-on-colour mark and the tier — not just a border-top hairline. */}
+      <div className={styles.cap} style={{ background: `linear-gradient(160deg, color-mix(in srgb, ${color} 88%, #fff), ${color})`, color: ink }}>
+        <IndustryMark industry={industry} color={ink} size={22} />
+        <span className={styles.capTier}>
+          Tier {tier}
+          {corp.safe && ' · safe'}
+        </span>
       </div>
 
-      <div>
-        <Marquee className={`serif ${styles.name}`}>{corp.displayName}</Marquee>
-        <Marquee axis="y" lines={2} className={styles.flavour}>
-          {corp.flavour}
-        </Marquee>
-      </div>
-
-      <div className={styles.priceRow}>
-        <span className={`serif tabnum ${styles.price}`}>${corp.sharePrice}</span>
-        <span className={`tabnum ${styles.size}`}>{corp.size} tiles</span>
-        {corp.eaten.length > 0 && (
-          <span className={styles.lineage}>
-            {corp.eaten.map((eatenIndustry, index) => (
-              <IndustryMark
-                key={`${eatenIndustry}-${index}`}
-                industry={eatenIndustry}
-                color={INDUSTRY_INFO[eatenIndustry].color}
-                size={15}
-              />
-            ))}
-          </span>
-        )}
-      </div>
-
-      <div className={styles.stake}>
-        <div className={styles.stakeLabels}>
-          <span>your stake</span>
-          <span className="tabnum">
-            {mine} of {issued}
-          </span>
+      <div className={styles.cardBody}>
+        <div>
+          <Marquee className={`serif ${styles.name}`}>{corp.displayName}</Marquee>
+          <Marquee axis="y" lines={2} className={styles.flavour}>
+            {corp.flavour}
+          </Marquee>
         </div>
-        <div className={styles.bar}>
-          <div className={styles.barFill} style={{ width: `${pct}%`, background: color }} />
+
+        <div className={styles.priceRow}>
+          <span className={`serif tabnum ${styles.price}`}>${corp.sharePrice}</span>
+          <span className={`tabnum ${styles.size}`}>{corp.size} tiles</span>
+          {corp.eaten.length > 0 && (
+            <span className={styles.lineage}>
+              {corp.eaten.map((eatenIndustry, index) => (
+                <IndustryMark
+                  key={`${eatenIndustry}-${index}`}
+                  industry={eatenIndustry}
+                  color={INDUSTRY_INFO[eatenIndustry].color}
+                  size={15}
+                />
+              ))}
+            </span>
+          )}
+        </div>
+
+        <div className={styles.stake}>
+          <div className={styles.stakeLabels}>
+            <span>your stake</span>
+            <span className="tabnum">
+              {mine} of {issued}
+            </span>
+          </div>
+          <div className={styles.bar}>
+            <div className={styles.barFill} style={{ width: `${pct}%`, background: color }} />
+          </div>
         </div>
       </div>
     </button>
