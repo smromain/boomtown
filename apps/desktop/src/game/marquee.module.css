@@ -1,0 +1,67 @@
+/* --- horizontal (single line) --- */
+.viewport {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.inner {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.viewport[data-scrolls] .inner {
+  animation: marqueeX var(--marquee-duration) ease-in-out infinite;
+}
+
+@keyframes marqueeX {
+  0%,
+  18% {
+    transform: translateX(0);
+  }
+  50%,
+  68% {
+    transform: translateX(var(--marquee-shift));
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* --- vertical (fixed number of visible lines) --- */
+.viewportY {
+  display: block;
+  overflow: hidden;
+  /* exactly N line-boxes tall, whatever line-height the caller's class sets */
+  height: calc(var(--marquee-lines, 2) * 1lh);
+}
+
+.innerY {
+  display: block;
+  white-space: normal;
+}
+
+.viewportY[data-scrolls] .innerY {
+  animation: marqueeY var(--marquee-duration) ease-in-out infinite;
+}
+
+@keyframes marqueeY {
+  0%,
+  18% {
+    transform: translateY(0);
+  }
+  50%,
+  68% {
+    transform: translateY(var(--marquee-shift));
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viewport[data-scrolls] .inner,
+  .viewportY[data-scrolls] .innerY {
+    animation: none;
+  }
+}

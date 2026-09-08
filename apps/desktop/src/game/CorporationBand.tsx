@@ -2,6 +2,7 @@ import { INDUSTRIES, INDUSTRY_INFO, type CorpView, type Industry } from '@boomto
 import { activeView } from '@boomtown/client-core';
 import { useGameState } from '../client/GameClientProvider.js';
 import { IndustryMark } from './marks.js';
+import { Marquee } from './Marquee.js';
 import { useReference } from '../reference/ReferenceContext.js';
 import styles from './band.module.css';
 
@@ -87,8 +88,10 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
       </div>
 
       <div>
-        <div className={`serif ${styles.name}`}>{corp.displayName}</div>
-        <div className={styles.flavour}>{corp.flavour}</div>
+        <Marquee className={`serif ${styles.name}`}>{corp.displayName}</Marquee>
+        <Marquee axis="y" lines={2} className={styles.flavour}>
+          {corp.flavour}
+        </Marquee>
       </div>
 
       <div className={styles.priceRow}>
