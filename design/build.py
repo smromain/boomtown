@@ -427,13 +427,168 @@ def build_a():
 
 # =============================================================== DIRECTION B
 B_BG, B_PANEL, B_INK, B_MUTED, B_RULE, B_ACCENT = "#FAF6F0", "#FFFFFF", "#1C1917", "#867A6D", "#E7DED2", "#B3462F"
-B_HELMET = """  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&display=swap">
+B_HELMET = """  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
   <style>
     body { margin: 0; }
     a { color: #B3462F; } a:hover { color: #8A3320; }
     .num { font-variant-numeric: tabular-nums; }
     .ser { font-family: 'DM Serif Display', Georgia, serif; }
+    .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+    @keyframes lPulse { 0%, 100% { box-shadow: inset 0 0 0 1.5px #D3A68F, inset 0 2px 3px rgba(94,74,52,.1), 0 2px 6px -3px rgba(179,70,47,.5); } 50% { box-shadow: inset 0 0 0 1.5px #D98A4E, inset 0 2px 3px rgba(94,74,52,.1), 0 2px 10px -3px rgba(217,138,78,.7); } }
   </style>"""
+
+# ------------------------------------------------- DIRECTION B — LANGUAGE
+# The crafted visual language build_b()/build_beats() implement (U1). Concrete,
+# not categorical: an implementer reads target values off this sheet.
+#
+# Elevation — three fixed levels, one light source (warm, from above). Level 1
+# is a resting card, 2 a raised panel (the corp band), 3 a floating plate (the
+# board). Never more than three; never a fourth "modal" level — dialogs reuse 3.
+L_ELEV = {
+    1: "0 1px 0 rgba(255,253,250,.8) inset, 0 2px 6px -3px rgba(94,74,52,.35)",
+    2: "0 1px 0 rgba(255,253,250,.8) inset, 0 10px 22px -14px rgba(94,74,52,.5)",
+    3: "0 1px 0 rgba(255,253,250,.8) inset, 0 24px 48px -20px rgba(94,74,52,.6), 0 8px 16px -8px rgba(94,74,52,.35)",
+}
+# Texture ceiling (R3) — the only texture the language allows anywhere, and
+# never above this opacity. Not a scanned-paper or canvas image: a two-stop
+# radial dot-grain standing in for print grain.
+L_GRAIN_MAX = 0.05
+L_GRAIN = "background-image:radial-gradient(rgba(28,25,23,.4) .6px, transparent 1.1px);background-size:3px 3px;opacity:%s;" % L_GRAIN_MAX
+# Framing devices — named so U6/U7 can implement them by name, not guess.
+# "cap band": a colour-filled header strip capping a card (the corp card's
+# industry cap, a dialog's title bar). "top rule": a 3px ink-or-accent rule
+# along a panel's top edge, for panels with no cap (Shareholders, Story).
+L_TOP_RULE = "border-top:3px solid %s;" % B_INK
+# Accent's role, stated once: primary call-to-action, the "safe" indicator, the
+# active/selected state, and a kicker's underline rule. Never a fill colour for
+# large surfaces and never decorative — every accent pixel means "act" or "true".
+L_TILT_DEG = 6  # the board's perspective rotateX — gentle, not showy (KTD6)
+
+
+def build_language():
+    def swatch(label, style, caption, w=220, h=96):
+        return (
+            '<div style="display:flex;flex-direction:column;gap:8px">'
+            '<div style="width:%dpx;height:%dpx;border-radius:6px;background:%s;%s"></div>'
+            '<div style="font-size:12px;font-weight:600">%s</div>'
+            '<div class="mono" style="font-size:10px;line-height:1.5;color:%s;max-width:%dpx">%s</div></div>'
+            % (w, h, B_PANEL, style, label, B_MUTED, w, caption)
+        )
+
+    elevation = "".join(
+        swatch("Elevation %d" % lvl, "box-shadow:%s" % shadow,
+               shadow.replace(", ", ",<br>"))
+        for lvl, shadow in L_ELEV.items()
+    )
+
+    framing = (
+        swatch("Cap band", "border-top:34px solid %s;position:relative" % CORP["tech"]["color"],
+               "A colour-filled strip capping a card — the corp card's industry cap, a dialog's title bar. Height is content-driven, never fixed.")
+        + swatch("Top rule", L_TOP_RULE,
+                 "A 3px ink rule along a panel's top edge — for panels with no cap: Shareholders, Story, Reference.")
+        + swatch("Texture ceiling", L_GRAIN, "Max texture anywhere: %d%% opacity dot-grain. Never a scanned-paper, canvas or wood-grain image (R3)." % int(L_GRAIN_MAX * 100))
+    )
+
+    accent_chips = "".join(
+        '<span style="display:inline-flex;align-items:center;gap:8px;background:%s;border:1px solid %s;'
+        'border-radius:20px;padding:7px 14px;font-size:12px">%s</span>'
+        % (B_PANEL, B_RULE, label)
+        for label in [
+            '<span style="width:9px;height:9px;border-radius:50%%;background:%s;display:inline-block"></span>Primary call-to-action' % B_ACCENT,
+            '<span style="color:%s">◇ safe</span> — the one status the accent marks' % B_ACCENT,
+            '<span style="color:%s;font-weight:700">Selected · active</span>' % B_ACCENT,
+            '<span style="border-bottom:2px solid %s;color:%s">kicker underline</span>' % (B_ACCENT, B_ACCENT),
+        ]
+    )
+
+    type_rows = "".join(
+        '<div style="display:flex;align-items:baseline;gap:18px;padding:10px 0;border-bottom:1px solid %s">'
+        '<span class="mono" style="width:120px;flex-shrink:0;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:%s">%s</span>'
+        '<span style="%s">%s</span></div>'
+        % (B_RULE, B_MUTED, role, style, sample)
+        for role, style, sample in [
+            ("Display", "font-family:'DM Serif Display',Georgia,serif;font-size:32px", "Noqurun"),
+            ("Kicker / label", "font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:%s" % B_MUTED, "a corporation is founded"),
+            ("Body", "font-size:14px;line-height:1.5", "Placing 9F hands the keyboard people a power company with imaginative books."),
+            ("Numeric / mono", "font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:20px", "$5,250 · 7D · 14"),
+        ]
+    )
+
+    def corp_flat(m):
+        return (
+            '<div style="width:230px;background:%s;border:1px solid %s;border-radius:3px;padding:13px 14px;'
+            'display:flex;flex-direction:column;gap:9px">'
+            '<div style="display:flex;align-items:center;gap:8px">%s<span style="font-size:16px">%s</span></div>'
+            '<span class="num" style="font-size:20px">%s</span></div>'
+            % (B_PANEL, B_RULE, b_mark(m["key"], m["color"], 20), m["display"], money(m["price"]))
+        )
+
+    def corp_crafted(m):
+        return (
+            '<div style="width:230px;background:%s;border:1px solid %s;border-top:3px solid %s;border-radius:3px;'
+            'box-shadow:%s;display:flex;flex-direction:column;overflow:hidden">'
+            '<div style="padding:11px 14px;display:flex;align-items:center;justify-content:space-between;'
+            'background:linear-gradient(160deg, color-mix(in srgb, %s 88%%, #fff), %s)">%s'
+            '<span style="font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;opacity:.8;color:%s">tier %d</span></div>'
+            '<div style="padding:12px 14px 15px;display:flex;flex-direction:column;gap:8px">'
+            '<div class="ser" style="font-size:20px">%s</div>'
+            '<span class="mono num" style="font-size:24px">%s</span></div></div>'
+            % (B_PANEL, B_RULE, m["color"], L_ELEV[1], m["color"], m["color"],
+               b_mark(m["key"], m["ink"], 22), m["ink"], m["tier"], m["display"], money(m["price"]))
+        )
+
+    sample = market()[3]  # Noquia (tech) — a representative mid-market corp
+    before_after = (
+        '<div style="display:flex;flex-direction:column;gap:8px">%s'
+        '<div class="mono" style="font-size:10px;color:%s">Before — flat card, 1px border, no cap</div></div>'
+        '<div style="display:flex;align-items:center;justify-content:center;width:36px">%s</div>'
+        '<div style="display:flex;flex-direction:column;gap:8px">%s'
+        '<div class="mono" style="font-size:10px;color:%s">After — industry cap band, elevation-1 shadow, ink-on-colour badge</div></div>'
+        % (corp_flat(sample), B_MUTED, chevron(B_MUTED, 20), corp_crafted(sample), B_MUTED)
+    )
+
+    illustration_brief = (
+        '<div style="display:flex;flex-direction:column;gap:10px;max-width:900px">'
+        '<div style="font-size:13px;line-height:1.6;color:%s">'
+        '<strong style="color:%s">Subject:</strong> the skyline the seven corporations are building — abstracted '
+        'building silhouettes and cranes, not literal logos or people. <strong style="color:%s">Treatment:</strong> '
+        'flat, faceted shapes in one or two industry-adjacent tones over the warm paper ground — figurative '
+        'silhouette, not photographic, not cartoon-mascot. <strong style="color:%s">Relationship to Saxon City:</strong> '
+        'the skyline is the same "corporations as subject" idea the whole direction is built on, seen from outside '
+        'instead of from the ledger. <strong style="color:%s">References:</strong> Wingspan\'s box-cover skyline '
+        'silhouette, Ticket to Ride Europe\'s title-screen skyline, and the WPA travel-poster flat-shape tradition. '
+        '<strong style="color:%s">Avoid:</strong> photographic skylines, any real building silhouette, cute mascot '
+        'figures, gradients heavier than the elevation scale above.</div></div>'
+        % (B_INK, B_ACCENT, B_ACCENT, B_ACCENT, B_ACCENT, B_ACCENT)
+    )
+
+    def section(title, inner):
+        return (
+            '<div style="display:flex;flex-direction:column;gap:16px">'
+            '<div class="ser" style="font-size:22px;border-bottom:1px solid %s;padding-bottom:10px">%s</div>'
+            '%s</div>' % (B_RULE, title, inner)
+        )
+
+    body = (
+        '<div style="width:1440px;min-height:1900px;background:%s;color:%s;'
+        'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:44px 60px 60px;'
+        'display:flex;flex-direction:column;gap:34px">'
+        '<div style="display:flex;flex-direction:column;gap:8px">'
+        '<span class="mono" style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:%s">Boomtown · visual language</span>'
+        '<span class="ser" style="font-size:34px">The crafted system (U1)</span>'
+        '<span style="font-size:13px;color:%s;max-width:820px">Anchors unchanged — %s / %s, DM Serif Display + DM Sans. '
+        'Depth comes from elevation, framing and one texture ceiling, never from material mimicry (R3). '
+        'This sheet is the spec build_b() and build_beats() implement.</span></div>'
+        '%s%s%s%s%s%s</div>'
+        % (B_BG, B_INK, B_MUTED, B_MUTED, B_BG, B_ACCENT,
+           section("Elevation scale — three levels, one warm light source", '<div style="display:flex;gap:20px">%s</div>' % elevation),
+           section("Framing &amp; texture ceiling", '<div style="display:flex;gap:20px">%s</div>' % framing),
+           section("Corporation card — before / after", '<div style="display:flex;align-items:center;gap:18px">%s</div>' % before_after),
+           section("Type hierarchy — four roles, not two", type_rows),
+           section("The accent's role — stated, not decorative", '<div style="display:flex;gap:12px;flex-wrap:wrap">%s</div>' % accent_chips),
+           section("Illustration style brief (seed — refined at U9)", illustration_brief))
+    )
+    write("Language.dc.html", B_HELMET, body)
 
 def b_mark(key, color, size=26):
     """A drawn corporate mark per industry — placeholder identities, one per corporation."""
@@ -462,25 +617,32 @@ def b_band():
         lineage = ('<span style="display:inline-flex;align-items:center;gap:5px;padding-left:9px;'
                    'margin-left:3px;border-left:1px solid %s">%s</span>' % (B_RULE, marks)) if m["eaten"] else ""
         sub = m["flavor"]
+        # Cap band (U1 framing device): a colour-filled strip holding the mark
+        # (ink-on-colour, matching the shareholder-chip and HQ-badge treatment)
+        # and the tier label — not just a border-top hairline.
+        cap = (
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;'
+          'background:linear-gradient(160deg, color-mix(in srgb, %s 88%%, #fff), %s);color:%s">'
+          '%s<span class="mono" style="font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;opacity:.85">'
+          'tier %d%s</span></div>'
+          % (m["color"], m["color"], m["ink"], b_mark(m["key"], m["ink"], 22), m["tier"],
+             '<span style="margin-left:8px">%s safe</span>' % icon("safe", m["ink"], 12) if m["safe"] else "")
+        )
         cards.append(
-          '<div style="flex-grow:%d;flex-basis:0;min-width:0;background:%s;border:1px solid %s;border-top:3px solid %s;'
-          'border-radius:3px;padding:13px 14px;display:flex;flex-direction:column;gap:9px">'
-          '<div style="display:flex;align-items:flex-start;justify-content:space-between">%s%s</div>'
+          '<div style="flex-grow:%d;flex-basis:0;min-width:0;background:%s;border:1px solid %s;border-radius:4px;'
+          'box-shadow:%s;display:flex;flex-direction:column;overflow:hidden">%s'
+          '<div style="padding:12px 14px 15px;display:flex;flex-direction:column;gap:9px;flex-grow:1">'
           '<div><div class="ser" style="font-size:19px;line-height:1.1">%s</div>'
           '<div style="font-size:11px;line-height:1.3;color:%s;margin-top:3px;height:29px;overflow:hidden">%s</div></div>'
           '<div style="display:flex;align-items:center;gap:8px">'
           '<span class="ser num" style="font-size:22px">%s</span>'
           '<span style="font-size:11px;color:%s" class="num">%d tiles</span>%s</div>'
-          '<div style="display:flex;flex-direction:column;gap:5px">'
+          '<div style="display:flex;flex-direction:column;gap:5px;margin-top:auto">'
           '<div style="display:flex;justify-content:space-between;font-size:11px;color:%s">'
           '<span>your stake</span><span class="num">%d of %d</span></div>'
-          '<div style="height:4px;background:%s;border-radius:2px;overflow:hidden">'
-          '<div style="width:%d%%;height:100%%;background:%s"></div></div></div></div>'
-          % (m["slots"], B_PANEL, B_RULE, m["color"],
-             b_mark(m["key"], m["color"], 26),
-             ('<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;letter-spacing:.1em;'
-              'text-transform:uppercase;color:%s">%s safe</span>' % (m["color"], icon("safe", m["color"], 12)))
-             if m["safe"] else "",
+          '<div style="height:5px;background:%s;border-radius:0;overflow:hidden">'
+          '<div style="width:%d%%;height:100%%;background:%s"></div></div></div></div></div>'
+          % (m["slots"], B_PANEL, B_RULE, L_ELEV[1], cap,
              m["display"], B_MUTED, sub,
              money(m["price"]), B_MUTED, m["size"], lineage,
              B_MUTED, m["mine"], 25 - m["bank"], B_RULE, pct, m["color"]))
@@ -488,9 +650,10 @@ def b_band():
       '<div style="display:flex;align-items:center;gap:8px;opacity:.55">%s'
       '<span class="ser" style="font-size:14px">%s</span></div>'
       % (b_mark(m["key"], m["color"], 17), m["name"]) for m in tray)
-    tray_col = ('<div style="width:154px;flex-shrink:0;border:1px dashed %s;border-radius:3px;padding:13px 14px;'
-                'display:flex;flex-direction:column;gap:11px">'
-                '<div style="font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:%s">In the tray</div>'
+    tray_col = ('<div style="width:154px;flex-shrink:0;border:1.5px dashed %s;border-radius:4px;padding:13px 14px;'
+                'display:flex;flex-direction:column;gap:11px;background:repeating-linear-gradient(135deg,'
+                'rgba(203,189,169,.16) 0 10px, transparent 10px 20px), rgba(255,255,255,.4)">'
+                '<div class="mono" style="font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:%s">In the tray</div>'
                 '%s<div style="font-size:10.5px;line-height:1.4;color:%s;margin-top:auto">Free to found again, '
                 'under their own names.</div></div>' % (B_RULE, B_MUTED, "".join(chips), B_MUTED))
     return '<div style="display:flex;gap:12px;align-items:stretch">%s%s</div>' % ("".join(cards), tray_col)
@@ -500,22 +663,23 @@ def b_rack():
     for t, kind, note in HAND:
         sel = t == SELECTED
         tiles.append(
-          '<div style="width:54px;display:flex;flex-direction:column;align-items:center;gap:6px">'
-          '<div style="width:50px;height:50px;border-radius:9px;display:flex;align-items:center;justify-content:center;'
-          'font-size:19px;font-weight:700;%s" class="num">%s</div>'
-          '<span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:%s">%s</span></div>'
-          % ("background:%s;color:#FFF" % B_ACCENT if sel else
+          '<div style="width:58px;display:flex;flex-direction:column;align-items:center;gap:7px">'
+          '<div style="width:52px;height:52px;border-radius:9px;display:flex;align-items:center;justify-content:center;'
+          'font-size:19px;font-weight:700;%s" class="mono num">%s</div>'
+          '<span class="mono" style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:%s">%s</span></div>'
+          % ("background:%s;color:#FFF;box-shadow:%s" % (B_ACCENT, L_ELEV[1]) if sel else
              ("background:%s;color:%s;border:1px dashed %s;opacity:.55" % (B_BG, B_MUTED, B_MUTED) if kind == "dead"
-              else "background:%s;color:%s;border:1px solid %s" % (B_PANEL, B_INK, B_RULE)),
+              else "background:%s;color:%s;border:1px solid %s;box-shadow:0 3px 0 %s,0 8px 14px -6px rgba(60,45,30,.4)"
+                   % (B_PANEL, B_INK, B_RULE, B_RULE)),
              t, B_ACCENT if sel else B_MUTED,
              {"found":"found","grow":"grow","merge":"merge","dead":"dead","none":"idle"}[kind]))
     return ('<div style="display:flex;flex-direction:column;gap:10px">'
-            '<div class="ser" style="font-size:15px">Your tiles</div>'
+            '<div class="ser" style="font-size:16px">Your tiles</div>'
             '<div style="display:flex;gap:10px">%s</div></div>' % "".join(tiles))
 
 def b_story():
     return (
-      '<div style="background:%s;border:1px solid %s;border-radius:3px;padding:18px 20px;display:flex;'
+      '<div style="background:%s;%sborder-radius:4px;box-shadow:%s;padding:18px 20px;display:flex;'
       'flex-direction:column;gap:13px">'
       '<div style="display:flex;align-items:center;gap:9px">%s<span class="ser" style="font-size:19px">'
       'Blackcurrant takes over Enrun</span></div>'
@@ -534,16 +698,21 @@ def b_story():
       '<div style="flex-grow:1"><div style="font-size:11px;color:%s">June, 1 share</div>'
       '<div class="ser num" style="font-size:23px;color:%s">no bonus</div></div></div>'
       '<div style="font-size:11px;line-height:1.45;color:%s">Tied for primary, so the two bonuses are combined and split.</div></div>'
-      % (B_PANEL, B_RULE, b_mark("tech", CORP["tech"]["color"], 22), B_MUTED, B_INK,
+      % (B_PANEL, L_TOP_RULE, L_ELEV[1], b_mark("tech", CORP["tech"]["color"], 22), B_MUTED, B_INK,
          B_BG, B_RULE, B_MUTED, CORP["tech"]["color"], display_name("Blackcurrant", ["Enrun"]), B_MUTED,
          B_RULE, B_MUTED, B_INK, B_MUTED, B_MUTED, B_MUTED))
 
 def b_portfolio():
     rows = []
     for i, (name, cash, h) in enumerate(PLAYERS):
-        chips = "".join('<span style="display:inline-flex;align-items:center;gap:4px">'
-                        '<span style="width:9px;height:9px;border-radius:50%%;background:%s"></span>'
-                        '<span class="num" style="font-size:12px">%d</span></span>' % (CORP[k]["color"], v)
+        # Icon + colour, not colour alone (accessibility) — the same
+        # ink-on-colour badge treatment as the corp-card cap and the HQ marker.
+        chips = "".join(
+                        '<span style="display:inline-flex;align-items:center;gap:4px">'
+                        '<span style="width:15px;height:15px;border-radius:50%%;background:%s;display:flex;'
+                        'align-items:center;justify-content:center;flex-shrink:0">%s</span>'
+                        '<span class="mono" style="font-size:11px">%d</span></span>'
+                        % (CORP[k]["color"], b_mark(k, CORP[k]["ink"], 10), v)
                         for k, v in h.items() if v)
         rows.append('<div style="display:flex;align-items:center;justify-content:space-between;height:27px;'
                     'border-bottom:1px solid %s;%s">'
@@ -552,32 +721,104 @@ def b_portfolio():
                     '<span class="ser num" style="font-size:16px">%s</span></div>'
                     % (B_RULE, "" if i < 3 else "border-bottom:none", 700 if i == 0 else 400,
                        name + (" ·" if i == 0 else ""), chips, money(cash)))
-    return ('<div style="background:%s;border:1px solid %s;border-radius:3px;padding:14px 18px">'
+    return ('<div style="background:%s;%sborder-radius:4px;box-shadow:%s;padding:14px 18px">'
             '<div class="ser" style="font-size:15px;margin-bottom:6px">Shareholders</div>%s</div>'
-            % (B_PANEL, B_RULE, "".join(rows)))
+            % (B_PANEL, L_TOP_RULE, L_ELEV[1], "".join(rows)))
+
+def b_board_crafted(cell=48, gap=5, hdr=22, tilt=L_TILT_DEG):
+    """The crafted board (U1/U2): lit warm paper, elevation-3 shadow scale, a
+    gentle CSS-3D tilt (rotateX only — no canvas/WebGL, KTD6), industry cells as
+    a subtle gradient with a lifted HQ badge. Static-frame equivalent of the
+    handoff's Direction D board treatment, ported into the shared generator."""
+    rows = ['<div style="height:%dpx"></div>' % hdr]
+    for c in COLS:
+        rows.append('<div style="display:flex;align-items:center;justify-content:center;font-size:10px;'
+                     'letter-spacing:.08em;color:%s;height:%dpx">%d</div>' % (B_MUTED, hdr, c))
+    for r in ROWS:
+        rows.append('<div style="display:flex;align-items:center;justify-content:center;font-size:10px;'
+                     'letter-spacing:.08em;color:%s">%s</div>' % (B_MUTED, r))
+        for c in COLS:
+            t = "%d%s" % (c, r)
+            kind, meta = cell_state(t)
+            base = ('display:flex;align-items:center;justify-content:center;border-radius:8px;'
+                    'font-size:11px;font-weight:500;letter-spacing:.03em;position:relative;')
+            if kind == "corp":
+                co = CORP[meta]
+                d1 = "color-mix(in srgb, %s 74%%, #1C1917)" % co["color"]
+                d2 = "color-mix(in srgb, %s 56%%, #1C1917)" % co["color"]
+                lift = 2.3 if HQ.get(meta) == t else 2
+                cellstyle = (base +
+                    'background:linear-gradient(170deg, color-mix(in srgb, %s 88%%, #fff) 0%%, %s 62%%, %s 100%%);'
+                    'color:%s;font-weight:600;box-shadow:0 %.1fpx 0 %s, 0 %.1fpx 0 %s, 0 %.1fpx 10px -4px rgba(60,45,30,.55), '
+                    'inset 0 1px 0 rgba(255,255,255,.3);transform:translateZ(%.1fpx);'
+                    % (co["color"], co["color"], d1, co["ink"], lift, d1, lift * 2, d2, lift * 2 + 4, lift * 3))
+                if HQ.get(meta) == t:
+                    inner = (
+                        '<span style="width:28px;height:28px;border-radius:50%%;background:%s;display:flex;'
+                        'align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.4),'
+                        'inset 0 1px 0 rgba(255,255,255,.2)">%s</span>'
+                        '<span style="position:absolute;right:3px;bottom:2px;font-size:7px;padding:1px 3px;'
+                        'border-radius:3px;background:rgba(0,0,0,.3);color:#fff;letter-spacing:.03em" class="mono">%s</span>'
+                        % (co["ink"], b_mark(meta, co["color"], 15), t)
+                    )
+                else:
+                    inner = t
+                rows.append('<div style="%s">%s</div>' % (cellstyle, inner))
+            elif kind == "uninc":
+                rows.append('<div style="%sbackground:linear-gradient(180deg,#BDB2A4,#A4988A);color:#fff;'
+                            'box-shadow:0 1.5px 0 #8D8274,0 3px 0 #7B7163,0 5px 8px -3px rgba(60,45,30,.5),'
+                            'inset 0 1px 0 rgba(255,255,255,.25)">%s</div>' % (base, t))
+            elif kind == "target":
+                if meta == "merge":
+                    rows.append('<div style="%sbackground:#F6EFE4;color:%s;animation:lPulse 2.2s ease-in-out infinite">%s</div>'
+                               % (base, B_ACCENT, t))
+                elif meta == "dead":
+                    rows.append('<div style="%sbackground:#EFE7DB;color:%s;opacity:.85;box-shadow:inset 0 0 0 1.5px %s,'
+                               'inset 0 2px 3px rgba(94,74,52,.16)"><s style="text-decoration-thickness:2px">%s</s></div>'
+                               % (base, B_ACCENT, B_ACCENT, t))
+                else:
+                    rows.append('<div style="%sbackground:#F6EFE4;color:%s;box-shadow:inset 0 0 0 1.5px #C6B8A6,'
+                               'inset 0 2px 3px rgba(94,74,52,.1)">%s</div>' % (base, B_MUTED, t))
+            else:
+                rows.append('<div style="%sbackground:#EFE7DB;color:#B6A897;box-shadow:inset 0 2px 3px rgba(94,74,52,.16),'
+                            'inset 0 -1px 0 rgba(255,253,250,.7)">%s</div>' % (base, t))
+    return (
+        '<div style="position:relative;padding:16px 16px 24px;border-radius:10px;box-sizing:border-box;'
+        'background:linear-gradient(180deg,#F7F0E5,#EFE6D9);box-shadow:%s, 0 46px 70px -28px rgba(60,45,30,.55),'
+        '0 10px 20px -8px rgba(60,45,30,.35);transform:rotateX(%ddeg);transform-style:preserve-3d;'
+        'transform-origin:50%% 100%%">'
+        '<div style="display:grid;grid-template-columns:%dpx repeat(12, %dpx);grid-auto-rows:%dpx;gap:%dpx;'
+        'font-variant-numeric:tabular-nums">%s</div></div>'
+        % (L_ELEV[3], tilt, hdr, cell, cell, gap, "".join(rows))
+    )
+
 
 def build_b():
     body = (
       '<div style="width:1440px;height:900px;background:%s;color:%s;font-family:\'DM Sans\',Helvetica,Arial,sans-serif;'
       'font-size:13px;display:flex;flex-direction:column;overflow:hidden;padding:0">'
       '<div style="height:70px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;'
-      'padding:0 36px;border-bottom:1px solid %s">'
-      '<div style="display:flex;align-items:baseline;gap:12px"><span class="ser" style="font-size:26px">Boomtown</span>'
-      '<span style="font-size:12px;color:%s">seven start-ups, one skyline</span></div>'
-      '<div style="display:flex;align-items:center;gap:22px;font-size:12px;color:%s">'
-      '<span>Classic ruleset</span><span>Turn <span class="num" style="color:%s">14</span></span>'
-      '<span style="background:%s;color:#FFF;padding:6px 13px;border-radius:20px">Place a tile</span></div></div>'
-      '<div style="flex-grow:1;display:flex;flex-direction:column;gap:22px;padding:22px 36px 26px">'
+      'padding:0 36px;background:%s;color:%s;box-shadow:0 14px 30px -18px rgba(28,25,23,.85)">'
+      '<div style="display:flex;align-items:center;gap:14px"><span class="ser" style="font-size:24px">Boomtown</span>'
+      '<span style="width:1px;height:20px;background:#46403A"></span>'
+      '<span class="mono" style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#9C9086">seven start-ups, one skyline</span></div>'
+      '<div style="display:flex;align-items:center;gap:22px;font-size:12px;color:#9C9086">'
+      '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase">Classic</span>'
+      '<span style="display:flex;align-items:baseline;gap:7px"><span class="mono" style="font-size:10px;letter-spacing:.16em;'
+      'text-transform:uppercase">turn</span><span class="ser num" style="font-size:19px;color:%s">14</span></span>'
+      '<span style="border:1px solid #46403A;border-radius:3px;padding:7px 14px;font-size:11px;letter-spacing:.08em;'
+      'text-transform:uppercase;color:%s">Reference</span>'
+      '<span style="background:%s;color:#FFF;padding:8px 16px;border-radius:3px;font-size:11px;letter-spacing:.1em;'
+      'text-transform:uppercase;font-weight:700">Place a tile</span></div></div>'
+      '<div style="flex-grow:1;display:flex;flex-direction:column;gap:16px;padding:20px 36px 26px;min-height:0">'
       '%s'
-      '<div style="flex-grow:1;display:flex;gap:28px">'
-      '<div style="flex-shrink:0">%s</div>'
-      '<div style="flex-grow:1;display:flex;flex-direction:column;gap:14px">%s%s%s</div>'
+      '<div style="flex-grow:1;display:flex;gap:28px;min-height:0">'
+      '<div style="flex-shrink:0;display:flex;align-items:center">%s</div>'
+      '<div style="flex-grow:1;display:flex;flex-direction:column;gap:14px;min-height:0">%s%s%s</div>'
       '</div></div></div>'
-      % (B_BG, B_INK, B_RULE, B_MUTED, B_MUTED, B_INK, B_ACCENT,
+      % (B_BG, B_INK, B_INK, B_BG, B_BG, B_BG, B_ACCENT,
          b_band(),
-         board(cell=48, gap=5, hdr=22, empty_bg="#F1EAE0", empty_ink="#B6A897", grid_ink=B_RULE,
-               uninc_bg="#B0A496", accent=B_ACCENT, radius=9, label_size=10, header_ink=B_MUTED,
-               ring="#C6B8A6", font_w=500),
+         b_board_crafted(),
          b_story(), b_portfolio(), b_rack()))
     write("Main.dc.html", B_HELMET, body)
 
@@ -1374,11 +1615,7 @@ def build_reference():
                 '<div style="position:absolute;inset:0;background:rgba(28,25,23,.52)"></div>'
                 '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">'
                 '%s</div></div></div>'
-                % (caption, B_MUTED, note, B_BG, B_RULE, b_band(),
-                   board(cell=48, gap=5, hdr=22, empty_bg="#F1EAE0", empty_ink="#B6A897", grid_ink=B_RULE,
-                         uninc_bg="#B0A496", accent=B_ACCENT, radius=9, label_size=10, header_ink=B_MUTED,
-                         ring="#C6B8A6", font_w=500),
-                   modal))
+                % (caption, B_MUTED, note, B_BG, B_RULE, b_band(), b_board_crafted(), modal))
     body = (
       '<div style="width:1440px;min-height:2100px;background:%s;color:%s;font-family:\'DM Sans\',Helvetica,Arial,sans-serif;'
       'font-size:13px;padding:40px 0 48px;display:flex;flex-direction:column;gap:30px;align-items:center">'
@@ -1397,6 +1634,148 @@ def build_reference():
                 ref_company())))
     write("Reference.dc.html", B_HELMET, body)
 
+# =============================================================== BEATS (U3)
+# Five still-frame artboards — the peak visual of each beat R6/R7 need that
+# isn't already covered by Main (the everyday/F3 baseline) or Reference. Launch
+# is the Main-menu treatment (U9); first-tile is a note on the board, not its
+# own frame (per U3's approach). Each frame is captioned with its motion/sound
+# spec so it stands alone as an implementer's target, the way a storyboard
+# panel would — the still image is what U11 animates into and out of.
+
+def beat_frame(caption, spec, inner, dark=True):
+    bg = "#17140F" if dark else B_BG
+    ink = B_BG if dark else B_INK
+    return (
+      '<div style="display:flex;flex-direction:column;gap:10px">'
+      '<div style="display:flex;align-items:baseline;gap:12px">'
+      '<span style="font-size:13px;font-weight:600">%s</span>'
+      '<span class="mono" style="font-size:11px;color:%s">%s</span></div>'
+      '<div style="width:1440px;height:760px;position:relative;overflow:hidden;background:%s;color:%s;'
+      'border-radius:5px;display:flex;align-items:center;justify-content:center">%s</div></div>'
+      % (caption, B_MUTED, spec, bg, ink, inner)
+    )
+
+def beat_kicker(text, color="#D98A4E"):
+    return '<span class="mono" style="font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:%s">%s</span>' % (color, text)
+
+def build_beats():
+    m = market()
+    survivor = [x for x in m if x["key"] == "tech"][0]
+    defunct = [x for x in m if x["key"] == "energy"][0]
+    accreted = display_name(CORP["tech"]["name"], [CORP["energy"]["name"]])
+    founding_ind = "video"
+    founding = CORP[founding_ind]
+
+    # 1. Founding — the plinth takeover (F2-adjacent; the model U11 animates as
+    # entrance/hold/exit). Peak = the panel fully arrived, plinth lit.
+    founding_frame = beat_frame(
+      "Founding — peak frame", "3.0s hold, skippable · sound: founding.wav · curtain-drop entrance, ink exit",
+      '<div style="display:flex;align-items:center;gap:56px">'
+      '<div style="width:150px;height:216px;border-radius:3px;overflow:hidden;display:flex;align-items:center;'
+      'justify-content:center;background:linear-gradient(165deg, color-mix(in srgb, %s 84%%, #fff), %s 55%%, '
+      'color-mix(in srgb, %s 48%%, #1C1917));box-shadow:0 40px 70px -20px rgba(0,0,0,.7),inset 0 2px 0 rgba(255,255,255,.3)">%s</div>'
+      '<div style="width:470px">%s'
+      '<div style="height:1px;width:60px;margin:10px 0 2px;background:#46403A"></div>'
+      '<div class="ser" style="font-size:60px;line-height:1.1;margin-top:12px">%s</div>'
+      '<div style="font-size:14px;color:#B8AC9F;margin-top:10px;max-width:34ch">%s</div>'
+      '<div style="display:flex;gap:38px;margin-top:26px;padding-top:18px;border-top:1px solid #46403A">%s</div></div></div>'
+      % (founding["color"], founding["color"], founding["color"], b_mark(founding_ind, "#FAF6F0", 52),
+         beat_kicker("a corporation is founded"), founding["name"], founding["flavor"],
+         "".join('<span style="display:flex;flex-direction:column;gap:3px">'
+                 '<span class="mono" style="font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#9C9086">%s</span>'
+                 '<span class="ser" style="font-size:21px">%s</span></span>' % (lab, val)
+                 for lab, val in [("headquarters", HQ.get(founding_ind, "7D")), ("opening price", money(400)), ("founder", "+1 share")]))
+    )
+
+    # 2. Buy-stock — the lightest beat: an in-place flourish on the holdings
+    # row, not a screen takeover. Peak = the purchased shares just landed.
+    buy_row = (
+      '<div style="width:520px;background:%s;%sborder-radius:4px;box-shadow:%s;padding:22px 26px;'
+      'display:flex;flex-direction:column;gap:14px">'
+      '<div class="ser" style="font-size:17px;color:%s">Shareholders</div>'
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;'
+      'border-radius:4px;background:color-mix(in srgb, %s 12%%, transparent);box-shadow:0 0 0 1.5px color-mix(in srgb, %s 45%%, transparent)">'
+      '<span style="font-size:14px;font-weight:700;color:%s">You ·</span>'
+      '<span style="display:inline-flex;align-items:center;gap:8px">%s'
+      '<span class="ser mono" style="font-size:15px;color:%s">+2</span></span>'
+      '<span class="ser mono" style="font-size:19px">$3,650</span></div>'
+      '<div style="font-size:11px;color:%s">Bought 2 %s at $500 — 3 of 9 now yours.</div></div>'
+      % (B_PANEL, L_TOP_RULE, L_ELEV[1], B_INK, survivor["color"], survivor["color"], B_INK,
+         b_mark("tech", survivor["ink"], 16), survivor["color"], B_MUTED, survivor["name"])
+    )
+    buy_frame = beat_frame(
+      "Buy stock — peak frame", "0.9s flourish, not skippable-hold · sound: buy.wav · a coin arcs into the row, the row glows and settles",
+      buy_row, dark=False
+    )
+
+    # 3. Merger — the name-reveal peak (F1's load-bearing moment): the accreted
+    # name at scale, cream on ink, industry glow behind it.
+    merger_frame = beat_frame(
+      "Merger — name-reveal peak frame", "6-stage sequence ~9.1s total, skippable · sound: merger.wav · collide → blend → name → mass → bonus → settle",
+      '<div style="position:absolute;left:50%%;top:50%%;width:900px;height:620px;margin:-310px 0 0 -450px;'
+      'pointer-events:none;background:radial-gradient(50%% 50%% at 50%% 50%%, color-mix(in srgb, %s 30%%, transparent) 0%%, transparent 72%%)"></div>'
+      '<div style="position:relative;width:860px;display:flex;flex-direction:column;align-items:center;text-align:center">'
+      '%s<div style="width:60px;height:1px;margin:12px 0 0;background:#46403A"></div>'
+      '<div class="ser" style="font-size:112px;line-height:1.02;letter-spacing:-.035em;margin-top:18px;'
+      'text-shadow:0 0 60px color-mix(in srgb, %s 45%%, transparent)">%s</div>'
+      '<div style="max-width:46ch;font-size:13px;line-height:1.55;color:#9C9086;margin-top:14px">Its name grows '
+      'with a piece of every company it takes over. Your shares in it stay yours.</div>'
+      '<div style="display:flex;gap:76px;margin-top:46px">%s</div></div>'
+      % (survivor["color"], beat_kicker("merger at %s" % "4E"), survivor["color"], accreted,
+         "".join('<div style="text-align:left"><span class="mono" style="font-size:10px;letter-spacing:.18em;'
+                 'text-transform:uppercase;color:#9C9086">%s</span><span class="ser mono" style="display:block;'
+                 'font-size:56px;line-height:1.05;margin-top:6px;letter-spacing:-.03em">%s</span></div>'
+                 % (who, money(amt)) for who, amt in [("Mara · majority", 4000), ("Otto · minority", 2000)]))
+    )
+
+    # 4. Endgame trigger — a table-level beat (fires for every seat): the
+    # threshold is announced before the final round plays out.
+    endgame_frame = beat_frame(
+      "Endgame trigger — peak frame", "2.4s hold, skippable · sound: endgame.wav · ink curtain drops, rule underlines, lifts on dismiss",
+      '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px">%s'
+      '<div class="ser" style="font-size:64px;margin-top:6px">The endgame is triggered</div>'
+      '<div style="font-size:14px;color:#B8AC9F;max-width:52ch;line-height:1.55">%s is safe at %d tiles. '
+      'Any player may announce the end from here — once called, this is the final round.</div>'
+      '<div style="display:flex;gap:12px;margin-top:10px">%s</div></div>'
+      % (beat_kicker("final round approaching"), survivor["display"], survivor["size"],
+         "".join('<span style="display:inline-flex;align-items:center;gap:7px;border:1px solid #46403A;'
+                 'border-radius:20px;padding:8px 16px;font-size:12px;color:#D8CFC3">%s<span class="ser">%s</span></span>'
+                 % (b_mark(x["key"], x["color"], 16), x["display"]) for x in m if x["size"] > 0))
+    )
+
+    # 5. Victory — final settlement. The tagline callback ties it back to the
+    # launch beat's "seven start-ups, one skyline" line.
+    standings = sorted(((p[0], p[1] + sum(v * m2["price"] for k, v in p[2].items()
+                        for m2 in [next(x for x in m if x["key"] == k)])) for p in PLAYERS), key=lambda x: -x[1])
+    victory_frame = beat_frame(
+      "Victory — peak frame", "4.0s hold before standings become interactive · sound: victory.wav · slow ink-curtain lift, names rise in sequence",
+      '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px">%s'
+      '<div class="ser" style="font-size:76px">%s wins</div>'
+      '<div style="display:flex;flex-direction:column;gap:2px;margin-top:10px;width:420px">%s</div>'
+      '<div class="mono" style="font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#6F665D;margin-top:18px">seven start-ups, one skyline</div></div>'
+      % (beat_kicker("game over"), standings[0][0],
+         "".join('<div style="display:flex;justify-content:space-between;padding:9px 4px;'
+                 'border-bottom:1px solid #2B2621;%s"><span class="ser" style="font-size:16px">%d. %s</span>'
+                 '<span class="mono num" style="font-size:16px">%s</span></div>'
+                 % ("color:#D98A4E" if i == 0 else "color:#B8AC9F", i + 1, n, money(total))
+                 for i, (n, total) in enumerate(standings)))
+    )
+
+    body = (
+      '<div style="width:1440px;min-height:4300px;background:%s;color:%s;font-family:\'DM Sans\',Helvetica,Arial,sans-serif;'
+      'font-size:13px;padding:40px 0 48px;display:flex;flex-direction:column;gap:34px;align-items:center">'
+      '<div style="width:1440px;padding:0 36px;display:flex;flex-direction:column;gap:9px">'
+      '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">Boomtown · beat still-frames (U3)</span>'
+      '<span class="ser" style="font-size:32px">The five beats without their own screen</span>'
+      '<span style="font-size:13px;line-height:1.5;color:%s;max-width:900px">Launch is the Main-menu treatment (U9); '
+      'first-tile is a note on the board, not its own frame. Each frame below is the beat\'s peak visual — what U11 '
+      'animates into (entrance) and out of (exit); the caption line under each title is that beat\'s timing/sound spec.</span></div>'
+      '%s%s%s%s%s</div>'
+      % (B_BG, B_INK, B_MUTED, B_MUTED,
+         founding_frame, buy_frame, merger_frame, endgame_frame, victory_frame)
+    )
+    write("Beats.dc.html", B_HELMET, body)
+
 # ---------------------------------------------------------------- canvas
 def build_canvas():
     doc = {
@@ -1405,6 +1784,8 @@ def build_canvas():
                 {"id": "page-3", "name": "Earlier directions"}],
       "artboards": [
         {"file": "Main.dc.html",  "x": 0, "y": 0, "w": 1440, "h": 900,  "title": "Table", "page": "page-1"},
+        {"file": "Language.dc.html", "x": 1560, "y": 940, "w": 1440, "h": 1900, "title": "Visual language", "print": "flow", "page": "page-1"},
+        {"file": "Beats.dc.html", "x": 3120, "y": 940, "w": 1440, "h": 4300, "title": "Beat still-frames", "print": "flow", "page": "page-1"},
         {"file": "Names.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 2680, "title": "Merged names", "print": "flow", "page": "page-1"},
         {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "The pool", "print": "flow", "page": "page-1"},
         {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
@@ -1430,4 +1811,6 @@ def build_canvas():
     print("wrote canvas.json")
 
 if __name__ == "__main__":
-    build_a(); build_b(); build_c(); build_rules(); build_names(); build_pool(); build_reference(); build_canvas()
+    build_a(); build_b(); build_c(); build_rules(); build_names(); build_pool(); build_reference()
+    build_language(); build_beats()
+    build_canvas()

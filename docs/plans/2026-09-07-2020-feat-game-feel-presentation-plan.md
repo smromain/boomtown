@@ -335,6 +335,7 @@ Note: the launch beat is delivered App-level, not by this orchestrator — the o
   - `npm test` for the desktop project still passes (no library breaks the test env).
 - **Verification:** Both libraries import and run in a renderer smoke; the recorded delta is under the ceiling.
 - **Execution note:** This is packaging/config; prefer install and build/runtime smoke over unit coverage.
+- **Execution record (implementation):** Baseline `npm run build` in `apps/desktop` (before any change) — summed gzipped `out/renderer/assets/*.js` = **163,976 bytes** (one chunk, `index-*.js`). Audio: `howler@2.2.4` (zero runtime dependencies, last published 2023-09-19) + `@types/howler` as `devDependencies` — a small, dependency-free sprite/pooling/mute layer, well within budget on its own. Animation: **inverted the fallback deliberately, not because of a React-19 incompatibility** — Direction D's own prototype (the handoff bundle's `.dc.html`) proves every beat (curtain drop, name collide → blend → scale-in, bonus land, board tilt) as plain CSS `@keyframes`/transitions driven by a `setTimeout` stage queue, with no animation library at all. U10/U11 keep that approach (CSS + a small hand-rolled `beatQueue` timer utility) rather than adding a Motion-class dependency, per the "hand-rolled cost may be smaller than assumed" note in Assumptions/Alternative Approaches. Final delta is recorded against this baseline in the Verification pass at the end of the batch.
 
 ### U5. Sound manager and header mute control
 
