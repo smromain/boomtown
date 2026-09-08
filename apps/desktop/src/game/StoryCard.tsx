@@ -81,13 +81,14 @@ export function StoryCard() {
       {merger.survivor && (
         <div className={styles.rename}>
           <span className={styles.renameLabel}>
-            {merger.complete ? 'The survivor is renamed' : 'The survivor will be'}
+            {merger.complete ? 'Now trading as' : 'Will trade as'}
           </span>
           <span className={`serif ${styles.renameName}`} style={{ color: survivorColor }}>
             {survivorName}
           </span>
           <span className={styles.renameNote}>
-            The stem keeps everything it has ever eaten, and the card widens to hold it.
+            Its name grows with a piece of every company it takes over. Your shares in it stay
+            yours.
           </span>
         </div>
       )}
@@ -103,7 +104,7 @@ export function StoryCard() {
       <p className={styles.quiet}>
         {bonusFootnote(merger.bonuses) ??
           (merger.complete
-            ? `${survivorName} carries on; its card widens to hold everything it swallowed.`
+            ? `${survivorName} carries on, larger than before.`
             : 'Resolve the merger in the prompt.')}
       </p>
     </section>
