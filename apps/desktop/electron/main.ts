@@ -1,8 +1,9 @@
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain, screen, session, shell } from 'electron';
 import { buildCsp } from './csp.js';
 import { checkForUpdates } from './updater.js';
-import { openMaximized, openingBounds, windowOptions } from './window.js';
+import { iconPath, openMaximized, openingBounds, windowOptions } from './window.js';
 
 /** electron-vite sets this to the dev-server URL; absent in a packaged build. */
 const rendererUrl = process.env['ELECTRON_RENDERER_URL'];
@@ -121,9 +122,17 @@ function runSmokeChecks(win: BrowserWindow): void {
 function createWindow(): void {
   // `screen` is only readable once the app is ready, which is why the size
   // is applied here rather than inside `windowOptions`.
+  const icon = iconPath({
+    packaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+    mainDir: import.meta.dirname,
+  });
   const win = new BrowserWindow({
     ...windowOptions(join(import.meta.dirname, '../preload/preload.cjs')),
     ...openingBounds(screen.getPrimaryDisplay().workAreaSize),
+    // Electron logs a warning for a missing icon path; skip it rather than
+    // assume a layout that a future packaging change could invalidate.
+    ...(existsSync(icon) ? { icon } : {}),
     show: !smoke,
   });
 

@@ -83,3 +83,25 @@ export function openMaximized(win: Maximizable): void {
   win.maximize();
   win.once('ready-to-show', () => win.show());
 }
+
+/**
+ * Where the window icon lives, packaged and in development.
+ *
+ * Windows and Linux draw this in the taskbar and the window switcher; without
+ * it they fall back to the stock Electron logo. macOS ignores it and uses the
+ * bundle's own icon, which electron-builder generates from the same file.
+ *
+ * Packaged, the icon is copied next to the app by the `extraResources` entry in
+ * `electron-builder.yml`. In development it is read from the repo's
+ * `apps/desktop/build/` — the main process runs out of `out/main/`, two levels
+ * below it — so `npm run dev` shows the same icon a release does.
+ */
+export function iconPath(env: {
+  readonly packaged: boolean;
+  readonly resourcesPath: string;
+  readonly mainDir: string;
+}): string {
+  return env.packaged
+    ? `${env.resourcesPath}/icon.png`
+    : `${env.mainDir}/../../build/icon.png`;
+}

@@ -57,6 +57,28 @@ and the main/preload processes from source (workspace packages via the vite
 aliases, npm deps inlined), so the packaged app ships no `node_modules` — only
 `out/**` and a minimal `package.json`.
 
+### The app's icon and name
+
+`apps/desktop/build/icon.png` (1024×1024) is the one icon source. electron-builder
+converts it to `.icns` and `.ico` at package time, and `extraResources` copies it
+into the installed app so `BrowserWindow` can use it as the window icon on
+Windows and Linux (macOS uses the bundle icon instead).
+
+It is generated from the existing logo — no separate artwork to keep in sync:
+
+```bash
+python3 design/make_icon.py     # apps/desktop/src/assets/boomtown-logo.png -> build/icon.png
+```
+
+The icon is the skyline mark alone, not the full wordmark: squeezed into a
+square, "BOOMTOWN" is unreadable at the 16–32px sizes a taskbar actually draws.
+Re-run the script after changing the logo and commit the result.
+
+The name the OS shows comes from **`productName`** in `apps/desktop/package.json`
+(Electron prefers it over `name`, which is the scoped workspace name) and from
+the matching `productName` in `electron-builder.yml`. `electron/branding.test.ts`
+fails if those two drift apart or the icon goes missing.
+
 ### The baked online host
 
 `apps/desktop/.env.production` sets `VITE_PARTYKIT_HOST`, baked into the renderer
