@@ -2,7 +2,8 @@
 
 **Branch:** `feat/game-feel-presentation`
 **HEAD at handoff:** `f814589` (pushed, working tree clean)
-**Status:** all three diagnosed; **no code changes made for any of them**
+**Status:** ~~all three diagnosed; no code changes made for any of them~~ — **all three implemented**
+(issues #2/#3/#4), see `docs/handoffs/2026-09-09-hotseat-and-merger-readability-fixes.md`.
 
 The user asked to record these three items for a future session rather than implement them now. Everything below is diagnosis + a proposed fix, not a change.
 

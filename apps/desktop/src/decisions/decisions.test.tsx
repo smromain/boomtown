@@ -85,6 +85,31 @@ describe('DecisionModal', () => {
     expect(confirm).toBeEnabled();
   });
 
+  it('shows what the shares are worth: the per-share price and the live sale value', async () => {
+    // Without this the player had raw counts only, and had to work the
+    // tier/size price out of the reference chart themselves before deciding
+    // whether to sell (#3).
+    const { client } = await renderPanel(<DecisionModal />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']); // survives
+        seedCorp(state, 'books', ['6E', '7E']); // defunct at size 2 -> $200 a share
+        state.hands[0] = ['5E'];
+        state.seats[0]!.holdings.books = 4;
+      },
+    });
+    await place(client, '5E');
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(/sells at \$200 a share/)).toBeInTheDocument();
+    // nothing selected yet
+    expect(within(dialog).getByText('→ $0')).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'sell more' }));
+    expect(within(dialog).getByText('→ $200')).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'sell more' }));
+    expect(within(dialog).getByText('→ $400')).toBeInTheDocument();
+  });
+
   it('names both corporations by company name, not the industry key', async () => {
     const { client } = await renderPanel(<DecisionModal />, {
       craft: (state) => {

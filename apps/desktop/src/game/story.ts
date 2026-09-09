@@ -68,6 +68,22 @@ export interface BonusLine {
   readonly amount: number;
 }
 
+/**
+ * The word a table actually uses for a bonus tier. The engine's tiers are
+ * always `primary | secondary | tertiary`, but the *classic* ruleset pays only
+ * two bonuses and labels them `primary` and `tertiary` internally — skipping
+ * `secondary` entirely — so the raw tier is never the word to show. There
+ * "primary" reads as majority and anything below it as minority, matching the
+ * stock-reference chart; the 2015 edition uses all three words as they are.
+ *
+ * Lives here, beside `BonusLine`, because both the story panel and the merger
+ * beat display the same payouts and must agree on what to call them.
+ */
+export function tierWord(tier: BonusLine['tier'], bonusTiers: 2 | 3): string {
+  if (bonusTiers === 3) return tier;
+  return tier === 'primary' ? 'majority' : 'minority';
+}
+
 export interface MergerStory {
   readonly placedTile: string;
   readonly corporations: readonly Industry[];

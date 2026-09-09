@@ -2,7 +2,8 @@
 
 **Branch:** `feat/game-feel-presentation`
 **HEAD at handoff:** `32631f2` (pushed, working tree clean)
-**Status:** diagnosed and agreed with the user; **not yet implemented**
+**Status:** ~~diagnosed and agreed with the user; not yet implemented~~ — **implemented** (issues #1/#2),
+see `docs/handoffs/2026-09-09-hotseat-and-merger-readability-fixes.md` for what actually landed.
 
 ## What this session did (context, all done + pushed)
 

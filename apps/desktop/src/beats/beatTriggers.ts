@@ -57,3 +57,21 @@ export function triggerFor(event: EngineEvent): Beat | null {
       return null;
   }
 }
+
+/**
+ * Whether a beat drops an opaque, full-screen curtain (`.curtain` in
+ * `beats.module.css`) or is a floating flourish that leaves the board visible
+ * underneath it.
+ *
+ * `TurnHandoff` stands down for a beat that covers the screen — nothing behind
+ * a curtain can leak, and the hand-off card would otherwise hide the beat's
+ * whole animation. It must NOT stand down for a light beat: the turn advances
+ * in the same tick the beat starts, so for the flourish's hold the incoming
+ * seat's hand and legal moves sit exposed behind a toast about someone else's
+ * purchase. `buy-stock` is the only light beat today; a new one has to answer
+ * this question too, which is why this lives with the union rather than as a
+ * string check at the call site.
+ */
+export function coversTheScreen(beat: Beat): boolean {
+  return beat.id !== 'buy-stock';
+}

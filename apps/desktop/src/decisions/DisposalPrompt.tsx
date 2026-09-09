@@ -31,6 +31,14 @@ export function DisposalPrompt({
   const client = useGameClient();
   const view = useAnyView();
   const survivorBank = view?.corporations[decision.survivor].bankShares ?? 0;
+  /**
+   * What the bank pays per defunct share right now. This is the same figure
+   * the engine uses to settle the sale (`sharePrice(corpSize(defunct), …)` in
+   * the merge machine), read off the view rather than recomputed here — the
+   * defunct corporation is still on the board while its holders dispose, so
+   * the price is live until the merger completes.
+   */
+  const price = view?.corporations[decision.defunct].sharePrice ?? 0;
 
   const hold = decision.shares - sell - trade;
   const check = checkDisposal(decision.shares, survivorBank, { hold, sell, trade });
@@ -41,7 +49,8 @@ export function DisposalPrompt({
     <div>
       <h2>Dispose of {view?.corporations[decision.defunct].displayName ?? decision.defunct} stock</h2>
       <p className={styles.seat}>
-        {view?.seats[decision.seat]?.name ?? `Seat ${decision.seat}`} holds {decision.shares} · trade is 2-for-1 into{' '}
+        {view?.seats[decision.seat]?.name ?? `Seat ${decision.seat}`} holds {decision.shares} · sells at $
+        {price.toLocaleString()} a share · trade is 2-for-1 into{' '}
         {view?.corporations[decision.survivor].displayName ?? decision.survivor} ({survivorBank} in bank)
       </p>
 
@@ -65,7 +74,9 @@ export function DisposalPrompt({
         >
           +
         </button>
-        <span />
+        {/* The literal ask: what this many shares fetches, live as it changes.
+            The trade row's "→ N shares" is the same idea one column over. */}
+        <span className="tabnum">→ ${(sell * price).toLocaleString()}</span>
 
         <span>Trade</span>
         <button type="button" aria-label="trade fewer" onClick={() => onTradeChange(clamp(trade - 2))} disabled={trade === 0}>

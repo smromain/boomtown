@@ -23,6 +23,13 @@
   justify-content: center;
 }
 
+/* A light beat (the buy-stock flourish) stacks above `TurnHandoff`'s opaque
+   hand-off card (`turnHandoff.module.css`, z-index 50), which stays on screen
+   through the flourish's hold so the next player's rack can't leak behind it. */
+.aboveHandoff {
+  z-index: 60;
+}
+
 .curtain {
   position: absolute;
   inset: 0;

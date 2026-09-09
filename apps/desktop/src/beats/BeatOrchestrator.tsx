@@ -1,6 +1,7 @@
 import { anyView } from '@boomtown/client-core';
 import { useGameState } from '../client/GameClientProvider.js';
 import { useActiveBeat } from './BeatContext.js';
+import { coversTheScreen } from './beatTriggers.js';
 import { renderBeat } from './renderBeat.js';
 import styles from './beats.module.css';
 
@@ -22,8 +23,15 @@ export function BeatOrchestrator() {
   // mainly guards an unrelated beat racing a founding/buy decision.
   if (!active || pendingDecision || !view) return null;
 
+  // A light beat has to out-stack `TurnHandoff` (z-index 50), which no longer
+  // stands down for it — otherwise the flourish plays behind an opaque card.
+  // A heavy beat keeps the lower stacking: `TurnHandoff` isn't rendering.
+  const stacking = coversTheScreen(active)
+    ? styles.overlayRoot
+    : `${styles.overlayRoot} ${styles.aboveHandoff}`;
+
   return (
-    <div className={styles.overlayRoot} aria-live="polite">
+    <div className={stacking} aria-live="polite">
       {renderBeat(active, view, log, dismiss)}
     </div>
   );

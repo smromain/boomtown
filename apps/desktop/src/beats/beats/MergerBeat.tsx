@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PlayerView } from '@boomtown/engine';
 import { INDUSTRY_INFO } from '@boomtown/engine';
-import type { MergerStory } from '../../game/story.js';
+import { tierWord, type MergerStory } from '../../game/story.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
@@ -255,7 +255,8 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
                 className={past('bonus') && !reduced ? styles.rise : undefined}
               >
                 <span className={styles.kicker}>
-                  {bonus.seats.length} seat{bonus.seats.length > 1 ? 's' : ''} · {bonus.tier}
+                  {bonus.seats.length} seat{bonus.seats.length > 1 ? 's' : ''} ·{' '}
+                  {tierWord(bonus.tier, view.ruleset.bonusTiers)}
                 </span>
                 <span className="serif tabnum" style={{ display: 'block', fontSize: 56, lineHeight: 1.05, marginTop: 6, letterSpacing: '-0.03em' }}>
                   ${bonus.amount.toLocaleString()}

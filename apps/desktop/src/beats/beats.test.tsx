@@ -11,6 +11,7 @@ import { TurnHandoff } from '../game/TurnHandoff.js';
 import { DecisionModal } from '../decisions/DecisionModal.js';
 import { defaultConfig } from '../setup/gameConfig.js';
 import { flush, mergedName, NAMES, renderPanel, seedCorp } from '../testing/harness.js';
+import beatStyles from './beats.module.css';
 
 const humans = (count: number) => ({
   ...defaultConfig(),
@@ -233,6 +234,77 @@ describe('BeatOrchestrator (component, real dispatch)', () => {
     expect(headline).toHaveStyle({ opacity: '1' });
   });
 
+  it('names bonus tiers the way the table does: majority/minority under classic', async () => {
+    // The beat rendered the engine's raw tier, which under classic is always
+    // "primary"/"tertiary" (it skips "secondary" entirely at two tiers) — so
+    // every merger read the same regardless of who won what (#4). StoryCard
+    // already converted these; the beat never did.
+    const { client } = await renderPanel(
+      <BeatProvider>
+        <BeatOrchestrator />
+      </BeatProvider>,
+      {
+        craft: (state) => {
+          seedCorp(state, 'video', ['2E', '3E', '4E']); // survives
+          seedCorp(state, 'books', ['6E', '7E']); // defunct
+          state.seats[0]!.holdings.books = 3; // top holder
+          state.seats[1]!.holdings.books = 1; // second holder
+          state.hands[0] = ['5E'];
+        },
+      },
+    );
+    // Bonuses need holders, and every holder must dispose before the merger
+    // completes and the beat fires. Holding everything is a valid split.
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+      await flush();
+      client.dispatch({ type: 'dispose-shares', seat: 0, hold: 3, sell: 0, trade: 0 });
+      await flush();
+      client.dispatch({ type: 'dispose-shares', seat: 1, hold: 1, sell: 0, trade: 0 });
+      await flush();
+    });
+
+    const beat = await screen.findByRole('dialog', { name: 'Merger' });
+    expect(within(beat).getByText(/majority/)).toBeInTheDocument();
+    expect(within(beat).getByText(/minority/)).toBeInTheDocument();
+    expect(within(beat).queryByText(/primary|secondary|tertiary/)).not.toBeInTheDocument();
+  });
+
+  it('passes the 2015 edition\'s three tiers through unchanged, secondary included', async () => {
+    const { client } = await renderPanel(
+      <BeatProvider>
+        <BeatOrchestrator />
+      </BeatProvider>,
+      {
+        edition: 'edition-2015',
+        craft: (state) => {
+          seedCorp(state, 'video', ['2E', '3E', '4E']); // survives
+          seedCorp(state, 'books', ['6E', '7E']); // defunct
+          state.seats[0]!.holdings.books = 3;
+          state.seats[1]!.holdings.books = 2;
+          state.seats[2]!.holdings.books = 1;
+          state.hands[0] = ['5E'];
+        },
+      },
+    );
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+      await flush();
+      client.dispatch({ type: 'dispose-shares', seat: 0, hold: 3, sell: 0, trade: 0 });
+      await flush();
+      client.dispatch({ type: 'dispose-shares', seat: 1, hold: 2, sell: 0, trade: 0 });
+      await flush();
+      client.dispatch({ type: 'dispose-shares', seat: 2, hold: 1, sell: 0, trade: 0 });
+      await flush();
+    });
+
+    const beat = await screen.findByRole('dialog', { name: 'Merger' });
+    expect(within(beat).getByText(/primary/)).toBeInTheDocument();
+    expect(within(beat).getByText(/secondary/)).toBeInTheDocument();
+    expect(within(beat).getByText(/tertiary/)).toBeInTheDocument();
+    expect(within(beat).queryByText(/majority|minority/)).not.toBeInTheDocument();
+  });
+
   it('a buy-stock flourish auto-dismisses without blocking play (does not require a key/click)', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
@@ -277,7 +349,70 @@ describe('BeatOrchestrator (component, real dispatch)', () => {
   });
 });
 
-describe('TurnHandoff defers to an active beat (regression)', () => {
+describe('TurnHandoff and the hot-seat privacy leak (regression)', () => {
+  /** A three-human hot-seat game where seat 0 is about to finish its turn. */
+  const hotSeat = (
+    <BeatProvider>
+      <TurnHandoff config={humans(3)} />
+      <BeatOrchestrator />
+    </BeatProvider>
+  );
+
+  it('covers the incoming seat while the buy-stock flourish plays', async () => {
+    // The leak: the buy advances the turn in the same tick the flourish
+    // starts, so seat 1's rack and legal moves were already rendered — and
+    // TurnHandoff, the opaque card that exists to cover exactly that, stood
+    // down for the flourish's whole ~1.1s hold because it deferred to *any*
+    // active beat.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { client } = await renderPanel(hotSeat, {
+        craft: (state) => {
+          seedCorp(state, 'video', ['3E', '4E']);
+          state.hands[0] = ['5E'];
+        },
+      });
+      // seat 0 plays its tile into the corporation, then buys — the buy is
+      // what advances the turn to seat 1 and fires the flourish.
+      await act(async () => {
+        client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+        await flush();
+        client.dispatch({ type: 'buy-shares', seat: 0, picks: { video: 1 } });
+        await flush();
+      });
+
+      // the flourish is up — the buyer still gets their confirmation...
+      const flourish = await screen.findByRole('status', { name: /bought stock/ });
+      // ...and the hand-off card is up *at the same time*, not after the hold
+      expect(screen.getByRole('dialog', { name: 'Turn handoff' })).toHaveTextContent('Ben');
+
+      // and the flourish floats above that opaque card rather than behind it
+      expect(flourish.closest('[aria-live="polite"]')).toHaveClass(beatStyles.aboveHandoff!);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('covers the incoming seat on a $0 turn pass, where no beat fires at all', async () => {
+    // The same report in its other framing (#2): buying nothing means
+    // `triggerFor` returns null, so there is no beat to defer to and the
+    // hand-off must be up on its own the moment the turn advances.
+    const { client } = await renderPanel(hotSeat, {
+      craft: (state) => {
+        state.hands[0] = ['5E'];
+      },
+    });
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+      await flush();
+      client.dispatch({ type: 'buy-shares', seat: 0, picks: {} });
+      await flush();
+    });
+
+    expect(screen.queryByRole('status', { name: /bought stock/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Turn handoff' })).toHaveTextContent('Ben');
+  });
+
   it('does not cover the merger beat with the hot-seat hand-off card; the hand-off appears once the beat is dismissed', async () => {
     // The exact shape that triggered the bug: seat 2 (not the mergemaker) must
     // dispose, so the machine ends up with seat 2 when merger-completed lands
