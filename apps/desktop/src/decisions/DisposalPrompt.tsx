@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import type { PendingDecision } from '@boomtown/engine';
 import { useGameClient, useAnyView } from '../client/GameClientProvider.js';
 import { checkDisposal } from './disposal.js';
@@ -10,18 +9,28 @@ type Decision = Extract<PendingDecision, { type: 'dispose-shares' }>;
  * Split defunct holdings across hold / sell / trade. The confirm button is
  * disabled until the split accounts for every share and every rule holds
  * (`docs/rules.md` step 5); the engine stays the authority.
+ *
+ * `sell`/`trade` are owned by `DecisionModal`, not this component: minimizing
+ * to peek at the board unmounts this prompt, and state lifted to the modal
+ * (which stays mounted throughout) is what lets an in-progress split survive
+ * that round trip instead of silently resetting to zero.
  */
-export function DisposalPrompt({ decision }: { decision: Decision }) {
+export function DisposalPrompt({
+  decision,
+  sell,
+  trade,
+  onSellChange,
+  onTradeChange,
+}: {
+  decision: Decision;
+  sell: number;
+  trade: number;
+  onSellChange: (next: number) => void;
+  onTradeChange: (next: number) => void;
+}) {
   const client = useGameClient();
   const view = useAnyView();
   const survivorBank = view?.corporations[decision.survivor].bankShares ?? 0;
-
-  const [sell, setSell] = useState(0);
-  const [trade, setTrade] = useState(0);
-  useEffect(() => {
-    setSell(0);
-    setTrade(0);
-  }, [decision.defunct, decision.shares]);
 
   const hold = decision.shares - sell - trade;
   const check = checkDisposal(decision.shares, survivorBank, { hold, sell, trade });
@@ -44,24 +53,29 @@ export function DisposalPrompt({ decision }: { decision: Decision }) {
         <span />
 
         <span>Sell</span>
-        <button type="button" aria-label="sell fewer" onClick={() => setSell(clamp(sell - 1))} disabled={sell === 0}>
+        <button type="button" aria-label="sell fewer" onClick={() => onSellChange(clamp(sell - 1))} disabled={sell === 0}>
           −
         </button>
         <output aria-label="sell">{sell}</output>
-        <button type="button" aria-label="sell more" onClick={() => setSell(clamp(sell + 1))} disabled={sell + trade >= decision.shares}>
+        <button
+          type="button"
+          aria-label="sell more"
+          onClick={() => onSellChange(clamp(sell + 1))}
+          disabled={sell + trade >= decision.shares}
+        >
           +
         </button>
         <span />
 
         <span>Trade</span>
-        <button type="button" aria-label="trade fewer" onClick={() => setTrade(clamp(trade - 2))} disabled={trade === 0}>
+        <button type="button" aria-label="trade fewer" onClick={() => onTradeChange(clamp(trade - 2))} disabled={trade === 0}>
           −
         </button>
         <output aria-label="trade">{trade}</output>
         <button
           type="button"
           aria-label="trade more"
-          onClick={() => setTrade(clamp(trade + 2))}
+          onClick={() => onTradeChange(clamp(trade + 2))}
           disabled={trade + 2 > decision.shares - sell || trade / 2 + 1 > survivorBank}
         >
           +

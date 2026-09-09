@@ -410,6 +410,23 @@ describe('BuyModal', () => {
     });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+
+  it('minimizes to a pill and restores', async () => {
+    await renderPanel(<BuyModal />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['5H', '5I', '4I']);
+        state.step = 'buy';
+        state.hands[0] = [];
+      },
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /Peek at the board/ }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Resume buying stock/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Buy stock' });
+    expect(within(dialog).getByRole('button', { name: /Buy nothing/ })).toBeInTheDocument();
+  });
 });
 
 describe('OutOfPlay', () => {
