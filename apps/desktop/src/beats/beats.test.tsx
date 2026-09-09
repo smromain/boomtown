@@ -125,6 +125,41 @@ describe('BeatOrchestrator (component, real dispatch)', () => {
     expect(screen.queryByRole('dialog', { name: 'A corporation is founded' })).not.toBeInTheDocument();
   });
 
+  it('still renders its still-frame, still plays sound, and is still dismissible under prefers-reduced-motion (U12, AE4)', async () => {
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    try {
+      const { client } = await renderPanel(<BeatOrchestrator />, {
+        craft: (state) => {
+          state.cells['6F'] = { kind: 'unincorporated' };
+          state.hands[0] = ['6E'];
+        },
+      });
+      await act(async () => {
+        client.dispatch({ type: 'place-tile', seat: 0, tile: '6E' });
+        await flush();
+        client.dispatch({ type: 'found-corporation', seat: 0, industry: 'video', hqTile: '6E' });
+        await flush();
+      });
+
+      const beat = await screen.findByRole('dialog', { name: 'A corporation is founded' });
+      expect(beat).toHaveTextContent(NAMES.video);
+      expect(soundManager.play).toHaveBeenCalledWith('founding');
+
+      await act(async () => {
+        await userEvent.keyboard('{Enter}');
+      });
+      expect(screen.queryByRole('dialog', { name: 'A corporation is founded' })).not.toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it('events already in the log at mount play no beat; the next live event does (AE8)', async () => {
     const { client } = await renderPanel(<div />, {
       craft: (state) => {

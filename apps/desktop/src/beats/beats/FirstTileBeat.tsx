@@ -11,15 +11,19 @@ export function FirstTileBeat({ dismiss }: { dismiss: () => void }) {
 
   useEffect(() => {
     soundManager.play('first-tile');
-    const t = window.setTimeout(dismiss, reduced ? 0 : HOLD_MS);
+    // Reduced motion shortens the hold; it never removes the beat outright —
+    // it still communicates through its still-frame and copy (R8, AE4).
+    const t = window.setTimeout(dismiss, reduced ? HOLD_MS * 0.34 : HOLD_MS);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduced]);
 
-  if (reduced) return null;
-
   return (
-    <div className={styles.flourish} style={{ top: '18%', left: '50%', transform: 'translateX(-50%)' }} role="status">
+    <div
+      className={reduced ? undefined : styles.flourish}
+      style={{ position: 'fixed', zIndex: 45, top: '18%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none' }}
+      role="status"
+    >
       <div
         className={styles.kicker}
         style={{
