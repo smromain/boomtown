@@ -23,12 +23,12 @@ export function EndgameBeat({ seat, view, dismiss }: { seat: Seat; view: PlayerV
   return (
     <div className={styles.curtain} role="dialog" aria-label="The endgame is triggered" onClick={dismiss}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 14 }}>
-        <div className={styles.kicker}>final round approaching</div>
+        <div className={styles.kicker}>the game is over</div>
         <div className={`serif ${reduced ? '' : styles.rise}`} style={{ fontSize: 64, marginTop: 6 }}>
           The endgame is triggered
         </div>
         <div style={{ fontSize: 14, color: '#b8ac9f', maxWidth: '52ch', lineHeight: 1.55 }}>
-          {who} called the end. This is the final round.
+          {who} called the end, finishing their turn. No other player gets another turn — final scoring follows.
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 10, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 700 }}>
           {active.map((industry) => (
