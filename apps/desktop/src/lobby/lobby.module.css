@@ -59,6 +59,15 @@
   color: var(--chrome-muted);
 }
 
+/* The launch screen's Local/Online choice (U9) — <Button> components, styled
+   entirely by the Button primitive. Distinct from `.choice` below (CreateJoin's
+   raw-<button> Create/Join tab toggle) so the two never fight over background
+   and text colour on the same class name. */
+.launchChoice {
+  display: flex;
+  gap: 0.75rem;
+}
+
 .choice {
   display: flex;
   gap: 0.75rem;

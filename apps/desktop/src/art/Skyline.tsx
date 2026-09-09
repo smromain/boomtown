@@ -25,11 +25,10 @@ export function Skyline({
   style?: CSSProperties | undefined;
 }) {
   const body = tone === 'ink' ? '#c9bcac' : '#3a332c';
-  const crane = tone === 'ink' ? '#a3968a' : '#6f665d';
   const windowBase = tone === 'ink' ? '#e7ded2' : '#2b2621';
 
-  // A row of flat trapezoid/rectangle buildings, varying width and height, with
-  // a crane silhouette — WPA-poster flat shapes, no gradient, no cast shadow.
+  // A row of flat trapezoid/rectangle buildings, varying width and height —
+  // WPA-poster flat shapes, no gradient, no cast shadow.
   const buildings = [
     { x: 0, w: 70, h: 90 },
     { x: 66, w: 46, h: 140 },
@@ -80,13 +79,6 @@ export function Skyline({
           </g>
         );
       })}
-      {/* a crane over the tallest block — the skyline is still being built */}
-      <g stroke={crane} strokeWidth={3} fill="none" strokeLinecap="round">
-        <line x1={311} y1={20} x2={311} y2={220 - 200} />
-        <line x1={311} y1={20} x2={380} y2={20} />
-        <line x1={311} y1={20} x2={270} y2={40} />
-        <line x1={380} y1={20} x2={380} y2={40} />
-      </g>
     </svg>
   );
 }

@@ -67,7 +67,7 @@ export function App() {
           <div className={styles.launchContent}>
             <img src={logoUrl} alt="Boomtown" className={styles.logo} />
             <p className={styles.launchTagline}>seven start-ups, one skyline</p>
-            <div className={styles.choice}>
+            <div className={styles.launchChoice}>
               <Button variant="primary" onClick={() => setScreen({ kind: 'local-setup' })}>
                 Local game
               </Button>
