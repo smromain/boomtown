@@ -98,6 +98,21 @@ export class SeatTable {
     return this.botSeats().has(seat);
   }
 
+  /**
+   * Display names in play order: a joined human's name, `Bot N` for a bot seat,
+   * `Seat N` for a human seat nobody has taken yet. Fed into the engine's
+   * `SetupOptions` so `viewFor` — and every name the online client shows — is
+   * the real one, not the `Seat N` placeholder. Names never change after the
+   * deal and never affect it, so this is replay-safe (KTD13).
+   */
+  displayNames(): string[] {
+    const bots = this.botSeats();
+    return this.allSeats().map((index) => {
+      if (bots.has(index)) return `Bot ${index + 1}`;
+      return this.humans.get(index)?.name ?? `Seat ${index + 1}`;
+    });
+  }
+
   botDifficulty(seat: number): number {
     return this.config.bots[seat] ?? 5;
   }
@@ -147,13 +162,13 @@ export class SeatTable {
  * invented its own seed would deal a different game on every hibernation wake
  * and permanently break replay (KTD13, R7).
  */
-export function setupOptionsFor(config: RoomConfig): SetupOptions {
+export function setupOptionsFor(config: RoomConfig, names?: readonly string[]): SetupOptions {
   if (config.seed === undefined) {
     throw new Error('setupOptionsFor requires a resolved seed (GameRoom resolves it at creation)');
   }
   const seatCount = clampSeatCount(config.seatCount);
   return {
-    seats: Array.from({ length: seatCount }, (_, i) => ({ name: `Seat ${i + 1}` })),
+    seats: Array.from({ length: seatCount }, (_, i) => ({ name: names?.[i] ?? `Seat ${i + 1}` })),
     ruleset: PRESETS[config.edition],
     visibility: config.visibility,
     turnOrder: Array.from({ length: seatCount }, (_, i) => i),

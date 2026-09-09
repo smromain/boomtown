@@ -113,6 +113,43 @@ describe('GameRoom — start and turns', () => {
     }
   });
 
+  it('puts real seat names in the view — joined humans and Bot N, not Seat N', async () => {
+    const r = room(baseConfig({ seatCount: 3, bots: { 2: 5 } }));
+    r.join('Ana', 't1', 'c1');
+    r.join('Bo', 't2', 'c2');
+    const result = await r.start();
+    if ('error' in result) throw new Error('should have started');
+    const anyUpdate = result.updates.find(
+      (u): u is Extract<typeof u, { kind: 'to-seat' }> =>
+        u.kind === 'to-seat' && u.message.type === 'update',
+    )!;
+    if (anyUpdate.message.type !== 'update') throw new Error('unreachable');
+    expect(anyUpdate.message.view.seats.map((s) => s.name)).toEqual(['Ana', 'Bo', 'Bot 3']);
+  });
+
+  it('restores a real name into live state on a hibernation-wake seat restore', async () => {
+    const store = new MemoryStore();
+    const r1 = new GameRoom('WAKE01', baseConfig({ seatCount: 2, bots: { 1: 5 } }), store);
+    await r1.persistConfig();
+    r1.join('Ana', 'tok-a', 'c1');
+    await r1.start(); // seat 0 (Ana) on the clock
+    // one real command so the log is non-empty and rehydrate rebuilds state
+    const view0 = r1.currentUpdateFor(0);
+    if (!view0 || view0.type !== 'update') throw new Error('no starting view');
+    const tile = view0.view.yourHand[0]!;
+    await r1.command(0, { type: 'place-tile', seat: 0, tile });
+
+    const r2 = await GameRoom.rehydrate('WAKE01', store);
+    if (!r2) throw new Error('rehydrate failed');
+    // The replay base carries the `Seat N` placeholder until the adapter feeds
+    // connections back through restoreSeat — which patches the real name in.
+    r2.restoreSeat(0, 'tok-a', 'Ana', 'c9');
+    const update = r2.currentUpdateFor(0);
+    if (!update || update.type !== 'update') throw new Error('no update');
+    expect(update.view.seats[0]!.name).toBe('Ana');
+    expect(update.view.seats[1]!.name).toBe('Bot 2');
+  });
+
   it('rejects an out-of-turn command to the sender only, no state change', async () => {
     const r = room();
     r.join('Ana', 't1', 'c1');

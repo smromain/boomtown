@@ -29,7 +29,7 @@ Since then: a presentation pass (**beats** — founding, buy, merger, endgame an
 with sound), a stock **reference chart**, hot‑seat privacy fixes, and an online‑play diagnostic log.
 Auto‑update is wired in code but has no feed yet — that needs a hosting decision.
 
-**555 tests** pass (`npm test`), plus 11 integration tests against a real room (`npm run
+**556 tests** pass (`npm test`), plus 11 integration tests against a real room (`npm run
 test:server`); typecheck and lint are clean.
 
 Plans: `docs/plans/` holds the architecture plan, the online‑multiplayer substrate plan, and the
@@ -114,6 +114,43 @@ npm run server:dev      # partykit dev, port 1999
 
 A release build talks to the deployed room instead (`apps/desktop/.env.production`), and Settings →
 **Online host** overrides both for a self‑hosted deploy.
+
+**Dev app against the deployed room.** Two things stop a plain `npm run dev` from reaching
+`boomtown.smromain.partykit.dev`: the dev build defaults to `localhost:1999`, and the dev CSP only
+allows `connect-src` to localhost. Override both:
+
+```bash
+env -u ELECTRON_RUN_AS_NODE \
+  VITE_PARTYKIT_HOST=boomtown.smromain.partykit.dev \
+  BOOMTOWN_DEV_CONNECT_SRC="wss://boomtown.smromain.partykit.dev,https://boomtown.smromain.partykit.dev" \
+  npm run -w @boomtown/desktop dev
+```
+
+- `VITE_PARTYKIT_HOST` — the host the online client dials (see `src/online/hostUrl.ts`).
+- `BOOMTOWN_DEV_CONNECT_SRC` — comma‑separated origins added to the dev CSP's `connect-src`
+  (`electron/main.ts`). Dev‑only; ignored by packaged builds, which already allow `wss:`/`https:`.
+- `env -u ELECTRON_RUN_AS_NODE` — only needed when the shell exports it (e.g. a terminal spawned by
+  Claude Code); it makes the Electron binary run as plain Node and the app fails to boot.
+
+**Two dev instances (two‑player test).** Run the block above in one terminal, then a second instance
+in another with its own renderer port and profile directory — the seat token lives in the renderer's
+`localStorage`, so a shared profile would make the second window resume as the same player instead of
+joining as a new one:
+
+```bash
+env -u ELECTRON_RUN_AS_NODE \
+  BOOMTOWN_DEV_PORT=5273 \
+  BOOMTOWN_DEV_USER_DATA="$(mktemp -d)" \
+  VITE_PARTYKIT_HOST=boomtown.smromain.partykit.dev \
+  BOOMTOWN_DEV_CONNECT_SRC="wss://boomtown.smromain.partykit.dev,https://boomtown.smromain.partykit.dev" \
+  npm run -w @boomtown/desktop dev
+```
+
+- `BOOMTOWN_DEV_PORT` — renderer port for this instance (`electron.vite.config.ts`); default 5173.
+- `BOOMTOWN_DEV_USER_DATA` — a private Electron profile dir for this instance (`electron/main.ts`);
+  dev‑only. Create the room in one window, join by its six‑character code in the other.
+
+Both `BOOMTOWN_DEV_PORT` and `BOOMTOWN_DEV_USER_DATA` are unset in normal use and CI.
 
 ### Diagnosing online play
 

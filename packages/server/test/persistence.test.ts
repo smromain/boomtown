@@ -127,6 +127,10 @@ describe('GameRoom.rehydrate', () => {
 
     const woken = await GameRoom.rehydrate('R1', store);
     expect(woken).not.toBeNull();
+    // The adapter feeds each live connection's persisted {seat, token, name}
+    // back through restoreSeat on wake; without it a human seat keeps the
+    // `Seat N` placeholder the replay base was built with.
+    woken!.restoreSeat(0, 'tok-a', 'Ana', 'c1');
     const wokenView = currentView(woken!, 0);
     expect(wokenView).toEqual(liveView);
   });
@@ -154,6 +158,7 @@ describe('GameRoom.rehydrate', () => {
 
     const woken = await GameRoom.rehydrate('S1', store);
     expect(woken).not.toBeNull();
+    woken!.restoreSeat(0, 'tok-a', 'Ana', 'c1'); // adapter does this on wake
     expect(currentView(woken!, 0)).toEqual(liveView);
   });
 

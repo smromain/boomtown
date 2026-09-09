@@ -99,7 +99,10 @@ export class GameRoom {
     const room = new GameRoom(code, config, store);
     const commands = await log.loadAll();
     if (commands.length > 0) {
-      const base = createGame(setupOptionsFor(config));
+      // Bot names are known deterministically here; human names arrive later as
+      // the adapter feeds connections back through `restoreSeat`, which patches
+      // them into the live state. Names never affect the deal (KTD13).
+      const base = createGame(setupOptionsFor(config, room.seats.displayNames()));
       const result = replay(base, commands);
       if ('error' in result) {
         roomWarn(code, 'replay failed — parking the room read-only', {
@@ -170,6 +173,16 @@ export class GameRoom {
    */
   restoreSeat(seat: Seat, token: string, name: string, connectionId: string): void {
     this.seats.restore(seat, token, name, connectionId);
+    // On a hibernation wake the replay base is built with `Seat N` placeholders
+    // (the SeatTable is empty until the adapter feeds connections back through
+    // here). Names are cosmetic and never affect the deal, so patch the real
+    // one into the live state as each seat comes back.
+    if (this.state && this.state.seats[seat] && this.state.seats[seat]!.name !== name) {
+      this.state = {
+        ...this.state,
+        seats: this.state.seats.map((s, i) => (i === seat ? { ...s, name } : s)),
+      };
+    }
   }
 
   markDisconnected(connectionId: string): void {
@@ -194,7 +207,7 @@ export class GameRoom {
       return { error: protocolError('game-not-started', 'seats are not all filled') };
     }
 
-    this.state = createGame(setupOptionsFor(this.config));
+    this.state = createGame(setupOptionsFor(this.config, this.seats.displayNames()));
     this.phase = 'playing';
     roomLog(this.code, 'game started', { seed: this.config.seed, onClock: seatOnClock(this.state) });
     const updates: Outbound[] = [

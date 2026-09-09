@@ -40,5 +40,11 @@ export default defineConfig({
       outDir: 'out/renderer',
       rollupOptions: { input: r('./index.html') },
     },
+    // BOOMTOWN_DEV_PORT lets a second `npm run dev` bind its own renderer port
+    // so two instances can join the same online room (see the README). Unset in
+    // CI and normal use — the default 5173 is unchanged.
+    ...(process.env['BOOMTOWN_DEV_PORT']
+      ? { server: { port: Number(process.env['BOOMTOWN_DEV_PORT']), strictPort: true } }
+      : {}),
   },
 });

@@ -12,8 +12,25 @@ const isDev = Boolean(rendererUrl);
 /** CI/headless boot check: load the window, confirm the renderer mounts, then exit. */
 const smoke = process.env['BOOMTOWN_SMOKE'] === '1';
 
+// BOOMTOWN_DEV_USER_DATA gives this instance its own profile dir (seat token in
+// localStorage, window state, the singleton lock) so a second `npm run dev` can
+// join the same online room as a distinct player. Dev-only; must run before
+// `app.whenReady`. See "Two dev instances" in the README.
+if (isDev && process.env['BOOMTOWN_DEV_USER_DATA']) {
+  app.setPath('userData', process.env['BOOMTOWN_DEV_USER_DATA']);
+}
+
 function applyCsp(): void {
-  const csp = buildCsp({ dev: isDev });
+  // Dev escape hatch: point the dev renderer at a remote PartyKit room (e.g. the
+  // deployed server) by exporting BOOMTOWN_DEV_CONNECT_SRC=wss://host,https://host
+  // — the dev CSP is otherwise localhost-only. See "Dev app against the deployed
+  // room" in the README. Ignored by packaged builds (isDev is false there, and
+  // those already allow wss:/https:).
+  const extraConnect = (process.env['BOOMTOWN_DEV_CONNECT_SRC'] ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const csp = buildCsp({ dev: isDev, connectSrc: extraConnect });
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
