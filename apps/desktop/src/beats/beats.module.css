@@ -151,3 +151,49 @@
     transform: none;
   }
 }
+
+/* Merger beat — the "blend" stage (F1): the two industry colours slide
+   together and cross into one blended circle, so the accreted name doesn't
+   just appear from nowhere (U11 staged sequence). */
+@keyframes blendSlideL {
+  0% {
+    transform: translateX(-64px) scale(0.7);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes blendSlideR {
+  0% {
+    transform: translateX(64px) scale(0.7);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes blendPulse {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

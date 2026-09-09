@@ -1,5 +1,5 @@
 import { act } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PlayerView } from '@boomtown/engine';
@@ -233,8 +233,24 @@ describe('BeatOrchestrator (component, real dispatch)', () => {
       await flush();
     });
 
+    // Stage 1 (collide): the two pre-merge names lean in; the accreted
+    // headline exists in the DOM already (React renders every stage's markup
+    // throughout) but is suppressed to invisible via inline style.
     const beat = await screen.findByRole('dialog', { name: 'Merger' });
-    expect(beat).toHaveTextContent(mergedName('video', 'books'));
+    expect(beat).toHaveTextContent(NAMES.video);
+    expect(beat).toHaveTextContent(NAMES.books);
+    const headline = within(beat).getByText(mergedName('video', 'books'));
+    expect(headline).toHaveStyle({ opacity: '0' });
+
+    // A click advances one stage at a time (collide -> blend -> name), at
+    // which point the accreted name becomes the visible headline.
+    await act(async () => {
+      await userEvent.click(beat);
+    });
+    await act(async () => {
+      await userEvent.click(beat);
+    });
+    expect(headline).toHaveStyle({ opacity: '1' });
   });
 
   it('a buy-stock flourish auto-dismisses without blocking play (does not require a key/click)', async () => {
@@ -321,7 +337,7 @@ describe('TurnHandoff defers to an active beat (regression)', () => {
     // mergemaker (seat 0) — the old bug: TurnHandoff (opaque, higher z-index)
     // rendered right on top of the beat and hid its entire animation.
     const beat = await screen.findByRole('dialog', { name: 'Merger' });
-    expect(beat).toHaveTextContent(mergedName('video', 'books'));
+    expect(beat).toHaveTextContent(NAMES.video);
     expect(screen.queryByRole('dialog', { name: 'Turn handoff' })).not.toBeInTheDocument();
 
     // dismissing the beat is what lets the hand-off finally appear
