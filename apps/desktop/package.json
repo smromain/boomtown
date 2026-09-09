@@ -1,5 +1,7 @@
 {
   "name": "@boomtown/desktop",
+  "//productName": "Electron prefers productName over name for app.getName(), the app menu, and the userData directory. Without it the app calls itself @boomtown/desktop. electron-builder.yml sets the same string for the packaged bundle.",
+  "productName": "Boomtown",
   "version": "0.0.0",
   "private": true,
   "type": "module",

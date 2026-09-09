@@ -9,6 +9,17 @@ directories:
   output: dist
   buildResources: build
 
+# One 1024x1024 source, converted to .icns / .ico at package time. Generated
+# from the logo by `python3 design/make_icon.py` — see that script for why the
+# icon is the skyline mark rather than the full wordmark.
+icon: build/icon.png
+
+# The same file inside the installed app, for `BrowserWindow`'s window icon
+# (Windows and Linux draw it in the taskbar; macOS uses the bundle icon).
+extraResources:
+  - from: build/icon.png
+    to: icon.png
+
 # Flip the Electron security fuses (KTD9) on the packed binary before signing.
 afterPack: electron/afterPack.mjs
 
