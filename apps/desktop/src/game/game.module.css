@@ -204,8 +204,12 @@
   background: var(--surface);
 }
 
-/* End screen — shown in the board slot when the game is over */
+/* End screen — shown in the board slot when the game is over. Carries the
+   R13 victory illustration (U13), composing with the VictoryBeat that plays
+   just before this settles in. */
 .gameOver {
+  position: relative;
+  overflow: hidden;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -214,6 +218,15 @@
   text-align: center;
   gap: 10px;
   padding: 24px;
+}
+
+.gameOverArt {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: -1;
+  width: 100%;
+  height: 55%;
+  opacity: 0.12;
 }
 
 .gameOver h2 {
@@ -350,6 +363,24 @@
 /* No-merger state: a quiet recent-events feed — no card, no heading. */
 .quietLog {
   padding: 2px 2px 2px 0;
+}
+
+/* The "no moves yet" R13 illustration surface (U13). */
+.storyEmpty {
+  position: relative;
+  min-height: 60px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.storyEmptyArt {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  opacity: 0.14;
 }
 
 .actionCard {

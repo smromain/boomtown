@@ -1,5 +1,7 @@
 import { anyView, gameResult } from '@boomtown/client-core';
 import { useGameState } from '../client/GameClientProvider.js';
+import { Skyline } from '../art/Skyline.js';
+import { Button } from '../ui/Button.js';
 import styles from './game.module.css';
 
 /**
@@ -20,6 +22,7 @@ export function GameOver({ onLeave }: { onLeave: (() => void) | undefined }) {
 
   return (
     <div className={styles.gameOver} role="dialog" aria-label="Game over">
+      <Skyline tone="ink" className={styles.gameOverArt} />
       <p className={styles.waitingKicker}>Game over</p>
       <h2 className="serif">
         {result.winners.length > 1
@@ -56,9 +59,9 @@ export function GameOver({ onLeave }: { onLeave: (() => void) | undefined }) {
       </table>
 
       {onLeave && (
-        <button type="button" className={styles.nudge} onClick={onLeave}>
+        <Button variant="primary" onClick={onLeave}>
           New game
-        </button>
+        </Button>
       )}
     </div>
   );

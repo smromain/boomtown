@@ -3,6 +3,7 @@ import { activeView } from '@boomtown/client-core';
 import { useGameState } from '../client/GameClientProvider.js';
 import { IndustryMark } from './marks.js';
 import { Marquee } from './Marquee.js';
+import { Skyline } from '../art/Skyline.js';
 import { useReference } from '../reference/ReferenceContext.js';
 import styles from './band.module.css';
 
@@ -23,6 +24,7 @@ export function CorporationBand() {
   if (active.length === 0) {
     return (
       <section className={styles.bandEmpty} aria-label="Corporations">
+        <Skyline tone="ink" className={styles.bandEmptyArt} />
         <div className={styles.bandEmptyMarks}>
           {INDUSTRIES.map((industry) => (
             <span key={industry} className={styles.bandEmptyMark} style={{ color: INDUSTRY_INFO[industry].color }}>
@@ -55,7 +57,15 @@ export function TrayStrip() {
   if (!view) return null;
 
   const tray = INDUSTRIES.filter((industry) => !view.corporations[industry].founded);
-  if (tray.length === 0) return null;
+
+  if (tray.length === 0) {
+    return (
+      <section className={styles.trayEmpty} aria-label="In the tray">
+        <Skyline tone="ink" className={styles.trayEmptyArt} />
+        <span className={styles.trayNote}>Every corporation is founded. The skyline is complete — for now.</span>
+      </section>
+    );
+  }
 
   return (
     <section className={styles.tray} aria-label="In the tray">
