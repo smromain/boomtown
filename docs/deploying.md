@@ -37,9 +37,18 @@ suite against a local `partykit dev`; the deployed room runs the same code.
 
 ### CI
 
-The `deploy-party` job in the release workflow (below) runs `npx partykit deploy`
-using the **`PARTYKIT_TOKEN`** repo secret — create one at partykit.io → account →
-tokens, then GitHub → repo Settings → Secrets and variables → Actions.
+The `deploy-party` job in the release workflow (below) runs `npx partykit deploy`.
+The CLI only takes its non-interactive (headless) auth path when **both** of these
+repo secrets are present as env vars — set just one and the CLI silently falls back
+to reading `~/.config/partykit`, which doesn't exist in CI, and dies with
+`run npx partykit login`:
+
+| Secret | Value |
+|---|---|
+| `PARTYKIT_TOKEN` | a token from partykit.io → account → tokens |
+| `PARTYKIT_LOGIN` | your PartyKit account slug — the `<account>` in `boomtown.<account>.partykit.dev` (`smromain`) |
+
+Set both at GitHub → repo Settings → Secrets and variables → Actions.
 
 ## The desktop app (Electron)
 
@@ -131,7 +140,8 @@ Then, for that version, it:
    Release** for the tag with them attached (`softprops/action-gh-release`,
    auto-generated notes, marked prerelease if the version has a `-suffix`). Uses
    the built-in `GITHUB_TOKEN` — no PAT needed.
-4. **`deploy-party`** — `npx partykit deploy` (needs `PARTYKIT_TOKEN`).
+4. **`deploy-party`** — `npx partykit deploy` (needs both `PARTYKIT_TOKEN` and
+   `PARTYKIT_LOGIN` — see the CI note above).
 
 The repo's `package.json` version stays `0.0.0` until you bump it by hand between
 releases; the workflow only stamps it transiently per build. Unsigned unless the

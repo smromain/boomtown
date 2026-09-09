@@ -163,4 +163,8 @@ jobs:
         working-directory: packages/server
         run: npx partykit deploy
         env:
+          # PartyKit's CLI authenticates through GitHub — the headless path
+          # needs BOTH the token and the login (username) or it falls back to
+          # the interactive browser login and hangs in CI.
+          PARTYKIT_LOGIN: ${{ secrets.PARTYKIT_LOGIN }}
           PARTYKIT_TOKEN: ${{ secrets.PARTYKIT_TOKEN }}
