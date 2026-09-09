@@ -77,8 +77,10 @@ describe('VictoryBeat cascade', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Victory' });
 
     expect(within(dialog).getByText('Ben wins')).toHaveStyle({ opacity: '0' });
-    // the rank/name heading is duplicated (standings row + the active seat's card)
-    expect(within(dialog).getAllByText('3. Cy')).toHaveLength(2);
+    // whose numbers these are stays hidden until the total lands
+    expect(within(dialog).getByText('3rd place')).toBeInTheDocument();
+    expect(within(dialog).getByText('3. ?')).toBeInTheDocument();
+    expect(within(dialog).queryByText(/Cy/)).not.toBeInTheDocument();
     expect(lineOf(dialog, 'cash on hand: $1,000')).toHaveStyle({ opacity: '1' });
     expect(lineOf(dialog, /2 shares of/)).toHaveStyle({ opacity: '0' });
     expect(lineOf(dialog, 'total: $2,000')).toHaveStyle({ opacity: '0' });
@@ -89,7 +91,7 @@ describe('VictoryBeat cascade', () => {
     }
   });
 
-  it('a click advances one line; the seat settles into the standings once its total lands', async () => {
+  it('a click advances one line; the name lands with the total, then the seat settles into the standings', async () => {
     render(<VictoryBeat view={victoryView()} dismiss={vi.fn()} />);
     const dialog = await screen.findByRole('dialog', { name: 'Victory' });
 
@@ -98,22 +100,23 @@ describe('VictoryBeat cascade', () => {
       await userEvent.click(dialog);
     });
     expect(lineOf(dialog, /2 shares of/)).toHaveStyle({ opacity: '1' });
+    expect(within(dialog).getByText('3rd place')).toBeInTheDocument(); // still anonymous
     expect(within(dialog).queryByText('$2,000')).not.toBeInTheDocument();
 
     await act(async () => {
       await userEvent.click(dialog);
     });
-    // Cy's total line is visible in her own card, and her standings row settles...
+    // the total lands and Cy's name pops in — in her own card and the standings row
     expect(lineOf(dialog, 'total: $2,000')).toHaveStyle({ opacity: '1' });
+    expect(within(dialog).getAllByText('3. Cy')).toHaveLength(2);
     expect(within(dialog).getByText('$2,000')).toBeInTheDocument();
-    // ...but her card is still the one showing; Ana hasn't taken over yet.
-    expect(within(dialog).queryByText('cash on hand: $2,000')).not.toBeInTheDocument();
 
-    // One more click moves on to Ana's card, starting from her cash line.
+    // One more click moves on to Ana's card — anonymous again, starting from her cash line.
     await act(async () => {
       await userEvent.click(dialog);
     });
-    expect(within(dialog).getAllByText('2. Ana')).toHaveLength(2);
+    expect(within(dialog).getByText('2nd place')).toBeInTheDocument();
+    expect(within(dialog).getByText('2. ?')).toBeInTheDocument();
     expect(lineOf(dialog, 'cash on hand: $2,000')).toHaveStyle({ opacity: '1' });
   });
 

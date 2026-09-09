@@ -17,6 +17,20 @@ interface SeatReveal {
   readonly lines: readonly Line[];
 }
 
+function ordinal(n: number): string {
+  if (n % 100 >= 11 && n % 100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1:
+      return `${n}st`;
+    case 2:
+      return `${n}nd`;
+    case 3:
+      return `${n}rd`;
+    default:
+      return `${n}th`;
+  }
+}
+
 const CASH_MS = 650;
 const HOLDING_MS = 900;
 const TOTAL_MS = 1300;
@@ -112,7 +126,17 @@ export function VictoryBeat({ view, dismiss }: { view: PlayerView; dismiss: () =
 
   return (
     <div className={styles.curtain} role="dialog" aria-label="Victory" onClick={advance}>
-      <Skyline tone="chrome" style={{ position: 'absolute', inset: 'auto 0 0 0', width: '100%', height: '40%', opacity: 0.45 }} />
+      <Skyline
+        tone="chrome"
+        style={{
+          position: 'absolute',
+          inset: 'auto 0 0 0',
+          width: '100%',
+          height: done ? '40%' : '22%',
+          opacity: done ? 0.45 : 0.15,
+          transition: 'height 700ms ease, opacity 700ms ease',
+        }}
+      />
       <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 16 }}>
         <div className={styles.kicker}>{done ? 'game over' : 'tallying the score'}</div>
         <div
@@ -143,14 +167,12 @@ export function VictoryBeat({ view, dismiss }: { view: PlayerView; dismiss: () =
                   padding: '9px 4px',
                   borderBottom: '1px solid #2b2621',
                   color: i === 0 ? '#d98a4e' : '#b8ac9f',
-                  opacity: settled ? 1 : 0.3,
-                  transition: 'opacity 500ms ease',
                 }}
               >
-                <span className="serif" style={{ fontSize: 16 }}>
-                  {i + 1}. {nameOf(row.seat)}
+                <span className="serif" style={{ fontSize: 16, opacity: settled ? 1 : 0.35, transition: 'opacity 500ms ease' }}>
+                  {i + 1}. {settled ? nameOf(row.seat) : '?'}
                 </span>
-                <span className="tabnum" style={{ fontSize: 16 }}>
+                <span className="tabnum" style={{ fontSize: 16, opacity: settled ? 1 : 0.35, transition: 'opacity 500ms ease' }}>
                   {settled ? `$${row.total.toLocaleString()}` : '···'}
                 </span>
               </div>
@@ -171,7 +193,14 @@ export function VictoryBeat({ view, dismiss }: { view: PlayerView; dismiss: () =
 
         <div
           className={styles.kicker}
-          style={{ marginTop: 18, color: '#6f665d', opacity: done ? 1 : 0, transition: 'opacity 400ms ease' }}
+          style={{
+            marginTop: done ? 18 : 0,
+            color: '#6f665d',
+            maxHeight: done ? 20 : 0,
+            opacity: done ? 1 : 0,
+            overflow: 'hidden',
+            transition: 'opacity 400ms ease, max-height 400ms ease, margin-top 400ms ease',
+          }}
         >
           seven start-ups, one skyline
         </div>
@@ -194,6 +223,10 @@ function SeatCard({
   nameOf: (seat: number) => string;
   corpName: (industry: CorpSettlement['industry']) => string;
 }) {
+  // Whose numbers these are stays back until they've been earned — the name
+  // pops in with the total, not before, so the standings can't be skimmed
+  // ahead of the math (U-victory-cascade, refinement: hide names until settled).
+  const identityRevealed = visibleLines >= reveal.lines.length;
   return (
     <div
       className={styles.rise}
@@ -207,8 +240,8 @@ function SeatCard({
         width: 420,
       }}
     >
-      <div className="serif" style={{ fontSize: 20, color: '#d8cfc3' }}>
-        {rank}. {nameOf(reveal.seat)}
+      <div key={identityRevealed ? 'name' : 'placeholder'} className={`serif ${styles.rise}`} style={{ fontSize: 20, color: '#d8cfc3' }}>
+        {identityRevealed ? `${rank}. ${nameOf(reveal.seat)}` : `${ordinal(rank)} place`}
       </div>
       {reveal.lines.map((line, li) => (
         <div
