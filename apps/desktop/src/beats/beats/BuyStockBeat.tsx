@@ -36,7 +36,7 @@ export function BuyStockBeat({
   return (
     <div
       className={reduced ? undefined : styles.flourish}
-      style={{ position: 'fixed', zIndex: 45, top: '18%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none' }}
+      style={{ marginTop: '18vh', pointerEvents: 'none' }}
       role="status"
       aria-label={`${name} bought stock`}
     >

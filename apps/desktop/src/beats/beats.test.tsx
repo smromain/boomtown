@@ -2,8 +2,6 @@ import { act } from 'react';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { PlayerView } from '@boomtown/engine';
-import { createGame } from '@boomtown/engine';
 import { triggerFor } from './beatTriggers.js';
 import { EMPTY_BEAT_QUEUE, advance, enqueue, type BeatQueue } from './beatQueue.js';
 import { BeatOrchestrator } from './BeatOrchestrator.js';
@@ -27,59 +25,41 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-function view(): PlayerView {
-  const state = createGame({ seats: [{ name: 'A' }, { name: 'B' }], seed: 1, turnOrder: [0, 1] });
-  state.cells['5E'] = { kind: 'corporation', industry: 'video' }; // one tile on the board
-  return { ...({} as PlayerView), cells: state.cells } as PlayerView;
-}
-
 describe('beatTriggers.triggerFor (pure)', () => {
-  it('resolves the first-tile beat only when the view shows exactly one tile', () => {
-    const oneTile = view();
-    expect(triggerFor({ type: 'tile-placed', seat: 0, tile: '5E', outcome: 'nothing' }, oneTile)).toEqual({
-      id: 'first-tile',
-    });
-    const twoTiles = { ...oneTile, cells: { ...oneTile.cells, '6E': { kind: 'corporation', industry: 'video' } } } as PlayerView;
-    expect(triggerFor({ type: 'tile-placed', seat: 0, tile: '6E', outcome: 'nothing' }, twoTiles)).toBeNull();
-  });
-
   it('resolves the founding beat for corporation-founded', () => {
-    const beat = triggerFor(
-      { type: 'corporation-founded', industry: 'video', hqTile: '5E', tiles: ['5E'], founderBonusPaid: true },
-      view(),
-    );
+    const beat = triggerFor({ type: 'corporation-founded', industry: 'video', hqTile: '5E', tiles: ['5E'], founderBonusPaid: true });
     expect(beat).toEqual({ id: 'founding', industry: 'video' });
   });
 
   it('a non-beat event (tiles-drawn) resolves nothing', () => {
-    expect(triggerFor({ type: 'tiles-drawn', seat: 0, count: 1 }, view())).toBeNull();
+    expect(triggerFor({ type: 'tiles-drawn', seat: 0, count: 1 })).toBeNull();
   });
 
   it('resolves the buy-stock beat only when cost > 0', () => {
-    const bought = triggerFor({ type: 'shares-bought', seat: 0, picks: { video: 2 }, cost: 500 }, view());
+    const bought = triggerFor({ type: 'shares-bought', seat: 0, picks: { video: 2 }, cost: 500 });
     expect(bought).toEqual({ id: 'buy-stock', seat: 0, cost: 500, picks: { video: 2 } });
-    expect(triggerFor({ type: 'shares-bought', seat: 0, picks: {}, cost: 0 }, view())).toBeNull();
+    expect(triggerFor({ type: 'shares-bought', seat: 0, picks: {}, cost: 0 })).toBeNull();
   });
 
   it('resolves the merger beat on merger-completed, not merger-started', () => {
-    expect(
-      triggerFor({ type: 'merger-started', placedTile: '5E', corporations: ['video', 'books'] }, view()),
-    ).toBeNull();
-    expect(triggerFor({ type: 'merger-completed', survivor: 'video' }, view())).toEqual({ id: 'merger' });
+    expect(triggerFor({ type: 'merger-started', placedTile: '5E', corporations: ['video', 'books'] })).toBeNull();
+    expect(triggerFor({ type: 'merger-completed', survivor: 'video' })).toEqual({ id: 'merger' });
   });
 
   it('resolves endgame and victory', () => {
-    expect(triggerFor({ type: 'end-announced', seat: 1 }, view())).toEqual({ id: 'endgame', seat: 1 });
-    expect(
-      triggerFor({ type: 'game-over', result: { rankings: [], winners: [] } }, view()),
-    ).toEqual({ id: 'victory' });
+    expect(triggerFor({ type: 'end-announced', seat: 1 })).toEqual({ id: 'endgame', seat: 1 });
+    expect(triggerFor({ type: 'game-over', result: { rankings: [], winners: [] } })).toEqual({ id: 'victory' });
+  });
+
+  it('no longer resolves a beat for tile-placed (first-tile removed by request)', () => {
+    expect(triggerFor({ type: 'tile-placed', seat: 0, tile: '5E', outcome: 'nothing' })).toBeNull();
   });
 });
 
 describe('beatQueue (pure)', () => {
   it('the first beat becomes active immediately', () => {
-    const q = enqueue(EMPTY_BEAT_QUEUE, { id: 'first-tile' });
-    expect(q).toEqual({ active: { id: 'first-tile' }, pending: [] });
+    const q = enqueue(EMPTY_BEAT_QUEUE, { id: 'victory' });
+    expect(q).toEqual({ active: { id: 'victory' }, pending: [] });
   });
 
   it('queues behind an active beat, then collapses to the latest past the bound', () => {

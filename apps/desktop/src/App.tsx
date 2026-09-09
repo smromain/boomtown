@@ -5,6 +5,8 @@ import { NewGame, type StartedGame } from './setup/NewGame.js';
 import { CreateJoin } from './lobby/CreateJoin.js';
 import { SeatList } from './lobby/SeatList.js';
 import { SettingsDialog } from './settings/SettingsDialog.js';
+import { DebugBeatPreview } from './beats/debug/DebugBeatPreview.js';
+import type { PreviewKind } from './beats/debug/fixtures.js';
 import type { OnlineGame } from './online/onlineGame.js';
 import { Button } from './ui/Button.js';
 import { Skyline } from './art/Skyline.js';
@@ -23,6 +25,7 @@ type Screen =
 export function App() {
   const [screen, setScreen] = useState<Screen>({ kind: 'menu' });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [debugBeat, setDebugBeat] = useState<PreviewKind | null>(null);
 
   // A local game's client/bot-driver and an online room's socket live outside
   // React. They must be torn down when that game is actually left (back to the
@@ -79,7 +82,12 @@ export function App() {
               Settings
             </Button>
           </div>
-          <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+          <SettingsDialog
+            open={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+            onDebugTrigger={setDebugBeat}
+          />
+          <DebugBeatPreview kind={debugBeat} onDismiss={() => setDebugBeat(null)} />
         </section>
       );
 

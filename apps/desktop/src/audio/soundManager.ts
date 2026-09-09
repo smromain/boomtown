@@ -7,9 +7,8 @@ import buyUrl from '../assets/sound/buy.wav';
 import mergerUrl from '../assets/sound/merger.wav';
 import endgameUrl from '../assets/sound/endgame.wav';
 import victoryUrl from '../assets/sound/victory.wav';
-import firstTileUrl from '../assets/sound/first-tile.wav';
 
-export type SoundId = 'tile-place' | 'founding' | 'buy' | 'merger' | 'endgame' | 'victory' | 'first-tile';
+export type SoundId = 'tile-place' | 'founding' | 'buy' | 'merger' | 'endgame' | 'victory';
 
 const SOURCES: Record<SoundId, string> = {
   'tile-place': tilePlaceUrl,
@@ -18,7 +17,6 @@ const SOURCES: Record<SoundId, string> = {
   merger: mergerUrl,
   endgame: endgameUrl,
   victory: victoryUrl,
-  'first-tile': firstTileUrl,
 };
 
 /**

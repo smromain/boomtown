@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { anyView } from '@boomtown/client-core';
 import { useGameState } from '../client/GameClientProvider.js';
 import { triggerFor, type Beat } from './beatTriggers.js';
 import { EMPTY_BEAT_QUEUE, advance, enqueue, type BeatQueue } from './beatQueue.js';
@@ -23,7 +22,6 @@ const BeatContext = createContext<BeatApi>(NOOP);
  */
 export function BeatProvider({ children }: { children: ReactNode }) {
   const log = useGameState((state) => state.log);
-  const view = useGameState(anyView);
   const [queue, setQueue] = useState<BeatQueue>(EMPTY_BEAT_QUEUE);
 
   // Hydration mark (AE8): only events appended past this index are beat
@@ -40,17 +38,17 @@ export function BeatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (hydrationMark.current == null || !view) return;
+    if (hydrationMark.current == null) return;
     if (log.length <= processed.current) return;
     const newEvents = log.slice(processed.current);
     processed.current = log.length;
     setQueue((current) =>
       newEvents.reduce((acc, event) => {
-        const beat = triggerFor(event, view);
+        const beat = triggerFor(event);
         return beat ? enqueue(acc, beat) : acc;
       }, current),
     );
-  }, [log, view]);
+  }, [log]);
 
   useEffect(() => {
     if (queue.active && savedFocus.current == null) {

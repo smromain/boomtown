@@ -2,15 +2,37 @@ import { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { RULES, type RulesetId, type Visibility } from '@boomtown/engine';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './settings.js';
+import type { PreviewKind } from '../beats/debug/fixtures.js';
 import decisionStyles from '../decisions/decisions.module.css';
 import styles from './settings.module.css';
+
+const DEBUG_BEATS: readonly { readonly kind: PreviewKind; readonly label: string }[] = [
+  { kind: 'founding', label: 'Founding' },
+  { kind: 'buy-stock', label: 'Buy stock' },
+  { kind: 'merger', label: 'Merger' },
+  { kind: 'endgame', label: 'Endgame' },
+  { kind: 'victory', label: 'Victory' },
+];
 
 /**
  * The settings dialog: default table visibility, bot difficulty, edition, seat
  * count, and the PartyKit host override (blank = the build-time default). All
  * renderer preferences, persisted to `localStorage`.
+ *
+ * In a dev build only, it also carries a debug section to preview any beat's
+ * animation on fixture data — `onDebugTrigger` (when given) fires a beat
+ * overlay and closes this dialog, so it isn't fighting the beat's own
+ * full-screen curtain for the user's attention.
  */
-export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function SettingsDialog({
+  open,
+  onClose,
+  onDebugTrigger,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onDebugTrigger?: (kind: PreviewKind) => void;
+}) {
   const [draft, setDraft] = useState<Settings>(loadSettings);
 
   const patch = (over: Partial<Settings>) => setDraft((d) => ({ ...d, ...over }));
@@ -88,6 +110,27 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               onChange={(e) => patch({ partykitHost: e.target.value })}
             />
           </label>
+
+          {import.meta.env.DEV && onDebugTrigger && (
+            <div className={styles.debug}>
+              <span className={styles.debugLabel}>Debug — preview a beat</span>
+              <div className={styles.debugButtons}>
+                {DEBUG_BEATS.map(({ kind, label }) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    className={styles.debugButton}
+                    onClick={() => {
+                      onDebugTrigger(kind);
+                      onClose();
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className={styles.actions}>
             <button

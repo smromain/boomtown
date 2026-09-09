@@ -36,6 +36,46 @@
   outline-offset: 1px;
 }
 
+/* Dev-only: preview a beat's real animation on fixture data (see
+   DebugBeatPreview) without simulating a game. */
+.debug {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.debugLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.debugButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.debugButton {
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  font-size: 0.8rem;
+  background: var(--input);
+  color: var(--ink);
+  border: 1px dashed var(--rule);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.debugButton:hover {
+  border-color: var(--accent);
+  border-style: solid;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

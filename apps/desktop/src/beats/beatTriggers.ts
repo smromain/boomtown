@@ -1,10 +1,14 @@
-import type { EngineEvent, Industry, PlayerView, Seat } from '@boomtown/engine';
+import type { EngineEvent, Industry, Seat } from '@boomtown/engine';
 
 type SharesBought = Extract<EngineEvent, { type: 'shares-bought' }>;
 
 /**
- * The seven R6 moments, minus launch (App-level, not orchestrator-driven —
- * see the trigger map in the plan's HTD).
+ * The R6 moments this orchestrator drives — minus launch (App-level, not
+ * orchestrator-driven — see the trigger map in the plan's HTD) and minus
+ * first-tile (dropped by explicit user request after review: it added a
+ * "the board is open" toast that read as noise rather than a moment worth
+ * marking, on top of being the beat most likely to visually collide with the
+ * corp-band area at the top of the screen).
  *
  * **Merger beat placement (a documented implementation call, per the plan's
  * Outstanding Questions "resolve during U10/U11"):** the beat fires on
@@ -21,7 +25,6 @@ type SharesBought = Extract<EngineEvent, { type: 'shares-bought' }>;
  * unchanged — this beat is only the climax overlay, not a replacement for it.
  */
 export type Beat =
-  | { readonly id: 'first-tile' }
   | { readonly id: 'founding'; readonly industry: Industry }
   | { readonly id: 'buy-stock'; readonly seat: Seat; readonly cost: number; readonly picks: SharesBought['picks'] }
   | { readonly id: 'merger' }
@@ -29,16 +32,17 @@ export type Beat =
   | { readonly id: 'victory' };
 
 /**
- * `(event, view) => Beat | null` — reads the projected view, never a log
- * position (KTD3, R14). This is what makes the trigger correct whether the
- * log is complete (local play) or partial (an online client reconnected
- * mid-game): "exactly one tile on the board" is a fact about the view, true
- * regardless of how much history this client's log happens to hold.
+ * `(event) => Beat | null`. Every remaining predicate reads only the event
+ * itself (KTD3's "check the view, not a log index" principle applied to
+ * first-tile — "exactly one tile on the board" — is what made a view
+ * parameter necessary in the first place; with that beat removed, nothing
+ * left needs it). `BeatContext`'s hydration guard still separates a live
+ * append from an event present at mount by log length, independently of this
+ * function, so an online reconnect still can't misfire a beat for stale
+ * history (R14).
  */
-export function triggerFor(event: EngineEvent, view: PlayerView): Beat | null {
+export function triggerFor(event: EngineEvent): Beat | null {
   switch (event.type) {
-    case 'tile-placed':
-      return Object.keys(view.cells).length === 1 ? { id: 'first-tile' } : null;
     case 'corporation-founded':
       return { id: 'founding', industry: event.industry };
     case 'shares-bought':

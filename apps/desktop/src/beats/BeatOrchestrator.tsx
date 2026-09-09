@@ -1,15 +1,7 @@
 import { anyView } from '@boomtown/client-core';
-import type { EngineEvent, PlayerView } from '@boomtown/engine';
 import { useGameState } from '../client/GameClientProvider.js';
-import { latestMerger } from '../game/story.js';
 import { useActiveBeat } from './BeatContext.js';
-import type { Beat } from './beatTriggers.js';
-import { FirstTileBeat } from './beats/FirstTileBeat.js';
-import { FoundingBeat } from './beats/FoundingBeat.js';
-import { BuyStockBeat } from './beats/BuyStockBeat.js';
-import { MergerBeat } from './beats/MergerBeat.js';
-import { EndgameBeat } from './beats/EndgameBeat.js';
-import { VictoryBeat } from './beats/VictoryBeat.js';
+import { renderBeat } from './renderBeat.js';
 import styles from './beats.module.css';
 
 /**
@@ -35,23 +27,4 @@ export function BeatOrchestrator() {
       {renderBeat(active, view, log, dismiss)}
     </div>
   );
-}
-
-function renderBeat(beat: Beat, view: PlayerView, log: readonly EngineEvent[], dismiss: () => void) {
-  switch (beat.id) {
-    case 'first-tile':
-      return <FirstTileBeat dismiss={dismiss} />;
-    case 'founding':
-      return <FoundingBeat industry={beat.industry} view={view} dismiss={dismiss} />;
-    case 'buy-stock':
-      return <BuyStockBeat seat={beat.seat} cost={beat.cost} picks={beat.picks} view={view} dismiss={dismiss} />;
-    case 'merger': {
-      const merger = latestMerger(log);
-      return merger ? <MergerBeat merger={merger} view={view} dismiss={dismiss} /> : null;
-    }
-    case 'endgame':
-      return <EndgameBeat seat={beat.seat} view={view} dismiss={dismiss} />;
-    case 'victory':
-      return <VictoryBeat view={view} dismiss={dismiss} />;
-  }
 }

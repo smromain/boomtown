@@ -1,18 +1,25 @@
 /* Shared beat chrome (U11). Full-screen beats (founding, merger, endgame,
    victory) drop the same ink curtain the header/launch screen use (KTD1); the
-   two light beats (first-tile, buy-stock) are in-place flourishes, not
-   takeovers (R6 — "buy-stock and first-tile are the lightest"). */
+   buy-stock beat is an in-place flourish, not a takeover (R6 — "buy-stock is
+   the lightest"). */
 
-/* Not a hit-testable full-screen blocker by itself — a light beat (buy-stock,
-   first-tile) renders inside this without ever pausing play. Only `.curtain`
-   (the four heavy, full-screen beats) turns pointer-events back on. */
+/* Not a hit-testable full-screen blocker by itself — the buy-stock flourish
+   renders inside this without ever pausing play. Only `.curtain` (the four
+   heavy, full-screen beats) turns pointer-events back on.
+   `.curtain` is `position: absolute; inset: 0`, so it ignores this flexbox
+   entirely and fills `.overlayRoot` regardless of align-items/justify-content
+   — only the flourish (a normal-flow child, no position of its own) is
+   actually centred by it. Centring that way, instead of the child setting its
+   own `position: fixed; left: 50%; transform: translateX(-50%)`, keeps the
+   maths in one place and ties it to the app's own viewport rather than
+   whatever the OS window happens to be. */
 .overlayRoot {
   position: fixed;
   inset: 0;
   z-index: 45;
   pointer-events: none;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 }
 
@@ -125,9 +132,9 @@
 }
 
 /* Light flourishes — not a screen takeover. */
+/* A normal-flow child of `.overlayRoot` — centred by its flexbox, not by its
+   own position: fixed (see `.overlayRoot`'s note). */
 .flourish {
-  position: fixed;
-  z-index: 45;
   pointer-events: none;
   animation: flourishIn 900ms cubic-bezier(0.16, 0.9, 0.2, 1) both;
 }

@@ -127,4 +127,23 @@ describe('SettingsDialog', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Reset' }));
     expect(screen.getByRole('textbox', { name: 'Online host' })).toHaveValue('');
   });
+
+  it('has no debug section when onDebugTrigger is not given (e.g. a release build with the prop omitted)', () => {
+    render(<SettingsDialog open onClose={() => {}} />);
+    expect(screen.queryByText('Debug — preview a beat')).not.toBeInTheDocument();
+  });
+
+  it('offers one button per beat and calls onDebugTrigger, closing itself', async () => {
+    const onDebugTrigger = vi.fn();
+    const onClose = vi.fn();
+    render(<SettingsDialog open onClose={onClose} onDebugTrigger={onDebugTrigger} />);
+
+    for (const label of ['Founding', 'Buy stock', 'Merger', 'Endgame', 'Victory']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    }
+
+    await userEvent.click(screen.getByRole('button', { name: 'Merger' }));
+    expect(onDebugTrigger).toHaveBeenCalledWith('merger');
+    expect(onClose).toHaveBeenCalledOnce();
+  });
 });
