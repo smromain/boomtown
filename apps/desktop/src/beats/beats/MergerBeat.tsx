@@ -178,7 +178,9 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
             transition: 'opacity 420ms ease 400ms, margin-top 400ms ease',
           }}
         >
-          Its name grows with a piece of every company it takes over. Your shares in it stay yours.
+          <p>The name grows with every company it consumes.</p>
+          <p>Your shares in it stay yours but</p>
+          <p><b>the belly of capitalism is never full.</b></p>
         </div>
 
         {/* Stage 4 — mass: the two blocks consolidate into one wider block. */}
