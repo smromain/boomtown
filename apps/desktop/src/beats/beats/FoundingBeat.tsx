@@ -6,7 +6,7 @@ import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
 
-const HOLD_MS = 3000;
+const HOLD_MS = 6000;
 
 /** F2-adjacent beat: a corporation is founded (R6). The plinth-and-panel still-frame from Beats.dc.html (U3). */
 export function FoundingBeat({

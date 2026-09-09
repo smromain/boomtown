@@ -8,19 +8,19 @@ import styles from '../beats.module.css';
 
 /**
  * The staged sequence (F1): each stage gets room to read before the next
- * lands, rather than the whole climax arriving at once. Timings match the
- * handoff's own Direction D prototype (~9.1s full sequence). Reduced motion
- * collapses straight to the settled name + bonuses for a short, dismissible
- * hold — it does not run the choreography (R8, still communicates via the
- * still-frame).
+ * lands, rather than the whole climax arriving at once. Timings are 2x the
+ * handoff's own Direction D prototype (~18.2s full sequence) — more breathing
+ * room to actually read each stage. Reduced motion collapses straight to the
+ * settled name + bonuses for a short, dismissible hold — it does not run the
+ * choreography (R8, still communicates via the still-frame).
  */
 const STAGES = [
-  { id: 'collide', ms: 1200 },
-  { id: 'blend', ms: 1400 },
-  { id: 'name', ms: 2200 },
-  { id: 'mass', ms: 1500 },
-  { id: 'bonus', ms: 2200 },
-  { id: 'settle', ms: 1300 },
+  { id: 'collide', ms: 2400 },
+  { id: 'blend', ms: 2800 },
+  { id: 'name', ms: 4400 },
+  { id: 'mass', ms: 3000 },
+  { id: 'bonus', ms: 4400 },
+  { id: 'settle', ms: 2600 },
 ] as const;
 
 const REDUCED_HOLD_MS = 1600;

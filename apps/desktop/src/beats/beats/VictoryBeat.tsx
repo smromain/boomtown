@@ -237,7 +237,7 @@ function SeatCard({
         alignItems: 'center',
         gap: 6,
         minHeight: 128,
-        width: 420,
+        width: 'min(1400px, 94vw)',
       }}
     >
       <div key={identityRevealed ? 'name' : 'placeholder'} className={`serif ${styles.rise}`} style={{ fontSize: 20, color: '#d8cfc3' }}>
@@ -252,11 +252,14 @@ function SeatCard({
             fontWeight: line.kind === 'total' ? 600 : 400,
             display: 'flex',
             alignItems: 'center',
-            gap: 6,
+            justifyContent: 'center',
+            gap: 8,
+            width: '100%',
+            whiteSpace: 'nowrap',
             opacity: li < visibleLines ? 1 : 0,
             transform: li < visibleLines ? 'none' : 'translateY(8px)',
             maxHeight: li < visibleLines ? 28 : 0,
-            overflow: 'hidden',
+            overflowY: 'hidden',
             transition: 'opacity 380ms ease, transform 380ms ease, max-height 380ms ease',
           }}
         >
@@ -277,7 +280,7 @@ function renderLine(line: Line, corpName: (industry: CorpSettlement['industry'])
       const shareWord = line.shares === 1 ? 'share' : 'shares';
       return (
         <>
-          <IndustryMark industry={line.industry} color={INDUSTRY_INFO[line.industry].color} size={12} />
+          <IndustryMark industry={line.industry} color={INDUSTRY_INFO[line.industry].color} size={20} />
           <span>
             {line.shares} {shareWord} of {corpName(line.industry)} at ${line.price.toLocaleString()} each = $
             {line.saleValue.toLocaleString()}
