@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createGameClient, socketTransport } from '@boomtown/client-core';
-import type { RoomConfig } from '@boomtown/protocol';
+import type { RoomConfig, RoomState } from '@boomtown/protocol';
 
 const HOST = '127.0.0.1:1999';
 const uniqueRoom = () => `st-${Math.random().toString(36).slice(2, 8)}`;
@@ -33,6 +33,43 @@ function waitFor<T>(store: { getState: () => T }, pred: (s: T) => boolean, ms = 
 }
 
 describe('socketTransport — GameTransport parity against a real room', () => {
+  it('hands the lobby the room state even when it subscribes after connect (1 human, 2 bots)', async () => {
+    // The reported bug, end to end: create a 1-human/2-bot room, then do what
+    // React does — subscribe only after `connect()` has resolved. The room's
+    // `room-state` has already been delivered by then, and with no other human
+    // to trigger a second broadcast nothing else was ever coming. The lobby sat
+    // on "Waiting for the room…" with Start disabled, forever.
+    const room = uniqueRoom();
+    const transport = socketTransport({
+      host: HOST,
+      room,
+      name: 'Ana',
+      intent: { kind: 'create', config },
+    });
+    const client = createGameClient(transport);
+    teardowns.push(() => client.disconnect());
+
+    await client.connect();
+    // Let any frame in flight land, so the state really is "already delivered".
+    await new Promise((r) => setTimeout(r, 250));
+
+    const seen: RoomState[] = [];
+    transport.onRoomState((state) => seen.push(state));
+    const statuses: string[] = [];
+    transport.onConnectionChange((status) => statuses.push(status));
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.seats.map((s) => s.kind)).toEqual(['human', 'bot', 'bot']);
+    expect(seen[0]!.phase).toBe('lobby');
+    // Every seat accounted for, so the host's Start control is live.
+    expect(seen[0]!.seats.every((s) => s.kind !== 'open')).toBe(true);
+    expect(statuses).toEqual(['open']);
+
+    // And starting from that state really does move the room to playing.
+    transport.start();
+    await waitFor({ getState: () => seen }, (s) => s.some((r) => r.phase === 'playing'), 10_000);
+  }, 25_000);
+
   it('satisfies the same store contract as localTransport for a scripted turn', async () => {
     const room = uniqueRoom();
     const transport = socketTransport({ host: HOST, room, name: 'Ana', intent: { kind: 'create', config } });

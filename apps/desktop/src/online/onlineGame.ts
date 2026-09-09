@@ -1,4 +1,4 @@
-import { createGameClient, socketTransport, type GameClient, type SocketExtras } from '@boomtown/client-core';
+import { createGameClient, netlog, socketTransport, type GameClient, type SocketExtras } from '@boomtown/client-core';
 import type { RoomConfig, RoomState } from '@boomtown/protocol';
 import type { GameConfig } from '../setup/gameConfig.js';
 import { partykitHost } from './hostUrl.js';
@@ -41,15 +41,46 @@ interface BuildOptions {
 }
 
 async function build({ config, roomCode, name, intent, isHost, token }: BuildOptions): Promise<OnlineGame> {
+  let host: string;
+  try {
+    host = partykitHost();
+  } catch (error) {
+    // No host baked into the build and none set in Settings. Say so in the
+    // timeline too — a packaged build that cannot resolve a host is the other
+    // way online play "does nothing".
+    netlog.log('online', 'warn', 'no online host configured', { error: String(error) });
+    throw error;
+  }
+  netlog.log('online', 'note', `${intent.kind} room`, {
+    host,
+    roomCode,
+    name,
+    isHost,
+    hasToken: Boolean(token),
+    seats: config.seats.map((seat, index) => `${index}:${seat.kind}`),
+  });
+
   const transport = socketTransport({
-    host: partykitHost(),
+    host,
     room: roomCode,
     name,
     intent,
     ...(token ? { token } : {}),
   });
   const client = createGameClient(transport);
-  await client.connect();
+  try {
+    await client.connect();
+  } catch (error) {
+    netlog.log('online', 'warn', `${intent.kind} failed`, { host, roomCode, error: String(error) });
+    client.disconnect();
+    throw error;
+  }
+  netlog.log('online', 'note', `${intent.kind} connected`, {
+    host,
+    roomCode,
+    seat: transport.seat(),
+    roomState: transport.roomState()?.phase ?? null,
+  });
   return {
     client,
     transport,
