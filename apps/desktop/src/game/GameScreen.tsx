@@ -4,6 +4,7 @@ import {
   useGameState,
   useIsLocalTurn,
 } from '../client/GameClientProvider.js';
+import { BeatOrchestrator } from '../beats/BeatOrchestrator.js';
 import { DecisionModal } from '../decisions/DecisionModal.js';
 import type { StartedGame } from '../setup/NewGame.js';
 import { ActionBar } from './ActionBar.js';
@@ -44,6 +45,7 @@ export function GameScreen({ game, onExit }: { game: StartedGame; onExit?: () =>
           <BuyModal />
           <TurnHandoff config={game.config} />
           <ErrorToast />
+          <BeatOrchestrator />
         </ReferenceProvider>
       </HotSeatProvider>
     </GameClientProvider>
