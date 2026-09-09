@@ -42,6 +42,8 @@ async function fakeRoom(): Promise<OnlineGame> {
         return noop;
       },
       onLobbyError: () => noop,
+      roomState: () => null,
+      connectionStatus: () => 'open' as const,
       seat: () => 0,
       token: () => 'tok',
       start: noop,

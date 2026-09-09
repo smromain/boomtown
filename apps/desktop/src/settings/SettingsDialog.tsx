@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import { netlog } from '@boomtown/client-core';
 import { RULES, type RulesetId, type Visibility } from '@boomtown/engine';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './settings.js';
 import type { PreviewKind } from '../beats/debug/fixtures.js';
@@ -34,6 +35,7 @@ export function SettingsDialog({
   onDebugTrigger?: (kind: PreviewKind) => void;
 }) {
   const [draft, setDraft] = useState<Settings>(loadSettings);
+  const [logging, setLogging] = useState(() => netlog.isEnabled());
 
   const patch = (over: Partial<Settings>) => setDraft((d) => ({ ...d, ...over }));
 
@@ -108,6 +110,21 @@ export function SettingsDialog({
               aria-label="Online host"
               placeholder="host.partykit.dev — leave blank for the built-in server"
               onChange={(e) => patch({ partykitHost: e.target.value })}
+            />
+          </label>
+
+          <label className={styles.field}>
+            <span>Log online play (Ctrl/Cmd+Shift+L to read it)</span>
+            <input
+              type="checkbox"
+              checked={logging}
+              aria-label="Log online play"
+              onChange={(e) => {
+                // Persisted immediately, not on Save: a player being talked
+                // through a stuck room should not have to find Save first.
+                netlog.setEnabled(e.target.checked, true);
+                setLogging(e.target.checked);
+              }}
             />
           </label>
 

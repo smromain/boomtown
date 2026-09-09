@@ -1,0 +1,78 @@
+/* The online-play log overlay. Deliberately plain: it is a diagnostic, and it
+   has to stay legible on top of whatever screen is stuck. */
+.panel {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 9000;
+  max-height: 45vh;
+  display: flex;
+  flex-direction: column;
+  background: rgb(12 14 18 / 96%);
+  color: #d8e2ea;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  border-top: 1px solid #3a4450;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #2a323c;
+}
+
+.head button {
+  font: inherit;
+  color: inherit;
+  background: #222a33;
+  border: 1px solid #3a4450;
+  border-radius: 3px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.count {
+  margin-right: auto;
+  opacity: 0.6;
+}
+
+.list {
+  margin: 0;
+  padding: 6px 10px;
+  overflow: auto;
+  list-style: none;
+}
+
+.row {
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 1px 0;
+}
+
+.row[data-direction='in'] {
+  color: #8fd6a0;
+}
+
+.row[data-direction='out'] {
+  color: #8fc0ea;
+}
+
+.row[data-direction='warn'] {
+  color: #ff9a8a;
+}
+
+.row[data-direction='note'] {
+  color: #98a4b0;
+}
+
+.empty {
+  opacity: 0.6;
+}

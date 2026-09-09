@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { netlog } from '@boomtown/client-core';
 import type { RoomState } from '@boomtown/protocol';
 import type { OnlineGame } from '../online/onlineGame.js';
 import { useConnectionStatus, useLobbyError } from './useConnectionStatus.js';
@@ -18,13 +19,21 @@ export function SeatList({
   onEnterGame: () => void;
   onLeave: () => void;
 }) {
-  const [roomState, setRoomState] = useState<RoomState | null>(null);
+  // Seeded from the transport, not from null: the room's first `room-state`
+  // lands before React mounts this component, so waiting for the next one
+  // stranded a one-human room forever (the transport replays it on subscribe
+  // too — this just avoids one wasted render).
+  const [roomState, setRoomState] = useState<RoomState | null>(() => game.transport.roomState());
   const status = useConnectionStatus(game.transport);
   const lobbyError = useLobbyError(game.transport);
 
   useEffect(
     () =>
       game.transport.onRoomState((state) => {
+        netlog.log('lobby', 'note', 'room-state in the lobby', {
+          phase: state.phase,
+          seats: state.seats.map((s) => `${s.index}:${s.kind}`),
+        });
         setRoomState(state);
         if (state.phase === 'playing') onEnterGame();
       }),
@@ -32,8 +41,22 @@ export function SeatList({
   );
 
   const seats = roomState?.seats ?? [];
-  const filled = seats.every((s) => s.kind !== 'open');
+  // `[].every()` is vacuously true — without the length guard an empty seat
+  // list reads as "full" and offers Start for a room we know nothing about.
+  const filled = seats.length > 0 && seats.every((s) => s.kind !== 'open');
   const mySeat = game.transport.seat();
+
+  useEffect(() => {
+    netlog.log('lobby', 'note', 'lobby render', {
+      roomCode: game.roomCode,
+      isHost: game.isHost,
+      status,
+      seatCount: seats.length,
+      filled,
+      mySeat,
+      lobbyError: lobbyError?.code ?? null,
+    });
+  }, [game, status, seats.length, filled, mySeat, lobbyError]);
 
   return (
     <section className={styles.screen} aria-label="Room lobby">
@@ -76,7 +99,10 @@ export function SeatList({
           type="button"
           className={styles.primary}
           disabled={!filled || status !== 'open'}
-          onClick={() => game.transport.start()}
+          onClick={() => {
+            netlog.log('lobby', 'note', 'start pressed', { roomCode: game.roomCode });
+            game.transport.start();
+          }}
         >
           {filled ? 'Start game' : 'Waiting for players…'}
         </button>

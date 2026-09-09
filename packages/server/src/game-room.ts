@@ -20,6 +20,7 @@ import {
   type RoomState,
   type WireError,
 } from '@boomtown/protocol';
+import { roomLog, roomWarn } from './log.js';
 import { CommandLog, type KeyValueStore } from './storage.js';
 import { SeatTable, configError, setupOptionsFor } from './seats.js';
 
@@ -81,6 +82,13 @@ export class GameRoom {
       this.policies.set(Number(seat), heuristicPolicy({ level }));
     }
     this.botRngState = botRng(this.config.seed!);
+    roomLog(code, 'game room constructed', {
+      seatCount: this.config.seatCount,
+      edition: this.config.edition,
+      visibility: this.config.visibility,
+      bots: this.config.bots,
+      seed: this.config.seed,
+    });
   }
 
   /** Rehydrate a woken room from its stored config + command log (KTD13, R7). */
@@ -94,6 +102,10 @@ export class GameRoom {
       const base = createGame(setupOptionsFor(config));
       const result = replay(base, commands);
       if ('error' in result) {
+        roomWarn(code, 'replay failed — parking the room read-only', {
+          commands: commands.length,
+          error: result.error,
+        });
         // A corrupt or engine-incompatible log. Do NOT throw — onStart re-runs
         // on every hibernation wake, so a throw here bricks the room code
         // forever. Park it read-only instead (see `command`).
@@ -102,6 +114,11 @@ export class GameRoom {
       }
       room.state = result.state;
       room.phase = result.state.status === 'over' ? 'over' : 'playing';
+      roomLog(code, 'rehydrated from the command log', {
+        commands: commands.length,
+        phase: room.phase,
+        onClock: seatOnClock(result.state),
+      });
       // Replay stops at the last stored command; if a bot is now on the clock,
       // resume the bot loop (a human command would otherwise be the only way to
       // un-stick the game). The caller dispatches the returned updates.
@@ -162,16 +179,24 @@ export class GameRoom {
   /** Start the game. Returns the initial per-seat updates, or an error. */
   async start(): Promise<{ updates: Outbound[] } | { error: WireError }> {
     if (this.phase !== 'lobby') {
+      roomWarn(this.code, 'start refused — not in the lobby', { phase: this.phase });
       return { error: protocolError('game-not-started', 'game already started') };
     }
     const bad = configError(this.config);
-    if (bad) return { error: protocolError('malformed-message', bad) };
+    if (bad) {
+      roomWarn(this.code, 'start refused — bad config', { reason: bad, config: this.config });
+      return { error: protocolError('malformed-message', bad) };
+    }
     if (!this.seats.allSeatsFilled()) {
+      roomWarn(this.code, 'start refused — seats are not all filled', {
+        seats: this.seats.snapshot(this.code, this.phase).seats.map((s) => `${s.index}:${s.kind}`),
+      });
       return { error: protocolError('game-not-started', 'seats are not all filled') };
     }
 
     this.state = createGame(setupOptionsFor(this.config));
     this.phase = 'playing';
+    roomLog(this.code, 'game started', { seed: this.config.seed, onClock: seatOnClock(this.state) });
     const updates: Outbound[] = [
       { kind: 'broadcast', message: { type: 'room-state', state: this.roomState() } },
       ...this.seatUpdates([]),
@@ -198,11 +223,21 @@ export class GameRoom {
       return [this.rejection(fromSeat, command, protocolError('not-in-room', `seat ${command.seat} is not yours`))];
     }
     if (seatOnClock(this.state) !== fromSeat) {
+      roomWarn(this.code, 'command out of turn', {
+        from: fromSeat,
+        command: command.type,
+        onClock: seatOnClock(this.state),
+      });
       return [this.rejection(fromSeat, command, wireEngineError({ code: 'not-your-turn', message: 'not your turn' }))];
     }
 
     const result = reduce(this.state, command);
     if (!result.ok) {
+      roomWarn(this.code, 'command rejected by the engine', {
+        from: fromSeat,
+        command: command.type,
+        error: result.error,
+      });
       return [this.rejection(fromSeat, command, wireEngineError(result.error))];
     }
 
@@ -246,6 +281,7 @@ export class GameRoom {
     let guard = 0;
     while (this.state) {
       if (guard++ > 5000) {
+        roomWarn(this.code, 'the bot loop did not terminate', { commands: out.length });
         this.broken = true;
         return [...out, this.roomBroken('the bot loop did not terminate')];
       }
@@ -257,6 +293,11 @@ export class GameRoom {
       this.botRngState = choice.rng;
       const result = reduce(this.state, choice.command);
       if (!result.ok) {
+        roomWarn(this.code, 'a bot emitted an illegal command', {
+          seat,
+          command: choice.command.type,
+          error: result.error,
+        });
         this.broken = true;
         return [...out, this.roomBroken(`a bot emitted an illegal ${choice.command.type}`)];
       }
@@ -271,6 +312,7 @@ export class GameRoom {
 
   /** Broadcast that the game is stuck. Followed by `command` refusing every move. */
   private roomBroken(reason: string): Outbound {
+    roomWarn(this.code, 'room broken', { reason });
     this.broken = true;
     return { kind: 'broadcast', message: { type: 'error', error: protocolError('game-not-started', `the game is stuck: ${reason}`) } };
   }

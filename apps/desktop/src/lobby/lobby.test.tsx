@@ -100,7 +100,10 @@ describe('CreateJoin', () => {
 });
 
 describe('SeatList', () => {
-  function fakeGame(overrides: Partial<OnlineGame> = {}): {
+  function fakeGame(
+    overrides: Partial<OnlineGame> = {},
+    heldRoomState: RoomState | null = null,
+  ): {
     game: OnlineGame;
     emitRoomState: (state: RoomState) => void;
     emitConnection: (status: 'connecting' | 'open' | 'closed') => void;
@@ -110,14 +113,20 @@ describe('SeatList', () => {
     let roomStateCb: ((s: RoomState) => void) | null = null;
     let connCb: ((s: 'connecting' | 'open' | 'closed') => void) | null = null;
     let lobbyErrCb: ((e: { code: string; message: string }) => void) | null = null;
+    // Mirrors the real transport: the last room state is held and replayed to
+    // whoever subscribes next (see socketTransport).
+    let held: RoomState | null = heldRoomState;
     const start = vi.fn();
     const noop = () => {};
     const game = {
       roomCode: 'ROOM01',
       isHost: true,
       transport: {
+        roomState: () => held,
+        connectionStatus: () => 'open' as const,
         onRoomState: (cb: (s: RoomState) => void) => {
           roomStateCb = cb;
+          if (held) cb(held);
           return noop;
         },
         onConnectionChange: (cb: (s: 'connecting' | 'open' | 'closed') => void) => {
@@ -140,7 +149,10 @@ describe('SeatList', () => {
     } as OnlineGame;
     return {
       game,
-      emitRoomState: (s) => act(() => roomStateCb?.(s)),
+      emitRoomState: (s) => {
+        held = s;
+        act(() => roomStateCb?.(s));
+      },
       emitConnection: (s) => act(() => connCb?.(s)),
       emitLobbyError: (e) => act(() => lobbyErrCb?.(e)),
       start,
@@ -198,6 +210,31 @@ describe('SeatList', () => {
     emitRoomState(lobbyState());
     emitConnection('closed');
     expect(screen.getByRole('status')).toHaveTextContent(/Connection lost/);
+  });
+
+  it('renders the room the transport already holds, with no further broadcast', () => {
+    // The regression: the room sends welcome + room-state back to back, so the
+    // room-state lands before React mounts this component. With one human and
+    // two bots nobody else ever joins, so no second broadcast follows — the
+    // lobby has to show the state the transport is holding, or it sits on
+    // "Waiting for the room…" with Start disabled forever.
+    const seats = [
+      { index: 0, kind: 'human' as const, name: 'Ana', connected: true },
+      { index: 1, kind: 'bot' as const, name: 'Bot 2', connected: true },
+      { index: 2, kind: 'bot' as const, name: 'Bot 3', connected: true },
+    ];
+    const { game } = fakeGame({}, lobbyState({ seats }));
+    render(<SeatList game={game} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+    expect(screen.queryByText('Waiting for the room…')).not.toBeInTheDocument();
+    expect(screen.getByText('Ana (you)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start game' })).toBeEnabled();
+  });
+
+  it('does not offer Start before any room state has arrived', () => {
+    const { game } = fakeGame();
+    render(<SeatList game={game} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+    expect(screen.getByText('Waiting for the room…')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Waiting for players/ })).toBeDisabled();
   });
 
   it('a non-host sees a waiting message, no Start button', () => {

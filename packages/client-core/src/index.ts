@@ -42,4 +42,13 @@ export {
   type SocketTransportOptions,
   type SocketExtras,
   type LobbyError,
+  type ConnectionStatus,
 } from './transport/socket.js';
+export {
+  netlog,
+  formatEntry,
+  safeJson,
+  NETLOG_STORAGE_KEY,
+  type NetLogEntry,
+  type NetLogDirection,
+} from './netlog.js';

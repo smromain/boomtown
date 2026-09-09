@@ -3,6 +3,7 @@ import type { ClientMessage, RoomMessage } from '@boomtown/protocol';
 import { PROTOCOL_VERSION, protocolError } from '@boomtown/protocol';
 import type { Seat } from '@boomtown/engine';
 import { GameRoom, type Outbound } from './game-room.js';
+import { roomLog, roomWarn } from './log.js';
 import type { KeyValueStore } from './storage.js';
 
 /**
@@ -30,6 +31,10 @@ export default class BoomtownRoom implements Party.Server {
   async onStart(): Promise<void> {
     const store = this.room.storage as unknown as KeyValueStore;
     this.game = await GameRoom.rehydrate(this.room.id, store);
+    roomLog(this.room.id, 'onStart', {
+      rehydrated: this.game !== null,
+      connections: [...this.room.getConnections()].length,
+    });
     this.seatByConnection.clear();
     for (const connection of this.room.getConnections<{ seat: Seat; token: string; name?: string }>()) {
       const state = connection.state;
@@ -42,6 +47,7 @@ export default class BoomtownRoom implements Party.Server {
     if (this.game && this.game.pendingWakeUpdates.length > 0) {
       const updates = this.game.pendingWakeUpdates;
       this.game.pendingWakeUpdates = [];
+      roomLog(this.room.id, 'dispatching bot updates produced during the wake', { count: updates.length });
       this.dispatch(updates);
     }
   }
@@ -50,6 +56,13 @@ export default class BoomtownRoom implements Party.Server {
     const url = new URL(ctx.request.url);
     const token = url.searchParams.get('token') ?? undefined;
     const protocolVersion = url.searchParams.get('v') ?? '0';
+    roomLog(this.room.id, 'onConnect', {
+      connection: connection.id,
+      protocolVersion,
+      hasToken: Boolean(token),
+      name: url.searchParams.get('name') ?? null,
+      gameExists: this.game !== null,
+    });
 
     // Version-gate every connection, not just reconnects — a fresh joiner with
     // a stale protocol version must be turned away before it can create or
@@ -58,6 +71,11 @@ export default class BoomtownRoom implements Party.Server {
       ? null
       : protocolError('wrong-version', `room speaks protocol ${PROTOCOL_VERSION}, client sent ${protocolVersion}`);
     if (versionError) {
+      roomWarn(this.room.id, 'refused a connection on protocol version', {
+        connection: connection.id,
+        clientVersion: protocolVersion,
+        roomVersion: PROTOCOL_VERSION,
+      });
       this.sendTo(connection, { type: 'error', error: versionError });
       connection.close();
       return;
@@ -68,6 +86,7 @@ export default class BoomtownRoom implements Party.Server {
       const bound = this.game.reconnect(token, connection.id);
       if (bound) {
         const name = url.searchParams.get('name') ?? 'Player';
+        roomLog(this.room.id, 'reconnected a seat by token', { seat: bound.seat, connection: connection.id });
         this.seatByConnection.set(connection.id, bound.seat);
         connection.setState({ seat: bound.seat, token, name });
         this.sendTo(connection, { type: 'welcome', seat: bound.seat, token });
@@ -97,7 +116,9 @@ export default class BoomtownRoom implements Party.Server {
         return;
 
       case 'create-room': {
+        roomLog(this.room.id, 'create-room', { connection: sender.id, config: message.config });
         if (this.game) {
+          roomWarn(this.room.id, 'create-room refused — the room already exists');
           this.sendTo(sender, { type: 'error', error: protocolError('game-not-started', 'room already exists') });
           return;
         }
@@ -108,7 +129,9 @@ export default class BoomtownRoom implements Party.Server {
       }
 
       case 'join': {
+        roomLog(this.room.id, 'join', { connection: sender.id, gameExists: this.game !== null });
         if (!this.game) {
+          roomWarn(this.room.id, 'join refused — no such room');
           this.sendTo(sender, { type: 'error', error: protocolError('not-in-room', 'no such room') });
           return;
         }
@@ -117,12 +140,18 @@ export default class BoomtownRoom implements Party.Server {
       }
 
       case 'start': {
-        if (!this.game) return;
+        roomLog(this.room.id, 'start', { connection: sender.id, gameExists: this.game !== null });
+        if (!this.game) {
+          roomWarn(this.room.id, 'start ignored — no game in this room');
+          return;
+        }
         const result = await this.game.start();
         if ('error' in result) {
+          roomWarn(this.room.id, 'start refused', { error: result.error });
           this.sendTo(sender, { type: 'error', error: result.error });
           return;
         }
+        roomLog(this.room.id, 'game started', { updates: result.updates.length });
         this.dispatch(result.updates);
         return;
       }
@@ -131,6 +160,10 @@ export default class BoomtownRoom implements Party.Server {
         if (!this.game) return;
         const seat = this.seatByConnection.get(sender.id) ?? this.seatFromState(sender);
         if (seat === undefined) {
+          roomWarn(this.room.id, 'command from a connection with no seat', {
+            connection: sender.id,
+            command: message.command.type,
+          });
           this.sendTo(sender, { type: 'error', error: protocolError('not-in-room', 'no seat on this connection') });
           return;
         }
@@ -142,6 +175,10 @@ export default class BoomtownRoom implements Party.Server {
   }
 
   onClose(connection: Party.Connection): void {
+    roomLog(this.room.id, 'onClose', {
+      connection: connection.id,
+      seat: this.seatByConnection.get(connection.id) ?? null,
+    });
     this.seatByConnection.delete(connection.id);
     this.game?.markDisconnected(connection.id);
     this.broadcastRoomState();
@@ -164,19 +201,26 @@ export default class BoomtownRoom implements Party.Server {
     const token = crypto.randomUUID();
     const bound = this.game.join(name, token, sender.id);
     if (!bound) {
+      roomWarn(this.room.id, 'join refused — room full', { connection: sender.id, name });
       this.sendTo(sender, { type: 'error', error: protocolError('room-full', 'all seats are taken') });
       sender.close();
       return;
     }
     this.seatByConnection.set(sender.id, bound.seat);
     sender.setState({ seat: bound.seat, token, name });
+    roomLog(this.room.id, 'seated a player', { seat: bound.seat, name, connection: sender.id });
     this.sendTo(sender, { type: 'welcome', seat: bound.seat, token });
     this.broadcastRoomState();
   }
 
   private broadcastRoomState(): void {
     if (!this.game) return;
-    this.room.broadcast(JSON.stringify({ type: 'room-state', state: this.game.roomState() } satisfies RoomMessage));
+    const state = this.game.roomState();
+    roomLog(this.room.id, 'broadcast room-state', {
+      phase: state.phase,
+      seats: state.seats.map((s) => `${s.index}:${s.kind}${s.connected ? '' : ' (off)'}`),
+    });
+    this.room.broadcast(JSON.stringify({ type: 'room-state', state } satisfies RoomMessage));
   }
 
   private dispatch(updates: Outbound[]): void {
@@ -186,10 +230,20 @@ export default class BoomtownRoom implements Party.Server {
         continue;
       }
       // to-seat: find every connection bound to that seat
+      let delivered = 0;
       for (const [connId, seat] of this.seatByConnection) {
         if (seat !== out.seat) continue;
         const conn = this.room.getConnection(connId);
-        if (conn) this.sendTo(conn, out.message);
+        if (conn) {
+          this.sendTo(conn, out.message);
+          delivered += 1;
+        }
+      }
+      if (delivered === 0 && out.message.type !== 'update') {
+        roomWarn(this.room.id, 'nothing delivered for a to-seat message', {
+          seat: out.seat,
+          type: out.message.type,
+        });
       }
     }
   }

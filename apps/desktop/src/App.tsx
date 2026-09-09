@@ -6,6 +6,7 @@ import { CreateJoin } from './lobby/CreateJoin.js';
 import { SeatList } from './lobby/SeatList.js';
 import { SettingsDialog } from './settings/SettingsDialog.js';
 import { DebugBeatPreview } from './beats/debug/DebugBeatPreview.js';
+import { NetLogOverlay } from './debug/NetLogOverlay.js';
 import type { PreviewKind } from './beats/debug/fixtures.js';
 import type { OnlineGame } from './online/onlineGame.js';
 import { Button } from './ui/Button.js';
@@ -62,72 +63,83 @@ export function App() {
     };
   }, []);
 
-  switch (screen.kind) {
-    case 'menu':
-      return (
-        <section className={styles.launch} aria-label="Main menu">
-          <Skyline tone="chrome" className={styles.launchArt} />
-          <div className={styles.launchContent}>
-            <img src={logoUrl} alt="Boomtown" className={styles.logo} />
-            <p className={styles.launchTagline}>seven start-ups, one skyline</p>
-            <div className={styles.launchChoice}>
-              <Button variant="primary" onClick={() => setScreen({ kind: 'local-setup' })}>
-                Local game
-              </Button>
-              <Button variant="onChrome" onClick={() => setScreen({ kind: 'online-setup' })}>
-                Play online
+  // The online-play log rides along on every screen (Ctrl/Cmd+Shift+L), so a
+  // lobby that will not fill can be diagnosed without leaving it.
+  return (
+    <>
+      {body(screen)}
+      <NetLogOverlay />
+    </>
+  );
+
+  function body(current: Screen) {
+    switch (current.kind) {
+      case 'menu':
+        return (
+          <section className={styles.launch} aria-label="Main menu">
+            <Skyline tone="chrome" className={styles.launchArt} />
+            <div className={styles.launchContent}>
+              <img src={logoUrl} alt="Boomtown" className={styles.logo} />
+              <p className={styles.launchTagline}>seven start-ups, one skyline</p>
+              <div className={styles.launchChoice}>
+                <Button variant="primary" onClick={() => setScreen({ kind: 'local-setup' })}>
+                  Local game
+                </Button>
+                <Button variant="onChrome" onClick={() => setScreen({ kind: 'online-setup' })}>
+                  Play online
+                </Button>
+              </div>
+              <Button variant="onChrome" onClick={() => setSettingsOpen(true)}>
+                Settings
               </Button>
             </div>
-            <Button variant="onChrome" onClick={() => setSettingsOpen(true)}>
-              Settings
-            </Button>
-          </div>
-          <SettingsDialog
-            open={settingsOpen}
-            onClose={() => setSettingsOpen(false)}
-            onDebugTrigger={setDebugBeat}
+            <SettingsDialog
+              open={settingsOpen}
+              onClose={() => setSettingsOpen(false)}
+              onDebugTrigger={setDebugBeat}
+            />
+            <DebugBeatPreview kind={debugBeat} onDismiss={() => setDebugBeat(null)} />
+          </section>
+        );
+
+      case 'local-setup':
+        return (
+          <NewGame
+            onStart={(game) => setScreen({ kind: 'playing-local', game })}
+            onBack={() => setScreen({ kind: 'menu' })}
           />
-          <DebugBeatPreview kind={debugBeat} onDismiss={() => setDebugBeat(null)} />
-        </section>
-      );
+        );
 
-    case 'local-setup':
-      return (
-        <NewGame
-          onStart={(game) => setScreen({ kind: 'playing-local', game })}
-          onBack={() => setScreen({ kind: 'menu' })}
-        />
-      );
+      case 'online-setup':
+        return (
+          <CreateJoin
+            onRoom={(room) => setScreen({ kind: 'online-lobby', room })}
+            onBack={() => setScreen({ kind: 'menu' })}
+          />
+        );
 
-    case 'online-setup':
-      return (
-        <CreateJoin
-          onRoom={(room) => setScreen({ kind: 'online-lobby', room })}
-          onBack={() => setScreen({ kind: 'menu' })}
-        />
-      );
+      case 'online-lobby':
+        return (
+          <SeatList
+            game={current.room}
+            onEnterGame={() => setScreen({ kind: 'playing-online', room: current.room })}
+            onLeave={() => setScreen({ kind: 'menu' })}
+          />
+        );
 
-    case 'online-lobby':
-      return (
-        <SeatList
-          game={screen.room}
-          onEnterGame={() => setScreen({ kind: 'playing-online', room: screen.room })}
-          onLeave={() => setScreen({ kind: 'menu' })}
-        />
-      );
+      case 'playing-local':
+        return <GameScreen game={current.game} onExit={() => setScreen({ kind: 'menu' })} />;
 
-    case 'playing-local':
-      return <GameScreen game={screen.game} onExit={() => setScreen({ kind: 'menu' })} />;
-
-    case 'playing-online': {
-      const seat = screen.room.transport.seat();
-      const localSeats: Seat[] = seat == null ? [] : [seat];
-      return (
-        <GameScreen
-          game={{ client: screen.room.client, config: screen.room.config, localSeats }}
-          onExit={() => setScreen({ kind: 'menu' })}
-        />
-      );
+      case 'playing-online': {
+        const seat = current.room.transport.seat();
+        const localSeats: Seat[] = seat == null ? [] : [seat];
+        return (
+          <GameScreen
+            game={{ client: current.room.client, config: current.room.config, localSeats }}
+            onExit={() => setScreen({ kind: 'menu' })}
+          />
+        );
+      }
     }
   }
 }

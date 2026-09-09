@@ -9,6 +9,7 @@ export {
   clampSeatCount,
   configError,
 } from './seats.js';
+export { roomLog, roomWarn } from './log.js';
 export {
   CommandLog,
   MemoryStore,
