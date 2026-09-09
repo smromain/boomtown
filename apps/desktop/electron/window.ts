@@ -5,12 +5,17 @@ import type { BrowserWindowConstructorOptions } from 'electron';
  * verification — context isolation on, node integration off, sandbox on — is a
  * unit test rather than a manual check.
  */
+export const MIN_WIDTH = 1024;
+export const MIN_HEIGHT = 700;
+
 export function windowOptions(preloadPath: string): BrowserWindowConstructorOptions {
   return {
+    // A fallback only — `openingBounds` overrides this with the display's work
+    // area at creation. It stands in where no display is known.
     width: 1280,
     height: 860,
-    minWidth: 1024,
-    minHeight: 700,
+    minWidth: MIN_WIDTH,
+    minHeight: MIN_HEIGHT,
     show: false,
     backgroundColor: '#14110c',
     webPreferences: {
@@ -23,4 +28,58 @@ export function windowOptions(preloadPath: string): BrowserWindowConstructorOpti
       // the engine runs in a renderer Web Worker; nothing here needs Node
     },
   };
+}
+
+/** Just the part of a display's `workAreaSize` that matters here. */
+export interface WorkArea {
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * Constructor bounds that fill the screen the app opens on — the *work* area,
+ * so the window clears the taskbar / menu bar / dock rather than hiding under
+ * them. Never smaller than the minimums, so a tiny or misreported display
+ * still gets a usable window.
+ *
+ * This is belt to `openMaximized`'s braces. `maximize()` is a request to the
+ * window manager, and a session without one (a bare X server, some kiosk and
+ * CI setups) simply ignores it — verified: the window stays at its
+ * constructor size. Sizing it here means it fills the screen regardless, and
+ * where a window manager does exist `maximize()` still flags it properly
+ * maximized so the OS maximize/restore control behaves as the user expects.
+ */
+export function openingBounds(work: WorkArea): { width: number; height: number } {
+  return {
+    width: Math.max(MIN_WIDTH, Math.round(work.width)),
+    height: Math.max(MIN_HEIGHT, Math.round(work.height)),
+  };
+}
+
+/**
+ * The slice of `BrowserWindow` that `openMaximized` touches. Structural, so
+ * the ordering below is a unit test instead of something only a packaged
+ * build would reveal.
+ */
+export interface Maximizable {
+  maximize(): void;
+  show(): void;
+  once(event: 'ready-to-show', listener: () => void): unknown;
+}
+
+/**
+ * Open filling the screen — maximized, not true fullscreen: the window keeps
+ * its title bar and the OS chrome, and the user can restore it as normal.
+ *
+ * `maximize()` runs synchronously at creation rather than on `ready-to-show`,
+ * because outside smoke mode the window is constructed with `show: true`
+ * (`main.ts`) — deferring would put it on screen at its constructor size and
+ * visibly pop a frame later.
+ *
+ * Nothing persists window bounds, so this is unconditional: every launch opens
+ * the same way.
+ */
+export function openMaximized(win: Maximizable): void {
+  win.maximize();
+  win.once('ready-to-show', () => win.show());
 }

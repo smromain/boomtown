@@ -1,8 +1,8 @@
 import { join } from 'node:path';
-import { app, BrowserWindow, ipcMain, session, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, screen, session, shell } from 'electron';
 import { buildCsp } from './csp.js';
 import { checkForUpdates } from './updater.js';
-import { windowOptions } from './window.js';
+import { openMaximized, openingBounds, windowOptions } from './window.js';
 
 /** electron-vite sets this to the dev-server URL; absent in a packaged build. */
 const rendererUrl = process.env['ELECTRON_RENDERER_URL'];
@@ -119,13 +119,16 @@ function runSmokeChecks(win: BrowserWindow): void {
 }
 
 function createWindow(): void {
+  // `screen` is only readable once the app is ready, which is why the size
+  // is applied here rather than inside `windowOptions`.
   const win = new BrowserWindow({
     ...windowOptions(join(import.meta.dirname, '../preload/preload.cjs')),
+    ...openingBounds(screen.getPrimaryDisplay().workAreaSize),
     show: !smoke,
   });
 
   registerWindowControls(win);
-  win.once('ready-to-show', () => win.show());
+  openMaximized(win);
   if (smoke) runSmokeChecks(win);
 
   // external links go to the OS browser; nothing opens a second in-app window
