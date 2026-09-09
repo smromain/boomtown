@@ -2,6 +2,7 @@ import { render, type RenderResult } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import {
   POOL,
+  PRESETS,
   createGame,
   displayName,
   type Cell,
@@ -23,6 +24,10 @@ export interface HarnessOptions {
   /** Seats a local player controls. Defaults to all three (hot-seat). Pass a
    *  subset to simulate a bot / remote seat being on the clock. */
   readonly localSeats?: readonly number[];
+  /** Edition preset. Defaults to the engine's own default (classic). The two
+   *  editions disagree on bonus tiers, safe size and price bands, so anything
+   *  that renders those needs to be tested against both. */
+  readonly edition?: 'classic' | 'edition-2015';
 }
 
 /** Render a component wired to a live local game. Returns the client so tests can dispatch. */
@@ -36,6 +41,7 @@ export async function renderPanel(
     turnOrder: [0, 1, 2],
     companyDraw: { books: 0, electronics: 0, air: 0, energy: 0, tech: 0, video: 0, toys: 0 },
     ...(options.visibility ? { visibility: options.visibility } : {}),
+    ...(options.edition ? { ruleset: PRESETS[options.edition] } : {}),
   } as const;
 
   const state = createGame(setup);

@@ -5,19 +5,8 @@ import { IndustryMark } from './marks.js';
 import { Marquee } from './Marquee.js';
 import { Panel } from '../ui/Panel.js';
 import { Skyline } from '../art/Skyline.js';
-import { eventIndustry, isHeadline, latestMerger, mergerProse, type BonusLine } from './story.js';
+import { eventIndustry, isHeadline, latestMerger, mergerProse, tierWord, type BonusLine } from './story.js';
 import styles from './game.module.css';
-
-/**
- * The engine's payout tiers are always `primary | secondary | tertiary`, but
- * the *classic* ruleset only pays two bonuses — there "primary" reads as
- * majority and anything below it as minority (matching the stock-reference
- * chart). The 2015 edition uses all three words.
- */
-function tierWord(tier: BonusLine['tier'], bonusTiers: 2 | 3): string {
-  if (bonusTiers === 3) return tier;
-  return tier === 'primary' ? 'majority' : 'minority';
-}
 
 /**
  * The story panel from the Main artboard. When a merger is in play it narrates
