@@ -60,7 +60,7 @@ describe('GameScreen turn gating', () => {
       const over = Object.fromEntries(
         Object.entries(views).map(([k, v]) => [
           k,
-          { ...v, status: 'over' as const, result: { rankings: [{ seat: 2, cash: 5000, equity: 3000, total: 8000 }, { seat: 0, cash: 4000, equity: 1000, total: 5000 }, { seat: 1, cash: 3000, equity: 500, total: 3500 }], winners: [2] }, endAnnouncedBy: 1 },
+          { ...v, status: 'over' as const, result: { rankings: [{ seat: 2, cash: 5000, equity: 3000, total: 8000, holdings: [] }, { seat: 0, cash: 4000, equity: 1000, total: 5000, holdings: [] }, { seat: 1, cash: 3000, equity: 500, total: 3500, holdings: [] }], winners: [2] }, endAnnouncedBy: 1 },
         ]),
       );
       client.store.setState((s) => ({ ...s, status: 'over', views: over }));

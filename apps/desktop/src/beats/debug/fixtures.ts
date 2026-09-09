@@ -107,13 +107,38 @@ export function endgamePreview(): BeatPreview {
 
 export function victoryPreview(): BeatPreview {
   const state = baseState();
+  // Founded (but not merged) so `view.corporations[industry].displayName`
+  // reads as a real company name in the reveal's per-corporation lines.
+  found(state, 'video', ['2E', '3E', '4E', '5E']);
+  found(state, 'books', ['6C', '7C']);
   state.status = 'over';
   state.endAnnouncedBy = 0;
   state.result = {
     rankings: [
-      { seat: 1, cash: 7200, equity: 5100, total: 12300 },
-      { seat: 0, cash: 6100, equity: 2000, total: 8100 },
-      { seat: 2, cash: 4300, equity: 900, total: 5200 },
+      {
+        seat: 1,
+        cash: 4200,
+        equity: 8100,
+        total: 12300,
+        holdings: [
+          { industry: 'video', shares: 6, price: 900, saleValue: 5400, bonus: 2700 },
+          { industry: 'books', shares: 3, price: 600, saleValue: 1800, bonus: 0 },
+        ],
+      },
+      {
+        seat: 0,
+        cash: 6100,
+        equity: 2000,
+        total: 8100,
+        holdings: [{ industry: 'video', shares: 2, price: 900, saleValue: 1800, bonus: 200 }],
+      },
+      {
+        seat: 2,
+        cash: 4300,
+        equity: 900,
+        total: 5200,
+        holdings: [{ industry: 'books', shares: 1, price: 600, saleValue: 600, bonus: 300 }],
+      },
     ],
     winners: [1],
   };

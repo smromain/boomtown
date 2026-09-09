@@ -18,9 +18,9 @@ describe('GameOver', () => {
         state.endAnnouncedBy = 1;
         state.result = {
           rankings: [
-            { seat: 2, cash: 7000, equity: 5000, total: 12000 },
-            { seat: 0, cash: 6000, equity: 1000, total: 7000 },
-            { seat: 1, cash: 5500, equity: 500, total: 6000 },
+            { seat: 2, cash: 7000, equity: 5000, total: 12000, holdings: [] },
+            { seat: 0, cash: 6000, equity: 1000, total: 7000, holdings: [] },
+            { seat: 1, cash: 5500, equity: 500, total: 6000, holdings: [] },
           ],
           winners: [2],
         };
@@ -42,7 +42,7 @@ describe('GameOver', () => {
     await renderPanel(<GameOver onLeave={onLeave} />, {
       craft: (state) => {
         state.status = 'over';
-        state.result = { rankings: [{ seat: 0, cash: 6000, equity: 0, total: 6000 }], winners: [0] };
+        state.result = { rankings: [{ seat: 0, cash: 6000, equity: 0, total: 6000, holdings: [] }], winners: [0] };
       },
     });
     const button = screen.getByRole('button', { name: 'New game' });

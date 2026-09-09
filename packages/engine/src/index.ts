@@ -72,6 +72,7 @@ export {
   type GameState,
   type GameResult,
   type RankingRow,
+  type CorpSettlement,
   type PlayerView,
   type SeatView,
   type CorpView,

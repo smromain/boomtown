@@ -67,11 +67,23 @@ export interface MergerSnapshot {
   pending: PendingDecision | null;
 }
 
+/** One corporation's contribution to a seat's final settlement (for the victory beat's "show the work"). */
+export interface CorpSettlement {
+  readonly industry: Industry;
+  readonly shares: number;
+  readonly price: number;
+  readonly saleValue: number;
+  /** Primary/secondary/tertiary bonuses this seat drew from this corporation, combined. */
+  readonly bonus: number;
+}
+
 export interface RankingRow {
   readonly seat: Seat;
   readonly cash: number;
   readonly equity: number;
   readonly total: number;
+  /** Every corporation this seat drew money from at final settlement, in settlement order. */
+  readonly holdings: readonly CorpSettlement[];
 }
 
 export interface GameResult {
