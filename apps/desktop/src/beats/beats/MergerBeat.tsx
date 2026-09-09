@@ -15,12 +15,12 @@ import styles from '../beats.module.css';
  * choreography (R8, still communicates via the still-frame).
  */
 const STAGES = [
-  { id: 'collide', ms: 2400 },
-  { id: 'blend', ms: 2800 },
-  { id: 'name', ms: 4400 },
+  { id: 'collide', ms: 1400 },
+  { id: 'blend', ms: 1800 },
+  { id: 'name', ms: 2400 },
   { id: 'mass', ms: 3000 },
   { id: 'bonus', ms: 4400 },
-  { id: 'settle', ms: 2600 },
+  { id: 'settle', ms: 3600 },
 ] as const;
 
 const REDUCED_HOLD_MS = 1600;
@@ -179,7 +179,7 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
           }}
         >
           <p>The name grows with every company it consumes.</p>
-          <p>Your shares in it stay yours but</p>
+          <p>Your shares in it stay yours but remember:</p>
           <p><b>the belly of capitalism is never full.</b></p>
         </div>
 
