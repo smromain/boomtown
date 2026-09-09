@@ -23,5 +23,5 @@ const ICONS: Record<Industry, ComponentType<SVGProps<SVGSVGElement>>> = {
 
 export function IndustryMark({ industry, color, size = 24 }: { industry: Industry; color: string; size?: number }) {
   const Icon = ICONS[industry];
-  return <Icon width={size} height={size} style={{ color }} aria-hidden="true" />;
+  return <Icon width={size} height={size} style={{ color, margin: 2, alignSelf: 'center' }} aria-hidden="true" />;
 }

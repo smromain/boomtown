@@ -216,6 +216,28 @@ describe('DecisionModal', () => {
     expect(within(screen.getByRole('dialog')).getByText('Found a corporation')).toBeInTheDocument();
   });
 
+  it('the disposal prompt minimizes to a pill and restores, keeping the split entered', async () => {
+    const { client } = await renderPanel(<DecisionModal />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']); // survives
+        seedCorp(state, 'books', ['6E', '7E']); // defunct
+        state.hands[0] = ['5E'];
+        state.seats[0]!.holdings.books = 4;
+      },
+    });
+    await place(client, '5E');
+
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'sell more' }));
+
+    await userEvent.click(screen.getByRole('button', { name: /Peek at the board/ }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Resume trading in stock/ }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('Dispose of Chapter Eleven stock');
+    expect(within(dialog).getByLabelText('sell')).toHaveTextContent('1');
+  });
+
   it('founds for the active seat even when it is not seat 0 (regression: not-your-turn)', async () => {
     // seat 2 places a founding tile
     const { client } = await renderPanel(<DecisionModal />, {
@@ -295,6 +317,32 @@ describe('DecisionModal — hot-seat hand-off', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('Dispose of');
     expect(screen.getByRole('dialog')).toHaveTextContent('Cy holds 4');
     expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
+  });
+
+  it('hands off by real name even when the mergemaker is a bot (regression: names fell back to "Player N")', async () => {
+    // seat 0 (the mergemaker) is not a local seat here, standing in for a bot
+    // — this is the shape that broke: the hand-off screen resolved its "view"
+    // from the *active* seat (the bot), got null, and every name fell back to
+    // "Player N" instead of Ben's actual name — even though the disposing seat
+    // (Ben) is local and its own name is public information.
+    const { client } = await renderPanel(<DecisionModal />, {
+      localSeats: [1, 2],
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']); // survives
+        seedCorp(state, 'books', ['6E', '7E']); // defunct
+        state.seats[1]!.holdings.books = 4; // Ben (seat 1) must dispose
+        state.hands[0] = ['5E'];
+      },
+    });
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+      await flush();
+    });
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('Hand the machine to');
+    expect(dialog).toHaveTextContent('Ben');
+    expect(dialog).not.toHaveTextContent(/Player \d/);
   });
 
   it('does not hand off when the decision belongs to the mergemaker (a size tie)', async () => {

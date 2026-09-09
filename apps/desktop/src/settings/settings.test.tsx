@@ -23,6 +23,36 @@ describe('settings store', () => {
     expect(loaded.edition).toBe('edition-2015');
     expect(loaded.visibility).toBe('open'); // untouched default
   });
+
+  it('sound is on (muted: false) by default (R9)', () => {
+    expect(loadSettings().muted).toBe(false);
+  });
+
+  it('round-trips muted', () => {
+    saveSettings({ ...DEFAULT_SETTINGS, muted: true });
+    expect(loadSettings().muted).toBe(true);
+  });
+
+  it('a session with no localStorage falls back to defaults without throwing', () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'localStorage')!;
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: () => {
+          throw new Error('no localStorage here');
+        },
+        setItem: () => {
+          throw new Error('no localStorage here');
+        },
+      },
+      configurable: true,
+    });
+    try {
+      expect(loadSettings()).toEqual(DEFAULT_SETTINGS);
+      expect(() => saveSettings({ ...DEFAULT_SETTINGS, muted: true })).not.toThrow();
+    } finally {
+      Object.defineProperty(window, 'localStorage', original);
+    }
+  });
 });
 
 describe('partykitHost', () => {
@@ -96,5 +126,24 @@ describe('SettingsDialog', () => {
     expect(screen.getByRole('textbox', { name: 'Online host' })).toHaveValue('stale.example.dev');
     await userEvent.click(screen.getByRole('button', { name: 'Reset' }));
     expect(screen.getByRole('textbox', { name: 'Online host' })).toHaveValue('');
+  });
+
+  it('has no debug section when onDebugTrigger is not given (e.g. a release build with the prop omitted)', () => {
+    render(<SettingsDialog open onClose={() => {}} />);
+    expect(screen.queryByText('Debug — preview a beat')).not.toBeInTheDocument();
+  });
+
+  it('offers one button per beat and calls onDebugTrigger, closing itself', async () => {
+    const onDebugTrigger = vi.fn();
+    const onClose = vi.fn();
+    render(<SettingsDialog open onClose={onClose} onDebugTrigger={onDebugTrigger} />);
+
+    for (const label of ['Founding', 'Buy stock', 'Merger', 'Endgame', 'Victory']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    }
+
+    await userEvent.click(screen.getByRole('button', { name: 'Merger' }));
+    expect(onDebugTrigger).toHaveBeenCalledWith('merger');
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });

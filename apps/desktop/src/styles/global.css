@@ -31,6 +31,13 @@
   --input: #fbf8f3;
   --error: #b3462f;
 
+  /* Ink chrome — the header bar and full-screen beat curtains (KTD1's "B"
+     chrome). Distinct from --ink (body text on the cream ground). */
+  --chrome-bg: #1c1917;
+  --chrome-ink: #faf6f0;
+  --chrome-muted: #9c9086;
+  --chrome-rule: #46403a;
+
   /* board */
   --board-bg: #faf6f0;
   --cell-empty: #f1eae0;
@@ -38,6 +45,28 @@
   --cell-uninc: #b0a496;
   --cell-ring: #c6b8a6;
   --board-base: #e7ded2;
+
+  /* Elevation scale (U1/U6, design/build.py L_ELEV) — three fixed levels, one
+     warm light source. 1 = a resting card, 2 = a raised panel, 3 = a floating
+     plate (the board, a beat's still-frame). Never a fourth level. */
+  --elev-1: 0 1px 0 rgba(255, 253, 250, 0.8) inset, 0 2px 6px -3px rgba(94, 74, 52, 0.35);
+  --elev-2: 0 1px 0 rgba(255, 253, 250, 0.8) inset, 0 10px 22px -14px rgba(94, 74, 52, 0.5);
+  --elev-3:
+    0 1px 0 rgba(255, 253, 250, 0.8) inset,
+    0 24px 48px -20px rgba(94, 74, 52, 0.6),
+    0 8px 16px -8px rgba(94, 74, 52, 0.35);
+
+  /* Framing devices (U1, named so components implement them by name):
+     "top rule" — a 3px ink rule along a panel's top edge, for panels with no
+     coloured cap (Shareholders, Story, Reference). The corp card's own
+     coloured "cap band" is per-industry and stays inline (CorporationBand.tsx). */
+  --frame-top-rule: 3px solid var(--ink);
+
+  /* Texture ceiling (R3) — the only texture the language allows anywhere, and
+     never above this opacity. Never a scanned-paper/canvas/wood-grain image. */
+  --grain: radial-gradient(rgba(28, 25, 23, 0.4) 0.6px, transparent 1.1px);
+  --grain-size: 3px 3px;
+  --grain-opacity: 0.05;
 
   --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --serif: "DM Serif Display", Georgia, "Times New Roman", serif;
@@ -55,6 +84,34 @@
 
 .tabnum {
   font-variant-numeric: tabular-nums;
+}
+
+/* Kicker / label — the third type role beyond display + body (U1's four-role
+   hierarchy). The canvas language sheet spells this role in IBM Plex Mono; the
+   renderer stays on the anchored DM Sans (R2) rather than bundling a fourth
+   font asset that only a handful of eyebrow labels would use. */
+.kicker {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* A hairline grain wash — the one texture the language allows, capped at
+   --grain-opacity everywhere it is used (the board plate, beat curtains). */
+.grain {
+  position: relative;
+}
+
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--grain);
+  background-size: var(--grain-size);
+  opacity: var(--grain-opacity);
+  border-radius: inherit;
 }
 
 html,

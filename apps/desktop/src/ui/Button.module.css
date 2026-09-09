@@ -1,0 +1,56 @@
+.button {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 0.55rem 1.1rem;
+  cursor: pointer;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.secondary {
+  background: var(--input);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+}
+
+.secondary:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+}
+
+.ghost:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+/* A ghost button rendered on the dark chrome (the header, a beat curtain) —
+   the "Reference" button treatment from the crafted header. */
+.onChrome {
+  background: transparent;
+  color: var(--chrome-ink);
+  border: 1px solid var(--chrome-rule);
+}
+
+.onChrome:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}

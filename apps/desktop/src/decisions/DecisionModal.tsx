@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { localActiveView } from '@boomtown/client-core';
 import type { Seat } from '@boomtown/engine';
-import { useGameState, useLocalSeats } from '../client/GameClientProvider.js';
+import { useAnyView, useGameState, useLocalSeats } from '../client/GameClientProvider.js';
 import { useHotSeat } from '../game/HotSeatContext.js';
 import { DefunctOrderPrompt } from './DefunctOrderPrompt.js';
 import { DisposalPrompt } from './DisposalPrompt.js';
@@ -24,12 +24,15 @@ import styles from './decisions.module.css';
  * content, so it is always interactive (an interstitial rendered outside the
  * Radix portal is inert behind it).
  *
- * A founding choice can be **minimized** to a corner pill so the founder can
- * study the board before picking. While minimized the modal renders no Dialog
- * and no overlay at all — only the pill — so the board underneath is fully
- * interactive (a modal overlay would make it inert). The founding placement is
- * already committed to engine state, so peeking at the board is safe. Merger
- * steps cannot be minimized: they are sequenced and the board is mid-change.
+ * A founding choice or a share-disposal step can be **minimized** to a corner
+ * pill so the player can study the board before deciding. While minimized the
+ * modal renders no Dialog and no overlay at all — only the pill — so the board
+ * underneath is fully interactive (a modal overlay would make it inert). Both
+ * are safe to peek past: the founding placement and the merger's survivor/
+ * defunct order are already committed to engine state by the time either
+ * prompt shows. The survivor and defunct-order choices themselves stay
+ * non-minimizable — they're a single quick pick, not one worth interrupting
+ * to go look at the board for.
  */
 export function DecisionModal() {
   const local = useLocalSeats();
@@ -37,7 +40,13 @@ export function DecisionModal() {
     state.pendingDecision && local.includes(state.pendingDecision.seat) ? state.pendingDecision : null,
   );
   const view = useGameState((state) => localActiveView(state, local));
-  const seatName = (seat: number) => view?.seats[seat]?.name ?? `Player ${seat + 1}`;
+  // Names are public and identical across every seat's view, so this must not
+  // depend on the *active* seat being local (unlike `view` below, which does):
+  // a merger's mergemaker can be a bot while the disposal it triggers is owed
+  // to a local human. `view` would then be null and every name would silently
+  // fall back to "Player N" — including the disposing seat's own name.
+  const anyView = useAnyView();
+  const seatName = (seat: number) => anyView?.seats[seat]?.name ?? `Player ${seat + 1}`;
   const { claim, needsHandoff } = useHotSeat();
   const needsFound = view?.step === 'found' && view.pendingFound != null;
   const open = decision != null || needsFound;
@@ -46,17 +55,29 @@ export function DecisionModal() {
   const owedSeat: Seat | null = decision?.seat ?? (needsFound ? view!.you : null);
   const handoff = needsHandoff(owedSeat);
 
-  // minimize is founding-only, and never while a hand-off is owed
-  const canMinimize = needsFound && !decision && !handoff;
+  // minimize is founding or disposal only, and never while a hand-off is owed
+  const canMinimize = (needsFound || decision?.type === 'dispose-shares') && !handoff;
+  const resumeLabel = decision?.type === 'dispose-shares' ? 'Resume trading in stock ↑' : 'Resume founding ↑';
   const [minimized, setMinimized] = useState(false);
   useEffect(() => {
     if (!canMinimize) setMinimized(false);
   }, [canMinimize]);
 
+  // Owned here, not by `DisposalPrompt`, so an in-progress split survives a
+  // minimize round trip — `DisposalPrompt` unmounts while minimized, but this
+  // component doesn't.
+  const [sell, setSell] = useState(0);
+  const [trade, setTrade] = useState(0);
+  const disposalKey = decision?.type === 'dispose-shares' ? `${decision.seat}:${decision.defunct}:${decision.shares}` : null;
+  useEffect(() => {
+    setSell(0);
+    setTrade(0);
+  }, [disposalKey]);
+
   if (open && minimized && canMinimize) {
     return (
       <button type="button" className={styles.minimizedPill} onClick={() => setMinimized(false)}>
-        Resume founding ↑
+        {resumeLabel}
       </button>
     );
   }
@@ -102,7 +123,9 @@ export function DecisionModal() {
             <>
               {decision?.type === 'choose-survivor' && <SurvivorPrompt decision={decision} />}
               {decision?.type === 'choose-defunct-order' && <DefunctOrderPrompt decision={decision} />}
-              {decision?.type === 'dispose-shares' && <DisposalPrompt decision={decision} />}
+              {decision?.type === 'dispose-shares' && (
+                <DisposalPrompt decision={decision} sell={sell} trade={trade} onSellChange={setSell} onTradeChange={setTrade} />
+              )}
               {!decision && needsFound && view.pendingFound && <FoundPrompt group={view.pendingFound.group} />}
             </>
           )}

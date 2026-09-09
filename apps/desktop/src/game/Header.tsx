@@ -1,9 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/solid';
 import { activeView } from '@boomtown/client-core';
 import type { TurnStep } from '@boomtown/engine';
 import { useGameState } from '../client/GameClientProvider.js';
 import { useReference } from '../reference/ReferenceContext.js';
 import { editionLabel } from '../setup/editionLabel.js';
+import { soundManager } from '../audio/soundManager.js';
+import { Button } from '../ui/Button.js';
 import logoUrl from '../assets/boomtown-logo.png';
 import styles from './game.module.css';
 
@@ -19,6 +22,15 @@ export function Header() {
   const view = useGameState(activeView);
   const turn = useGameState((state) => state.log.filter((event) => event.type === 'turn-advanced').length + 1);
   const { openChart } = useReference();
+  // Always-rendered brand region, not the `{view && ...}` status block below —
+  // that block is null on a bot's or a remote player's turn, exactly when a
+  // spectator most wants the mute control (KTD5).
+  const [muted, setMuted] = useState(() => soundManager.isMuted());
+  const toggleMuted = () => {
+    const next = !muted;
+    soundManager.setMuted(next);
+    setMuted(next);
+  };
 
   // "?" opens the stock reference, unless a text field has focus
   useEffect(() => {
@@ -36,17 +48,27 @@ export function Header() {
     <header className={styles.header}>
       <div className={styles.brand}>
         <img src={logoUrl} alt="Boomtown" className={styles.brandLogo} />
+        <span className={styles.brandDivider} aria-hidden />
         <span className={styles.tagline}>seven start-ups, one skyline</span>
+        <button
+          type="button"
+          className={styles.muteButton}
+          onClick={toggleMuted}
+          aria-label={muted ? 'Unmute sound' : 'Mute sound'}
+          aria-pressed={muted}
+        >
+          {muted ? <SpeakerXMarkIcon width={16} height={16} /> : <SpeakerWaveIcon width={16} height={16} />}
+        </button>
       </div>
       {view && (
         <div className={styles.status}>
-          <span>{editionLabel(view.ruleset.id)}</span>
-          <span>
-            Turn <span className="tabnum">{turn}</span>
+          <span className={styles.statusLabel}>{editionLabel(view.ruleset.id)}</span>
+          <span className={styles.turnReadout}>
+            <span className={styles.statusLabel}>Turn</span> <span className="serif tabnum">{turn}</span>
           </span>
-          <button type="button" className={styles.reference} onClick={openChart}>
+          <Button variant="onChrome" className={styles.reference} onClick={openChart}>
             Reference
-          </button>
+          </Button>
           <span className={styles.phase}>{PHASE[view.step]}</span>
         </div>
       )}

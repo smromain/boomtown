@@ -42,9 +42,10 @@ describe('CorporationBand', () => {
     expect(within(band).queryByText(/Chapter Eleven/)).not.toBeInTheDocument();
   });
 
-  it('says so when nothing is founded yet', async () => {
-    await renderPanel(<CorporationBand />);
+  it('says so when nothing is founded yet, with the R13 skyline illustration', async () => {
+    const { container } = await renderPanel(<CorporationBand />);
     expect(screen.getByText(/No corporations founded yet/)).toBeInTheDocument();
+    expect(container.querySelector('svg[role="presentation"]')).toBeTruthy();
   });
 
   it('widens a card in proportion to how many corporations it contains', async () => {
@@ -78,13 +79,15 @@ describe('TrayStrip', () => {
     expect(within(tray).queryByText(NAMES.video)).not.toBeInTheDocument(); // founded -> not here
   });
 
-  it('renders nothing when every industry is founded', async () => {
-    await renderPanel(<TrayStrip />, {
+  it('shows the "every corporation is founded" empty state (R13/U13), not nothing, once the tray is empty', async () => {
+    const { container } = await renderPanel(<TrayStrip />, {
       craft: (state) => {
         INDUSTRIES.forEach((industry, i) => seedCorp(state, industry, [`${i + 1}I`]));
       },
     });
-    expect(screen.queryByRole('region', { name: 'In the tray' })).not.toBeInTheDocument();
+    const tray = screen.getByRole('region', { name: 'In the tray' });
+    expect(tray).toHaveTextContent(/Every corporation is founded/);
+    expect(container.querySelector('svg[role="presentation"]')).toBeTruthy();
   });
 });
 
@@ -197,9 +200,10 @@ describe('StoryCard', () => {
     expect(within(story).queryByText(/primary|secondary|tertiary/)).not.toBeInTheDocument();
   });
 
-  it('falls back to the recent log when there is no merger', async () => {
-    await renderPanel(<StoryCard />);
+  it('falls back to the recent log when there is no merger, with the R13 skyline illustration', async () => {
+    const { container } = await renderPanel(<StoryCard />);
     expect(screen.getByText(/No moves yet/)).toBeInTheDocument();
+    expect(container.querySelector('svg[role="presentation"]')).toBeTruthy();
   });
 
   it('the recent-events log uses company and player names, never industry keys', async () => {
@@ -405,6 +409,23 @@ describe('BuyModal', () => {
       },
     });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('minimizes to a pill and restores', async () => {
+    await renderPanel(<BuyModal />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['5H', '5I', '4I']);
+        state.step = 'buy';
+        state.hands[0] = [];
+      },
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /Peek at the board/ }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Resume buying stock/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Buy stock' });
+    expect(within(dialog).getByRole('button', { name: /Buy nothing/ })).toBeInTheDocument();
   });
 });
 

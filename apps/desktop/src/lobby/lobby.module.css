@@ -3,18 +3,69 @@
   margin: 3rem auto;
   padding: 1.5rem;
   background: var(--surface);
-  border-radius: 12px;
+  border-radius: 8px;
+  box-shadow: var(--elev-2);
 }
 
 .screen h1 {
   margin: 0 0 1.25rem;
 }
 
+/* The launch beat (U9, F2): the first thing seen sets a tone rather than
+   presenting a form — the wordmark, the skyline, atmosphere — on the same ink
+   chrome as the header and the full-screen beats (KTD1). */
+.launch {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--chrome-bg);
+  color: var(--chrome-ink);
+}
+
+.launchArt {
+  position: absolute;
+  inset: auto 0 0 0;
+  width: 100%;
+  height: 45%;
+  opacity: 0.5;
+}
+
+.launchContent {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  text-align: center;
+  padding: 2rem;
+}
+
 .logo {
   display: block;
   width: min(26rem, 80%);
   height: auto;
-  margin: 1.5rem auto 2rem;
+  margin: 0 auto;
+  filter: brightness(1.9) saturate(0.85);
+}
+
+.launchTagline {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--chrome-muted);
+}
+
+/* The launch screen's Local/Online choice (U9) — <Button> components, styled
+   entirely by the Button primitive. Distinct from `.choice` below (CreateJoin's
+   raw-<button> Create/Join tab toggle) so the two never fight over background
+   and text colour on the same class name. */
+.launchChoice {
+  display: flex;
+  gap: 0.75rem;
 }
 
 .choice {

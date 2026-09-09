@@ -5,7 +5,11 @@ import { NewGame, type StartedGame } from './setup/NewGame.js';
 import { CreateJoin } from './lobby/CreateJoin.js';
 import { SeatList } from './lobby/SeatList.js';
 import { SettingsDialog } from './settings/SettingsDialog.js';
+import { DebugBeatPreview } from './beats/debug/DebugBeatPreview.js';
+import type { PreviewKind } from './beats/debug/fixtures.js';
 import type { OnlineGame } from './online/onlineGame.js';
+import { Button } from './ui/Button.js';
+import { Skyline } from './art/Skyline.js';
 import logoUrl from './assets/boomtown-logo.png';
 import styles from './lobby/lobby.module.css';
 
@@ -21,6 +25,7 @@ type Screen =
 export function App() {
   const [screen, setScreen] = useState<Screen>({ kind: 'menu' });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [debugBeat, setDebugBeat] = useState<PreviewKind | null>(null);
 
   // A local game's client/bot-driver and an online room's socket live outside
   // React. They must be torn down when that game is actually left (back to the
@@ -60,20 +65,29 @@ export function App() {
   switch (screen.kind) {
     case 'menu':
       return (
-        <section className={styles.screen} aria-label="Main menu">
-          <img src={logoUrl} alt="Boomtown" className={styles.logo} />
-          <div className={styles.choice}>
-            <button type="button" onClick={() => setScreen({ kind: 'local-setup' })}>
-              Local game
-            </button>
-            <button type="button" onClick={() => setScreen({ kind: 'online-setup' })}>
-              Play online
-            </button>
+        <section className={styles.launch} aria-label="Main menu">
+          <Skyline tone="chrome" className={styles.launchArt} />
+          <div className={styles.launchContent}>
+            <img src={logoUrl} alt="Boomtown" className={styles.logo} />
+            <p className={styles.launchTagline}>seven start-ups, one skyline</p>
+            <div className={styles.launchChoice}>
+              <Button variant="primary" onClick={() => setScreen({ kind: 'local-setup' })}>
+                Local game
+              </Button>
+              <Button variant="onChrome" onClick={() => setScreen({ kind: 'online-setup' })}>
+                Play online
+              </Button>
+            </div>
+            <Button variant="onChrome" onClick={() => setSettingsOpen(true)}>
+              Settings
+            </Button>
           </div>
-          <button type="button" className={styles.back} onClick={() => setSettingsOpen(true)}>
-            Settings
-          </button>
-          <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+          <SettingsDialog
+            open={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+            onDebugTrigger={setDebugBeat}
+          />
+          <DebugBeatPreview kind={debugBeat} onDismiss={() => setDebugBeat(null)} />
         </section>
       );
 

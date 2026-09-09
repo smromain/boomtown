@@ -3,6 +3,8 @@ import { useAnyView, useGameState } from '../client/GameClientProvider.js';
 import { describeEvent } from '../panels/eventText.js';
 import { IndustryMark } from './marks.js';
 import { Marquee } from './Marquee.js';
+import { Panel } from '../ui/Panel.js';
+import { Skyline } from '../art/Skyline.js';
 import { eventIndustry, isHeadline, latestMerger, mergerProse, type BonusLine } from './story.js';
 import styles from './game.module.css';
 
@@ -35,7 +37,10 @@ export function StoryCard() {
     return (
       <section className={styles.quietLog} aria-label="Story">
         {recent.length === 0 ? (
-          <p className={styles.quiet}>No moves yet. Place a tile to begin.</p>
+          <div className={styles.storyEmpty}>
+            <Skyline tone="ink" className={styles.storyEmptyArt} />
+            <p className={styles.quiet}>No moves yet. Place a tile to begin.</p>
+          </div>
         ) : (
           <ol className={styles.log}>
             {recent.map((event, index) => {
@@ -65,7 +70,7 @@ export function StoryCard() {
   const nameOf = (seat: number) => view.seats[seat]?.name ?? `Seat ${seat}`;
 
   return (
-    <section className={`${styles.card} ${styles.story}`} aria-label="Story">
+    <Panel as="section" frame="top-rule" className={`${styles.card} ${styles.story}`} aria-label="Story">
       <div className={styles.storyHeading} style={{ color: survivorColor }}>
         {merger.survivor && <IndustryMark industry={merger.survivor} color={survivorColor} size={22} />}
         <span className="serif">{`${names.join(' + ')} merge at ${merger.placedTile}`}</span>
@@ -108,7 +113,7 @@ export function StoryCard() {
             ? `${survivorName} carries on, larger than before.`
             : 'Resolve the merger in the prompt.')}
       </p>
-    </section>
+    </Panel>
   );
 }
 

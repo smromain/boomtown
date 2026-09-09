@@ -3,7 +3,8 @@
   margin: 3rem auto;
   padding: 1.5rem;
   background: var(--surface);
-  border-radius: 12px;
+  border-radius: 8px;
+  box-shadow: var(--elev-2);
 }
 
 .screen h1 {
@@ -51,11 +52,23 @@
 .seat select,
 .field select {
   padding: 0.4rem;
+  padding-right: 1.6rem;
   background: var(--input);
   border: 1px solid var(--rule);
   border-radius: 4px;
   color: var(--ink);
   font: inherit;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23867a6d' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+}
+
+.seat select:focus-visible,
+.field select:focus-visible,
+.seat input[type='text']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .difficulty {

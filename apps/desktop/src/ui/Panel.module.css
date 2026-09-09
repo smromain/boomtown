@@ -1,0 +1,25 @@
+.panel {
+  background: var(--surface);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.panel[data-elevation='1'] {
+  box-shadow: var(--elev-1);
+}
+
+.panel[data-elevation='2'] {
+  box-shadow: var(--elev-2);
+}
+
+.panel[data-elevation='3'] {
+  box-shadow: var(--elev-3);
+}
+
+.panel[data-frame='top-rule'] {
+  border-top: var(--frame-top-rule);
+}
+
+.panel[data-frame='rule'] {
+  border: 1px solid var(--rule);
+}

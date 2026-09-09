@@ -70,35 +70,37 @@ export function Board() {
   };
 
   return (
-    <div
-      className={styles.board}
-      role="grid"
-      aria-label="Board"
-      style={{
-        gridTemplateColumns: `var(--hdr) repeat(${cols}, 1fr)`,
-        gridTemplateRows: `var(--hdr) repeat(${rows}, 1fr)`,
-        aspectRatio: `${cols + HDR_FRACTION} / ${rows + HDR_FRACTION}`,
-      }}
-    >
-      <div className={styles.corner} aria-hidden />
-      {Array.from({ length: cols }, (_, i) => (
-        <div key={`c${i}`} className={styles.header} aria-hidden>
-          {i + 1}
-        </div>
-      ))}
-
-      {Array.from({ length: rows }, (_, r) => (
-        <RowFragment key={`r${r}`}>
-          <div className={styles.header} aria-hidden>
-            {ROW_LETTERS[r]}
+    <div className={styles.stage}>
+      <div
+        className={styles.board}
+        role="grid"
+        aria-label="Board"
+        style={{
+          gridTemplateColumns: `var(--hdr) repeat(${cols}, 1fr)`,
+          gridTemplateRows: `var(--hdr) repeat(${rows}, 1fr)`,
+          aspectRatio: `${cols + HDR_FRACTION} / ${rows + HDR_FRACTION}`,
+        }}
+      >
+        <div className={styles.corner} aria-hidden />
+        {Array.from({ length: cols }, (_, i) => (
+          <div key={`c${i}`} className={styles.header} aria-hidden>
+            {i + 1}
           </div>
-          {cells
-            .filter((c) => parseTile(c.tile).row === r + 1)
-            .map((c) => (
-              <BoardCell key={c.tile} cell={c} disabled={busy || c.kind !== 'playable'} onPick={pick} view={view} />
-            ))}
-        </RowFragment>
-      ))}
+        ))}
+
+        {Array.from({ length: rows }, (_, r) => (
+          <RowFragment key={`r${r}`}>
+            <div className={styles.header} aria-hidden>
+              {ROW_LETTERS[r]}
+            </div>
+            {cells
+              .filter((c) => parseTile(c.tile).row === r + 1)
+              .map((c) => (
+                <BoardCell key={c.tile} cell={c} disabled={busy || c.kind !== 'playable'} onPick={pick} view={view} />
+              ))}
+          </RowFragment>
+        ))}
+      </div>
     </div>
   );
 }
@@ -120,9 +122,24 @@ function BoardCell({
   view: ClientView;
 }) {
   const industry = cell.industry;
+  // The tilted board's lit-paper cell treatment (U8): a per-industry gradient
+  // (not a flat fill) with a stacked "tile edge" shadow and a translateZ lift
+  // that reads as thickness under the perspective tilt — the HQ tile sits
+  // slightly proud of its neighbours.
   const style =
     cell.kind === 'corp' && industry
-      ? { background: INDUSTRY_INFO[industry].color, color: INDUSTRY_INFO[industry].ink }
+      ? (() => {
+          const { color, ink } = INDUSTRY_INFO[industry];
+          const lift = cell.isHq ? 2.3 : 2;
+          const shade1 = `color-mix(in srgb, ${color} 74%, #1c1917)`;
+          const shade2 = `color-mix(in srgb, ${color} 56%, #1c1917)`;
+          return {
+            background: `linear-gradient(170deg, color-mix(in srgb, ${color} 88%, #fff) 0%, ${color} 62%, ${shade1} 100%)`,
+            color: ink,
+            boxShadow: `0 ${lift}px 0 ${shade1}, 0 ${lift * 2}px 0 ${shade2}, 0 ${lift * 2 + 4}px 10px -4px rgba(60, 45, 30, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3)`,
+            transform: `translateZ(${lift * 3}px)`,
+          };
+        })()
       : undefined;
 
   const content =

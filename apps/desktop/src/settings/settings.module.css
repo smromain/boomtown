@@ -22,6 +22,60 @@
   font: inherit;
 }
 
+.field select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23867a6d' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  padding-right: 1.75rem;
+}
+
+.field input:focus-visible,
+.field select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Dev-only: preview a beat's real animation on fixture data (see
+   DebugBeatPreview) without simulating a game. */
+.debug {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.debugLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.debugButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.debugButton {
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  font-size: 0.8rem;
+  background: var(--input);
+  color: var(--ink);
+  border: 1px dashed var(--rule);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.debugButton:hover {
+  border-color: var(--accent);
+  border-style: solid;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

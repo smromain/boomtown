@@ -110,7 +110,7 @@ describe('evaluate', () => {
 
   it('reports the final total once the game is over', () => {
     const game = blankGame({ seats: 2 });
-    game.result = { rankings: [{ seat: 0, cash: 6000, equity: 5000, total: 11000 }], winners: [0] };
+    game.result = { rankings: [{ seat: 0, cash: 6000, equity: 5000, total: 11000, holdings: [] }], winners: [0] };
     expect(evaluate(game, 0)).toBe(11000);
   });
 });

@@ -1,0 +1,212 @@
+/* Shared beat chrome (U11). Full-screen beats (founding, merger, endgame,
+   victory) drop the same ink curtain the header/launch screen use (KTD1); the
+   buy-stock beat is an in-place flourish, not a takeover (R6 — "buy-stock is
+   the lightest"). */
+
+/* Not a hit-testable full-screen blocker by itself — the buy-stock flourish
+   renders inside this without ever pausing play. Only `.curtain` (the four
+   heavy, full-screen beats) turns pointer-events back on.
+   `.curtain` is `position: absolute; inset: 0`, so it ignores this flexbox
+   entirely and fills `.overlayRoot` regardless of align-items/justify-content
+   — only the flourish (a normal-flow child, no position of its own) is
+   actually centred by it. Centring that way, instead of the child setting its
+   own `position: fixed; left: 50%; transform: translateX(-50%)`, keeps the
+   maths in one place and ties it to the app's own viewport rather than
+   whatever the OS window happens to be. */
+.overlayRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.curtain {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(178deg, #1c1917 0%, #14110f 100%);
+  color: var(--chrome-ink);
+  cursor: pointer;
+  animation: curtainDrop 480ms cubic-bezier(0.16, 0.9, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .curtain {
+    animation: none;
+  }
+}
+
+.curtainGlow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 900px;
+  height: 620px;
+  margin: -310px 0 0 -450px;
+  pointer-events: none;
+}
+
+.kicker {
+  font-size: 10.5px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #d98a4e;
+}
+
+.rule {
+  width: 60px;
+  height: 1px;
+  margin: 12px 0 0;
+  background: var(--chrome-rule);
+}
+
+/* Absolutely positioned (against `.curtain`, its containing block) rather than
+   a normal-flow child: `.curtain` is a `display:flex` row, so an in-flow hint
+   was centred as a second item alongside the main content column, which both
+   misplaced the hint and threw off the content's own centring. */
+.hint {
+  position: absolute;
+  right: 26px;
+  bottom: 26px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #6f665d;
+}
+
+@keyframes curtainDrop {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: riseIn 520ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+}
+
+@keyframes bigIn {
+  from {
+    opacity: 0;
+    transform: scale(1.14);
+    letter-spacing: 0.06em;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    letter-spacing: -0.035em;
+  }
+}
+
+.bigName {
+  font-size: 96px;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  margin-top: 18px;
+  animation: bigIn 700ms cubic-bezier(0.16, 0.9, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bigName {
+    animation: none;
+  }
+}
+
+/* Light flourishes — not a screen takeover. */
+/* A normal-flow child of `.overlayRoot` — centred by its flexbox, not by its
+   own position: fixed (see `.overlayRoot`'s note). */
+.flourish {
+  pointer-events: none;
+  animation: flourishIn 900ms cubic-bezier(0.16, 0.9, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flourish {
+    animation: none;
+  }
+}
+
+@keyframes flourishIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Merger beat — the "blend" stage (F1): the two industry colours slide
+   together and cross into one blended circle, so the accreted name doesn't
+   just appear from nowhere (U11 staged sequence). */
+@keyframes blendSlideL {
+  0% {
+    transform: translateX(-64px) scale(0.7);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes blendSlideR {
+  0% {
+    transform: translateX(64px) scale(0.7);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes blendPulse {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

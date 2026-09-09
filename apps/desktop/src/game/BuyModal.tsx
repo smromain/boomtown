@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { localActiveView } from '@boomtown/client-core';
 import { useGameState, useLocalSeats } from '../client/GameClientProvider.js';
@@ -14,6 +15,10 @@ import styles from '../decisions/decisions.module.css';
  * It waits for `TurnHandoff` to hand the machine to the active seat — after a
  * merger where someone else disposed, the machine is still with that disposer,
  * and opening here would let them make the mergemaker's purchase.
+ *
+ * Minimizes to a corner pill the same way `DecisionModal`'s founding/disposal
+ * prompts do — nothing about a purchase commits until "Confirm", so peeking at
+ * the board first is always safe.
  */
 export function BuyModal() {
   const local = useLocalSeats();
@@ -21,6 +26,19 @@ export function BuyModal() {
   const activeSeat = useGameState((state) => state.activeSeat);
   const atBuyStep = useGameState((state) => localActiveView(state, local)?.step === 'buy');
   const open = atBuyStep && !needsHandoff(activeSeat);
+
+  const [minimized, setMinimized] = useState(false);
+  useEffect(() => {
+    if (!open) setMinimized(false);
+  }, [open]);
+
+  if (open && minimized) {
+    return (
+      <button type="button" className={styles.minimizedPill} onClick={() => setMinimized(false)}>
+        Resume buying stock ↑
+      </button>
+    );
+  }
 
   return (
     <Dialog.Root open={open}>
@@ -33,6 +51,9 @@ export function BuyModal() {
           onInteractOutside={(e) => e.preventDefault()}
         >
           <Dialog.Title className={styles.srOnly}>Buy stock</Dialog.Title>
+          <button type="button" className={styles.minimizeButton} onClick={() => setMinimized(true)}>
+            Peek at the board ↓
+          </button>
           <BuyControls />
         </Dialog.Content>
       </Dialog.Portal>
