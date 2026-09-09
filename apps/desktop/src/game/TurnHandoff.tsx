@@ -2,6 +2,7 @@ import { activeView } from '@boomtown/client-core';
 import type { Seat } from '@boomtown/engine';
 import { useGameState, useLocalSeats } from '../client/GameClientProvider.js';
 import { useHotSeat } from './HotSeatContext.js';
+import { useActiveBeat } from '../beats/BeatContext.js';
 import type { GameConfig } from '../setup/gameConfig.js';
 import styles from './turnHandoff.module.css';
 
@@ -16,6 +17,13 @@ import styles from './turnHandoff.module.css';
  * merger step or a founding. Everywhere else — a plain turn pass, and the buy
  * step after a merger where someone else disposed — this hands the machine
  * *back* to the active seat. Both components share `useHotSeat`'s holder.
+ *
+ * It also steps aside while a beat is active. A table-level beat (founding,
+ * merger, endgame, victory) shows nothing private — it's meant for whoever is
+ * watching, before anyone claims the machine — so it must play in full first.
+ * Without this, a merger's climax and the next hand-off could both mount at
+ * once, and this opaque, higher-stacked card would silently hide the beat's
+ * entire animation behind itself.
  */
 export function TurnHandoff({ config }: { config: GameConfig }) {
   const view = useGameState(activeView);
@@ -23,6 +31,7 @@ export function TurnHandoff({ config }: { config: GameConfig }) {
   const local = useLocalSeats();
   const over = useGameState((state) => state.status === 'over');
   const { claim, needsHandoff } = useHotSeat();
+  const { active: activeBeat } = useActiveBeat();
 
   // a decision prompt (merger step, or the founding choice) owns the screen
   const promptOpen =
@@ -31,7 +40,7 @@ export function TurnHandoff({ config }: { config: GameConfig }) {
 
   const actor: Seat | null = decisionSeat ?? view?.activeSeat ?? null;
 
-  if (over || promptOpen || actor === null || !needsHandoff(actor)) return null;
+  if (over || promptOpen || activeBeat != null || actor === null || !needsHandoff(actor)) return null;
   if (config.seats[actor]?.kind !== 'human') return null; // bots don't pass the machine
 
   const name = view?.seats[actor]?.name ?? `Player ${actor + 1}`;

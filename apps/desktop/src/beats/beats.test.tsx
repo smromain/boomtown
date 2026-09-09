@@ -7,8 +7,17 @@ import { createGame } from '@boomtown/engine';
 import { triggerFor } from './beatTriggers.js';
 import { EMPTY_BEAT_QUEUE, advance, enqueue, type BeatQueue } from './beatQueue.js';
 import { BeatOrchestrator } from './BeatOrchestrator.js';
+import { BeatProvider } from './BeatContext.js';
 import { GameClientProvider } from '../client/GameClientProvider.js';
+import { TurnHandoff } from '../game/TurnHandoff.js';
+import { DecisionModal } from '../decisions/DecisionModal.js';
+import { defaultConfig } from '../setup/gameConfig.js';
 import { flush, mergedName, NAMES, renderPanel, seedCorp } from '../testing/harness.js';
+
+const humans = (count: number) => ({
+  ...defaultConfig(),
+  seats: Array.from({ length: count }, (_, i) => ({ name: `P${i}`, kind: 'human' as const, difficulty: 5 })),
+});
 
 vi.mock('../audio/soundManager.js', () => ({ soundManager: { play: vi.fn(), isMuted: () => false, setMuted: vi.fn() } }));
 const { soundManager } = await import('../audio/soundManager.js');
@@ -101,7 +110,11 @@ describe('beatQueue (pure)', () => {
 
 describe('BeatOrchestrator (component, real dispatch)', () => {
   it('the founding beat renders for a live founding, plays sound, and dismisses on Escape', async () => {
-    const { client } = await renderPanel(<BeatOrchestrator />, {
+    const { client } = await renderPanel(
+      <BeatProvider>
+        <BeatOrchestrator />
+      </BeatProvider>,
+      {
       craft: (state) => {
         state.cells['6F'] = { kind: 'unincorporated' };
         state.hands[0] = ['6E'];
@@ -134,7 +147,11 @@ describe('BeatOrchestrator (component, real dispatch)', () => {
       removeEventListener: vi.fn(),
     }));
     try {
-      const { client } = await renderPanel(<BeatOrchestrator />, {
+      const { client } = await renderPanel(
+      <BeatProvider>
+        <BeatOrchestrator />
+      </BeatProvider>,
+      {
         craft: (state) => {
           state.cells['6F'] = { kind: 'unincorporated' };
           state.hands[0] = ['6E'];
@@ -182,7 +199,9 @@ describe('BeatOrchestrator (component, real dispatch)', () => {
     // Now mount the orchestrator on the same client/log.
     render(
       <GameClientProvider client={client} localSeats={[0, 1]}>
-        <BeatOrchestrator />
+        <BeatProvider>
+          <BeatOrchestrator />
+        </BeatProvider>
       </GameClientProvider>,
     );
     await flush();
@@ -197,7 +216,11 @@ describe('BeatOrchestrator (component, real dispatch)', () => {
   });
 
   it('the merger beat renders the accreted survivor after a real merger resolves', async () => {
-    const { client } = await renderPanel(<BeatOrchestrator />, {
+    const { client } = await renderPanel(
+      <BeatProvider>
+        <BeatOrchestrator />
+      </BeatProvider>,
+      {
       craft: (state) => {
         seedCorp(state, 'video', ['2E', '3E', '4E']); // survives (larger)
         seedCorp(state, 'books', ['6E', '7E']); // defunct, nobody holds it
@@ -217,7 +240,11 @@ describe('BeatOrchestrator (component, real dispatch)', () => {
   it('a buy-stock flourish auto-dismisses without blocking play (does not require a key/click)', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
-      const { client } = await renderPanel(<BeatOrchestrator />, {
+      const { client } = await renderPanel(
+      <BeatProvider>
+        <BeatOrchestrator />
+      </BeatProvider>,
+      {
         craft: (state) => {
           state.hands[0] = ['5E'];
         },
@@ -234,7 +261,11 @@ describe('BeatOrchestrator (component, real dispatch)', () => {
   });
 
   it('renders nothing (and plays no sound) while a decision prompt owns the screen', async () => {
-    const { client } = await renderPanel(<BeatOrchestrator />, {
+    const { client } = await renderPanel(
+      <BeatProvider>
+        <BeatOrchestrator />
+      </BeatProvider>,
+      {
       craft: (state) => {
         seedCorp(state, 'video', ['3E', '4E']); // tied size -> survivor prompt
         seedCorp(state, 'books', ['6E', '7E']);
@@ -247,5 +278,58 @@ describe('BeatOrchestrator (component, real dispatch)', () => {
     });
     // merger-completed has not landed yet (a decision is pending) -> no beat
     expect(screen.queryByRole('dialog', { name: 'Merger' })).not.toBeInTheDocument();
+  });
+});
+
+describe('TurnHandoff defers to an active beat (regression)', () => {
+  it('does not cover the merger beat with the hot-seat hand-off card; the hand-off appears once the beat is dismissed', async () => {
+    // The exact shape that triggered the bug: seat 2 (not the mergemaker) must
+    // dispose, so the machine ends up with seat 2 when merger-completed lands
+    // and control returns to the mergemaker (seat 0) for the buy step —
+    // TurnHandoff and the merger beat both want the screen at the same time.
+    const { client } = await renderPanel(
+      <BeatProvider>
+        <DecisionModal />
+        <TurnHandoff config={humans(3)} />
+        <BeatOrchestrator />
+      </BeatProvider>,
+      {
+        craft: (state) => {
+          seedCorp(state, 'video', ['2E', '3E', '4E']); // survives
+          seedCorp(state, 'books', ['6E', '7E']); // defunct
+          state.seats[2]!.holdings.books = 4; // seat 2 disposes; mergemaker is seat 0
+          state.hands[0] = ['5E'];
+        },
+      },
+    );
+
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+      await flush();
+    });
+    // hand to seat 2 for the disposal, they confirm and dispose
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: /show my decision/ }));
+      await flush();
+    });
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+      await flush();
+    });
+
+    // merger-completed has landed; the machine is still with seat 2, not the
+    // mergemaker (seat 0) — the old bug: TurnHandoff (opaque, higher z-index)
+    // rendered right on top of the beat and hid its entire animation.
+    const beat = await screen.findByRole('dialog', { name: 'Merger' });
+    expect(beat).toHaveTextContent(mergedName('video', 'books'));
+    expect(screen.queryByRole('dialog', { name: 'Turn handoff' })).not.toBeInTheDocument();
+
+    // dismissing the beat is what lets the hand-off finally appear
+    await act(async () => {
+      await userEvent.keyboard('{Escape}');
+    });
+    expect(screen.queryByRole('dialog', { name: 'Merger' })).not.toBeInTheDocument();
+    const handoff = screen.getByRole('dialog', { name: 'Turn handoff' });
+    expect(handoff).toHaveTextContent('Ana'); // hand back to the mergemaker (harness seat 0)
   });
 });

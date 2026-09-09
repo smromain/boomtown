@@ -5,6 +5,7 @@ import {
   useIsLocalTurn,
 } from '../client/GameClientProvider.js';
 import { BeatOrchestrator } from '../beats/BeatOrchestrator.js';
+import { BeatProvider } from '../beats/BeatContext.js';
 import { DecisionModal } from '../decisions/DecisionModal.js';
 import type { StartedGame } from '../setup/NewGame.js';
 import { ActionBar } from './ActionBar.js';
@@ -35,17 +36,19 @@ export function GameScreen({ game, onExit }: { game: StartedGame; onExit?: () =>
     <GameClientProvider client={game.client} localSeats={game.localSeats}>
       <HotSeatProvider>
         <ReferenceProvider>
-          <PlayArea
-            config={game.config}
-            nudgeBots={game.nudgeBots}
-            snapshot={game.snapshot}
-            onExit={onExit}
-          />
-          <DecisionModal />
-          <BuyModal />
-          <TurnHandoff config={game.config} />
-          <ErrorToast />
-          <BeatOrchestrator />
+          <BeatProvider>
+            <PlayArea
+              config={game.config}
+              nudgeBots={game.nudgeBots}
+              snapshot={game.snapshot}
+              onExit={onExit}
+            />
+            <DecisionModal />
+            <BuyModal />
+            <TurnHandoff config={game.config} />
+            <ErrorToast />
+            <BeatOrchestrator />
+          </BeatProvider>
         </ReferenceProvider>
       </HotSeatProvider>
     </GameClientProvider>
