@@ -67,8 +67,14 @@
   background: var(--chrome-rule);
 }
 
+/* Absolutely positioned (against `.curtain`, its containing block) rather than
+   a normal-flow child: `.curtain` is a `display:flex` row, so an in-flow hint
+   was centred as a second item alongside the main content column, which both
+   misplaced the hint and threw off the content's own centring. */
 .hint {
-  margin-top: 26px;
+  position: absolute;
+  right: 26px;
+  bottom: 26px;
   font-size: 10px;
   letter-spacing: 0.08em;
   color: #6f665d;
