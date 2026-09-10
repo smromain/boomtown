@@ -13,3 +13,10 @@ export {
   normalizeDifficulty,
 } from './difficulty.js';
 export { scoreMove, bestScore, ownMoves } from './heuristic.js';
+export {
+  type Ledger,
+  emptyLedger,
+  ledgerFrom,
+  estimateHoldings,
+} from './ledger.js';
+export { redactFor, beliefState } from './redact.js';

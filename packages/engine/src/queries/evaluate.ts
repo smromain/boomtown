@@ -5,9 +5,17 @@ import { activeCorporations, corpSize, sharePriceOf, type GameState, type Seat }
 /**
  * A per-seat position value (R8): net worth now, plus a weighted estimate of
  * unrealized position — merger-bonus exposure and growth headroom in the
- * corporations the seat is invested in. Pure and deterministic; reads only
- * public state and `seat`'s own holdings. U14 layers the real bot heuristic on
- * top of this.
+ * corporations the seat is invested in. Pure and deterministic. U14 layers the
+ * real bot heuristic on top of this.
+ *
+ * It reads **every** seat's holdings, via `bonusExposure` — it has to, since
+ * bonus rank depends on how a holding compares with the rest of the table. This
+ * docstring used to claim it read only public state and `seat`'s own holdings,
+ * which was never true and mattered once holdings became secret (#25). The
+ * boundary is the caller's: a bot is handed a redacted state whose other
+ * holdings are ledger estimates rather than the truth (`@boomtown/ai`'s
+ * `redactFor`), so what this function ranks is a belief. Given the real state
+ * it ranks the real thing, which is what the engine's own callers want.
  */
 export function evaluate(state: GameState, seat: Seat): number {
   let value = state.seats[seat]!.cash;
