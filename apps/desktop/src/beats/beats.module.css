@@ -217,3 +217,32 @@
     opacity: 1;
   }
 }
+
+/* The buy-stock pill. The overlay root and `.flourish` are both
+   `pointer-events: none` so a click falls through to the board — a light beat
+   never blocks play (R6/U11) — and this takes pointer events back so the beat
+   has one dismiss target of its own. Inherits the chrome treatment the pill
+   already had inline. */
+.flourishPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--chrome-bg);
+  color: var(--chrome-ink);
+  box-shadow: var(--elev-3);
+  font: inherit;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.flourishPill:hover {
+  background: color-mix(in srgb, var(--chrome-bg) 88%, var(--chrome-ink));
+}
+
+.flourishPill:focus-visible {
+  outline: 2px solid var(--chrome-ink);
+  outline-offset: 2px;
+}

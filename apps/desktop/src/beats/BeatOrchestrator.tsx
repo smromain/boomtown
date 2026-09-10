@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { anyView } from '@boomtown/client-core';
 import { useGameState } from '../client/GameClientProvider.js';
 import { useActiveBeat } from './BeatContext.js';
@@ -12,7 +13,7 @@ import styles from './beats.module.css';
  * itself, so it can't be private to this component (see `BeatContext`'s doc).
  */
 export function BeatOrchestrator() {
-  const { active, dismiss } = useActiveBeat();
+  const { active, serial, dismiss } = useActiveBeat();
   const view = useGameState(anyView);
   const log = useGameState((state) => state.log);
   const pendingDecision = useGameState((state) => state.pendingDecision);
@@ -30,9 +31,14 @@ export function BeatOrchestrator() {
     ? styles.overlayRoot
     : `${styles.overlayRoot} ${styles.aboveHandoff}`;
 
+  // `key={serial}` is load-bearing, not tidiness. Beats are plain data, so one
+  // buy-stock beat succeeding another is the same element type in the same
+  // position and React reconciles them into one instance — leaving the second
+  // beat's mount effect (which arms its auto-dismiss) un-run, and the flourish
+  // on screen for good. The serial forces the remount.
   return (
     <div className={stacking} aria-live="polite">
-      {renderBeat(active, view, log, dismiss)}
+      <Fragment key={serial}>{renderBeat(active, view, log, dismiss)}</Fragment>
     </div>
   );
 }

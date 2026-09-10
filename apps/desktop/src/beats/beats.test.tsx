@@ -60,11 +60,11 @@ describe('beatTriggers.triggerFor (pure)', () => {
 describe('beatQueue (pure)', () => {
   it('the first beat becomes active immediately', () => {
     const q = enqueue(EMPTY_BEAT_QUEUE, { id: 'victory' });
-    expect(q).toEqual({ active: { id: 'victory' }, pending: [] });
+    expect(q).toEqual({ active: { id: 'victory' }, pending: [], serial: 1 });
   });
 
   it('queues behind an active beat, then collapses to the latest past the bound', () => {
-    let q: BeatQueue = { active: { id: 'endgame', seat: 0 }, pending: [] };
+    let q: BeatQueue = { active: { id: 'endgame', seat: 0 }, pending: [], serial: 1 };
     q = enqueue(q, { id: 'founding', industry: 'books' });
     q = enqueue(q, { id: 'founding', industry: 'air' });
     q = enqueue(q, { id: 'founding', industry: 'energy' });
@@ -73,7 +73,7 @@ describe('beatQueue (pure)', () => {
   });
 
   it('a merger beat in the backlog survives a collapse; lesser beats are dropped instead', () => {
-    let q: BeatQueue = { active: { id: 'endgame', seat: 0 }, pending: [] };
+    let q: BeatQueue = { active: { id: 'endgame', seat: 0 }, pending: [], serial: 1 };
     q = enqueue(q, { id: 'founding', industry: 'books' });
     q = enqueue(q, { id: 'merger' });
     q = enqueue(q, { id: 'founding', industry: 'air' });
@@ -82,10 +82,23 @@ describe('beatQueue (pure)', () => {
   });
 
   it('advance promotes the next pending beat', () => {
-    let q: BeatQueue = { active: { id: 'victory' }, pending: [{ id: 'endgame', seat: 0 }] };
+    let q: BeatQueue = { active: { id: 'victory' }, pending: [{ id: 'endgame', seat: 0 }], serial: 1 };
     q = advance(q);
-    expect(q).toEqual({ active: { id: 'endgame', seat: 0 }, pending: [] });
-    expect(advance(q)).toEqual({ active: null, pending: [] });
+    expect(q).toEqual({ active: { id: 'endgame', seat: 0 }, pending: [], serial: 2 });
+    expect(advance(q)).toEqual({ active: null, pending: [], serial: 2 });
+  });
+
+  it('gives every beat that becomes active a distinct serial, including an identical repeat', () => {
+    // Two buys by the same seat for the same cost are `toEqual` one another —
+    // the serial is the only thing that distinguishes them, and it is what
+    // stops the second reconciling into the first's component instance.
+    const beat = { id: 'buy-stock', seat: 0, cost: 600, picks: { books: 1 } } as const;
+    let q = enqueue(EMPTY_BEAT_QUEUE, beat);
+    q = enqueue(q, beat);
+    const first = q.serial;
+    q = advance(q);
+    expect(q.active).toEqual(beat);
+    expect(q.serial).toBe(first + 1);
   });
 });
 
@@ -305,7 +318,76 @@ describe('BeatOrchestrator (component, real dispatch)', () => {
     expect(within(beat).queryByText(/majority|minority/)).not.toBeInTheDocument();
   });
 
-  it('a buy-stock flourish auto-dismisses without blocking play (does not require a key/click)', async () => {
+  it('a second buy-stock flourish auto-dismisses too — the regression that stuck one on screen', async () => {
+    // Driven by appending to the client log rather than by two real buys: a
+    // seat may only buy once per turn, and `BeatProvider`'s contract is
+    // precisely "an event appended past the hydration mark becomes a beat", so
+    // this exercises the pipeline the bug lives in without fighting the turn
+    // machinery to arrange a second purchase.
+    const { client } = await renderPanel(
+      <BeatProvider>
+        <BeatOrchestrator />
+      </BeatProvider>,
+      { craft: (state) => seedCorp(state, 'books', ['1A', '2A']) },
+    );
+
+    const buy = async (seat: number, cost: number) => {
+      await act(async () => {
+        client.store.setState((s) => ({
+          ...s,
+          log: [...s.log, { type: 'shares-bought', seat, picks: { books: 1 }, cost }],
+        }));
+        await flush();
+      });
+    };
+    const hold = () => act(async () => { await new Promise((r) => setTimeout(r, 1400)); });
+
+    // Both buys land while the first beat is still on screen, so the second
+    // waits in `pending` and is promoted straight into `active` — no unmount in
+    // between. That is the shape that broke: a natural unmount (the queue going
+    // empty between beats) re-arms the timer by itself and hides the bug.
+    await buy(0, 600);
+    await buy(1, 900);
+    expect(screen.getByRole('status', { name: /bought stock/ })).toBeInTheDocument();
+
+    // first hold expires -> the queued second beat is promoted in its place
+    await hold();
+    expect(screen.getByRole('status', { name: /bought stock/ })).toBeInTheDocument();
+
+    // ...and it must dismiss itself too. Without a distinguishing key React
+    // reuses the first beat's instance here, the mount effect never re-runs,
+    // no timer is armed, and this flourish stays up for the rest of the game.
+    await hold();
+    expect(screen.queryByRole('status', { name: /bought stock/ })).not.toBeInTheDocument();
+  }, 15000);
+
+  it('the flourish can be cleared by hand, and does not block the board behind it', async () => {
+    const { client } = await renderPanel(
+      <BeatProvider>
+        <BeatOrchestrator />
+      </BeatProvider>,
+      { craft: (state) => seedCorp(state, 'books', ['1A', '2A']) },
+    );
+    await act(async () => {
+      client.store.setState((s) => ({
+        ...s,
+        log: [...s.log, { type: 'shares-bought', seat: 0, picks: { books: 1 }, cost: 600 }],
+      }));
+      await flush();
+    });
+
+    const pill = screen.getByRole('button', { name: /Dismiss — .* bought stock/ });
+    // the beat's own root stays click-through so play underneath is unblocked
+    expect(screen.getByRole('status', { name: /bought stock/ })).toHaveStyle({ pointerEvents: 'none' });
+
+    await act(async () => {
+      pill.click();
+      await flush();
+    });
+    expect(screen.queryByRole('status', { name: /bought stock/ })).not.toBeInTheDocument();
+  });
+
+  it('a $0 turn pass fires no flourish at all', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
       const { client } = await renderPanel(

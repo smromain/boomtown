@@ -5,11 +5,22 @@ import { EMPTY_BEAT_QUEUE, advance, enqueue, type BeatQueue } from './beatQueue.
 
 interface BeatApi {
   readonly active: Beat | null;
+  /** Identity for the active beat — the orchestrator's React key. See `BeatQueue`. */
+  readonly serial: number;
   readonly dismiss: () => void;
 }
 
-const NOOP: BeatApi = { active: null, dismiss: () => {} };
+const NOOP: BeatApi = { active: null, serial: 0, dismiss: () => {} };
 const BeatContext = createContext<BeatApi>(NOOP);
+
+/**
+ * No beat may hold the screen longer than this. Every beat auto-dismisses on
+ * its own timer; this is the backstop for when one doesn't, so a bug inside a
+ * beat can never strand the queue (and everything waiting behind it) forever.
+ * Comfortably past the merger beat's full staged sequence, which is the
+ * longest by some distance at roughly 18s.
+ */
+const WATCHDOG_MS = 30_000;
 
 /**
  * The beat queue's state, lifted out of `BeatOrchestrator` (which only *renders*
@@ -63,6 +74,15 @@ export function BeatProvider({ children }: { children: ReactNode }) {
     if (el instanceof HTMLElement) el.focus();
   };
 
+  // The backstop. Keyed on `serial`, not on `active`: two consecutive beats can
+  // be `toEqual` one another, and a watchdog that didn't re-arm for the second
+  // one would be exactly the bug it exists to catch.
+  useEffect(() => {
+    if (!queue.active) return;
+    const timer = window.setTimeout(() => setQueue((current) => advance(current)), WATCHDOG_MS);
+    return () => window.clearTimeout(timer);
+  }, [queue.active, queue.serial]);
+
   useEffect(() => {
     if (!queue.active) return;
     const onKey = (e: KeyboardEvent) => {
@@ -75,7 +95,11 @@ export function BeatProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [queue.active]);
 
-  return <BeatContext.Provider value={{ active: queue.active, dismiss }}>{children}</BeatContext.Provider>;
+  return (
+    <BeatContext.Provider value={{ active: queue.active, serial: queue.serial, dismiss }}>
+      {children}
+    </BeatContext.Provider>
+  );
 }
 
 /** Whether a beat currently owns the screen, and how to dismiss it. Outside a
