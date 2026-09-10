@@ -1,12 +1,16 @@
 import { useMemo } from 'react';
 import { allTiles, INDUSTRY_INFO, parseTile, type Cell, type CorpView, type Industry, type TileId } from '@boomtown/engine';
 import type { ClientView } from '@boomtown/client-core';
-import { useGameClient, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
+import { useAnyView, useGameClient, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import { IndustryMark } from '../game/marks.js';
-import { cellTargets, placementFor } from './pick.js';
+import { cellTargets, placementFor, type CellTarget } from './pick.js';
 import styles from './board.module.css';
 
 const ROW_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+/** Stable empty target set for the spectator board — a fresh `new Map()` per
+ *  render would defeat the `useMemo` below. */
+const NO_TARGETS: ReadonlyMap<TileId, CellTarget> = new Map();
 
 /** The coordinate-header track as a fraction of one cell. Keep `--hdr` in
  *  board.module.css in sync (1.5fr). */
@@ -41,13 +45,24 @@ function classify(
  * column-header). It fills its container: the grid is square-celled via
  * `aspect-ratio`, so it scales with the space the layout gives it. A click on a
  * playable cell dispatches its placement (the only board interaction).
+ *
+ * `spectating` renders the same board read-only, for a turn that isn't yours
+ * (a bot's, or a remote player's): the cells come from `useAnyView()` — public
+ * state, safe on any turn — and **no hand is read at all**. That is the point,
+ * not an optimisation: `anyView` returns whichever view comes first in
+ * `state.views`, which in hot-seat is seat 0's, so marking targets from it
+ * would paint one player's hand onto everyone else's screen. With no targets
+ * no cell classifies as `playable`/`dead`, so no cell renders as a button
+ * either — the read-only board has no interactive surface to gate.
  */
-export function Board() {
+export function Board({ spectating = false }: { spectating?: boolean }) {
   const client = useGameClient();
-  const view = useLocalActiveView();
+  const localView = useLocalActiveView();
+  const publicView = useAnyView();
+  const view = spectating ? publicView : localView;
   const busy = useGameState((state) => state.inFlight != null);
 
-  const targets = useMemo(() => cellTargets(view), [view]);
+  const targets = useMemo(() => (spectating ? NO_TARGETS : cellTargets(view)), [spectating, view]);
 
   const { cols, rows, cells } = useMemo(() => {
     if (!view) return { cols: 12, rows: 9, cells: [] as RenderCell[] };
@@ -65,6 +80,10 @@ export function Board() {
   if (!view) return null;
 
   const pick = (tile: TileId): void => {
+    // Unreachable while spectating (no cell renders as a button), but the
+    // command would carry *our* seat, not the seat on the clock — refuse it at
+    // the source rather than rely on the engine rejecting a wrong-seat command.
+    if (spectating) return;
     const command = placementFor(view, busy, tile);
     if (command) client.dispatch(command);
   };
@@ -75,6 +94,7 @@ export function Board() {
         className={styles.board}
         role="grid"
         aria-label="Board"
+        aria-readonly={spectating || undefined}
         style={{
           gridTemplateColumns: `var(--hdr) repeat(${cols}, 1fr)`,
           gridTemplateRows: `var(--hdr) repeat(${rows}, 1fr)`,

@@ -99,6 +99,12 @@
   color: var(--chrome-ink);
 }
 
+.referenceGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .reference {
   font-size: 11px;
   letter-spacing: 0.08em;
@@ -157,13 +163,17 @@
   background: var(--bg);
 }
 
-/* Shown in the board slot while a bot / remote player is on the clock */
+/* Takes the tile rack's place in the right column while a bot / remote player
+   is on the clock. It used to fill the board slot; the board now stays on
+   screen (read-only) on those turns, so this is a card, not a takeover. */
 .waiting {
-  height: 100%;
+  background: var(--surface);
+  border-radius: 4px;
+  box-shadow: var(--elev-1);
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   text-align: center;
   gap: 6px;
   color: var(--muted);
@@ -178,7 +188,7 @@
 }
 
 .waiting h2 {
-  font-size: 1.75rem;
+  font-size: 1.35rem;
   margin: 0;
   color: var(--ink);
 }
@@ -189,7 +199,7 @@
 }
 
 .nudge {
-  margin-top: 16px;
+  margin-top: 10px;
   padding: 8px 16px;
   font: inherit;
   font-size: 13px;

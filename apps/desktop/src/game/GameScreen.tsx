@@ -30,6 +30,12 @@ import styles from './game.module.css';
  * The playing surface, laid out to the Main design artboard: the board alone on
  * the left at its natural size, and a right column that stacks the story, the
  * shareholders table, the tile rack and the contextual action.
+ *
+ * The board stays on screen on every turn. When the seat on the clock isn't
+ * local it renders read-only (`spectating`) so you can follow what the board
+ * is doing while you wait; only the actionable surfaces — the rack, the action
+ * bar and the placement targets — are withheld, and the waiting card takes the
+ * rack's place in the right column.
  */
 export function GameScreen({ game, onExit }: { game: StartedGame; onExit?: () => void }) {
   return (
@@ -69,13 +75,7 @@ function PlayArea({
   const over = useGameState((state) => state.status === 'over');
   const localTurn = useIsLocalTurn();
 
-  const centre = over ? (
-    <GameOver onLeave={onExit} />
-  ) : localTurn ? (
-    <Board />
-  ) : (
-    <WaitingForSeat config={config} nudge={nudgeBots} snapshot={snapshot} />
-  );
+  const centre = over ? <GameOver onLeave={onExit} /> : <Board spectating={!localTurn} />;
 
   return (
     <div className={styles.screen}>
@@ -90,12 +90,14 @@ function PlayArea({
           <div className={styles.column}>
             <StoryCard />
             <Shareholders />
-            {localTurn && !over ? (
+            {over ? null : localTurn ? (
               <>
                 <TileRack />
                 <ActionBar />
               </>
-            ) : null}
+            ) : (
+              <WaitingForSeat config={config} nudge={nudgeBots} snapshot={snapshot} />
+            )}
           </div>
         </div>
         <TrayStrip />
