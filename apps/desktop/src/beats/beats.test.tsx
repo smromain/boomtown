@@ -47,6 +47,27 @@ describe('beatTriggers.triggerFor (pure)', () => {
     expect(triggerFor({ type: 'merger-completed', survivor: 'video' })).toEqual({ id: 'merger' });
   });
 
+  it('resolves the motion beat on its settlement, not on the raise', () => {
+    // A raise beat would queue behind the `cast-vote` prompt it announces and
+    // play after the vote — see the comment on the trigger.
+    expect(triggerFor({ type: 'motion-raised', seat: 0 })).toBeNull();
+    expect(triggerFor({ type: 'vote-cast', seat: 1, inFavour: true, weight: 4 })).toBeNull();
+    expect(triggerFor({ type: 'motion-carried', backers: [0, 1], yes: 10, total: 14 })).toEqual({
+      id: 'motion',
+      carried: true,
+      backers: [0, 1],
+      yes: 10,
+      total: 14,
+    });
+    expect(triggerFor({ type: 'motion-failed', backers: [0], yes: 5, total: 14 })).toEqual({
+      id: 'motion',
+      carried: false,
+      backers: [0],
+      yes: 5,
+      total: 14,
+    });
+  });
+
   it('resolves endgame and victory', () => {
     expect(triggerFor({ type: 'end-announced', seat: 1 })).toEqual({ id: 'endgame', seat: 1 });
     expect(triggerFor({ type: 'game-over', result: { rankings: [], winners: [] } })).toEqual({ id: 'victory' });

@@ -14,6 +14,7 @@ import { CorporationBand, TrayStrip } from './CorporationBand.js';
 import { ErrorToast } from './ErrorToast.js';
 import { GameOver } from './GameOver.js';
 import { Header } from './Header.js';
+import { MotionPanel } from './MotionPanel.js';
 import { OutOfPlay } from './OutOfPlay.js';
 import { Shareholders } from './Shareholders.js';
 import { StoryCard } from './StoryCard.js';
@@ -90,6 +91,7 @@ function PlayArea({
           <div className={styles.column}>
             <StoryCard />
             <Shareholders />
+            <MotionPanel />
             {over ? null : localTurn ? (
               <>
                 <TileRack />

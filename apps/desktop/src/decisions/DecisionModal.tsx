@@ -8,11 +8,13 @@ import { DefunctOrderPrompt } from './DefunctOrderPrompt.js';
 import { DisposalPrompt } from './DisposalPrompt.js';
 import { FoundPrompt } from './FoundPrompt.js';
 import { SurvivorPrompt } from './SurvivorPrompt.js';
+import { VotePrompt } from './VotePrompt.js';
 import styles from './decisions.module.css';
 
 /**
  * The one modal that surfaces every decision the engine can raise for a seat
- * **a local player controls**: the founding choice, and each merger step. A
+ * **a local player controls**: the founding choice, each merger step, and the
+ * vote on a motion to liquidate. A
  * decision the engine addresses to a bot (or, online, a remote player) never
  * opens this — that seat's driver answers it. Every prompt offers only its
  * legal options (KTD3); the engine remains the authority.
@@ -33,6 +35,11 @@ import styles from './decisions.module.css';
  * prompt shows. The survivor and defunct-order choices themselves stay
  * non-minimizable — they're a single quick pick, not one worth interrupting
  * to go look at the board for.
+ *
+ * The vote is likewise non-minimizable, and for a stronger reason: the whole
+ * table is stopped waiting on it. Peeking at the board mid-vote is a stall, and
+ * the one thing worth looking at — the register and the running tally — is on
+ * the prompt already.
  */
 export function DecisionModal() {
   const local = useLocalSeats();
@@ -122,6 +129,7 @@ export function DecisionModal() {
           ) : (
             <>
               {decision?.type === 'choose-survivor' && <SurvivorPrompt decision={decision} />}
+              {decision?.type === 'cast-vote' && <VotePrompt decision={decision} />}
               {decision?.type === 'choose-defunct-order' && <DefunctOrderPrompt decision={decision} />}
               {decision?.type === 'dispose-shares' && (
                 <DisposalPrompt decision={decision} sell={sell} trade={trade} onSellChange={setSell} onTradeChange={setTrade} />
