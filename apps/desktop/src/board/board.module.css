@@ -81,6 +81,40 @@
   border: 0;
   font-family: inherit;
   padding: 0;
+  /* A merger repaints every tile of the absorbed chain. Instantly, that is a
+     change between two frames with nothing to catch the eye — the tiles that
+     moved are indistinguishable from the ones that didn't. Over half a second,
+     staggered outward from the placed tile (`sweepDelay` in Board.tsx), it
+     reads as a takeover running across the board. */
+  transition:
+    background 520ms ease,
+    color 520ms ease,
+    box-shadow 520ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell {
+    transition: none;
+    /* the stagger is inline, so it has to be overridden here too */
+    transition-delay: 0ms !important;
+  }
+}
+
+/* An ordinary corporation cell: the industry glyph above its coordinate. The
+   HQ keeps its own badged treatment (`.hq`) and sits proud of the rest. */
+.corpCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  line-height: 1;
+}
+
+.corpCoord {
+  font-size: clamp(5px, 0.95cqw, 9px);
+  letter-spacing: 0.04em;
+  opacity: 0.75;
 }
 
 .cell[data-kind='empty'] {

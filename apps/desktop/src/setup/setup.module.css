@@ -40,6 +40,14 @@
   border-bottom: 1px solid var(--rule);
 }
 
+/* Online, the seat has no name to set — it says what the seat will be instead
+   (#20). Same grid, so the type and difficulty controls stay aligned with the
+   local-game rows above them. */
+.seatLabel {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .seat input[type='text'] {
   padding: 0.4rem 0.5rem;
   background: var(--input);

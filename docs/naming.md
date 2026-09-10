@@ -14,7 +14,7 @@ company** — swapping a name in or out cannot affect balance. Adding a name mea
 
 7 industries × 4 candidates = **16,384 possible line-ups.**
 
-### Books & retail — tier 1, `#D9A425`
+### Books & retail — tier 1, `#D7A329`
 
 | Name | Flavour | Fragment | Stem | Riffing on *(design note — never ships)* |
 |---|---|---|---|---|
@@ -23,7 +23,7 @@ company** — swapping a name in or out cannot affect balance. Adding a name mea
 | Seers Roebeck | the catalogue was the internet | `beck` | `Seersroeb` | Sears Roebuck |
 | Waldenbust | the finest bookstore at your local airport | `bust` | `Waldenbu` | Waldenbooks |
 
-### Electronics — tier 1, `#C64A20`
+### Electronics — tier 1, `#C64E25`
 
 | Name | Flavour | Fragment | Stem | Riffing on *(design note — never ships)* |
 |---|---|---|---|---|
@@ -32,7 +32,7 @@ company** — swapping a name in or out cannot affect balance. Adding a name mea
 | Compuwas | beige boxes, bold promises | `was` | `Compuw` | CompUSA |
 | Fried Electronics | an aisle of cables you don't need | `nics` | `Friedelectro` | Fry's |
 
-### Air travel — tier 2, `#2C5AA0`
+### Air travel — tier 2, `#355C99`
 
 | Name | Flavour | Fragment | Stem | Riffing on *(design note — never ships)* |
 |---|---|---|---|---|
@@ -41,7 +41,7 @@ company** — swapping a name in or out cannot affect balance. Adding a name mea
 | Braniffle | the plane is painted orange | `niffle` | `Braniff` | Braniff |
 | Concordia | there at breakfast, broke by lunch | `dia` | `Concord` | Concorde |
 
-### Energy — tier 2, `#2C7A57`
+### Energy — tier 2, `#4A9471`
 
 | Name | Flavour | Fragment | Stem | Riffing on *(design note — never ships)* |
 |---|---|---|---|---|
@@ -50,7 +50,7 @@ company** — swapping a name in or out cannot affect balance. Adding a name mea
 | Standard Oyl | too big, then thirty-four pieces | `oyl` | `Standard` | Standard Oil |
 | Wattage | power, unapologetically | `tage` | `Watta` | generic utility |
 
-### Devices & web — tier 2, `#6B4B98`
+### Devices & web — tier 2, `#AC7CEF`
 
 | Name | Flavour | Fragment | Stem | Riffing on *(design note — never ships)* |
 |---|---|---|---|---|
@@ -59,7 +59,7 @@ company** — swapping a name in or out cannot affect balance. Adding a name mea
 | Palmistry | the future, in your palm, in 1998 | `mistry` | `Palmist` | Palm |
 | Netscapade | we were the internet once | `pade` | `Netscapa` | Netscape |
 
-### Video & film — tier 3, `#AE3462`
+### Video & film — tier 3, `#971D50`
 
 | Name | Flavour | Fragment | Stem | Riffing on *(design note — never ships)* |
 |---|---|---|---|---|
@@ -68,7 +68,7 @@ company** — swapping a name in or out cannot affect balance. Adding a name mea
 | Fotomatic | one hour, one kiosk, one photo | `tic` | `Fotomat` | Fotomat |
 | Tower of Records | listening booths, teenage employees and no returns | `cords` | `Towerofrec` | Tower Records |
 
-### Toys — tier 3, `#22808F`
+### Toys — tier 3, `#66CAD8`
 
 | Name | Flavour | Fragment | Stem | Riffing on *(design note — never ships)* |
 |---|---|---|---|---|

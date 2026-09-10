@@ -134,12 +134,13 @@ export function CreateJoin({
           </label>
 
           <div className={styles.field}>
-            <span>Seats — humans join by code, bots fill in</span>
+            <span>Seats — humans join by code and bring their own names</span>
             {config.seats.map((seat, index) => (
               <SeatRow
                 key={index}
                 index={index}
                 seat={seat}
+                nameless
                 onChange={(next) =>
                   patch({ seats: config.seats.map((s, i) => (i === index ? next : s)) })
                 }
