@@ -30,11 +30,14 @@
   riskiest single element in the pool and the first thing to swap if anyone gets nervous.
 - **The "riffing on" column** in `naming.md` and on the pool artboard is a design note so the list
   can be reviewed. It must not ship as a string anywhere in the product.
-- **A vote-to-end ruleset ("Boardroom"), proposed but not built.** Classic as the baseline plus one
-  addition: once two corporations are safe, a player may move to liquidate early, carried by two
-  thirds of the votes in a register where one share in a *safe* corporation is one vote. Raising a
-  motion publishes that register and permanently opens the mover's own books, win or lose, and each
-  player may do it once per game. The full note — the game theory, a worked tally, the config keys
+- **A vote-to-end ruleset, "Going Public", proposed but not built.** Classic as the baseline plus
+  one addition: once two corporations are safe, a player may move to liquidate early, carried by a
+  supermajority of a register where one share in a *safe* corporation is one vote. Raising a motion
+  publishes that register, and if the motion **fails**, everyone who backed it opens their books
+  permanently. Every price in the design is a failure price — a carried motion ends the game, so
+  none of the disclosure matters. The name is the mechanic: an offering, and opening the books.
+  The dials move with the seat count — no vote at all at two seats (a call, where *refusing*
+  discloses), ⅔ at three and four, 60% of votes cast plus a seconder at five and six. The full note — the game theory, a worked tally, the config keys
   and the engine surface — is the design canvas's sibling artifact:
   https://claude.ai/code/artifact/16f2c904-19b8-4c7b-a477-5a9cf95db85e
   Two things it turns up that outlive the proposal:
@@ -72,7 +75,7 @@
   $4,200"); the server filters each connection's *view*, not the event log. So the hidden setting
   conceals the running tally, not the transactions — card counting, where the information is public
   and the bookkeeping is the work. Two consequences: restricting bots to a filtered view barely
-  weakens them, since they can accumulate the log like anyone else; and **Boardroom needs a second
+  weakens them, since they can accumulate the log like anyone else; and **Going Public needs a second
   clause suppressing purchase detail in the public log**, or the register it publishes is one the
   table could already reconstruct and the mover's disclosure sells nothing.
 
