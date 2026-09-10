@@ -33,37 +33,37 @@ def price(size, tier, edition="classic"):
 # One company per industry is drawn into each game, so there are always seven,
 # always one of each, and the industry marks stay unique on the board.
 POOL = {
-  "books":       (1, "#D9A425", "#221E12", [
+  "books":       (1, "#D7A329", "#221E12", [
       ("Chapter Eleven",   "books, coffee, denial",             "Borders"),
       ("Woolyworth",       "everything, sort of, cheap",        "Woolworth"),
       ("Seers Roebeck",    "the catalogue was the internet",    "Sears Roebuck"),
       ("Waldenbust",       "the finest bookstore at your local airport",          "Waldenbooks")]),
-  "electronics": (1, "#C64A20", "#FFFFFF", [
+  "electronics": (1, "#C64E25", "#FFFFFF", [
       ("Radio Hut",        "batteries, phones and $70 HDMI cables",   "RadioShack"),
       ("Circuit Village",  "the warranty is the product",       "Circuit City"),
       ("Compuwas",         "beige boxes, bold promises",        "CompUSA"),
       ("Fried Electronics","an aisle of cables you don't need", "Fry's")]),
-  "air":         (2, "#2C5AA0", "#FFFFFF", [
+  "air":         (2, "#355C99", "#FFFFFF", [
       ("Pan-Atlas",        "the glamour of air travel",         "Pan Am"),
       ("Transworld Air",   "wings over everywhere",             "TWA"),
       ("Braniffle",        "the plane is painted orange",       "Braniff"),
       ("Concordia",        "there at breakfast, broke by lunch","Concorde")]),
-  "energy":      (2, "#2C7A57", "#FFFFFF", [
+  "energy":      (2, "#4A9471", "#221E12", [
       ("Enrun",            "energy, creatively accounted",      "Enron"),
       ("Texicorps",        "a star, a pump, a lawsuit",         "Texaco"),
       ("Standard Oyl",     "too big, then thirty-four pieces",  "Standard Oil"),
       ("Wattage",          "power, unapologetically",           "generic utility")]),
-  "tech":        (2, "#6B4B98", "#FFFFFF", [
+  "tech":        (2, "#AC7CEF", "#221E12", [
       ("Blackcurrant",     "the keyboard people",               "BlackBerry"),
       ("Noquia",           "indestructible, briefly essential", "Nokia"),
       ("Palmistry",        "the future, in your palm, in 1998", "Palm"),
       ("Netscapade",       "we were the internet once",         "Netscape")]),
-  "video":       (3, "#AE3462", "#FFFFFF", [
+  "video":       (3, "#971D50", "#FFFFFF", [
       ("Megahit Video",    "be kind, rewind",                   "Blockbuster"),
       ("Tinseltown Video", "new releases and 42 copies of 'Next Friday'",   "Hollywood Video"),
       ("Fotomatic",        "one hour, one kiosk, one photo",    "Fotomat"),
       ("Tower of Records", "listening booths, teenage employees and no returns",   "Tower Records")]),
-  "toys":        (3, "#22808F", "#FFFFFF", [
+  "toys":        (3, "#66CAD8", "#221E12", [
       ("Toys \u042f Were",     "where a kid was a customer",        "Toys R Us"),
       ("Kaybee Toyworks",  "the mall's loudest storefront",     "KB Toys"),
       ("Chuck E. Wheeze",  "animatronics and birthday grief",   "Chuck E. Cheese"),

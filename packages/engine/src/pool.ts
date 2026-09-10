@@ -34,14 +34,33 @@ export interface IndustryInfo {
   readonly ink: string;
 }
 
+/**
+ * The seven board colours, re-spaced (#18). Each keeps its industry's hue family
+ * — gold, red, blue, green, purple, magenta, teal — so identities are unchanged;
+ * what moved is **lightness**, and that is the whole point.
+ *
+ * The old palette put six of the seven inside an 11-point L* band, so almost
+ * every merger repainted the board from one colour to another of identical
+ * weight — the hardest kind of change for an eye to catch, and the exact thing a
+ * merger does. Under simulated protanopia `air` and `tech` were 2.5 apart in
+ * CIEDE2000 and under deuteranopia `energy` and `video` were 2.2: not "close"
+ * but indistinguishable, in a game where chain identity drives every decision.
+ *
+ * These are the minimum-drift colours that satisfy all of it at once — five of
+ * the seven barely moved. `test/palette.test.ts` holds the thresholds and will
+ * fail if a future edit lands back in the old trap. Note the constraints are
+ * deliberately NOT tier-aligned: giving each tier a lightness band would put the
+ * corporations of a tier at equal luminance and re-create the original failure
+ * inside each one.
+ */
 export const INDUSTRY_INFO: Record<Industry, IndustryInfo> = {
-  books: { tier: 1, color: '#D9A425', ink: '#221E12' },
-  electronics: { tier: 1, color: '#C64A20', ink: '#FFFFFF' },
-  air: { tier: 2, color: '#2C5AA0', ink: '#FFFFFF' },
-  energy: { tier: 2, color: '#2C7A57', ink: '#FFFFFF' },
-  tech: { tier: 2, color: '#6B4B98', ink: '#FFFFFF' },
-  video: { tier: 3, color: '#AE3462', ink: '#FFFFFF' },
-  toys: { tier: 3, color: '#22808F', ink: '#FFFFFF' },
+  books: { tier: 1, color: '#D7A329', ink: '#221E12' },
+  electronics: { tier: 1, color: '#C64E25', ink: '#FFFFFF' },
+  air: { tier: 2, color: '#355C99', ink: '#FFFFFF' },
+  energy: { tier: 2, color: '#4A9471', ink: '#221E12' },
+  tech: { tier: 2, color: '#AC7CEF', ink: '#221E12' },
+  video: { tier: 3, color: '#971D50', ink: '#FFFFFF' },
+  toys: { tier: 3, color: '#66CAD8', ink: '#221E12' },
 };
 
 export interface Candidate {

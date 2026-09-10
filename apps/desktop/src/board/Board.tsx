@@ -3,6 +3,7 @@ import { allTiles, INDUSTRY_INFO, parseTile, type Cell, type CorpView, type Indu
 import type { ClientView } from '@boomtown/client-core';
 import { useAnyView, useGameClient, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import { IndustryMark } from '../game/marks.js';
+import { latestMerger } from '../game/story.js';
 import { cellTargets, placementFor, type CellTarget } from './pick.js';
 import styles from './board.module.css';
 
@@ -11,6 +12,25 @@ const ROW_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 /** Stable empty target set for the spectator board — a fresh `new Map()` per
  *  render would defeat the `useMemo` below. */
 const NO_TARGETS: ReadonlyMap<TileId, CellTarget> = new Map();
+
+/** Longest stagger applied to the recolour sweep, in ms. */
+const SWEEP_MAX_MS = 320;
+/** Per-cell step outward from the placed tile. */
+const SWEEP_STEP_MS = 26;
+
+/**
+ * How long this cell waits before taking its new colour, so a merger reads as a
+ * wave running out from the tile that caused it rather than as every cell
+ * flipping at once. Chebyshev distance, because the board is a grid and a
+ * diagonal neighbour is as adjacent as an orthogonal one to the eye.
+ */
+function sweepDelay(tile: TileId, from: TileId | null): number {
+  if (!from) return 0;
+  const a = parseTile(tile);
+  const b = parseTile(from);
+  const distance = Math.max(Math.abs(a.col - b.col), Math.abs(a.row - b.row));
+  return Math.min(distance * SWEEP_STEP_MS, SWEEP_MAX_MS);
+}
 
 /** The coordinate-header track as a fraction of one cell. Keep `--hdr` in
  *  board.module.css in sync (1.5fr). */
@@ -61,6 +81,9 @@ export function Board({ spectating = false }: { spectating?: boolean }) {
   const publicView = useAnyView();
   const view = spectating ? publicView : localView;
   const busy = useGameState((state) => state.inFlight != null);
+  // The tile whose placement caused the most recent merger — the origin of the
+  // recolour sweep. Null before any merger, which simply means no stagger.
+  const mergedAt = useGameState((state) => latestMerger(state.log)?.placedTile ?? null);
 
   const targets = useMemo(() => (spectating ? NO_TARGETS : cellTargets(view)), [spectating, view]);
 
@@ -116,7 +139,14 @@ export function Board({ spectating = false }: { spectating?: boolean }) {
             {cells
               .filter((c) => parseTile(c.tile).row === r + 1)
               .map((c) => (
-                <BoardCell key={c.tile} cell={c} disabled={busy || c.kind !== 'playable'} onPick={pick} view={view} />
+                <BoardCell
+                  key={c.tile}
+                  cell={c}
+                  disabled={busy || c.kind !== 'playable'}
+                  onPick={pick}
+                  view={view}
+                  sweepMs={sweepDelay(c.tile, mergedAt as TileId | null)}
+                />
               ))}
           </RowFragment>
         ))}
@@ -135,11 +165,13 @@ function BoardCell({
   disabled,
   onPick,
   view,
+  sweepMs,
 }: {
   cell: RenderCell;
   disabled: boolean;
   onPick: (tile: TileId) => void;
   view: ClientView;
+  sweepMs: number;
 }) {
   const industry = cell.industry;
   // The tilted board's lit-paper cell treatment (U8): a per-industry gradient
@@ -158,10 +190,16 @@ function BoardCell({
             color: ink,
             boxShadow: `0 ${lift}px 0 ${shade1}, 0 ${lift * 2}px 0 ${shade2}, 0 ${lift * 2 + 4}px 10px -4px rgba(60, 45, 30, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3)`,
             transform: `translateZ(${lift * 3}px)`,
+            transitionDelay: sweepMs ? `${sweepMs}ms` : undefined,
           };
         })()
       : undefined;
 
+  // Every corporation cell carries its industry glyph, not just the
+  // headquarters (#18). Colour alone made a merger a single-channel change —
+  // one hue swapping for another, on every tile but one. With the mark there
+  // too the takeover changes shape as well, which survives both a close pair of
+  // colours and a player who cannot tell them apart at all.
   const content =
     cell.isHq && industry ? (
       <span className={styles.hq}>
@@ -169,6 +207,11 @@ function BoardCell({
           <IndustryMark industry={industry} color={INDUSTRY_INFO[industry].color} size={16} />
         </span>
         <span className={styles.hqCoord}>{cell.tile}</span>
+      </span>
+    ) : cell.kind === 'corp' && industry ? (
+      <span className={styles.corpCell}>
+        <IndustryMark industry={industry} color={INDUSTRY_INFO[industry].ink} size={13} />
+        <span className={styles.corpCoord}>{cell.tile}</span>
       </span>
     ) : (
       cell.tile

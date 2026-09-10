@@ -43,6 +43,30 @@ describe('Board', () => {
     expect(hq.querySelector('svg')).toBeTruthy(); // IndustryMark
   });
 
+  it('every corporation cell carries its industry glyph, not just the headquarters (#18)', async () => {
+    await renderPanel(<Board />, {
+      craft: (state) => seedCorp(state, 'video', ['6E', '7E', '8E']), // hqTile = 6E
+    });
+    // Colour alone made a merger a one-channel change on every tile but the HQ.
+    // The glyph is the second channel, and it is what survives a close pair of
+    // colours or a player who cannot separate them at all.
+    for (const tile of ['7E', '8E']) {
+      const cell = screen.getByRole('gridcell', { name: new RegExp(`^${tile} — `) });
+      expect(within(cell).getByText(tile)).toBeInTheDocument();
+      expect(cell.querySelector('svg')).toBeTruthy();
+    }
+    // an empty cell stays bare — the glyph means "this belongs to someone"
+    expect(screen.getByRole('gridcell', { name: '1A' }).querySelector('svg')).toBeNull();
+  });
+
+  it('transitions cell colour so a merger recolour is visible, and stands down for reduced motion', () => {
+    // An instant repaint is a change between two frames with nothing to catch
+    // the eye; the transition is what makes a takeover readable (#18).
+    const cellRule = boardCss.slice(boardCss.indexOf('.cell {'), boardCss.indexOf('.corpCell'));
+    expect(cellRule).toMatch(/transition:[\s\S]*background/);
+    expect(boardCss).toMatch(/prefers-reduced-motion[\s\S]*\.cell\s*\{[\s\S]*transition: none/);
+  });
+
   it('placeable cells are buttons that dispatch a placement', async () => {
     const { client } = await renderPanel(<Board />);
     // opening board: every hand tile is playable
