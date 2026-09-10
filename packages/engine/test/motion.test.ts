@@ -3,6 +3,7 @@ import {
   PRESETS,
   createGame,
   legalMovesForSeat,
+  quotaFor,
   reduce,
   replay,
   viewFor,
@@ -298,5 +299,31 @@ describe('the motion and the rest of the engine', () => {
       motionBy: 0,
     });
     expect(viewFor(raised, 2).pendingDecision).toBeNull();
+  });
+});
+
+describe('the quota scales with the table', () => {
+  it('is two-thirds at three and four seats, and half at five and six', () => {
+    // Measured, not chosen (#27): a fixed two-thirds carried 63% of motions at
+    // three seats and 6% at six.
+    const config = PRESETS.boomtown.endVote!;
+    expect(quotaFor(config, 3)).toBeCloseTo(2 / 3);
+    expect(quotaFor(config, 4)).toBeCloseTo(2 / 3);
+    expect(quotaFor(config, 5)).toBe(0.5);
+    expect(quotaFor(config, 6)).toBe(0.5);
+  });
+
+  it('carries at five seats on a half the same register would not carry at four', () => {
+    const state = table({ seats: 5 });
+    holdings(state, 0, 'books', 3);
+    holdings(state, 1, 'books', 3);
+    holdings(state, 2, 'books', 2);
+    holdings(state, 3, 'books', 2);
+    holdings(state, 4, 'books', 2); // register 12: half is 6, two-thirds is 8
+    const after = run(state, [
+      { type: 'move-to-liquidate', seat: 0 },
+      { type: 'cast-vote', seat: 1, inFavour: true }, // 6 of 12, two backers
+    ]);
+    expect(after.status).toBe('over');
   });
 });

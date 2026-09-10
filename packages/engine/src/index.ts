@@ -120,6 +120,7 @@ export type {
 } from './commands.js';
 export { endConditionMet } from './reducer/endgame.js';
 export { finalSettlement } from './scoring.js';
+export { canMoveToLiquidate, motionBlockedBecause, quotaFor, registerWeights } from './reducer/motion.js';
 export type { EngineEvent, PlacementKind } from './events.js';
 export type { EngineError, EngineErrorCode } from './errors.js';
 export { reduce, replay } from './reducer/index.js';

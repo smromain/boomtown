@@ -8,6 +8,7 @@ import {
   type Seat,
 } from '@boomtown/engine';
 import { difficulty, type DifficultyKnobs } from './difficulty.js';
+import { backsMotion } from './vote.js';
 import { bestScore, ownMoves, scoreMove } from './heuristic.js';
 
 /**
@@ -55,7 +56,34 @@ export function heuristicPolicy({ level }: HeuristicPolicyOptions): Policy {
         return { command: moves[pick.value]!, rng: pick.rng };
       }
 
-      return { command: pickBest(state, seat, moves, knobs), rng: blunder.rng };
+      // Votes are decided on standing, not on score. `evaluate` measures a
+      // seat's own money, and settling raises everybody's — so scoring a vote
+      // the generic way makes every bot vote yes and every motion carry
+      // regardless of the quota. See `vote.ts`.
+      const vote = moves.find((move) => move.type === 'cast-vote');
+      if (vote) {
+        return {
+          command: { ...vote, inFavour: backsMotion(state, seat, knobs.backingMargin) },
+          rng: blunder.rng,
+        };
+      }
+
+      const motion = moves.find((move) => move.type === 'move-to-liquidate');
+      if (motion && backsMotion(state, seat, knobs.backingMargin)) {
+        return { command: motion, rng: blunder.rng };
+      }
+
+      return {
+        command: pickBest(
+          state,
+          seat,
+          // Never raise a motion for scoring reasons: it is handled above, and
+          // `evaluate` would take it for the wrong reason every time.
+          moves.filter((move) => move.type !== 'move-to-liquidate'),
+          knobs,
+        ),
+        rng: blunder.rng,
+      };
     },
   };
 }
