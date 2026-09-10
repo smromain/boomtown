@@ -11,6 +11,13 @@ export interface EndVoteConfig {
   readonly quorumSafeCorps: number;
   /** Share of the vote needed to carry, as a fraction. Carries on `>= ceil(quota * total)`. */
   readonly quota: number;
+  /**
+   * Per-seat-count overrides for `quota`. Measured, not guessed (#27): a fixed
+   * two-thirds is reachable at three and four seats but collapses as the table
+   * grows — at six it carried 6% of the motions raised, which is a mechanic
+   * nobody would ever see resolve.
+   */
+  readonly quotaBySeats?: Readonly<Record<number, number>>;
   /** Whether `quota` is measured against the whole register or only votes cast. */
   readonly quotaBase: 'register' | 'cast';
   /**

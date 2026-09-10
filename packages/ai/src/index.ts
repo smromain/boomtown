@@ -20,3 +20,4 @@ export {
   estimateHoldings,
 } from './ledger.js';
 export { redactFor, beliefState } from './redact.js';
+export { backsMotion, wouldWinBySettlingNow } from './vote.js';

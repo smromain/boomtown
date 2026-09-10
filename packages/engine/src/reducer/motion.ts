@@ -1,4 +1,5 @@
 import type { CastVote, MoveToLiquidate } from '../commands.js';
+import type { EndVoteConfig } from '../ruleset/types.js';
 import { err } from '../errors.js';
 import type { EngineEvent } from '../events.js';
 import {
@@ -34,6 +35,15 @@ export function registerWeights(state: GameState): Record<number, number> {
   return weights;
 }
 
+/**
+ * The quota this table plays to. Bigger tables need a lower one: coordinating a
+ * supermajority gets harder with every seat, and diffusion of responsibility
+ * sets in — everyone waits for someone else to move against the leader.
+ */
+export function quotaFor(config: EndVoteConfig, seatCount: number): number {
+  return config.quotaBySeats?.[seatCount] ?? config.quota;
+}
+
 /** Seats that count as safe corporations for the motion window. */
 function safeCount(state: GameState): number {
   return activeCorporations(state).filter((industry) => isSafe(state, industry)).length;
@@ -49,10 +59,23 @@ function safeCount(state: GameState): number {
  * convention.
  */
 export function motionBlockedBecause(state: GameState, seat: Seat): string | null {
+  if (state.step !== 'end-check') return 'a motion is raised at the end-check step';
+  return motionWindowShut(state, seat);
+}
+
+/**
+ * The same test minus the step, so `finishTurn` can ask whether a motion is
+ * available *before* deciding to stop at `end-check` at all.
+ *
+ * That split is not cosmetic. `finishTurn` only held at `end-check` when an end
+ * condition was met, and a motion is legal only while one is *not* — so gating
+ * the motion on the step made it unreachable by construction. Engine tests that
+ * set `step` by hand never saw it; playing whole games did (#27).
+ */
+export function motionWindowShut(state: GameState, seat: Seat): string | null {
   const config = state.ruleset.endVote;
   if (!config) return 'this ruleset has no vote to end';
   if (state.seats.length < config.minPlayers) return 'too few players for a vote';
-  if (state.step !== 'end-check') return 'a motion is raised at the end-check step';
   if (seat !== activeSeat(state)) return 'only the active seat may raise a motion';
   if (endConditionMet(state)) return 'the game can simply be ended, so a motion is moot';
   if (safeCount(state) < config.quorumSafeCorps) return 'not enough safe corporations yet';
@@ -66,6 +89,11 @@ export function motionBlockedBecause(state: GameState, seat: Seat): string | nul
 
 export function canMoveToLiquidate(state: GameState, seat: Seat): boolean {
   return motionBlockedBecause(state, seat) === null;
+}
+
+/** Whether the active seat could raise a motion if the turn paused for it. */
+export function motionAvailable(state: GameState): boolean {
+  return motionWindowShut(state, activeSeat(state)) === null;
 }
 
 /** Voting order: the mover, then clockwise around the table. */
@@ -138,14 +166,15 @@ function settle(state: GameState, events: EngineEvent[]): ReduceResult {
   // genuinely differ, is not implemented yet.)
   const registerTotal = Object.values(motion.weights).reduce((a, b) => a + b, 0);
   const castTotal = cast.reduce((sum, s) => sum + weightOf(s), 0);
+  const quota = quotaFor(config, state.seats.length);
   const total = config.quotaBase === 'cast' ? castTotal : registerTotal;
-  const needed = Math.ceil(config.quota * total);
+  const needed = Math.ceil(quota * total);
 
   const decidedEarly = config.quotaBase === 'register';
   const carried = yes >= needed && backers.length >= config.minBackers;
   const maxYes = yes + remaining.reduce((sum, s) => sum + weightOf(s), 0);
   const maxBackers = backers.length + remaining.length;
-  const doomed = maxYes < Math.ceil(config.quota * registerTotal) || maxBackers < config.minBackers;
+  const doomed = maxYes < Math.ceil(quota * registerTotal) || maxBackers < config.minBackers;
 
   if (carried && (decidedEarly || remaining.length === 0)) {
     events.push({ type: 'motion-carried', backers, yes, total });
