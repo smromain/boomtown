@@ -192,7 +192,10 @@ describe('the Boomtown preset in setup', () => {
     // Disabled *and* explained: a greyed-out control with no reason reads as a bug.
     expect(visibility).toBeDisabled();
     expect(visibility).toHaveValue('hidden');
-    expect(screen.getByText(/books closed/i)).toBeInTheDocument();
+    // Anchored on the field note, not on "books closed" alone: the how-to-play
+    // summary above now explains the same rule, and a bare text match would
+    // find that instead of the control's own explanation.
+    expect(screen.getByText(/the ruleset fixes this/i)).toBeInTheDocument();
   });
 
   it('deals a closed-book table even when open was picked before switching preset', async () => {

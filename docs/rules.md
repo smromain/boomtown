@@ -1,14 +1,21 @@
 # Boomtown — rules model
 
-Reconciled from two sources, both read in full:
+Three rule sets ship, and they are not three of a kind.
+
+**Two are reconstructions** of published editions, reconciled from two sources, both read in full:
 
 - **2015 Avalon Hill edition** — `C0096_en-us_acquire.pdf`, 8 pages, the rulebook Steve supplied.
 - **Classic edition** — https://www.cs.cmu.edu/~lanthony/classes/SEng/Design/acquire.html
 
-Where they disagree the difference is **configuration, not a fork**. The engine reads a ruleset
-object; both editions are presets.
+Where those two disagree the difference is **configuration, not a fork**. The engine reads a
+ruleset object; each edition is a preset.
 
-## Constants (both editions agree)
+**The third is ours.** **Boomtown** is this project's own variant, not a reconstruction of anyone's
+rulebook: classic numbers throughout, plus closed books and a second way to end the game (*Going
+Public*, below). It is described here as a design rather than as a source, and nothing in it is
+claimed to be how the published game is played.
+
+## Constants (every rule set agrees)
 
 | | |
 |---|---|
@@ -39,7 +46,9 @@ object; both editions are presets.
    corporations) is revealed, set face-up out of play, and replaced from the bag. A replacement
    that is itself dead is swept in the same pass. New dead tiles that appear mid-turn wait until
    the next sweep.
-5. **End check** — the player *may* announce the end if a condition holds. Never forced.
+5. **End check** — the player *may* announce the end if a condition holds. Never forced. Under
+   the Boomtown rule set the turn also holds here when a *motion to liquidate* is available, and
+   the player may raise one instead of ending their turn (see *Going Public*).
 
 ## Merger resolution
 
@@ -98,6 +107,58 @@ drawn, so it stays correct across editions. Two views: the full matrix (all tier
 corporation's current row marked), and a single-corporation ladder opened from its card in the
 band. A merged corporation prices on the **survivor's** tier.
 
+## Going Public (Boomtown rule set only)
+
+A second ending, and the reason that rule set fixes the books closed. Configured under `endVote`;
+absent from both published editions, where the whole section simply does not apply.
+
+**The window.** A motion may be raised only while
+
+- at least `quorumSafeCorps` corporations are safe, **and**
+- no ordinary end condition is met.
+
+The second clause is what keeps the two endings from overlapping: once the game *can* simply be
+announced, announcing is strictly better than asking, so the motion closes itself off. Note that
+this makes the end-check step reachable on a turn where nothing is announceable — a real change to
+the turn, and the reason `finishTurn` has to test motion availability rather than the end condition
+alone.
+
+**Raising.** At the end-check step of their own turn, the active seat may *move to liquidate*, at
+most `motionsPerPlayer` times in the whole game. Raising **is** voting for it: a player cannot
+propose an ending and then vote it down.
+
+**The register.** One vote per share held in a **safe** corporation. Safe only, because those are
+the corporations certain to still exist at settlement — a chain that can still be eaten is not a
+company anyone is voting the future of. Unissued bank stock has no owner and is not counted. The
+register is published the first time any motion is raised and **never un-publishes**; it can only
+grow, since safe is permanent, two safe corporations can never merge, and safe holdings only ever
+increase. Nobody can be disenfranchised after being enfranchised, and the electorate cannot be
+attacked.
+
+**Voting.** The mover first, then clockwise. It carries on `quota` of the base named by
+`quotaBase`, with at least `minBackers` seats behind it, and the game ends immediately. It is
+settled as soon as the outcome is arithmetically fixed, in either direction.
+
+**The price of a yes.** A carried motion ends the game, so nothing that follows matters. A failed
+one is where every cost in the design is actually paid: the register stays public, and **everyone
+who backed it plays the rest of the game with open books** — cash and holdings visible to the whole
+table. Voting against is free. The expected cost of a yes is therefore `P(fail) × your privacy`,
+which taxes speculative and spiteful votes precisely and leaves sincere ones nearly free.
+
+| Key | Boomtown | What it does |
+|---|---|---|
+| `quorumSafeCorps` | 2 | How many safe corporations open the window |
+| `quota` | ⅔ | Share of the register needed to carry |
+| `quotaBySeats` | ½ at 5 and 6 seats | Bigger tables need a lower bar — coordination gets harder and responsibility diffuses |
+| `quotaBase` | `register` | Denominator: the whole register, not just votes cast |
+| `minBackers` | 2 | A motion is never one player's decision |
+| `motionsPerPlayer` | 1 | Scarcity is what makes the timing a decision |
+| `minPlayers` | 3 | Two players have no table to convince |
+
+The numbers came from simulation, not taste (#27): quorum 2 gives a motion in 53–72% of games
+against 7–17% at quorum 3, and the ⅔ quota that carries 63% of the time at three seats carries only
+6% at six, which is what `quotaBySeats` exists to correct.
+
 ## Edition configuration
 
 | Rule | 2015 Avalon Hill | Classic | Config key |
@@ -111,6 +172,13 @@ band. A merged corporation prices on the **survivor's** tier.
 | Dead tiles | discarded face-up and replaced | discarded face-up and replaced (from the same rule, applied to both) | `deadTilePolicy` |
 | Two-player rule | bank is a shareholder; its holding drawn from the tile pile each merger | not addressed | `phantomShareholder` |
 | Split rounding | round up to nearest 100 | silent | `splitRounding` |
+
+Boomtown takes the Classic column wholesale and adds two keys of its own:
+
+| Rule | Boomtown | Config key |
+|---|---|---|
+| Cash and holdings | always hidden — not a table setting | `forcedVisibility` |
+| Vote to end | see *Going Public* above | `endVote` |
 
 **Default to classic.** Its board geometry is unambiguous; the 2015 rulebook lists 100 tiles and
 never states the grid.
@@ -127,10 +195,13 @@ never states the grid.
   set out of play, and replaced. *Temporarily blocked* — would found an eighth corporation; stays
   in hand.
 - **Ending is a choice.** A player may announce or keep playing, and finishes the turn after
-  announcing.
+  announcing. Where a vote to end exists, it is a choice twice over: raising a motion is optional,
+  and so is backing one.
 - **Final settlement.** Pay bonuses for every active corporation as if merging, then the bank buys
   back all stock at current price. Stock in a corporation not on the board is worth nothing.
 - **Hidden information.** Hand tiles and the draw pile are always hidden. Cash and holdings are
-  hidden or open **by agreement** — a table setting, not a rule.
+  hidden or open **by agreement** — a table setting, not a rule — except where a rule set fixes it
+  (`forcedVisibility`), and except for a seat that backed a failed motion, whose books stay open
+  for the rest of the game.
 - **A corporation has two names.** See `naming.md`. The base name is identity; the display name
   accretes.
