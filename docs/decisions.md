@@ -30,6 +30,32 @@
   riskiest single element in the pool and the first thing to swap if anyone gets nervous.
 - **The "riffing on" column** in `naming.md` and on the pool artboard is a design note so the list
   can be reviewed. It must not ship as a string anywhere in the product.
+- **A vote-to-end ruleset ("Boardroom"), proposed but not built.** Classic as the baseline plus one
+  addition: once two corporations are safe, a player may move to liquidate early, carried by two
+  thirds of the votes in a register where one share in a *safe* corporation is one vote. Raising a
+  motion publishes that register and permanently opens the mover's own books, win or lose, and each
+  player may do it once per game. The full note — the game theory, a worked tally, the config keys
+  and the engine surface — is the design canvas's sibling artifact:
+  https://claude.ai/code/artifact/16f2c904-19b8-4c7b-a477-5a9cf95db85e
+  Two things it turns up that outlive the proposal:
+  - **It makes visibility a rule, contradicting a stated principle.** `CLAUDE.md` says cash and
+    holdings visibility is a per-table setting. Boardroom has to force `hidden` and refuse to let
+    the table change it: at an open table the register is already public and the disclosure costs
+    nothing, so the mechanic evaporates. If it ships, that exception needs to be stated where the
+    principle is.
+  - **A plain majority vote is not worth building.** Ending the game freezes variance, and variance
+    is the only route to first for anyone not already there, so every trailing player votes to
+    continue. The yes-coalition is normally one player against the rest, and the vote becomes a
+    ritual. Weighting by shareholding is what makes it a real decision; a supermajority is what
+    stops the leader self-serving.
+
+- **Bots are handed the authoritative state, not a filtered view.** `attachBotDriver` calls
+  `chooseMove(options.snapshot(), seat, rng)`, and `snapshot()` returns the full `GameState` —
+  every hand, the bag, and every seat's holdings. `clientView()` does the per-seat filtering that
+  hidden information depends on and the bot path goes around it. Today that is a modest advantage;
+  any ruleset that turns on secret holdings (Boardroom above) makes it fatal, because bots would
+  play against a register humans can only estimate. Worth fixing on its own merits.
+
 - **`mergeNaming.stem` value.** 0.75 as specified; 0.6 drifts further. Playtest rather than decide.
 - **2015 board dimensions**, if that preset is ever wanted for real. The rulebook does not say.
 - **The 2015 corporation names** live on the info-card artwork, which is an image in the PDF. Only
