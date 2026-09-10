@@ -1,4 +1,5 @@
 import type { MergeNamingConfig } from '../naming/index.js';
+import type { Visibility } from '../state.js';
 
 /**
  * A Boomtown ruleset expressed as data. The engine reads one `Ruleset`; the two
@@ -41,9 +42,22 @@ export interface Ruleset {
 
   /** Merged-name accretion rules (`docs/naming.md`). */
   readonly mergeNaming: MergeNamingConfig;
+
+  /**
+   * Visibility this ruleset requires, overriding the table's choice. Absent for
+   * the two published editions, where cash and holdings visibility is a table
+   * setting and not a rule (`CLAUDE.md`).
+   *
+   * The Boomtown preset sets it, because closed books are not a preference
+   * there but the thing the ruleset is built on: at an open table its register
+   * is already public and the disclosure that pays for a motion costs nothing.
+   * `toSetupOptions` and the server's `setupOptionsFor` both honour it, so a
+   * table cannot be started around it either locally or online.
+   */
+  readonly forcedVisibility?: Visibility;
 }
 
-export type RulesetId = 'classic' | 'edition-2015';
+export type RulesetId = 'classic' | 'edition-2015' | 'boomtown';
 
 /** The three tiers a corporation's industry can belong to. */
 export type Tier = 1 | 2 | 3;

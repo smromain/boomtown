@@ -13,10 +13,13 @@ import { SeatRow } from './SeatConfig.js';
 import {
   configError,
   defaultConfig,
+  effectiveVisibility,
   resizeSeats,
   toSetupOptions,
+  visibilityIsFixed,
   type GameConfig,
 } from './gameConfig.js';
+import { editionLabel } from './editionLabel.js';
 import styles from './setup.module.css';
 
 export interface StartedGame {
@@ -123,18 +126,25 @@ export function NewGame({
         <select value={config.edition} onChange={(event) => patch({ edition: event.target.value as GameConfig['edition'] })}>
           <option value="classic">Classic</option>
           <option value="edition-2015">Modern</option>
+          <option value="boomtown">Boomtown</option>
         </select>
       </label>
 
       <label className={styles.field}>
         <span>Cash and holdings</span>
         <select
-          value={config.visibility}
+          value={effectiveVisibility(config)}
+          disabled={visibilityIsFixed(config)}
           onChange={(event) => patch({ visibility: event.target.value as GameConfig['visibility'] })}
         >
           <option value="open">Open — everyone sees everything</option>
           <option value="hidden">Hidden — only your own</option>
         </select>
+        {visibilityIsFixed(config) && (
+          <span className={styles.fieldNote}>
+            {editionLabel(config.edition)} is played with the books closed — the ruleset fixes this.
+          </span>
+        )}
       </label>
 
       <p className={styles.error} role="alert">

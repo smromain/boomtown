@@ -65,7 +65,11 @@ export function createGame(options: SetupOptions): GameState {
   }
 
   const ruleset = options.ruleset ?? defaultRuleset;
-  const visibility: Visibility = options.visibility ?? 'open';
+  // A ruleset that requires a visibility overrides the table's choice, and it is
+  // enforced here rather than at the two call sites that build setup options —
+  // this way no caller can start a table around it, including tests and any
+  // future path into the engine.
+  const visibility: Visibility = ruleset.forcedVisibility ?? options.visibility ?? 'open';
 
   let rng = makeRng(options.seed);
 

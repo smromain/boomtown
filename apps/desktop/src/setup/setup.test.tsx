@@ -1,7 +1,7 @@
 import { act } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { classic, edition2015 } from '@boomtown/engine';
+import { boomtown, classic, edition2015 } from '@boomtown/engine';
 import { describe, expect, it } from 'vitest';
 import { NewGame, type StartedGame } from './NewGame.js';
 import {
@@ -177,5 +177,42 @@ describe('NewGame screen', () => {
     expect(rules).toHaveTextContent(`${edition2015.endChainSize} tiles`);
     // never the trademarked names
     expect(rules).not.toHaveTextContent(/Acquire|Avalon Hill|Hasbro/i);
+  });
+});
+
+describe('the Boomtown preset in setup', () => {
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+  it('fixes the visibility control and says why', async () => {
+    render(<NewGame onStart={() => {}} />);
+    const visibility = screen.getByRole('combobox', { name: 'Cash and holdings' });
+    expect(visibility).toBeEnabled();
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'boomtown');
+    // Disabled *and* explained: a greyed-out control with no reason reads as a bug.
+    expect(visibility).toBeDisabled();
+    expect(visibility).toHaveValue('hidden');
+    expect(screen.getByText(/books closed/i)).toBeInTheDocument();
+  });
+
+  it('deals a closed-book table even when open was picked before switching preset', async () => {
+    let started: StartedGame | undefined;
+    render(<NewGame onStart={(game) => (started = game)} />);
+
+    // Pick open first, then switch — the stale choice must not survive.
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Cash and holdings' }),
+      'open',
+    );
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'boomtown');
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Start game' }));
+      await flush();
+    });
+
+    expect(started!.config.edition).toBe('boomtown');
+    const view = started!.client.store.getState().views[0]!;
+    expect(view.ruleset).toBe(boomtown);
+    expect(view.seats[1]?.cash).toBeNull(); // closed, as the ruleset requires
   });
 });

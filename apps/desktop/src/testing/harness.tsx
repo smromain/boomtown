@@ -35,7 +35,7 @@ export interface HarnessOptions {
   /** Edition preset. Defaults to the engine's own default (classic). The two
    *  editions disagree on bonus tiers, safe size and price bands, so anything
    *  that renders those needs to be tested against both. */
-  readonly edition?: 'classic' | 'edition-2015';
+  readonly edition?: 'classic' | 'edition-2015' | 'boomtown';
 }
 
 /** Render a component wired to a live local game. Returns the client so tests can dispatch. */

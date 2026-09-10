@@ -255,3 +255,11 @@
 .nameRow button:hover {
   background: var(--surface);
 }
+
+/* Why a control is fixed, said where the control is — a disabled select with no
+   explanation reads as a bug. */
+.fieldNote {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
