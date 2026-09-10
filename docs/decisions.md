@@ -52,7 +52,22 @@
     action, and the likeliest failure of the whole design is that nobody ever calls a motion.
   - **Build the simulation first.** `playOut()` in `packages/ai/test/policy.test.ts` already drives
     headless games with a policy per seat; the quota, the window and the motion limit should be
-    tuned by counting outcomes over a few thousand games before any UI exists. The full note — the game theory, a worked tally, the config keys
+    tuned by counting outcomes over a few thousand games before any UI exists.
+  - **Bots get a light ledger, not a belief engine** (Steve's call). Since the log names the
+    corporation and not the amount, the one honest observable is a purchase *event* per seat per
+    corporation, and the model is a tally of those — "Ana's Concordia tally is six, her Enrun tally
+    is two". `CorpView.bankShares` is public and ungated, so issued shares per corporation
+    (25 − bankShares) is known exactly; the tallies only split a total that is already certain, and
+    a bot subtracts its own holdings first. Anchoring to that total is what keeps estimation errors
+    zero-sum instead of systematically underrating whoever buys in bulk. The ledger is a pure fold
+    over the public log — `ledger(log) → tallies`, rebuilt each turn — so there is no mutable
+    belief state and it stays replay-safe. Two consequences worth knowing: `PlayerView` carries no
+    log, so the policy signature has to become `chooseMove(view, log, seat, rng)` (the log is
+    public — every client holds it and `StoryCard` renders it); and because the tally counts events
+    rather than shares, purchase *cadence* becomes a bluff — dribbling inflates your apparent
+    weight, bulk buying conceals it, both cost tempo, and the public issued total caps the
+    distortion. The same fold should power an optional "who has been buying what" panel so the
+    bots' model is inspectable and a human who does not take notes is not playing a worse game. The full note — the game theory, a worked tally, the config keys
   and the engine surface — is the design canvas's sibling artifact:
   https://claude.ai/code/artifact/16f2c904-19b8-4c7b-a477-5a9cf95db85e
   Two things it turns up that outlive the proposal:
