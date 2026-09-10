@@ -12,7 +12,7 @@ Design is complete and agreed. **No application code exists yet**; the next step
 | `docs/decisions.md` | What was decided and why, what is still open, and the traps already hit. |
 | `design/build.py` | Generates the design canvas **and** is the reference implementation of the naming rules. |
 
-Published design canvas (5 artboards over 3 pages):
+Published design canvas (9 artboards over 3 pages):
 https://claude.ai/code/artifact/f1b58905-2da0-4cd0-9c2e-8d65624260a3
 
 ## Legal position, stated once
