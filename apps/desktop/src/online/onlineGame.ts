@@ -16,6 +16,35 @@ export interface OnlineGame {
   disconnect(): void;
 }
 
+/**
+ * Replace the lobby's placeholder seats with what the room actually reports
+ * (#15). `CreateJoin` seeds a `GameConfig` with `Player 1 / Player 2 / …`
+ * before a room exists — `joinRoom` even documents that the real config
+ * arrives via `room-state` — and that placeholder used to be handed straight to
+ * `GameScreen`, so the play surface named every remote player "Player N" and
+ * called every online bot a human.
+ *
+ * A seat nobody has taken keeps its placeholder: `room-state` reports `null`
+ * for an open seat, and "Player 3" reads better there than "Seat 3" while the
+ * room is still filling.
+ */
+export function configFromRoom(config: GameConfig, room: RoomState | null): GameConfig {
+  if (!room) return config;
+  return {
+    ...config,
+    seats: room.seats.map((slot, index) => {
+      const placeholder = config.seats[index];
+      return {
+        name: slot.name ?? placeholder?.name ?? `Player ${index + 1}`,
+        kind: slot.kind === 'bot' ? ('bot' as const) : ('human' as const),
+        difficulty: room.config.bots[index] ?? placeholder?.difficulty ?? 5,
+      };
+    }),
+    edition: room.config.edition,
+    visibility: room.config.visibility,
+  };
+}
+
 /** Turn a desktop `GameConfig` into the room's `RoomConfig` (bot seats by index). */
 export function toRoomConfig(config: GameConfig): RoomConfig {
   const bots: Record<number, number> = {};

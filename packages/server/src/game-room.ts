@@ -172,15 +172,18 @@ export class GameRoom {
    * each live connection's persisted `{ seat, token }` back through here.
    */
   restoreSeat(seat: Seat, token: string, name: string, connectionId: string): void {
-    this.seats.restore(seat, token, name, connectionId);
+    // The stored name, not the raw one: `SeatTable` trims, caps and
+    // de-duplicates, and patching the unnormalised name into engine state below
+    // would leave the two disagreeing about what this seat is called.
+    const stored = this.seats.restore(seat, token, name, connectionId);
     // On a hibernation wake the replay base is built with `Seat N` placeholders
     // (the SeatTable is empty until the adapter feeds connections back through
     // here). Names are cosmetic and never affect the deal, so patch the real
     // one into the live state as each seat comes back.
-    if (this.state && this.state.seats[seat] && this.state.seats[seat]!.name !== name) {
+    if (this.state && this.state.seats[seat] && this.state.seats[seat]!.name !== stored) {
       this.state = {
         ...this.state,
-        seats: this.state.seats.map((s, i) => (i === seat ? { ...s, name } : s)),
+        seats: this.state.seats.map((s, i) => (i === seat ? { ...s, name: stored } : s)),
       };
     }
   }

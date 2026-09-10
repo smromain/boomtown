@@ -224,3 +224,34 @@
   padding: 0;
   margin-top: 1rem;
 }
+
+/* Name field + its re-roll control. The input keeps the full width it had; the
+   button sits alongside without shrinking. */
+.nameRow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.nameRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+.nameRow button {
+  flex-shrink: 0;
+  padding: 0 0.9rem;
+  font: inherit;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.nameRow button:hover {
+  background: var(--surface);
+}
