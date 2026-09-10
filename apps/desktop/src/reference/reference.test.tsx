@@ -184,6 +184,29 @@ describe('RulesReference modal', () => {
     expect(dialog).not.toHaveTextContent('majority · minority');
   });
 
+  it('explains the whole Boomtown ending without reference to anything outside the modal', async () => {
+    await renderPanel(open, { edition: 'boomtown' });
+    const dialog = screen.getByRole('dialog', { name: 'How to play' });
+
+    expect(dialog).toHaveTextContent('Boomtown');
+    // the window, the register, the quota and the price of a yes — the four
+    // things a player cannot work out from the board
+    expect(dialog).toHaveTextContent(/2 corporations are safe/);
+    expect(dialog).toHaveTextContent(/one vote per share held in a/i);
+    expect(dialog).toHaveTextContent(/67% of the register/);
+    expect(dialog).toHaveTextContent(/opens? their books/i);
+    // and the rule that makes the whole thing a bluffing game
+    expect(dialog).toHaveTextContent(/The books are closed/);
+  });
+
+  it('says nothing about a vote under a rule set that has none', async () => {
+    await renderPanel(open);
+    const dialog = screen.getByRole('dialog', { name: 'How to play' });
+    expect(dialog).not.toHaveTextContent(/Going public/i);
+    expect(dialog).not.toHaveTextContent(/move to liquidate/i);
+    expect(dialog).not.toHaveTextContent(/register/i);
+  });
+
   it('is reachable on a turn that is not yours — the rules belong to the table, not the seat', async () => {
     // Online shape: a view for our seat only, someone else on the clock.
     await renderPanel(open, {
