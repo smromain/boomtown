@@ -117,11 +117,17 @@ describe('the Boomtown preset', () => {
     }
   });
 
-  it('plays by classic rules — it is a variant of that, not a new rulebook', () => {
+  it('plays by classic rules apart from what it adds — a variant, not a new rulebook', () => {
     const { boomtown, classic } = PRESETS;
-    const { id: _b, forcedVisibility: _v, ...boomtownRules } = boomtown;
+    const { id: _b, forcedVisibility: _v, endVote: _e, ...boomtownRules } = boomtown;
     const { id: _c, ...classicRules } = classic;
     expect(boomtownRules).toEqual(classicRules);
+  });
+
+  it('is the only preset with a vote to end', () => {
+    expect(PRESETS.boomtown.endVote).toBeDefined();
+    expect(PRESETS.classic.endVote).toBeUndefined();
+    expect(PRESETS['edition-2015'].endVote).toBeUndefined();
   });
 
   it('is reachable through PRESETS for every id in the union', () => {

@@ -1,4 +1,4 @@
-export type { Ruleset, RulesetId, Tier, BonusRow } from './types.js';
+export type { Ruleset, RulesetId, Tier, BonusRow, EndVoteConfig } from './types.js';
 export { classic } from './classic.js';
 export { edition2015 } from './edition2015.js';
 export { boomtown } from './boomtown.js';

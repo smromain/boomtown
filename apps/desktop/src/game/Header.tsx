@@ -15,6 +15,7 @@ const PHASE: Record<TurnStep, string> = {
   merge: 'Resolve the merger',
   buy: 'Buy stock',
   'end-check': 'End the game?',
+  vote: 'A motion is on the table',
 };
 
 export function Header() {

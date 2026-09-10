@@ -46,6 +46,29 @@ export type EngineEvent =
   | { readonly type: 'corporation-defunct'; readonly industry: Industry; readonly absorbedInto: Industry }
   | { readonly type: 'merger-completed'; readonly survivor: Industry }
   | { readonly type: 'turn-advanced'; readonly seat: Seat }
+  | { readonly type: 'motion-raised'; readonly seat: Seat }
+  /** The share register became public. Fires once per game — it never un-publishes. */
+  | { readonly type: 'register-published' }
+  | {
+      readonly type: 'vote-cast';
+      readonly seat: Seat;
+      readonly inFavour: boolean;
+      readonly weight: number;
+    }
+  | {
+      readonly type: 'motion-carried';
+      readonly backers: readonly Seat[];
+      readonly yes: number;
+      readonly total: number;
+    }
+  | {
+      readonly type: 'motion-failed';
+      readonly backers: readonly Seat[];
+      readonly yes: number;
+      readonly total: number;
+    }
+  /** Everyone who backed a motion that failed, now playing with open books. */
+  | { readonly type: 'books-opened'; readonly seats: readonly Seat[] }
   | { readonly type: 'end-announced'; readonly seat: Seat }
   | { readonly type: 'game-over'; readonly result: GameResult };
 

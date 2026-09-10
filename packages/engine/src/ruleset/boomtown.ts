@@ -14,13 +14,21 @@ import type { Ruleset } from './types.js';
  * one costs nothing and the mechanic evaporates. See
  * https://github.com/smromain/boomtown/issues/23.
  *
- * The vote itself is not built yet. Until it is, this plays exactly as classic
- * with `visibility: 'hidden'` forced — which is a coherent ruleset on its own,
- * and deliberately shippable before the mechanic lands.
+ * The dials below are the design note's starting guesses. They are config
+ * rather than constants precisely because they are expected to move once the
+ * simulation measures them (#27).
  */
 export const boomtown: Ruleset = {
   ...classic,
   id: 'boomtown',
   forcedVisibility: 'hidden',
   mergeNaming: DEFAULT_MERGE_NAMING,
+  endVote: {
+    quorumSafeCorps: 2,
+    quota: 2 / 3,
+    quotaBase: 'register',
+    minBackers: 2,
+    motionsPerPlayer: 1,
+    minPlayers: 3,
+  },
 };

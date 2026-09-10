@@ -126,6 +126,10 @@ export function createGame(options: SetupOptions): GameState {
     removed: [],
     rng,
     merger: null,
+    motion: null,
+    registerPublic: false,
+    openBooks: [],
+    motionsRaised: {},
     result: null,
   };
 }
