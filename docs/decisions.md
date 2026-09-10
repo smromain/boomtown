@@ -42,7 +42,7 @@
   https://claude.ai/code/artifact/16f2c904-19b8-4c7b-a477-5a9cf95db85e
   Two things it turns up that outlive the proposal:
   - **It makes visibility a rule, contradicting a stated principle.** `CLAUDE.md` says cash and
-    holdings visibility is a per-table setting. Boardroom has to force `hidden` and refuse to let
+    holdings visibility is a per-table setting. Going Public has to force `hidden` and refuse to let
     the table change it: at an open table the register is already public and the disclosure costs
     nothing, so the mechanic evaporates. If it ships, that exception needs to be stated where the
     principle is.
