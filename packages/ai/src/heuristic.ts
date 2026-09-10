@@ -30,7 +30,7 @@ export function scoreMove(
   const next = result.state;
   if (lookahead <= 0 || next.status === 'over') return evaluate(next, seat);
 
-  const decider = next.merger?.pending?.seat ?? activeOf(next);
+  const decider = next.merger?.pending?.seat ?? next.motion?.pending?.seat ?? activeOf(next);
   if (decider !== seat) return evaluate(next, seat);
 
   return bestScore(next, seat, lookahead - 1);

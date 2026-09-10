@@ -4,6 +4,7 @@ import { INDUSTRIES, type Industry } from '../pool.js';
 import { activeCorporations, activeSeat, sharePriceOf, type GameState, type Seat } from '../state.js';
 import { isPlayable } from '../reducer/placement.js';
 import { endConditionMet } from '../reducer/endgame.js';
+import { canMoveToLiquidate } from '../reducer/motion.js';
 
 /**
  * Every command the reducer would accept for the current state (R8). Each
@@ -18,6 +19,16 @@ export function legalMoves(state: GameState): Command[] {
     return mergerMoves(state);
   }
 
+  // A motion owns the clock while it is open, the same way a merger does.
+  const motion = state.motion;
+  if (state.step === 'vote' && motion?.pending) {
+    const seat = motion.pending.seat;
+    return [
+      { type: 'cast-vote', seat, inFavour: true },
+      { type: 'cast-vote', seat, inFavour: false },
+    ];
+  }
+
   const seat = activeSeat(state);
 
   switch (state.step) {
@@ -30,10 +41,13 @@ export function legalMoves(state: GameState): Command[] {
     case 'end-check':
       return [
         ...(endConditionMet(state) ? [{ type: 'announce-end', seat } as Command] : []),
+        ...(canMoveToLiquidate(state, seat) ? [{ type: 'move-to-liquidate', seat } as Command] : []),
         { type: 'end-turn', seat },
       ];
     case 'merge':
       return []; // a merge with no pending decision is a transient internal state
+    case 'vote':
+      return []; // a vote with no pending decision is likewise transient
   }
 }
 
@@ -87,6 +101,10 @@ function mergerMoves(state: GameState): Command[] {
   const survivor = state.merger!.survivor;
 
   switch (pending.type) {
+    case 'cast-vote':
+      // Not reachable: a vote is answered through the motion branch above, and
+      // this function is only called with a merger pending.
+      return [];
     case 'choose-survivor':
       return pending.options.map((survivorChoice) => ({
         type: 'choose-survivor',

@@ -2,6 +2,34 @@ import type { MergeNamingConfig } from '../naming/index.js';
 import type { Visibility } from '../state.js';
 
 /**
+ * The Going Public ending: a vote to liquidate early, available before the
+ * normal end trigger. Absent from both published editions — they end the way
+ * their rulebooks say.
+ */
+export interface EndVoteConfig {
+  /** Safe corporations that must exist before a motion is legal. */
+  readonly quorumSafeCorps: number;
+  /** Share of the vote needed to carry, as a fraction. Carries on `>= ceil(quota * total)`. */
+  readonly quota: number;
+  /** Whether `quota` is measured against the whole register or only votes cast. */
+  readonly quotaBase: 'register' | 'cast';
+  /**
+   * Distinct players who must vote yes. The supermajority alone does not do the
+   * job it looks like it does: the window opens early, and a register that
+   * small can be two-thirds held by one player — so without this a leader could
+   * carry a motion alone at the earliest legal moment.
+   */
+  readonly minBackers: number;
+  /**
+   * Motions each player may raise per game. Already "failed motions", since a
+   * carried one ends the game.
+   */
+  readonly motionsPerPlayer: number;
+  /** Below this many seats there is no vote — a coalition needs three to exist. */
+  readonly minPlayers: number;
+}
+
+/**
  * A Boomtown ruleset expressed as data. The engine reads one `Ruleset`; the two
  * published editions ship as presets (`classic`, `edition2015`). Every key here
  * is one row of the edition-configuration table in `docs/rules.md`.
@@ -55,6 +83,13 @@ export interface Ruleset {
    * table cannot be started around it either locally or online.
    */
   readonly forcedVisibility?: Visibility;
+
+  /**
+   * The Going Public ending, or absent for a ruleset that ends only the
+   * published way. Values here are the design note's starting guesses and are
+   * meant to move once the tuning runs measure them (#27).
+   */
+  readonly endVote?: EndVoteConfig;
 }
 
 export type RulesetId = 'classic' | 'edition-2015' | 'boomtown';

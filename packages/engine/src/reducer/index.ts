@@ -3,6 +3,7 @@ import { err } from '../errors.js';
 import type { GameState } from '../state.js';
 import { applyBuyShares } from './buy.js';
 import { applyAnnounceEnd, applyEndTurn } from './endcheck.js';
+import { applyCastVote, applyMoveToLiquidate } from './motion.js';
 import { applyFoundCorporation } from './found.js';
 import { applyPlaceTile } from './place.js';
 import { resolveMergerCommand } from './merge/machine.js';
@@ -32,6 +33,10 @@ export function reduce(state: GameState, command: Command): ReduceResult {
       return resolveMergerCommand(draft, command);
     case 'announce-end':
       return applyAnnounceEnd(draft, command);
+    case 'move-to-liquidate':
+      return applyMoveToLiquidate(draft, command);
+    case 'cast-vote':
+      return applyCastVote(draft, command);
     case 'end-turn':
       return applyEndTurn(draft, command);
   }

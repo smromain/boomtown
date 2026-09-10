@@ -6,6 +6,7 @@ export { RULES, TOTAL_SHARES } from './constants.js';
 export {
   type Ruleset,
   type RulesetId,
+  type EndVoteConfig,
   type Tier,
   type BonusRow,
   classic,

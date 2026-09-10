@@ -34,10 +34,17 @@ export type Cell =
   | { readonly kind: 'unincorporated' }
   | { readonly kind: 'corporation'; readonly industry: Industry };
 
-export type TurnStep = 'place' | 'found' | 'merge' | 'buy' | 'end-check';
+export type TurnStep = 'place' | 'found' | 'merge' | 'buy' | 'end-check' | 'vote';
 
 /** A decision the merger state machine is waiting on, addressed to one seat (R3, KTD3). */
 export type PendingDecision =
+  /**
+   * A vote on a motion to liquidate, addressed to one seat (#26). It rides the
+   * same channel as the merger decisions — engine -> `viewFor` -> client store
+   * -> `DecisionModal` -> bots — because every consumer downstream is written
+   * against `PendingDecision` generically rather than against mergers.
+   */
+  | { readonly type: 'cast-vote'; readonly seat: Seat; readonly motionBy: Seat }
   | { readonly type: 'choose-survivor'; readonly seat: Seat; readonly options: readonly Industry[] }
   | { readonly type: 'choose-defunct-order'; readonly seat: Seat; readonly options: readonly Industry[] }
   | {
@@ -47,6 +54,27 @@ export type PendingDecision =
       readonly survivor: Industry;
       readonly shares: number;
     };
+
+/**
+ * A motion to liquidate, open for voting. Null the rest of the time.
+ *
+ * Votes are sequenced and open — mover first, then clockwise — which is the
+ * same idiom merger disposal uses, works in hot-seat without a secret ballot,
+ * and lets the count short-circuit the moment the outcome is settled.
+ */
+export interface MotionSnapshot {
+  /** Who raised it. Raising a motion *is* voting for it. */
+  readonly by: Seat;
+  /** Voting order: the mover, then clockwise. */
+  readonly order: readonly Seat[];
+  /** How much of the register each seat carries, fixed when the motion was raised. */
+  readonly weights: Readonly<Record<number, number>>;
+  /** Index into `order` for the next seat to vote. */
+  cursor: number;
+  /** Votes cast so far, by seat. */
+  votes: Record<number, boolean>;
+  pending: PendingDecision | null;
+}
 
 /** Live merger being resolved (R3, KTD3). Null the rest of the time. */
 export interface MergerSnapshot {
@@ -120,10 +148,36 @@ export interface GameState {
   removed: TileId[];
   rng: Rng;
   merger: MergerSnapshot | null;
+  /** The motion currently being voted on, if any (#26). */
+  motion: MotionSnapshot | null;
+  /**
+   * Whether safe-corporation holdings have been published. Set by the first
+   * motion and never cleared: you cannot un-ring that bell, so information
+   * opens monotonically over a game.
+   */
+  registerPublic: boolean;
+  /** Seats whose books are fully open — everyone who backed a motion that failed. */
+  openBooks: Seat[];
+  /** Motions each seat has raised, for the per-player limit. */
+  motionsRaised: Record<number, number>;
   result: GameResult | null;
 }
 
 // --- derived helpers -------------------------------------------------------
+
+/**
+ * Vote weight per seat: shares held in safe corporations. Duplicated from the
+ * reducer's `registerWeights` rather than imported, because `reducer/motion.ts`
+ * imports from here and the cycle is not worth the six lines it would save.
+ */
+function registerWeightsOf(state: GameState): Record<number, number> {
+  const safe = activeCorporations(state).filter((industry) => isSafe(state, industry));
+  const weights: Record<number, number> = {};
+  state.seats.forEach((seat, index) => {
+    weights[index] = safe.reduce((sum, industry) => sum + seat.holdings[industry], 0);
+  });
+  return weights;
+}
 
 export function activeSeat(state: GameState): Seat {
   return state.turnOrder[state.turnPointer]!;
@@ -222,6 +276,28 @@ export interface PlayerView {
   /** Set for the active seat while a placement is awaiting a headquarters choice. */
   readonly pendingFound: { readonly group: readonly TileId[] } | null;
   readonly endAnnouncedBy: Seat | null;
+  /** The motion open for voting, as everyone can see it. Null when there is none. */
+  readonly motion: {
+    readonly by: Seat;
+    readonly order: readonly Seat[];
+    readonly weights: Readonly<Record<number, number>>;
+    readonly votes: Readonly<Record<number, boolean>>;
+    readonly waitingOn: Seat | null;
+  } | null;
+  /** Whether safe-corporation holdings are public. Once true, never false again. */
+  readonly registerPublic: boolean;
+  /**
+   * Each seat's vote weight — shares held in safe corporations — once the
+   * register has been published, else null.
+   *
+   * The weight rather than a per-corporation breakdown, because the weight is
+   * what a vote turns on and `holdings` is all-or-nothing: filling the unsafe
+   * corporations with zeroes to reuse that shape would be a lie rather than a
+   * partial disclosure. A breakdown can be added if the UI ever wants one.
+   */
+  readonly register: Readonly<Record<number, number>> | null;
+  /** Seats playing with open books — everyone who backed a motion that failed. */
+  readonly openBooks: readonly Seat[];
   readonly result: GameResult | null;
 }
 
@@ -249,7 +325,11 @@ export function viewFor(state: GameState, you: Seat): PlayerView {
   ) as Record<Industry, CorpView>;
 
   const pending =
-    state.merger?.pending && state.merger.pending.seat === you ? state.merger.pending : null;
+    state.merger?.pending && state.merger.pending.seat === you
+      ? state.merger.pending
+      : state.motion?.pending && state.motion.pending.seat === you
+        ? state.motion.pending
+        : null;
 
   return {
     ruleset: state.ruleset,
@@ -258,12 +338,17 @@ export function viewFor(state: GameState, you: Seat): PlayerView {
     status: state.status,
     activeSeat: activeSeat(state),
     turnOrder: state.turnOrder,
-    seats: state.seats.map((seat, index) => ({
-      name: seat.name,
-      cash: open || index === you ? seat.cash : null,
-      holdings: open || index === you ? { ...seat.holdings } : null,
-      handCount: state.hands[index]!.length,
-    })),
+    seats: state.seats.map((seat, index) => {
+      // Open books are exactly that: a seat that backed a failed motion is as
+      // visible as it would be at an open table, permanently.
+      const bare = open || index === you || state.openBooks.includes(index);
+      return {
+        name: seat.name,
+        cash: bare ? seat.cash : null,
+        holdings: bare ? { ...seat.holdings } : null,
+        handCount: state.hands[index]!.length,
+      };
+    }),
     yourHand: [...state.hands[you]!],
     yourCash: state.seats[you]!.cash,
     yourHoldings: { ...state.seats[you]!.holdings },
@@ -273,6 +358,18 @@ export function viewFor(state: GameState, you: Seat): PlayerView {
     drawPileCount: state.bag.length,
     removedTiles: [...state.removed],
     pendingDecision: pending,
+    motion: state.motion
+      ? {
+          by: state.motion.by,
+          order: state.motion.order,
+          weights: state.motion.weights,
+          votes: state.motion.votes,
+          waitingOn: state.motion.pending?.seat ?? null,
+        }
+      : null,
+    registerPublic: state.registerPublic,
+    register: state.registerPublic ? registerWeightsOf(state) : null,
+    openBooks: [...state.openBooks],
     pendingFound: state.pendingFound,
     endAnnouncedBy: state.endAnnouncedBy,
     result: state.result,

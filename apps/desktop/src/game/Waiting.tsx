@@ -12,6 +12,7 @@ const STEP_LABEL: Record<string, string> = {
   merge: 'resolving a merger',
   buy: 'buying stock',
   'end-check': 'deciding whether to end the game',
+  vote: 'voting on a motion to liquidate',
 };
 
 /**
