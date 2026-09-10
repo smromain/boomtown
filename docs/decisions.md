@@ -50,11 +50,31 @@
     stops the leader self-serving.
 
 - **Bots are handed the authoritative state, not a filtered view.** `attachBotDriver` calls
-  `chooseMove(options.snapshot(), seat, rng)`, and `snapshot()` returns the full `GameState` —
-  every hand, the bag, and every seat's holdings. `clientView()` does the per-seat filtering that
-  hidden information depends on and the bot path goes around it. Today that is a modest advantage;
-  any ruleset that turns on secret holdings (Boardroom above) makes it fatal, because bots would
-  play against a register humans can only estimate. Worth fixing on its own merits.
+  `chooseMove(options.snapshot(), seat, rng)`, and `snapshot()` returns the full `GameState`.
+  `clientView()` does the per-seat filtering that hidden information depends on, and the bot path
+  goes around it. What they *reach* and what they *use* differ, and the difference decides how big
+  the fix is:
+  - **Opponents' holdings are genuinely read.** `bonusExposure` in `queries/evaluate.ts` maps over
+    `state.seats` to rank every holder of a corporation. Its own docstring claims the function
+    "reads only public state and `seat`'s own holdings" — the comment asserts the invariant the
+    code breaks. Legitimate at an open table, a leak at a hidden one.
+  - **Hands and the bag are not read into any score**, and that is structural rather than lucky:
+    `ownMoves` filters `legalMoves` to the bot's own commands, and `scoreMove` stops recursing once
+    `decider !== seat`, so lookahead never expands an opponent's options. Nothing *enforces* it,
+    though — deepen the lookahead to model an opponent reply and the hands are right there in the
+    parameter. Worth making unreachable rather than merely unused.
+
+  The fix is "a bot sees what a player at that table could see", which is what `clientView` already
+  computes — not a bespoke rule about bots. It costs little strength, for the reason below.
+
+- **"Hidden" holdings are derivable from the public log.** `shares-bought` carries the exact
+  `picks`, and `eventText` renders it to the whole table ("Ana bought 3 Concordia, 1 Enrun for
+  $4,200"); the server filters each connection's *view*, not the event log. So the hidden setting
+  conceals the running tally, not the transactions — card counting, where the information is public
+  and the bookkeeping is the work. Two consequences: restricting bots to a filtered view barely
+  weakens them, since they can accumulate the log like anyone else; and **Boardroom needs a second
+  clause suppressing purchase detail in the public log**, or the register it publishes is one the
+  table could already reconstruct and the mover's disclosure sells nothing.
 
 - **`mergeNaming.stem` value.** 0.75 as specified; 0.6 drifts further. Playtest rather than decide.
 - **2015 board dimensions**, if that preset is ever wanted for real. The rulebook does not say.
