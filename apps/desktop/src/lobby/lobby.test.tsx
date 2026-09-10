@@ -6,8 +6,9 @@ import type { RoomState } from '@boomtown/protocol';
 import { CreateJoin } from './CreateJoin.js';
 import { SeatList } from './SeatList.js';
 import type { OnlineGame } from '../online/onlineGame.js';
-import { toRoomConfig } from '../online/onlineGame.js';
+import { configFromRoom, toRoomConfig } from '../online/onlineGame.js';
 import { defaultConfig } from '../setup/gameConfig.js';
+import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '../settings/settings.js';
 
 vi.mock('../online/onlineGame.js', async (importActual) => {
   const actual = await importActual<typeof import('../online/onlineGame.js')>();
@@ -22,7 +23,11 @@ const { createRoom, joinRoom } = await import('../online/onlineGame.js');
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
 });
+
+/** A generated default name is two capitalised words — never the old placeholder. */
+const GENERATED = /^[A-Z][a-z]+ [A-Z][a-z]+$/;
 
 describe('toRoomConfig', () => {
   it('maps bot seats to an index->difficulty record', () => {
@@ -37,6 +42,51 @@ describe('toRoomConfig', () => {
     const room = toRoomConfig(config);
     expect(room.seatCount).toBe(3);
     expect(room.bots).toEqual({ 1: 8, 2: 3 });
+  });
+});
+
+describe('configFromRoom', () => {
+  const placeholder = {
+    ...defaultConfig(),
+    seats: [
+      { name: 'Player 1', kind: 'human' as const, difficulty: 5 },
+      { name: 'Player 2', kind: 'human' as const, difficulty: 5 },
+      { name: 'Player 3', kind: 'human' as const, difficulty: 5 },
+    ],
+  };
+
+  const room: RoomState = {
+    code: 'ABC123',
+    phase: 'playing',
+    config: { seatCount: 3, edition: 'edition-2015', visibility: 'hidden', bots: { 2: 7 } },
+    seats: [
+      { index: 0, kind: 'human', name: 'Ana', connected: true },
+      { index: 1, kind: 'human', name: 'Ben', connected: true },
+      { index: 2, kind: 'bot', name: 'Bot 3', connected: true },
+    ],
+  };
+
+  it('replaces the lobby placeholders with the room\'s real names and kinds (#15)', () => {
+    const config = configFromRoom(placeholder, room);
+    expect(config.seats.map((s) => s.name)).toEqual(['Ana', 'Ben', 'Bot 3']);
+    expect(config.seats.map((s) => s.kind)).toEqual(['human', 'human', 'bot']);
+    // an online bot was previously reported as a human, so its seat never
+    // showed the "Bot" kicker and the slow-bot nudge never armed
+    expect(config.seats[2]!.difficulty).toBe(7);
+    expect(config.edition).toBe('edition-2015');
+    expect(config.visibility).toBe('hidden');
+  });
+
+  it('keeps the placeholder for a seat nobody has taken yet', () => {
+    const filling: RoomState = {
+      ...room,
+      seats: [room.seats[0]!, { index: 1, kind: 'open', name: null, connected: false }, room.seats[2]!],
+    };
+    expect(configFromRoom(placeholder, filling).seats[1]!.name).toBe('Player 2');
+  });
+
+  it('is a no-op before any room-state has arrived', () => {
+    expect(configFromRoom(placeholder, null)).toBe(placeholder);
   });
 });
 
@@ -62,7 +112,9 @@ describe('CreateJoin', () => {
     expect(config.edition).toBe('edition-2015');
     expect(config.visibility).toBe('hidden');
     expect(code).toMatch(/^[A-Z2-9]{6}$/);
-    expect(name).toBe('Player 1');
+    // The field no longer ships pre-filled with a placeholder everyone shared.
+    expect(name).not.toBe('Player 1');
+    expect(name).toMatch(GENERATED);
     expect(onRoom).toHaveBeenCalled();
   });
 
@@ -77,7 +129,51 @@ describe('CreateJoin', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Join room' }));
     });
 
-    expect(joinRoom).toHaveBeenCalledWith(expect.anything(), 'ABCD12', 'Player 1');
+    expect(joinRoom).toHaveBeenCalledWith(expect.anything(), 'ABCD12', expect.stringMatching(GENERATED));
+  });
+
+  it('refuses a blank name instead of silently joining as "Player" (#16)', async () => {
+    render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Your name' }));
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Create room' }));
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent(/name/i);
+    expect(createRoom).not.toHaveBeenCalled();
+  });
+
+  it('rolls a new name on demand', async () => {
+    render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
+    const field = screen.getByRole('textbox', { name: 'Your name' }) as HTMLInputElement;
+    const before = field.value;
+    // Two names can repeat by chance, so roll until it moves rather than
+    // asserting one click always changes it.
+    for (let i = 0; i < 12 && field.value === before; i += 1) {
+      await userEvent.click(screen.getByRole('button', { name: 'Roll a new name' }));
+    }
+    expect(field.value).not.toBe(before);
+    expect(field.value).toMatch(GENERATED);
+  });
+
+  it('remembers the name for next time', async () => {
+    vi.mocked(createRoom).mockResolvedValue({ roomCode: 'ABC123' } as OnlineGame);
+    const { unmount } = render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Your name' }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Your name' }), 'Ana');
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Create room' }));
+    });
+    expect(loadSettings().playerName).toBe('Ana');
+
+    unmount();
+    render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
+    expect(screen.getByRole('textbox', { name: 'Your name' })).toHaveValue('Ana');
+  });
+
+  it('seeds from a saved name rather than generating one', () => {
+    saveSettings({ ...DEFAULT_SETTINGS, playerName: 'Bo' });
+    render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
+    expect(screen.getByRole('textbox', { name: 'Your name' })).toHaveValue('Bo');
   });
 
   it('blocks joining with a too-short code', async () => {

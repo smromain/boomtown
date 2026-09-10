@@ -8,6 +8,8 @@ export {
   setupOptionsFor,
   clampSeatCount,
   configError,
+  cleanName,
+  MAX_NAME_LENGTH,
 } from './seats.js';
 export { roomLog, roomWarn } from './log.js';
 export {

@@ -24,6 +24,14 @@ export interface HarnessOptions {
   /** Seats a local player controls. Defaults to all three (hot-seat). Pass a
    *  subset to simulate a bot / remote seat being on the clock. */
   readonly localSeats?: readonly number[];
+  /**
+   * Seats this client receives a `ClientView` for. Hot-seat gets all of them;
+   * **online a client holds exactly one** (`transport/socket.ts`), which is
+   * what makes `activeView` null on every remote player's turn. Pass a single
+   * seat to reproduce that shape — a hot-seat harness cannot exercise it.
+   * Defaults to all three.
+   */
+  readonly controls?: readonly number[];
   /** Edition preset. Defaults to the engine's own default (classic). The two
    *  editions disagree on bonus tiers, safe size and price bands, so anything
    *  that renders those needs to be tested against both. */
@@ -48,7 +56,11 @@ export async function renderPanel(
   options.craft?.(state);
 
   const client = createGameClient(
-    localTransport({ setup, controls: [0, 1, 2], engine: GameSession.fromSnapshot(state) }),
+    localTransport({
+      setup,
+      controls: options.controls ?? [0, 1, 2],
+      engine: GameSession.fromSnapshot(state),
+    }),
   );
   await client.connect();
 

@@ -14,6 +14,16 @@ export interface SeatOccupant {
   connectionId: string | null;
 }
 
+/** Longest accepted seat name. Names are untrusted input rendered straight into
+ *  the board, the shareholders table and every toast, so the cap is a layout
+ *  concern as much as anything. */
+export const MAX_NAME_LENGTH = 24;
+
+/** Trim, collapse runs of whitespace, and cap. Returns '' for a blank name. */
+export function cleanName(raw: string): string {
+  return raw.trim().replace(/\s+/g, ' ').slice(0, MAX_NAME_LENGTH);
+}
+
 export class SeatTable {
   private readonly humans = new Map<number, SeatOccupant>();
 
@@ -41,13 +51,33 @@ export class SeatTable {
   }
 
   /**
+   * The name to store for `seat`: cleaned, defaulted when blank, and made
+   * unique within the room. The client is not the only way in — a socket URL
+   * carries whatever it likes — so normalisation belongs here rather than
+   * only in the lobby UI.
+   */
+  private nameFor(seat: number, raw: string): string {
+    const base = cleanName(raw) || `Player ${seat + 1}`;
+    const taken = new Set(
+      [...this.humans].filter(([index]) => index !== seat).map(([, o]) => o.name),
+    );
+    if (!taken.has(base)) return base;
+    // "Ana", "Ana (2)", "Ana (3)" — a suffix keeps both players identifiable
+    // where a bare duplicate makes the whole table ambiguous.
+    for (let n = 2; ; n += 1) {
+      const candidate = `${base} (${n})`;
+      if (!taken.has(candidate)) return candidate;
+    }
+  }
+
+  /**
    * Assign a fresh joiner to the first open human seat. Returns the seat and a
    * minted token, or `null` when every human seat is taken (`room-full`).
    */
   join(name: string, token: string, connectionId: string): { seat: number } | null {
     const seat = this.firstOpenSeat();
     if (seat === null) return null;
-    this.humans.set(seat, { token, name, connectionId });
+    this.humans.set(seat, { token, name: this.nameFor(seat, name), connectionId });
     return { seat };
   }
 
@@ -55,8 +85,12 @@ export class SeatTable {
    * Restore a seat occupant from persisted connection state after a hibernation
    * wake (the in-memory map was lost; `connection.setState` survived).
    */
-  restore(seat: number, token: string, name: string, connectionId: string): void {
-    this.humans.set(seat, { token, name, connectionId });
+  restore(seat: number, token: string, name: string, connectionId: string): string {
+    // `nameFor` excludes this seat from the taken set, so restoring a name the
+    // seat already holds does not walk it up to "Ana (2)" on every wake.
+    const stored = this.nameFor(seat, name);
+    this.humans.set(seat, { token, name: stored, connectionId });
+    return stored;
   }
 
   /**

@@ -4,6 +4,8 @@ import { defaultConfig, type GameConfig } from '../setup/gameConfig.js';
 import { SeatRow } from '../setup/SeatConfig.js';
 import { createRoom, joinRoom, type OnlineGame } from '../online/onlineGame.js';
 import { makeRoomCode } from '../online/hostUrl.js';
+import { randomName } from '../online/randomName.js';
+import { loadSettings, saveSettings } from '../settings/settings.js';
 import styles from './lobby.module.css';
 
 /**
@@ -18,7 +20,11 @@ export function CreateJoin({
   onBack: () => void;
 }) {
   const [mode, setMode] = useState<'create' | 'join'>('create');
-  const [name, setName] = useState('Player 1');
+  // Seeded from the saved name, else a generated one. Never the literal
+  // "Player 1" it used to ship with: that was a real value rather than a
+  // placeholder, so every joiner who didn't think to change it arrived under
+  // the same name (#16).
+  const [name, setName] = useState(() => loadSettings().playerName.trim() || randomName());
   const [joinCode, setJoinCode] = useState('');
   const [config, setConfig] = useState<GameConfig>(() => ({
     ...defaultConfig(),
@@ -44,12 +50,20 @@ export function CreateJoin({
   };
 
   const go = async () => {
+    const chosen = name.trim();
+    if (chosen === '') {
+      setError('Enter a name, or roll one.');
+      return;
+    }
+
     setBusy(true);
     setError(null);
+    // Remembered for next time, the way the online host override is.
+    saveSettings({ ...loadSettings(), playerName: chosen });
     try {
       if (mode === 'create') {
         const code = makeRoomCode();
-        onRoom(await createRoom(config, code, name.trim() || 'Player'));
+        onRoom(await createRoom(config, code, chosen));
       } else {
         const code = joinCode.trim().toUpperCase();
         if (code.length < 4) {
@@ -57,7 +71,7 @@ export function CreateJoin({
           setBusy(false);
           return;
         }
-        onRoom(await joinRoom(config, code, name.trim() || 'Player'));
+        onRoom(await joinRoom(config, code, chosen));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not connect.');
@@ -80,7 +94,17 @@ export function CreateJoin({
 
       <label className={styles.field}>
         <span>Your name</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} aria-label="Your name" />
+        <div className={styles.nameRow}>
+          <input
+            value={name}
+            maxLength={24}
+            onChange={(e) => setName(e.target.value)}
+            aria-label="Your name"
+          />
+          <button type="button" onClick={() => setName(randomName())} aria-label="Roll a new name">
+            Roll
+          </button>
+        </div>
       </label>
 
       {mode === 'join' ? (

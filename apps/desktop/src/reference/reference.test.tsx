@@ -6,6 +6,7 @@ import { createGame } from '@boomtown/engine';
 import { corpReference, foundingOptions, fullChart } from './priceReference.js';
 import { StockReference } from './StockReference.js';
 import { CorpReference } from './CorpReference.js';
+import { RulesReference } from './RulesReference.js';
 import { ReferenceProvider, useReference } from './ReferenceContext.js';
 import { NAMES, renderPanel, seedCorp } from '../testing/harness.js';
 
@@ -151,5 +152,54 @@ describe('ReferenceProvider wiring', () => {
     const dialogs = screen.getAllByRole('dialog');
     expect(dialogs).toHaveLength(1);
     expect(dialogs[0]).toHaveTextContent('Stock reference');
+  });
+});
+
+describe('RulesReference modal', () => {
+  const open = <RulesReference open onClose={() => {}} onOpenChart={() => {}} />;
+
+  it('reads the classic ruleset rather than hardcoding it', async () => {
+    await renderPanel(open);
+    const dialog = screen.getByRole('dialog', { name: 'How to play' });
+    expect(dialog).toHaveTextContent('Classic');
+    expect(dialog).toHaveTextContent('safe at 11 tiles');
+    expect(dialog).toHaveTextContent('11+ tiles — cannot be dissolved');
+    expect(dialog).toHaveTextContent('41+ tiles in one corporation');
+    expect(dialog).toHaveTextContent('majority · minority');
+    expect(dialog).toHaveTextContent('both bonuses');
+    // the classic board geometry, straight off the ruleset
+    expect(dialog).toHaveTextContent('12 × 9');
+  });
+
+  it('says something different under the 2015 edition — every edition-bound row moves', async () => {
+    await renderPanel(open, { edition: 'edition-2015' });
+    const dialog = screen.getByRole('dialog', { name: 'How to play' });
+    expect(dialog).toHaveTextContent('Modern');
+    expect(dialog).toHaveTextContent('safe at 10 tiles');
+    expect(dialog).toHaveTextContent('10+ tiles — cannot be dissolved');
+    expect(dialog).toHaveTextContent('38+ tiles in one corporation');
+    expect(dialog).toHaveTextContent('primary · secondary · tertiary');
+    expect(dialog).toHaveTextContent('primary and tertiary — not secondary');
+    expect(dialog).toHaveTextContent('rounded up to the nearest $100');
+    expect(dialog).not.toHaveTextContent('majority · minority');
+  });
+
+  it('is reachable on a turn that is not yours — the rules belong to the table, not the seat', async () => {
+    // Online shape: a view for our seat only, someone else on the clock.
+    await renderPanel(open, {
+      controls: [0],
+      localSeats: [0],
+      craft: (state) => {
+        state.turnPointer = 1;
+      },
+    });
+    expect(screen.getByRole('dialog', { name: 'How to play' })).toHaveTextContent('Classic');
+  });
+
+  it('names the merger sequencing rule that everything else depends on', async () => {
+    await renderPanel(open);
+    const dialog = screen.getByRole('dialog', { name: 'How to play' });
+    expect(dialog).toHaveTextContent(/never counts/i);
+    expect(dialog).toHaveTextContent(/largest first/i);
   });
 });

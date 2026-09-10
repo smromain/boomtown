@@ -40,7 +40,7 @@ export default class BoomtownRoom implements Party.Server {
       const state = connection.state;
       if (state && typeof state.seat === 'number' && typeof state.token === 'string') {
         this.seatByConnection.set(connection.id, state.seat);
-        this.game?.restoreSeat(state.seat, state.token, state.name ?? 'Player', connection.id);
+        this.game?.restoreSeat(state.seat, state.token, state.name ?? '', connection.id);
       }
     }
     // If the wake resumed bot turns, deliver those updates to the live seats.
@@ -85,7 +85,7 @@ export default class BoomtownRoom implements Party.Server {
     if (this.game && token) {
       const bound = this.game.reconnect(token, connection.id);
       if (bound) {
-        const name = url.searchParams.get('name') ?? 'Player';
+        const name = url.searchParams.get('name') ?? '';
         roomLog(this.room.id, 'reconnected a seat by token', { seat: bound.seat, connection: connection.id });
         this.seatByConnection.set(connection.id, bound.seat);
         connection.setState({ seat: bound.seat, token, name });
@@ -191,13 +191,15 @@ export default class BoomtownRoom implements Party.Server {
     const state = connection.state as { seat?: Seat; token?: string; name?: string } | null;
     if (!state || typeof state.seat !== 'number' || typeof state.token !== 'string') return undefined;
     this.seatByConnection.set(connection.id, state.seat);
-    this.game?.restoreSeat(state.seat, state.token, state.name ?? 'Player', connection.id);
+    this.game?.restoreSeat(state.seat, state.token, state.name ?? '', connection.id);
     return state.seat;
   }
 
   private joinSender(sender: Party.Connection): void {
     if (!this.game) return;
-    const name = new URL(sender.uri).searchParams.get('name') ?? 'Player';
+    // Blank rather than an invented default: `SeatTable` owns what a nameless
+    // seat is called, so there is one rule instead of three edges guessing.
+    const name = new URL(sender.uri).searchParams.get('name') ?? '';
     const token = crypto.randomUUID();
     const bound = this.game.join(name, token, sender.id);
     if (!bound) {

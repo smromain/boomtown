@@ -2,12 +2,15 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import type { Industry } from '@boomtown/engine';
 import { StockReference } from './StockReference.js';
 import { CorpReference } from './CorpReference.js';
+import { RulesReference } from './RulesReference.js';
 
 interface ReferenceApi {
   /** Open the full stock-reference chart. */
   openChart: () => void;
   /** Open the single-corporation reference for one industry. */
   openCorp: (industry: Industry) => void;
+  /** Open the rules of play for this table's edition. */
+  openRules: () => void;
 }
 
 const ReferenceContext = createContext<ReferenceApi | null>(null);
@@ -16,12 +19,15 @@ const ReferenceContext = createContext<ReferenceApi | null>(null);
  *  open the stock-reference modals. Mounts both modals; only one is open at a
  *  time. */
 export function ReferenceProvider({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState<{ kind: 'chart' } | { kind: 'corp'; industry: Industry } | null>(null);
+  const [open, setOpen] = useState<
+    { kind: 'chart' } | { kind: 'corp'; industry: Industry } | { kind: 'rules' } | null
+  >(null);
 
   const api = useMemo<ReferenceApi>(
     () => ({
       openChart: () => setOpen({ kind: 'chart' }),
       openCorp: (industry) => setOpen({ kind: 'corp', industry }),
+      openRules: () => setOpen({ kind: 'rules' }),
     }),
     [],
   );
@@ -37,11 +43,12 @@ export function ReferenceProvider({ children }: { children: ReactNode }) {
         onClose={close}
         onOpenChart={api.openChart}
       />
+      <RulesReference open={open?.kind === 'rules'} onClose={close} onOpenChart={api.openChart} />
     </ReferenceContext.Provider>
   );
 }
 
-const NOOP: ReferenceApi = { openChart: () => {}, openCorp: () => {} };
+const NOOP: ReferenceApi = { openChart: () => {}, openCorp: () => {}, openRules: () => {} };
 
 /**
  * The reference-modal opener. Outside a `<ReferenceProvider>` (isolated panel

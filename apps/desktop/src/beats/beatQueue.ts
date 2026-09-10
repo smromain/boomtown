@@ -8,9 +8,20 @@ import type { Beat } from './beatTriggers.js';
 export interface BeatQueue {
   readonly active: Beat | null;
   readonly pending: readonly Beat[];
+  /**
+   * Increments every time a beat becomes active. A `Beat` is plain data with no
+   * identity — two consecutive buys by the same seat for the same cost are
+   * `toEqual` to one another — so this is what tells them apart. It is the
+   * React key the orchestrator renders the active beat under: without it, one
+   * buy-stock beat replacing another reconciles into the *same* component
+   * instance, the mount effect that arms the auto-dismiss timer never re-runs,
+   * and the second flourish sits on screen forever with the rest of the queue
+   * stuck behind it.
+   */
+  readonly serial: number;
 }
 
-export const EMPTY_BEAT_QUEUE: BeatQueue = { active: null, pending: [] };
+export const EMPTY_BEAT_QUEUE: BeatQueue = { active: null, pending: [], serial: 0 };
 
 /**
  * Add a beat. If nothing is playing, it becomes active immediately; otherwise
@@ -21,7 +32,7 @@ export const EMPTY_BEAT_QUEUE: BeatQueue = { active: null, pending: [] };
  * so it survives any number of further collapses until it plays.
  */
 export function enqueue(queue: BeatQueue, beat: Beat): BeatQueue {
-  if (queue.active == null) return { active: beat, pending: [] };
+  if (queue.active == null) return { active: beat, pending: [], serial: queue.serial + 1 };
   return { ...queue, pending: collapse([...queue.pending, beat]) };
 }
 
@@ -36,5 +47,9 @@ function collapse(pending: readonly Beat[]): readonly Beat[] {
 /** Dismiss the active beat and promote the next pending one, if any. */
 export function advance(queue: BeatQueue): BeatQueue {
   const [next, ...rest] = queue.pending;
-  return { active: next ?? null, pending: rest };
+  return {
+    active: next ?? null,
+    pending: rest,
+    serial: next ? queue.serial + 1 : queue.serial,
+  };
 }

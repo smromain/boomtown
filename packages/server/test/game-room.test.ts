@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { RoomConfig } from '@boomtown/protocol';
-import { GameRoom, MemoryStore, SeatTable, configError, seatOnClock, setupOptionsFor } from '@boomtown/server';
+import {
+  GameRoom,
+  MAX_NAME_LENGTH,
+  MemoryStore,
+  SeatTable,
+  cleanName,
+  configError,
+  seatOnClock,
+  setupOptionsFor,
+} from '@boomtown/server';
 import { createGame } from '@boomtown/engine';
 
 const baseConfig = (over: Partial<RoomConfig> = {}): RoomConfig => ({
@@ -10,6 +19,39 @@ const baseConfig = (over: Partial<RoomConfig> = {}): RoomConfig => ({
   bots: {},
   seed: 42,
   ...over,
+});
+
+describe('seat names (#16)', () => {
+  it('trims, collapses whitespace and caps length', () => {
+    expect(cleanName('  Ana  ')).toBe('Ana');
+    expect(cleanName('Ana   the   Great')).toBe('Ana the Great');
+    expect(cleanName('x'.repeat(80))).toHaveLength(MAX_NAME_LENGTH);
+    expect(cleanName('   ')).toBe('');
+  });
+
+  it('names a blank seat after its index rather than taking the blank', () => {
+    const table = new SeatTable(baseConfig());
+    table.join('   ', 't1', 'c1');
+    expect(table.displayNames()[0]).toBe('Player 1');
+  });
+
+  it('de-duplicates within the room, so two players are never both "Ana"', () => {
+    const table = new SeatTable(baseConfig());
+    table.join('Ana', 't1', 'c1');
+    table.join('Ana', 't2', 'c2');
+    table.join('  Ana  ', 't3', 'c3');
+    expect(table.displayNames()).toEqual(['Ana', 'Ana (2)', 'Ana (3)']);
+  });
+
+  it('restoring a seat keeps its own name rather than walking it to "Ana (2)"', () => {
+    // A hibernation wake feeds every live connection back through `restore`.
+    // Excluding the seat itself from the taken set is what stops each wake
+    // appending another suffix.
+    const table = new SeatTable(baseConfig());
+    table.join('Ana', 't1', 'c1');
+    for (let i = 0; i < 3; i += 1) expect(table.restore(0, 't1', 'Ana', 'c1')).toBe('Ana');
+    expect(table.displayNames()[0]).toBe('Ana');
+  });
 });
 
 describe('SeatTable', () => {

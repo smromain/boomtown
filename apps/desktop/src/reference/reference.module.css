@@ -325,3 +325,111 @@ tr[data-live='true'] {
   cursor: pointer;
   text-decoration: underline;
 }
+
+/* --- rules of play --- */
+.rules {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(46rem, 94vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: 6px;
+  box-shadow: 0 24px 60px rgba(28, 25, 23, 0.35);
+  overflow: hidden;
+}
+
+.rulesBody {
+  overflow: auto;
+  padding: 16px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.rulesSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rulesHeading {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.rulesNote {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.rulesList {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.rulesList strong {
+  font-weight: 600;
+}
+
+/* Two columns of key/value rows; collapses to one on a narrow window. */
+.rulesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+}
+
+@media (max-width: 44rem) {
+  .rulesGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.rulesRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 12px;
+}
+
+.rulesKey {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.rulesValue {
+  color: var(--ink);
+  text-align: right;
+}
+
+/* A text link that is really a button (opens the stock reference). */
+.linkButton {
+  padding: 0;
+  font: inherit;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+}
+
+.linkButton:hover {
+  border-bottom-color: var(--ink);
+}

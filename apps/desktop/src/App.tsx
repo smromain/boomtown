@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Seat } from '@boomtown/engine';
 import { GameScreen } from './game/GameScreen.js';
 import { NewGame, type StartedGame } from './setup/NewGame.js';
 import { CreateJoin } from './lobby/CreateJoin.js';
 import { SeatList } from './lobby/SeatList.js';
+import { useRoomState } from './lobby/useConnectionStatus.js';
 import { SettingsDialog } from './settings/SettingsDialog.js';
 import { DebugBeatPreview } from './beats/debug/DebugBeatPreview.js';
 import { NetLogOverlay } from './debug/NetLogOverlay.js';
 import type { PreviewKind } from './beats/debug/fixtures.js';
-import type { OnlineGame } from './online/onlineGame.js';
+import { configFromRoom, type OnlineGame } from './online/onlineGame.js';
 import { Button } from './ui/Button.js';
 import { Skyline } from './art/Skyline.js';
 import logoUrl from './assets/boomtown-logo.png';
@@ -130,16 +131,24 @@ export function App() {
       case 'playing-local':
         return <GameScreen game={current.game} onExit={() => setScreen({ kind: 'menu' })} />;
 
-      case 'playing-online': {
-        const seat = current.room.transport.seat();
-        const localSeats: Seat[] = seat == null ? [] : [seat];
-        return (
-          <GameScreen
-            game={{ client: current.room.client, config: current.room.config, localSeats }}
-            onExit={() => setScreen({ kind: 'menu' })}
-          />
-        );
-      }
+      case 'playing-online':
+        return <OnlineGameScreen room={current.room} onExit={() => setScreen({ kind: 'menu' })} />;
     }
   }
+}
+
+/**
+ * The online play surface. A component of its own so it can subscribe to
+ * `room-state`, which is where the real seat names and bot/human kinds live —
+ * `room.config` is the lobby's placeholder (`Player 1 / Player 2 / …`) and
+ * handing that to `GameScreen` is what made every remote player "Player N" and
+ * every online bot look like a human (#15).
+ */
+function OnlineGameScreen({ room, onExit }: { room: OnlineGame; onExit: () => void }) {
+  const roomState = useRoomState(room.transport);
+  const seat = room.transport.seat();
+  const localSeats: Seat[] = seat == null ? [] : [seat];
+  const config = useMemo(() => configFromRoom(room.config, roomState), [room.config, roomState]);
+
+  return <GameScreen game={{ client: room.client, config, localSeats }} onExit={onExit} />;
 }

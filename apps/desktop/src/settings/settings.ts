@@ -19,6 +19,13 @@ export interface Settings {
   readonly partykitHost: string;
   /** Sound effects (R9). Sound ships on by default; the header mute control persists this. */
   readonly muted: boolean;
+  /**
+   * The name this player joins online rooms under. Blank until they play
+   * online once, at which point the lobby seeds it with a generated name and
+   * remembers whatever they settle on — so a returning player keeps their
+   * identity across rooms and reconnects, the way `partykitHost` does.
+   */
+  readonly playerName: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -28,6 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   seatCount: 3,
   partykitHost: '',
   muted: false,
+  playerName: '',
 };
 
 const KEY = 'boomtown.settings';

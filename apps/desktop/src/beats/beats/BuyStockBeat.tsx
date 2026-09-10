@@ -7,7 +7,16 @@ import styles from '../beats.module.css';
 
 const HOLD_MS = 1100;
 
-/** The lightest beat (R6, U11): a brief flourish, not a screen takeover — play never pauses for it. */
+/**
+ * The lightest beat (R6, U11): a brief flourish, not a screen takeover — play
+ * never pauses for it.
+ *
+ * It is the only beat with no curtain to click, so the pill itself is the
+ * dismiss control: the overlay root and the flourish stay `pointer-events:
+ * none` (clicks fall through to the board, which is the point of a
+ * non-blocking beat) and only the pill takes pointer events back. Before that
+ * there was no way at all to clear this beat with a mouse if its timer failed.
+ */
 export function BuyStockBeat({
   seat,
   cost,
@@ -40,17 +49,11 @@ export function BuyStockBeat({
       role="status"
       aria-label={`${name} bought stock`}
     >
-      <div
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 10,
-          background: 'var(--chrome-bg)',
-          color: 'var(--chrome-ink)',
-          borderRadius: 20,
-          padding: '10px 18px',
-          boxShadow: 'var(--elev-3)',
-        }}
+      <button
+        type="button"
+        className={styles.flourishPill}
+        onClick={dismiss}
+        aria-label={`Dismiss — ${name} bought stock`}
       >
         {INDUSTRIES.filter((industry) => (picks[industry] ?? 0) > 0).map((industry) => (
           <IndustryMark key={industry} industry={industry} color={INDUSTRY_INFO[industry].color} size={16} />
@@ -58,7 +61,7 @@ export function BuyStockBeat({
         <span className="serif tabnum" style={{ fontSize: 15 }}>
           {name} bought stock — ${cost.toLocaleString()}
         </span>
-      </div>
+      </button>
     </div>
   );
 }
