@@ -10,6 +10,7 @@ export {
   type BonusRow,
   classic,
   edition2015,
+  boomtown,
   PRESETS,
   defaultRuleset,
 } from './ruleset/index.js';

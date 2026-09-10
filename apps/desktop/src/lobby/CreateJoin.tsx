@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { RULES } from '@boomtown/engine';
-import { defaultConfig, type GameConfig } from '../setup/gameConfig.js';
+import {
+  defaultConfig,
+  effectiveVisibility,
+  visibilityIsFixed,
+  type GameConfig,
+} from '../setup/gameConfig.js';
+import { editionLabel } from '../setup/editionLabel.js';
 import { SeatRow } from '../setup/SeatConfig.js';
 import { createRoom, joinRoom, type OnlineGame } from '../online/onlineGame.js';
 import { makeRoomCode } from '../online/hostUrl.js';
@@ -156,18 +162,26 @@ export function CreateJoin({
             >
               <option value="classic">Classic</option>
               <option value="edition-2015">Modern</option>
+              <option value="boomtown">Boomtown</option>
             </select>
           </label>
 
           <label className={styles.field}>
             <span>Cash and holdings</span>
             <select
-              value={config.visibility}
+              value={effectiveVisibility(config)}
+              disabled={visibilityIsFixed(config)}
               onChange={(e) => patch({ visibility: e.target.value as GameConfig['visibility'] })}
             >
               <option value="open">Open — everyone sees everything</option>
               <option value="hidden">Hidden — only your own</option>
             </select>
+            {visibilityIsFixed(config) && (
+              <span className={styles.fieldNote}>
+                {editionLabel(config.edition)} is played with the books closed — the ruleset fixes
+                this.
+              </span>
+            )}
           </label>
         </>
       )}

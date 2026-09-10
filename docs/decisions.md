@@ -30,7 +30,22 @@
   riskiest single element in the pool and the first thing to swap if anyone gets nervous.
 - **The "riffing on" column** in `naming.md` and on the pool artboard is a design note so the list
   can be reviewed. It must not ship as a string anywhere in the product.
-- **A vote-to-end ruleset, "Going Public", proposed but not built.** Classic as the baseline plus
+- **"Boomtown" — a third preset carrying the Going Public ending.** Planned and sliced
+  in https://github.com/smromain/boomtown/issues/23, not built. It is a **third preset alongside
+  Classic and Modern, and neither published edition changes** — which removes the sharpest
+  objection to the design (nobody has to accept a changed ending to a ruleset they know) and makes
+  the forced-hidden visibility what the preset *is* rather than an exception carved out of a
+  shipped edition. `CLAUDE.md`'s "visibility is a per-table setting, not a rule" therefore stands
+  for the editions it was written about. Named simply **Boomtown**: the label lands in a small-caps
+  chip beside the turn counter where a longer name is several times the width of the others, and
+  the game's own name is the right one for the game's own ruleset.
+  Scoping turned up that the decision channel already exists: `PendingDecision` flows engine →
+  `viewFor` → client store → `DecisionModal` → bots and every consumer downstream is written
+  against it generically, so only four places hard-code `state.merger` (`viewFor`, `legalMoves`,
+  the server's `seatOnClock`, the AI's lookahead). A vote is a new variant on a working channel,
+  not a new system.
+
+- **The Going Public mechanic itself, as designed.** Classic as the baseline plus
   one addition: once two corporations are safe, a player may move to liquidate early, carried by a
   supermajority of a register where one share in a *safe* corporation is one vote. Raising a motion
   publishes that register, and if the motion **fails**, everyone who backed it opens their books
