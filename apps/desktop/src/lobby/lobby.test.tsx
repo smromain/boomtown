@@ -132,6 +132,31 @@ describe('CreateJoin', () => {
     expect(joinRoom).toHaveBeenCalledWith(expect.anything(), 'ABCD12', expect.stringMatching(GENERATED));
   });
 
+  it('offers no seat-name inputs online — those names are discarded (#20)', async () => {
+    render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
+    // Only the player's own name is theirs to set. `toRoomConfig` never sends
+    // seat names, and the server names a human seat from whoever joins it.
+    expect(screen.getByRole('textbox', { name: 'Your name' })).toBeInTheDocument();
+    for (const n of [1, 2, 3]) {
+      expect(screen.queryByRole('textbox', { name: `Seat ${n} name` })).not.toBeInTheDocument();
+      // the row still says what the seat will be, and still sets its kind
+      expect(screen.getByRole('combobox', { name: `Seat ${n} type` })).toBeInTheDocument();
+    }
+    expect(screen.getByText(/Seat 1 — open/)).toBeInTheDocument();
+  });
+
+  it('still round-trips the bot toggles, which are the part that does travel (#20)', async () => {
+    vi.mocked(createRoom).mockResolvedValue({ roomCode: 'ABC123' } as OnlineGame);
+    render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Seat 3 type' }), 'bot');
+    expect(screen.getByText(/Seat 3 — bot/)).toBeInTheDocument();
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Create room' }));
+    });
+    const [config] = vi.mocked(createRoom).mock.calls[0]!;
+    expect(toRoomConfig(config).bots).toEqual({ 2: 5 });
+  });
+
   it('refuses a blank name instead of silently joining as "Player" (#16)', async () => {
     render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
     await userEvent.clear(screen.getByRole('textbox', { name: 'Your name' }));
