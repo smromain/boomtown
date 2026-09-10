@@ -37,7 +37,22 @@
   permanently. Every price in the design is a failure price — a carried motion ends the game, so
   none of the disclosure matters. The name is the mechanic: an offering, and opening the books.
   The dials move with the seat count — no vote at all at two seats (a call, where *refusing*
-  discloses), ⅔ at three and four, 60% of votes cast plus a seconder at five and six. The full note — the game theory, a worked tally, the config keys
+  discloses), ⅔ at three and four, 60% of votes cast plus a seconder at five and six. Pressure
+  testing moved four things:
+  - **At least two distinct backers, at every seat count.** The supermajority does not do what it
+    looks like it does: the window opens when two corporations are safe, and a register that small
+    can be two-thirds held by one player, so a leader could carry a motion alone at the earliest
+    legal moment — exactly what the quota exists to prevent.
+  - **The log names the corporation but never the quantity.** Suppressing purchase detail outright
+    also blinded the *mover*, who must judge whether two-thirds is reachable before publishing the
+    register that would tell them. Naming the corporation keeps the electorate's shape estimable
+    while the weights stay secret.
+  - **The notice period survives only at two seats.** At three it hands the table a free turn to
+    gerrymander the register against a mover who has just published it — a fourth cost on one
+    action, and the likeliest failure of the whole design is that nobody ever calls a motion.
+  - **Build the simulation first.** `playOut()` in `packages/ai/test/policy.test.ts` already drives
+    headless games with a policy per seat; the quota, the window and the motion limit should be
+    tuned by counting outcomes over a few thousand games before any UI exists. The full note — the game theory, a worked tally, the config keys
   and the engine surface — is the design canvas's sibling artifact:
   https://claude.ai/code/artifact/16f2c904-19b8-4c7b-a477-5a9cf95db85e
   Two things it turns up that outlive the proposal:
