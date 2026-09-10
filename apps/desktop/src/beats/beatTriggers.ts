@@ -28,6 +28,13 @@ export type Beat =
   | { readonly id: 'founding'; readonly industry: Industry }
   | { readonly id: 'buy-stock'; readonly seat: Seat; readonly cost: number; readonly picks: SharesBought['picks'] }
   | { readonly id: 'merger' }
+  | {
+      readonly id: 'motion';
+      readonly carried: boolean;
+      readonly backers: readonly Seat[];
+      readonly yes: number;
+      readonly total: number;
+    }
   | { readonly id: 'endgame'; readonly seat: Seat }
   | { readonly id: 'victory' };
 
@@ -49,6 +56,16 @@ export function triggerFor(event: EngineEvent): Beat | null {
       return event.cost > 0 ? { id: 'buy-stock', seat: event.seat, cost: event.cost, picks: event.picks } : null;
     case 'merger-completed':
       return { id: 'merger' };
+    // The *settlement*, not `motion-raised`. A raised motion is immediately
+    // followed by a `cast-vote` decision, and `BeatOrchestrator` suppresses
+    // any beat while a prompt is open — so a raise beat would sit queued and
+    // play after the vote it was announcing, for exactly the seats that were
+    // voting. The settlement is the moment nothing else is competing for the
+    // screen, and it is the moment that carries the consequence.
+    case 'motion-carried':
+      return { id: 'motion', carried: true, backers: event.backers, yes: event.yes, total: event.total };
+    case 'motion-failed':
+      return { id: 'motion', carried: false, backers: event.backers, yes: event.yes, total: event.total };
     case 'end-announced':
       return { id: 'endgame', seat: event.seat };
     case 'game-over':

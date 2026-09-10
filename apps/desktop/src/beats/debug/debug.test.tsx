@@ -34,7 +34,7 @@ describe('DebugBeatPreview', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it.each(['founding', 'buy-stock', 'merger', 'endgame', 'victory'] satisfies PreviewKind[])(
+  it.each(['founding', 'buy-stock', 'merger', 'motion', 'endgame', 'victory'] satisfies PreviewKind[])(
     'renders the %s beat and dismisses on Escape',
     async (kind) => {
       const onDismiss = vi.fn();

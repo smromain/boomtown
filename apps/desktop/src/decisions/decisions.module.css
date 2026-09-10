@@ -169,6 +169,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+.voteState {
+  font-size: 0.8rem;
+  color: var(--ink);
+  margin: 0 0 0.8rem;
+}
+
 .error {
   color: var(--error);
   font-size: 0.8rem;

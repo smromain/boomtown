@@ -95,6 +95,16 @@ export function mergerPreview(): BeatPreview {
   return { beat: { id: 'merger' }, view, log };
 }
 
+export function motionPreview(): BeatPreview {
+  const state = baseState();
+  found(state, 'video', ['2E', '3E', '4E', '5E', '6E', '7E', '8E', '9E', '10E', '11E', '11D']);
+  found(state, 'books', ['2C', '3C', '4C', '5C', '6C', '7C', '8C', '9C', '10C', '11C', '11B']);
+  state.registerPublic = true;
+  // The failing outcome, because it is the one with copy worth eyeballing: a
+  // carried motion says the same sentence every time.
+  return { beat: { id: 'motion', carried: false, backers: [1, 2], yes: 7, total: 18 }, view: viewFor(state, 0), log: [] };
+}
+
 export function endgamePreview(): BeatPreview {
   const state = baseState();
   found(
@@ -145,12 +155,13 @@ export function victoryPreview(): BeatPreview {
   return { beat: { id: 'victory' }, view: viewFor(state, 0), log: [] };
 }
 
-export type PreviewKind = 'founding' | 'buy-stock' | 'merger' | 'endgame' | 'victory';
+export type PreviewKind = 'founding' | 'buy-stock' | 'merger' | 'motion' | 'endgame' | 'victory';
 
 export const BEAT_PREVIEWS: Readonly<Record<PreviewKind, () => BeatPreview>> = {
   founding: foundingPreview,
   'buy-stock': buyStockPreview,
   merger: mergerPreview,
+  motion: motionPreview,
   endgame: endgamePreview,
   victory: victoryPreview,
 };
