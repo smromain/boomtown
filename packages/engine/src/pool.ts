@@ -96,7 +96,7 @@ export const POOL: Record<Industry, readonly [Candidate, Candidate, Candidate, C
     { baseName: 'Enrun', flavour: 'energy, creatively accounted for' },
     { baseName: 'English Petrochemical', flavour: 'with apologies to the seals' },
     { baseName: 'Standard Oyl', flavour: 'too big, then thirty-four pieces' },
-    { baseName: 'Tesler', flavour: 'are they the baddies?' },
+    { baseName: 'Westinghoused', flavour: 'invented the grid, then sold itself for parts' },
   ],
   tech: [
     { baseName: 'Blackcurrant', flavour: "a keyboard? for a phone? now i've seen everything" },
