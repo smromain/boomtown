@@ -38,8 +38,28 @@ export function isSignedBuild(env = process.env) {
   return Boolean(env.CSC_LINK || env.WIN_CSC_LINK || env.CSC_NAME || env.APPLE_ID);
 }
 
-export function fusesFor(env = process.env) {
-  return isSignedBuild(env) ? { ...BASE_FUSES, ...SIGNED_ONLY_FUSES } : { ...BASE_FUSES };
+/**
+ * macOS only, and the reason the arm64 build would not launch at all.
+ *
+ * Flipping a fuse **rewrites the Mach-O**, which invalidates whatever signature
+ * the binary arrived with. Apple Silicon *requires* a valid signature — an
+ * invalid one is not a warning, the app simply refuses to open and macOS
+ * reports it as "damaged". Intel is laxer, so the x64 build launched and merely
+ * ran under Rosetta, which is why the two artifacts failed in different ways
+ * from one cause.
+ *
+ * `resetAdHocDarwinSignature` re-signs the bundle ad-hoc after the flip,
+ * preserving the hardened-runtime flags and entitlements. On a build that
+ * electron-builder then signs with a real identity, that signature simply
+ * replaces this one — so this is safe on both.
+ */
+function isDarwin(platform) {
+  return platform === 'darwin' || platform === 'mas';
+}
+
+export function fusesFor(env = process.env, platform = process.platform) {
+  const posture = isSignedBuild(env) ? { ...BASE_FUSES, ...SIGNED_ONLY_FUSES } : { ...BASE_FUSES };
+  return isDarwin(platform) ? { ...posture, resetAdHocDarwinSignature: true } : posture;
 }
 
 /**
@@ -66,12 +86,18 @@ export function binaryPath({ electronPlatformName, appOutDir, packager }) {
 
 /**
  * electron-builder `afterPack` hook. Flips the fuses on the packed binary.
- * electron-builder's own signing step runs immediately after, so a re-sign here
- * is unnecessary.
+ *
+ * This used to say a re-sign was unnecessary because electron-builder signs
+ * immediately afterwards. That holds only for a build with a real signing
+ * identity. An unsigned local `npm run package` has nothing to repair the
+ * signature the flip just invalidated, which on Apple Silicon means the app
+ * will not open — hence `resetAdHocDarwinSignature` in `fusesFor`.
  */
 export default async function afterPack(context) {
   const binary = binaryPath(context);
-  const fuses = fusesFor();
+  // The *target* platform, not the build host — a cross-build still produces a
+  // macOS bundle that needs re-signing.
+  const fuses = fusesFor(process.env, context.electronPlatformName);
   await flipFuses(binary, fuses);
   const tier = isSignedBuild() ? 'full' : 'base (unsigned build)';
   console.log(`  • fuses flipped [${tier}]: ${binary} (KTD9)`);

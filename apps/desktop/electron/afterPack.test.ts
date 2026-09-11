@@ -37,6 +37,38 @@ describe('fuse posture (KTD9)', () => {
     });
   });
 
+  // Regression: the arm64 DMG was rejected by macOS as "damaged" and would not
+  // open, while the x64 one launched and merely crawled under Rosetta. One
+  // cause: flipping a fuse rewrites the Mach-O and invalidates the signature,
+  // and Apple Silicon refuses to run a binary whose signature does not verify.
+  it('re-signs ad-hoc on macOS, where a fuse flip invalidates the signature', () => {
+    expect(fusesFor({}, 'darwin')).toMatchObject({ resetAdHocDarwinSignature: true });
+    expect(fusesFor({}, 'mas')).toMatchObject({ resetAdHocDarwinSignature: true });
+  });
+
+  it('leaves the other platforms alone — only macOS enforces the signature', () => {
+    expect(fusesFor({}, 'win32')).not.toHaveProperty('resetAdHocDarwinSignature');
+    expect(fusesFor({}, 'linux')).not.toHaveProperty('resetAdHocDarwinSignature');
+  });
+
+  it('re-signs on a signed macOS build too — the real identity just replaces it', () => {
+    expect(fusesFor({ CSC_LINK: 'x' }, 'darwin')).toMatchObject({
+      resetAdHocDarwinSignature: true,
+      [FuseV1Options.OnlyLoadAppFromAsar]: true,
+    });
+  });
+
+  it('keys off the target platform, not the build host', async () => {
+    vi.mocked(flipFuses).mockClear();
+    await afterPack(ctx('darwin'));
+    expect(vi.mocked(flipFuses).mock.calls[0]?.[1]).toMatchObject({
+      resetAdHocDarwinSignature: true,
+    });
+    vi.mocked(flipFuses).mockClear();
+    await afterPack(ctx('win32'));
+    expect(vi.mocked(flipFuses).mock.calls[0]?.[1]).not.toHaveProperty('resetAdHocDarwinSignature');
+  });
+
   it('an unsigned build gets the base posture only (asar integrity would hang it)', () => {
     const env = { CSC_IDENTITY_AUTO_DISCOVERY: 'false' };
     expect(isSignedBuild(env)).toBe(false);

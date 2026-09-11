@@ -1,6 +1,9 @@
 import type { FuseVersion } from '@electron/fuses';
 
-type FuseMap = { version?: FuseVersion } & Record<number, boolean>;
+type FuseMap = { version?: FuseVersion; resetAdHocDarwinSignature?: boolean } & Record<
+  number,
+  boolean
+>;
 
 /** Flipped on every build. */
 export const BASE_FUSES: FuseMap;
@@ -8,7 +11,12 @@ export const BASE_FUSES: FuseMap;
 export const SIGNED_ONLY_FUSES: FuseMap;
 
 export function isSignedBuild(env?: NodeJS.ProcessEnv): boolean;
-export function fusesFor(env?: NodeJS.ProcessEnv): FuseMap;
+/**
+ * The fuse posture for a target platform. `platform` is the *target*
+ * (`context.electronPlatformName`), not the build host: a macOS bundle needs an
+ * ad-hoc re-sign after the flip whatever machine produced it.
+ */
+export function fusesFor(env?: NodeJS.ProcessEnv, platform?: string): FuseMap;
 
 interface AfterPackContext {
   electronPlatformName: string;
