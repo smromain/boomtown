@@ -4,7 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { GameState } from '@boomtown/engine';
 import { DecisionModal } from '../decisions/DecisionModal.js';
-import { ActionBar } from './ActionBar.js';
+import { TurnModal } from './TurnModal.js';
+import { TurnHandoff } from './TurnHandoff.js';
+import type { GameConfig } from '../setup/gameConfig.js';
 import { MotionPanel } from './MotionPanel.js';
 import { flush, renderPanel, seedCorp } from '../testing/harness.js';
 
@@ -31,11 +33,26 @@ function openWindow(state: GameState): void {
   state.step = 'end-check';
 }
 
+/** Three hot-seat humans, which is what makes the hand-offs below real. */
+const CONFIG: GameConfig = {
+  seats: [
+    { name: 'Ana', kind: 'human', difficulty: 5 },
+    { name: 'Ben', kind: 'human', difficulty: 5 },
+    { name: 'Cy', kind: 'human', difficulty: 5 },
+  ],
+  edition: 'boomtown',
+  visibility: 'hidden',
+};
+
 const board = (ui: React.ReactElement, localSeats?: readonly number[]) =>
   renderPanel(
     <>
       {ui}
       <DecisionModal />
+      {/* The turn's own hand-off, not just a decision's: after voting, the
+          machine is with the voter and has to go back to the seat whose turn
+          it still is. */}
+      <TurnHandoff config={CONFIG} />
     </>,
     { edition: 'boomtown', craft: openWindow, ...(localSeats ? { localSeats } : {}) },
   );
@@ -57,36 +74,39 @@ async function click(name: RegExp): Promise<void> {
   });
 }
 
-describe('ActionBar at the end-check step', () => {
+describe('the end-of-turn choice (TurnModal)', () => {
   it('offers the motion, and keeps ending the turn as the default', async () => {
-    await board(<ActionBar />);
-    const card = screen.getByLabelText('End of game');
-    expect(within(card).getByRole('button', { name: 'Move to liquidate' })).toBeInTheDocument();
-    expect(within(card).getByRole('button', { name: 'End turn' })).toBeInTheDocument();
+    await board(<TurnModal />);
+    const card = screen.getByRole('dialog');
+    expect(within(card).getByRole('button', { name: /Move to liquidate/ })).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: /End turn/ })).toBeInTheDocument();
     // No end condition is met, so announcing must not be on offer at all —
     // the two endings are mutually exclusive by construction (#26).
-    expect(within(card).queryByRole('button', { name: 'End the game' })).not.toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: /End the game/ })).not.toBeInTheDocument();
   });
 
   it('names the price of a motion before it takes one', async () => {
-    await board(<ActionBar />);
-    expect(screen.getByLabelText('End of game').textContent).toMatch(/open books/i);
+    await board(<TurnModal />);
+    expect(screen.getByRole('dialog').textContent).toMatch(/open books/i);
   });
 
   it('offers nothing but ending the turn once the seat has spent its motion', async () => {
-    await board(<ActionBar />);
+    await board(<TurnModal />);
     await click(/Move to liquidate/);
     await handOff('Ben');
     await click(/Vote against/); // Ben's 5 leaves Cy's 4 short of the ten needed
 
-    const card = screen.getByLabelText('End of game');
-    expect(within(card).getByRole('button', { name: 'End turn' })).toBeInTheDocument();
-    expect(within(card).queryByRole('button', { name: 'Move to liquidate' })).not.toBeInTheDocument();
-    expect(within(card).queryByRole('button', { name: 'End the game' })).not.toBeInTheDocument();
+    // Ben took the machine to vote, so Ana has to take it back before her own
+    // turn resumes — hot-seat privacy, the same hand-off any decision gets.
+    await handOff('Ana');
+    const card = screen.getByRole('dialog');
+    expect(within(card).getByRole('button', { name: /End turn/ })).toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: /Move to liquidate/ })).not.toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: /End the game/ })).not.toBeInTheDocument();
   });
 
   it('still offers the ordinary ending when an end condition is met', async () => {
-    await renderPanel(<ActionBar />, {
+    await renderPanel(<TurnModal />, {
       edition: 'boomtown',
       craft: (state) => {
         openWindow(state);
@@ -95,16 +115,16 @@ describe('ActionBar at the end-check step', () => {
         seedCorp(state, 'video', row('G', 11));
       },
     });
-    const card = screen.getByLabelText('End of game');
-    expect(within(card).getByRole('button', { name: 'End the game' })).toBeInTheDocument();
-    expect(within(card).getByRole('button', { name: 'Keep playing' })).toBeInTheDocument();
-    expect(within(card).queryByRole('button', { name: 'Move to liquidate' })).not.toBeInTheDocument();
+    const card = screen.getByRole('dialog');
+    expect(within(card).getByRole('button', { name: /End the game/ })).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: /Keep playing/ })).toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: /Move to liquidate/ })).not.toBeInTheDocument();
   });
 });
 
 describe('the vote', () => {
   it('asks the next seat, naming the mover, their weight and the cost of a yes', async () => {
-    await board(<ActionBar />);
+    await board(<TurnModal />);
     await click(/Move to liquidate/);
     await handOff('Ben');
 
@@ -116,7 +136,7 @@ describe('the vote', () => {
   });
 
   it('carries on the second backer and ends the game', async () => {
-    const { client } = await board(<ActionBar />);
+    const { client } = await board(<TurnModal />);
     await click(/Move to liquidate/);
     await handOff('Ben');
     await click(/Vote to liquidate/);
@@ -127,7 +147,7 @@ describe('the vote', () => {
   });
 
   it('fails the moment it cannot reach the quota, and opens the backers’ books', async () => {
-    const { client } = await board(<ActionBar />);
+    const { client } = await board(<TurnModal />);
     await click(/Move to liquidate/);
     await handOff('Ben');
     await click(/Vote against/);
@@ -143,7 +163,7 @@ describe('the vote', () => {
   });
 
   it('the mover cannot vote against their own motion — raising it is the yes', async () => {
-    const { client } = await board(<ActionBar />);
+    const { client } = await board(<TurnModal />);
     await click(/Move to liquidate/);
     const view = client.store.getState().views[0]!;
     expect(view.motion!.votes[0]).toBe(true);
@@ -165,7 +185,7 @@ describe('MotionPanel', () => {
   it('shows the tally against the quota while the vote is open', async () => {
     await board(
       <>
-        <ActionBar />
+        <TurnModal />
         <MotionPanel />
       </>,
       [0],
@@ -184,7 +204,7 @@ describe('MotionPanel', () => {
   it('outlives the motion — a published register never un-publishes', async () => {
     await board(
       <>
-        <ActionBar />
+        <TurnModal />
         <MotionPanel />
       </>,
     );

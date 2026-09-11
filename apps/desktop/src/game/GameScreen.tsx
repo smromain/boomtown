@@ -9,7 +9,7 @@ import { BeatProvider } from '../beats/BeatContext.js';
 import { DecisionModal } from '../decisions/DecisionModal.js';
 import type { StartedGame } from '../setup/NewGame.js';
 import { ActionBar } from './ActionBar.js';
-import { BuyModal } from './BuyModal.js';
+import { TurnModal } from './TurnModal.js';
 import { CorporationBand, TrayStrip } from './CorporationBand.js';
 import { ErrorToast } from './ErrorToast.js';
 import { GameOver } from './GameOver.js';
@@ -51,7 +51,7 @@ export function GameScreen({ game, onExit }: { game: StartedGame; onExit?: () =>
               onExit={onExit}
             />
             <DecisionModal />
-            <BuyModal />
+            <TurnModal />
             <TurnHandoff config={game.config} />
             <ErrorToast />
             <BeatOrchestrator />
