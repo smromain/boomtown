@@ -26,7 +26,18 @@ export interface Settings {
    * identity across rooms and reconnects, the way `partykitHost` does.
    */
   readonly playerName: string;
+  /**
+   * Schema version of the stored blob. Absent on anything written before
+   * migrations existed; see `migrate`.
+   */
+  readonly version: number;
 }
+
+/**
+ * Bump this when a shipped default changes and the stored value should give
+ * way to it — see `migrate` for what each bump does.
+ */
+const SETTINGS_VERSION = 2;
 
 export const DEFAULT_SETTINGS: Settings = {
   visibility: 'open',
@@ -36,7 +47,28 @@ export const DEFAULT_SETTINGS: Settings = {
   partykitHost: '',
   muted: false,
   playerName: '',
+  version: SETTINGS_VERSION,
 };
+
+/**
+ * Bring a stored blob forward to the current schema.
+ *
+ * **v1 → v2: drop a stored `edition`.** Changing `DEFAULT_SETTINGS.edition` to
+ * Boomtown reached nobody who had ever played, because `loadSettings` merges
+ * the stored blob over the defaults and every install had an edition frozen in
+ * it. Not only from the settings dialog either: `soundManager.setMuted` writes
+ * the *whole* object, so muting the sound once persisted the edition too.
+ *
+ * Dropping it is honest rather than presumptuous. v1 predates the Boomtown
+ * preset entirely, so a stored `classic` was never a choice between the two —
+ * it is the old default, saved by a side effect. Anyone who picks an edition
+ * from here on writes v2 and keeps it.
+ */
+function migrate(stored: Partial<Settings>): Partial<Settings> {
+  if ((stored.version ?? 1) >= 2) return stored;
+  const { edition: _staleDefault, ...rest } = stored;
+  return rest;
+}
 
 const KEY = 'boomtown.settings';
 
@@ -45,7 +77,7 @@ export function loadSettings(): Settings {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw) as Partial<Settings>;
-    return { ...DEFAULT_SETTINGS, ...parsed };
+    return { ...DEFAULT_SETTINGS, ...migrate(parsed) };
   } catch {
     return DEFAULT_SETTINGS;
   }
