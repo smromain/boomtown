@@ -105,6 +105,42 @@ describe('Shareholders', () => {
     await renderPanel(<Shareholders />, { visibility: 'open', edition: 'classic' });
     expect(screen.getAllByText('$6,000')).toHaveLength(3);
   });
+
+  // Regression: an all-bot table disclosed everybody's books. A hot-seat client
+  // holds a view for every seat, and this panel read the seat *on the clock* —
+  // so each bot's own cash and holdings rendered as its turn came round, and one
+  // turn cycle showed the watcher the whole table. Under Boomtown that is the
+  // mechanic leaking, not a cosmetic slip.
+  it('shows a watcher nothing private at an all-bot table, whichever bot is on the clock', async () => {
+    const { client } = await renderPanel(<Shareholders />, {
+      edition: 'boomtown',
+      localSeats: [], // nobody at this screen owns a seat
+      craft: (state) => {
+        state.seats[1]!.cash = 1234;
+        state.seats[1]!.holdings.books = 4;
+        state.turnPointer = 1; // a bot is on the clock
+      },
+    });
+    const rows = screen.getByRole('region', { name: 'Shareholders' });
+
+    // names are public and still render; nothing else does
+    expect(within(rows).getByText(/Ben/)).toBeInTheDocument();
+    expect(rows.textContent).not.toMatch(/\$\d/);
+    expect(within(rows).getAllByText('—')).toHaveLength(6); // cash + holdings, three seats
+
+    // and it stays that way as the clock moves round the table
+    await act(async () => {
+      client.dispatch({ type: 'end-turn', seat: 1 });
+      await flush();
+    });
+    expect(screen.getByRole('region', { name: 'Shareholders' }).textContent).not.toMatch(/\$\d/);
+  });
+
+  it('still shows a seated player their own books', async () => {
+    await renderPanel(<Shareholders />, { edition: 'boomtown', localSeats: [0] });
+    const rows = screen.getByRole('region', { name: 'Shareholders' });
+    expect(within(rows).getByText('$6,000')).toBeInTheDocument();
+  });
 });
 
 describe('TileRack', () => {

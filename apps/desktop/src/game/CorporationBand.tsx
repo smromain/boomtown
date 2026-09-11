@@ -1,6 +1,5 @@
 import { INDUSTRIES, INDUSTRY_INFO, type CorpView, type Industry } from '@boomtown/engine';
-import { activeView } from '@boomtown/client-core';
-import { useGameState } from '../client/GameClientProvider.js';
+import { useOwnView } from '../client/ownView.js';
 import { IndustryMark } from './marks.js';
 import { Marquee } from './Marquee.js';
 import { Skyline } from '../art/Skyline.js';
@@ -16,7 +15,7 @@ import styles from './band.module.css';
  * full.
  */
 export function CorporationBand() {
-  const view = useGameState(activeView);
+  const view = useOwnView();
   if (!view) return null;
 
   const active = INDUSTRIES.filter((industry) => view.corporations[industry].founded);
@@ -53,7 +52,7 @@ export function CorporationBand() {
 
 /** The unfounded companies, as a slim strip. Placed at the foot of the screen. */
 export function TrayStrip() {
-  const view = useGameState(activeView);
+  const view = useOwnView();
   if (!view) return null;
 
   const tray = INDUSTRIES.filter((industry) => !view.corporations[industry].founded);
