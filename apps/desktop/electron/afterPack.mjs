@@ -57,9 +57,38 @@ function isDarwin(platform) {
   return platform === 'darwin' || platform === 'mas';
 }
 
-export function fusesFor(env = process.env, platform = process.platform) {
+/**
+ * electron-builder's `Arch` enum. Not imported: `builder-util` is electron-
+ * builder's own internal package, not a dependency we declare, and the only
+ * value this hook needs is a stable part of its public contract.
+ */
+const ARCH_UNIVERSAL = 4;
+
+/**
+ * Whether this invocation is packing a **per-arch intermediate** of a universal
+ * build rather than a bundle that ships.
+ *
+ * A universal build calls this hook three times: once for the x64 pack, once for
+ * arm64, and once more for the merged app. The first two are throwaway — `lipo`
+ * rewrites their binaries during the merge, so any signature on them is
+ * destroyed anyway.
+ *
+ * Signing them is worse than pointless. `@electron/universal` requires every
+ * non-binary file to have an identical hash across the two inputs, and
+ * `_CodeSignature/CodeResources` is a non-binary file that hashes the binaries —
+ * so two ad-hoc signed inputs differ there and the merge refuses with "Expected
+ * all non-binary files to have identical SHAs".
+ */
+export function isUniversalIntermediate(context) {
+  if (!isDarwin(context.electronPlatformName)) return false;
+  if (context.arch === ARCH_UNIVERSAL) return false;
+  const targets = context.packager?.platformSpecificBuildOptions?.target ?? [];
+  return targets.some((entry) => (entry?.arch ?? []).includes('universal'));
+}
+
+export function fusesFor(env = process.env, platform = process.platform, resign = true) {
   const posture = isSignedBuild(env) ? { ...BASE_FUSES, ...SIGNED_ONLY_FUSES } : { ...BASE_FUSES };
-  return isDarwin(platform) ? { ...posture, resetAdHocDarwinSignature: true } : posture;
+  return isDarwin(platform) && resign ? { ...posture, resetAdHocDarwinSignature: true } : posture;
 }
 
 /**
@@ -97,8 +126,13 @@ export default async function afterPack(context) {
   const binary = binaryPath(context);
   // The *target* platform, not the build host — a cross-build still produces a
   // macOS bundle that needs re-signing.
-  const fuses = fusesFor(process.env, context.electronPlatformName);
+  const fuses = fusesFor(process.env, context.electronPlatformName, !isUniversalIntermediate(context));
   await flipFuses(binary, fuses);
   const tier = isSignedBuild() ? 'full' : 'base (unsigned build)';
-  console.log(`  • fuses flipped [${tier}]: ${binary} (KTD9)`);
+  const note = fuses.resetAdHocDarwinSignature
+    ? ' + ad-hoc re-sign'
+    : isUniversalIntermediate(context)
+      ? ' (universal intermediate — the merged app is re-signed instead)'
+      : '';
+  console.log(`  • fuses flipped [${tier}]${note}: ${binary} (KTD9)`);
 }

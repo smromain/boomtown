@@ -7,8 +7,15 @@ vi.mock('@electron/fuses', async (importActual) => {
   return { ...actual, flipFuses: vi.fn().mockResolvedValue(undefined) };
 });
 
-const { BASE_FUSES, SIGNED_ONLY_FUSES, isSignedBuild, fusesFor, binaryPath, default: afterPack } =
-  await import('./afterPack.mjs');
+const {
+  BASE_FUSES,
+  SIGNED_ONLY_FUSES,
+  isSignedBuild,
+  fusesFor,
+  isUniversalIntermediate,
+  binaryPath,
+  default: afterPack,
+} = await import('./afterPack.mjs');
 const { flipFuses } = await import('@electron/fuses');
 
 const OUT = join('/tmp', 'out'); // platform-native separators, like the hook produces
@@ -67,6 +74,45 @@ describe('fuse posture (KTD9)', () => {
     vi.mocked(flipFuses).mockClear();
     await afterPack(ctx('win32'));
     expect(vi.mocked(flipFuses).mock.calls[0]?.[1]).not.toHaveProperty('resetAdHocDarwinSignature');
+  });
+
+  // A universal build calls the hook three times — x64, arm64, then the merged
+  // app. Signing the first two breaks the merge: `@electron/universal` requires
+  // every non-binary file to hash identically across the inputs, and
+  // `_CodeSignature/CodeResources` hashes the binaries, so two ad-hoc signed
+  // inputs differ there.
+  describe('universal builds', () => {
+    const universalCfg = { platformSpecificBuildOptions: { target: [{ arch: ['universal'] }] } };
+    const sub = (arch: number) => ({ ...ctx('darwin', universalCfg), arch });
+
+    it('does not sign the per-arch intermediates that lipo is about to rewrite', () => {
+      expect(isUniversalIntermediate(sub(1))).toBe(true); // x64
+      expect(isUniversalIntermediate(sub(3))).toBe(true); // arm64
+    });
+
+    it('signs the merged bundle, which is the one that ships', () => {
+      expect(isUniversalIntermediate(sub(4))).toBe(false); // universal
+    });
+
+    it('still signs a single-arch mac build, where there is no merge to break', () => {
+      const single = { platformSpecificBuildOptions: { target: [{ arch: ['arm64'] }] } };
+      expect(isUniversalIntermediate({ ...ctx('darwin', single), arch: 3 })).toBe(false);
+    });
+
+    it('never treats a non-mac build as an intermediate', () => {
+      expect(isUniversalIntermediate({ ...ctx('win32', universalCfg), arch: 1 })).toBe(false);
+    });
+
+    it('end to end: the intermediates go unsigned and the merged app is signed', async () => {
+      vi.mocked(flipFuses).mockClear();
+      await afterPack(sub(3));
+      expect(vi.mocked(flipFuses).mock.calls[0]?.[1]).not.toHaveProperty('resetAdHocDarwinSignature');
+      vi.mocked(flipFuses).mockClear();
+      await afterPack(sub(4));
+      expect(vi.mocked(flipFuses).mock.calls[0]?.[1]).toMatchObject({
+        resetAdHocDarwinSignature: true,
+      });
+    });
   });
 
   it('an unsigned build gets the base posture only (asar integrity would hang it)', () => {

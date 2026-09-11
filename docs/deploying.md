@@ -100,14 +100,23 @@ npm run package          # electron-vite build && electron-builder
 
 Output in `apps/desktop/dist/`:
 
-- macOS: `Boomtown-<version>-arm64.dmg`, `Boomtown-<version>.dmg` (x64)
+- macOS: `Boomtown-<version>-universal.dmg`
 - Windows: `Boomtown Setup <version>.exe` (NSIS)
 - Linux: `Boomtown-<version>.AppImage`
 
 electron-builder only produces installers for the host OS's targets, so a full
-three-OS release comes from the CI matrix, not one machine. The x64 dmg on an
-arm64 Mac occasionally fails in `hdiutil` (an environmental flake) — retry, or
-build `--arm64` only for local testing.
+three-OS release comes from the CI matrix, not one machine.
+
+**macOS ships one universal bundle, not a DMG per architecture.** It used to
+build both, and the x64 artifact was the one *without* an arch in its name — so
+the obvious download was the wrong one for any Apple Silicon Mac, and it did not
+fail loudly: an x64 bundle runs there under Rosetta 2 and is simply very slow. A
+universal DMG is larger and always native.
+
+The `afterPack` hook has to know about this. A universal build packs x64 and
+arm64 separately, calls the hook on each, merges them with `@electron/universal`
+and calls the hook once more on the merged app; the ad-hoc re-sign must happen
+only on that last call. See *Security posture* below.
 
 ### Security posture (KTD9)
 
