@@ -7,8 +7,15 @@ vi.mock('@electron/fuses', async (importActual) => {
   return { ...actual, flipFuses: vi.fn().mockResolvedValue(undefined) };
 });
 
-const { BASE_FUSES, SIGNED_ONLY_FUSES, isSignedBuild, fusesFor, binaryPath, default: afterPack } =
-  await import('./afterPack.mjs');
+const {
+  BASE_FUSES,
+  SIGNED_ONLY_FUSES,
+  isSignedBuild,
+  fusesFor,
+  isUniversalIntermediate,
+  binaryPath,
+  default: afterPack,
+} = await import('./afterPack.mjs');
 const { flipFuses } = await import('@electron/fuses');
 
 const OUT = join('/tmp', 'out'); // platform-native separators, like the hook produces
@@ -34,6 +41,77 @@ describe('fuse posture (KTD9)', () => {
     expect(SIGNED_ONLY_FUSES).toMatchObject({
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
       [FuseV1Options.OnlyLoadAppFromAsar]: true,
+    });
+  });
+
+  // Regression: the arm64 DMG was rejected by macOS as "damaged" and would not
+  // open, while the x64 one launched and merely crawled under Rosetta. One
+  // cause: flipping a fuse rewrites the Mach-O and invalidates the signature,
+  // and Apple Silicon refuses to run a binary whose signature does not verify.
+  it('re-signs ad-hoc on macOS, where a fuse flip invalidates the signature', () => {
+    expect(fusesFor({}, 'darwin')).toMatchObject({ resetAdHocDarwinSignature: true });
+    expect(fusesFor({}, 'mas')).toMatchObject({ resetAdHocDarwinSignature: true });
+  });
+
+  it('leaves the other platforms alone — only macOS enforces the signature', () => {
+    expect(fusesFor({}, 'win32')).not.toHaveProperty('resetAdHocDarwinSignature');
+    expect(fusesFor({}, 'linux')).not.toHaveProperty('resetAdHocDarwinSignature');
+  });
+
+  it('re-signs on a signed macOS build too — the real identity just replaces it', () => {
+    expect(fusesFor({ CSC_LINK: 'x' }, 'darwin')).toMatchObject({
+      resetAdHocDarwinSignature: true,
+      [FuseV1Options.OnlyLoadAppFromAsar]: true,
+    });
+  });
+
+  it('keys off the target platform, not the build host', async () => {
+    vi.mocked(flipFuses).mockClear();
+    await afterPack(ctx('darwin'));
+    expect(vi.mocked(flipFuses).mock.calls[0]?.[1]).toMatchObject({
+      resetAdHocDarwinSignature: true,
+    });
+    vi.mocked(flipFuses).mockClear();
+    await afterPack(ctx('win32'));
+    expect(vi.mocked(flipFuses).mock.calls[0]?.[1]).not.toHaveProperty('resetAdHocDarwinSignature');
+  });
+
+  // A universal build calls the hook three times — x64, arm64, then the merged
+  // app. Signing the first two breaks the merge: `@electron/universal` requires
+  // every non-binary file to hash identically across the inputs, and
+  // `_CodeSignature/CodeResources` hashes the binaries, so two ad-hoc signed
+  // inputs differ there.
+  describe('universal builds', () => {
+    const universalCfg = { platformSpecificBuildOptions: { target: [{ arch: ['universal'] }] } };
+    const sub = (arch: number) => ({ ...ctx('darwin', universalCfg), arch });
+
+    it('does not sign the per-arch intermediates that lipo is about to rewrite', () => {
+      expect(isUniversalIntermediate(sub(1))).toBe(true); // x64
+      expect(isUniversalIntermediate(sub(3))).toBe(true); // arm64
+    });
+
+    it('signs the merged bundle, which is the one that ships', () => {
+      expect(isUniversalIntermediate(sub(4))).toBe(false); // universal
+    });
+
+    it('still signs a single-arch mac build, where there is no merge to break', () => {
+      const single = { platformSpecificBuildOptions: { target: [{ arch: ['arm64'] }] } };
+      expect(isUniversalIntermediate({ ...ctx('darwin', single), arch: 3 })).toBe(false);
+    });
+
+    it('never treats a non-mac build as an intermediate', () => {
+      expect(isUniversalIntermediate({ ...ctx('win32', universalCfg), arch: 1 })).toBe(false);
+    });
+
+    it('end to end: the intermediates go unsigned and the merged app is signed', async () => {
+      vi.mocked(flipFuses).mockClear();
+      await afterPack(sub(3));
+      expect(vi.mocked(flipFuses).mock.calls[0]?.[1]).not.toHaveProperty('resetAdHocDarwinSignature');
+      vi.mocked(flipFuses).mockClear();
+      await afterPack(sub(4));
+      expect(vi.mocked(flipFuses).mock.calls[0]?.[1]).toMatchObject({
+        resetAdHocDarwinSignature: true,
+      });
     });
   });
 

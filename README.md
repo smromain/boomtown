@@ -244,7 +244,7 @@ source, so there is no second rules code path in the bundle.
 cd apps/desktop && npm run package    # electron-vite build + electron-builder
 ```
 
-`apps/desktop/electron-builder.yml` produces macOS `dmg` (arm64 + x64), Windows `nsis` and Linux
+`apps/desktop/electron-builder.yml` produces a macOS universal `dmg`, Windows `nsis` and Linux
 `AppImage`, all named **Boomtown** and carrying the app icon (`apps/desktop/build/icon.png`,
 generated from the logo by `python3 design/make_icon.py`). An `afterPack` hook flips the Electron
 **fuses** on the packed binary — no `run-as-node`, ASAR integrity on, load only from ASAR.

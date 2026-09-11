@@ -35,11 +35,19 @@ asarUnpack:
 
 mac:
   category: public.app-category.board-games
+  # One universal (arm64 + x64) DMG rather than two per-arch ones. Two artifacts
+  # meant one of them was always wrong for a given Mac, and the wrong one did not
+  # fail loudly — an x64 bundle runs on Apple Silicon under Rosetta 2 and is
+  # merely very slow. A universal bundle is larger and always native.
+  #
+  # This changes how `afterPack` runs: electron-builder packs x64 and arm64
+  # separately, calls the hook on each, merges them with `@electron/universal`,
+  # then calls the hook again on the merged app. See `electron/afterPack.mjs` —
+  # the ad-hoc re-sign must happen only on that last call.
   target:
     - target: dmg
       arch:
-        - arm64
-        - x64
+        - universal
   hardenedRuntime: true
   gatekeeperAssess: false
   # Electron fuses (KTD9) are flipped by the afterPack hook above.
