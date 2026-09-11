@@ -134,10 +134,10 @@ export function RulesSummary() {
           </tbody>
         </table>
         <p className={styles.rulesNote}>
-          Pick the rule set below. Cash and price both climb faster in the Modern set; Classic runs
-          a little longer. Boomtown is Classic with the books closed and the ending put to a vote —
-          it is our own variant rather than a published one, and it comes alive at three players
-          or more.
+          Boomtown is the default: Classic with the books closed and the ending put to a vote — our
+          own variant rather than a published one, and it comes alive at three players or more. The
+          other two are reconstructions, there for a table that wants the published rules; cash and
+          price both climb faster in the Modern set, and Classic runs a little longer.
         </p>
       </div>
     </details>

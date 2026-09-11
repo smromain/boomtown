@@ -100,7 +100,9 @@ describe('Shareholders', () => {
   });
 
   it('shows every seat cash under the open setting', async () => {
-    await renderPanel(<Shareholders />, { visibility: 'open' });
+    // `classic`: the default preset forces the books closed, so an open table
+    // only exists on a ruleset that leaves visibility to the table.
+    await renderPanel(<Shareholders />, { visibility: 'open', edition: 'classic' });
     expect(screen.getAllByText('$6,000')).toHaveLength(3);
   });
 });

@@ -184,11 +184,10 @@ describe('the Boomtown preset in setup', () => {
   const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
   it('fixes the visibility control and says why', async () => {
+    // Boomtown is the default preset, so the control starts fixed — the
+    // direction of this test is reversed from when Classic was the default.
     render(<NewGame onStart={() => {}} />);
     const visibility = screen.getByRole('combobox', { name: 'Cash and holdings' });
-    expect(visibility).toBeEnabled();
-
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'boomtown');
     // Disabled *and* explained: a greyed-out control with no reason reads as a bug.
     expect(visibility).toBeDisabled();
     expect(visibility).toHaveValue('hidden');
@@ -196,13 +195,32 @@ describe('the Boomtown preset in setup', () => {
     // summary above now explains the same rule, and a bare text match would
     // find that instead of the control's own explanation.
     expect(screen.getByText(/the ruleset fixes this/i)).toBeInTheDocument();
+
+    // and it is a preset rule, not a permanent one — the published editions
+    // leave visibility to the table
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'classic');
+    expect(visibility).toBeEnabled();
+    expect(screen.queryByText(/the ruleset fixes this/i)).not.toBeInTheDocument();
+  });
+
+  it('names the visibility control without swallowing its explanation', async () => {
+    // The note lives inside the <label>, so the accessible name would absorb
+    // it without an explicit aria-label — leaving a control called "Cash and
+    // holdings Boomtown is played with the books closed — the ruleset fixes
+    // this."
+    render(<NewGame onStart={() => {}} />);
+    const visibility = screen.getByRole('combobox', { name: 'Cash and holdings' });
+    expect(visibility).toHaveAccessibleName('Cash and holdings');
+    expect(visibility).toHaveAccessibleDescription(/the ruleset fixes this/i);
   });
 
   it('deals a closed-book table even when open was picked before switching preset', async () => {
     let started: StartedGame | undefined;
     render(<NewGame onStart={(game) => (started = game)} />);
 
-    // Pick open first, then switch — the stale choice must not survive.
+    // Drop to a preset that permits an open table, pick open, then switch back
+    // — the stale choice must not survive.
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'classic');
     await userEvent.selectOptions(
       screen.getByRole('combobox', { name: 'Cash and holdings' }),
       'open',

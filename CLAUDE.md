@@ -25,9 +25,11 @@ which are used. Everything in this project is original or a parody of a defunct 
 ## Constraints that shape the architecture
 
 - **The ruleset is data, not code.** Two published editions disagree on safe size, end trigger,
-  bonus tiers and price bands. One engine, edition as a config object. Default to classic. A third
-  preset, **Boomtown**, is the project's own variant rather than a reconstruction — classic numbers
-  plus closed books and a vote that can end the game early — and is a preset, not a fork.
+  bonus tiers and price bands. One engine, edition as a config object. A third preset,
+  **Boomtown**, is the project's own variant rather than a reconstruction — classic numbers plus
+  closed books and a vote that can end the game early — and is a preset, not a fork. **It is the
+  default**, so a bare `createGame` deals a closed-books table whose turn can hold at end-check for
+  a motion; a caller that wants the plain published game must ask for `classic` by name.
 - **The engine must expose legal moves and evaluate state**, because AI opponents were chosen
   alongside hot-seat and online play.
 - **Hidden information is real.** Hand tiles and the draw pile are always hidden; online play needs

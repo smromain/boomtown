@@ -160,15 +160,17 @@ export function CreateJoin({
               value={config.edition}
               onChange={(e) => patch({ edition: e.target.value as GameConfig['edition'] })}
             >
+              <option value="boomtown">Boomtown</option>
               <option value="classic">Classic</option>
               <option value="edition-2015">Modern</option>
-              <option value="boomtown">Boomtown</option>
             </select>
           </label>
 
           <label className={styles.field}>
             <span>Cash and holdings</span>
             <select
+              aria-label="Cash and holdings"
+              aria-describedby={visibilityIsFixed(config) ? 'visibility-note' : undefined}
               value={effectiveVisibility(config)}
               disabled={visibilityIsFixed(config)}
               onChange={(e) => patch({ visibility: e.target.value as GameConfig['visibility'] })}
@@ -177,7 +179,7 @@ export function CreateJoin({
               <option value="hidden">Hidden — only your own</option>
             </select>
             {visibilityIsFixed(config) && (
-              <span className={styles.fieldNote}>
+              <span id="visibility-note" className={styles.fieldNote}>
                 {editionLabel(config.edition)} is played with the books closed — the ruleset fixes
                 this.
               </span>

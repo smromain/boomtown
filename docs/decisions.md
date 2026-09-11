@@ -4,7 +4,7 @@
 
 | Decision | Choice | Why |
 |---|---|---|
-| Ruleset | **Configurable**, defaulting to classic | The two rulebooks disagree on safe size, end trigger, bonus tiers and price bands. One data-driven config covers both editions, our own Boomtown variant, and house rules; see `rules.md`. |
+| Ruleset | **Configurable**, defaulting to Boomtown | The two rulebooks disagree on safe size, end trigger, bonus tiers and price bands. One data-driven config covers both editions, our own Boomtown variant, and house rules; see `rules.md`. |
 | Going Public | **Shipped**, as a third preset named **Boomtown** | Classic numbers plus closed books and a vote that can end the game early. A preset rather than a change to either published edition: nobody has to accept a changed ending to a ruleset they know, and forced-hidden visibility is what the preset *is* rather than an exception carved out of a shipped edition. Built across https://github.com/smromain/boomtown/issues/23. The full design note, with the game theory and a worked tally, is the design canvas's sibling artifact: https://claude.ai/code/artifact/16f2c904-19b8-4c7b-a477-5a9cf95db85e |
 | Play modes | Local hot-seat, online multiplayer, **and** AI opponents | Chosen together. Online multiplayer is what forces an authoritative server: the tile bag and hands are genuinely hidden information. AI needs the engine to expose a clean legal-move list and a state evaluator. |
 | Visual direction | **Saxon City** direction, now "Boomtown" | Picked from three: Board Room (the board is the subject), Saxon City (the corporations are), Trading Floor (the money is). The other two are kept on the canvas's "Earlier directions" page for reference. |

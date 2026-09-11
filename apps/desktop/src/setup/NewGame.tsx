@@ -124,15 +124,26 @@ export function NewGame({
       <label className={styles.field}>
         <span>Edition</span>
         <select value={config.edition} onChange={(event) => patch({ edition: event.target.value as GameConfig['edition'] })}>
+          <option value="boomtown">Boomtown</option>
           <option value="classic">Classic</option>
           <option value="edition-2015">Modern</option>
-          <option value="boomtown">Boomtown</option>
         </select>
       </label>
 
+      {/*
+        `aria-label` and `aria-describedby` rather than relying on the wrapping
+        `<label>`: the explanatory note sits inside the label element, so
+        without them the control's accessible name becomes "Cash and holdings
+        Boomtown is played with the books closed — the ruleset fixes this."
+        The note describes *why* the control is fixed; it is not part of its
+        name. This only surfaced when Boomtown became the default, because
+        until then the note appeared only after someone switched preset.
+      */}
       <label className={styles.field}>
         <span>Cash and holdings</span>
         <select
+          aria-label="Cash and holdings"
+          aria-describedby={visibilityIsFixed(config) ? 'visibility-note' : undefined}
           value={effectiveVisibility(config)}
           disabled={visibilityIsFixed(config)}
           onChange={(event) => patch({ visibility: event.target.value as GameConfig['visibility'] })}
@@ -141,7 +152,7 @@ export function NewGame({
           <option value="hidden">Hidden — only your own</option>
         </select>
         {visibilityIsFixed(config) && (
-          <span className={styles.fieldNote}>
+          <span id="visibility-note" className={styles.fieldNote}>
             {editionLabel(config.edition)} is played with the books closed — the ruleset fixes this.
           </span>
         )}

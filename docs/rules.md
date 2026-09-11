@@ -180,8 +180,13 @@ Boomtown takes the Classic column wholesale and adds two keys of its own:
 | Cash and holdings | always hidden — not a table setting | `forcedVisibility` |
 | Vote to end | see *Going Public* above | `endVote` |
 
-**Default to classic.** Its board geometry is unambiguous; the 2015 rulebook lists 100 tiles and
-never states the grid.
+**Boomtown is the default preset.** It takes classic's numbers, so what follows about classic's
+geometry decides the default too: classic's board is unambiguous where the 2015 rulebook lists 100
+tiles and never states the grid. Of the two reconstructions, **default to classic** for the same
+reason.
+
+A consequence worth stating where the engine is specified: a game created without naming a ruleset
+has the books closed and can end by vote. The published editions are opt-in by name.
 
 ## Invariants
 

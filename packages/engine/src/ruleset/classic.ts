@@ -2,8 +2,9 @@ import { DEFAULT_MERGE_NAMING } from '../naming/index.js';
 import type { Ruleset } from './types.js';
 
 /**
- * The classic edition (1964 / 1999). The default. Its board geometry is
- * unambiguous where the 2015 rulebook never states a grid.
+ * The classic edition (1964 / 1999). Its board geometry is unambiguous where
+ * the 2015 rulebook never states a grid, which is why `boomtown` — the default
+ * — takes its numbers from here rather than from 2015.
  */
 export const classic: Ruleset = {
   id: 'classic',

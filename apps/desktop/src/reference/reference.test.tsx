@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { clientView } from '@boomtown/client-core';
-import { createGame } from '@boomtown/engine';
+import { PRESETS, createGame } from '@boomtown/engine';
 import { corpReference, foundingOptions, fullChart } from './priceReference.js';
 import { StockReference } from './StockReference.js';
 import { CorpReference } from './CorpReference.js';
@@ -25,7 +25,14 @@ describe('priceReference helpers', () => {
   });
 
   it('corpReference ranks holders and assigns primary / minority', () => {
-    const state = createGame({ seats: [{ name: 'A' }, { name: 'B' }, { name: 'C' }], seed: 1, turnOrder: [0, 1, 2] });
+    // Named preset, not the default: this asserts the classic two-tier payout,
+    // and the default is now `boomtown`.
+    const state = createGame({
+      seats: [{ name: 'A' }, { name: 'B' }, { name: 'C' }],
+      seed: 1,
+      turnOrder: [0, 1, 2],
+      ruleset: PRESETS.classic,
+    });
     seedCorp(state, 'video', ['2A', '3A', '4A', '5A']); // tier 3, size 4 -> band "4"
     state.seats[0]!.holdings.video = 2;
     state.seats[2]!.holdings.video = 5;
@@ -159,7 +166,7 @@ describe('RulesReference modal', () => {
   const open = <RulesReference open onClose={() => {}} onOpenChart={() => {}} />;
 
   it('reads the classic ruleset rather than hardcoding it', async () => {
-    await renderPanel(open);
+    await renderPanel(open, { edition: 'classic' });
     const dialog = screen.getByRole('dialog', { name: 'How to play' });
     expect(dialog).toHaveTextContent('Classic');
     expect(dialog).toHaveTextContent('safe at 11 tiles');
@@ -200,7 +207,7 @@ describe('RulesReference modal', () => {
   });
 
   it('says nothing about a vote under a rule set that has none', async () => {
-    await renderPanel(open);
+    await renderPanel(open, { edition: 'classic' });
     const dialog = screen.getByRole('dialog', { name: 'How to play' });
     expect(dialog).not.toHaveTextContent(/Going public/i);
     expect(dialog).not.toHaveTextContent(/move to liquidate/i);
@@ -210,6 +217,7 @@ describe('RulesReference modal', () => {
   it('is reachable on a turn that is not yours — the rules belong to the table, not the seat', async () => {
     // Online shape: a view for our seat only, someone else on the clock.
     await renderPanel(open, {
+      edition: 'classic',
       controls: [0],
       localSeats: [0],
       craft: (state) => {

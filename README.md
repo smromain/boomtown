@@ -268,12 +268,14 @@ The full rationale lives in the plan's **Key Technical Decisions** (KTD1–KTD12
 
 Two published editions disagree on safe size, end trigger, bonus tiers, price bands,
 sole‑shareholder policy, dead‑tile handling, the two‑player rule, and split rounding. That is
-**configuration, not a fork**: one engine reads a `Ruleset` object; `classic` and `edition2015`
-ship as presets and classic is the default.
+**configuration, not a fork**: one engine reads a `Ruleset` object and `classic` and `edition2015`
+ship as presets.
 
 The payoff came later. `boomtown` — closed books, and a vote that can end the game before any chain
 reaches the end size — is a third preset rather than a branch in the engine: it adds two keys
-(`forcedVisibility`, `endVote`) and inherits every classic number. Unlike the other two it is *not*
+(`forcedVisibility`, `endVote`) and inherits every classic number. **It is the default preset** —
+the reconstructions are here so a table that wants the published rules can have them, not as the
+thing on offer. Unlike the other two it is *not*
 a reconstruction of anyone's rulebook; it is this project's own design, and the docs and the UI say
 so rather than presenting three peers. The 2015 secondary‑bonus column fits no multiplier, so
 it ships as a literal lookup table verified against the rulebook's worked example.

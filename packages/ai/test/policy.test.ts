@@ -43,7 +43,12 @@ function playOut(
 
   while (state.status === 'playing') {
     if (guard++ > 5000) throw new Error('game did not terminate');
-    const seat = state.merger?.pending?.seat ?? state.turnOrder[state.turnPointer]!;
+    // A motion owns the clock the same way a merger does, so the seat that owes
+    // a move is not always the active one. This harness predates the motion and
+    // only ever ran classic games, so step `vote` was unreachable here until
+    // Boomtown became the default — at which point every playout died on it.
+    const seat =
+      state.merger?.pending?.seat ?? state.motion?.pending?.seat ?? state.turnOrder[state.turnPointer]!;
     // Redacted, exactly as the real driver does it (#25). A harness that fed
     // policies the authoritative state would be measuring a different game from
     // the one anyone plays — which matters most for the tuning runs this

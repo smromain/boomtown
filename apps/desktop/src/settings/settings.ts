@@ -31,7 +31,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   visibility: 'open',
   botDifficulty: 5,
-  edition: 'classic',
+  edition: 'boomtown',
   seatCount: 3,
   partykitHost: '',
   muted: false,

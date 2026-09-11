@@ -81,9 +81,9 @@ export function SettingsDialog({
               value={draft.edition}
               onChange={(e) => patch({ edition: e.target.value as RulesetId })}
             >
+              <option value="boomtown">Boomtown</option>
               <option value="classic">Classic</option>
               <option value="edition-2015">Modern</option>
-              <option value="boomtown">Boomtown</option>
             </select>
           </label>
 

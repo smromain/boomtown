@@ -82,7 +82,10 @@ describe('viewFor', () => {
   });
 
   it('shows opponent cash and holdings when the table is set to open', () => {
-    const open = createGame({ seats, seed: 3, visibility: 'open' });
+    // `classic` by name: the default preset is `boomtown`, which forces the
+    // books closed, so an open table has to be asked for on a ruleset that
+    // permits one.
+    const open = createGame({ seats, seed: 3, visibility: 'open', ruleset: PRESETS.classic });
     const view = viewFor(open, 0);
     expect(view.seats[1]?.cash).toBe(RULES.startingCash);
     expect(view.seats[1]?.holdings).not.toBeNull();
