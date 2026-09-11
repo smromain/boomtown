@@ -1,7 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import type { Industry } from '@boomtown/engine';
-import { activeView } from '@boomtown/client-core';
-import { useGameState } from '../client/GameClientProvider.js';
+import { useOwnView } from '../client/ownView.js';
 import { IndustryMark } from '../game/marks.js';
 import { corpReference } from './priceReference.js';
 import styles from './reference.module.css';
@@ -27,7 +26,7 @@ export function CorpReference({
   onClose: () => void;
   onOpenChart: () => void;
 }) {
-  const view = useGameState(activeView);
+  const view = useOwnView();
   const data = industry && view ? corpReference(view, industry) : null;
 
   return (

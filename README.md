@@ -1,9 +1,9 @@
 # Boomtown
 
 A desktop implementation of the board game **Acquire** — the mechanics only, renamed and
-re‑themed. Two published editions ship as data, the sequenced merger is modelled exactly, and the
-same headless engine drives local hot‑seat, AI opponents, and online play against an authoritative
-server.
+re‑themed. Two published editions ship as data alongside **Boomtown**, our own variant with closed
+books and an ending put to a vote; the sequenced merger is modelled exactly, and the same headless
+engine drives local hot‑seat, AI opponents, and online play against an authoritative server.
 
 > The rules and mechanics of a board game are not protectable. **ACQUIRE** and the original
 > corporation names are live Hasbro / Avalon Hill trademarks and are not used here — every name in
@@ -196,7 +196,9 @@ runs lint, typecheck and `npm test` only.
 
 **What the engine tests guarantee** (`npm run test:engine`):
 
-- Every row of the `docs/rules.md` price/bonus table, for both editions.
+- Every row of the `docs/rules.md` price/bonus table, for both published editions.
+- The motion to liquidate: the window, the register, the quota, and that a failed motion opens its
+  backers' books.
 - The `docs/naming.md` merge‑naming lineage, byte‑for‑byte against `design/build.py` (including
   Python's round‑half‑to‑even, so `Noquia → Noqu`).
 - Determinism: a command log replays to an identical state; a 300‑game seeded fuzz of random legal
@@ -266,8 +268,16 @@ The full rationale lives in the plan's **Key Technical Decisions** (KTD1–KTD12
 
 Two published editions disagree on safe size, end trigger, bonus tiers, price bands,
 sole‑shareholder policy, dead‑tile handling, the two‑player rule, and split rounding. That is
-**configuration, not a fork**: one engine reads a `Ruleset` object; `classic` and `edition2015`
-ship as presets and classic is the default. The 2015 secondary‑bonus column fits no multiplier, so
+**configuration, not a fork**: one engine reads a `Ruleset` object and `classic` and `edition2015`
+ship as presets.
+
+The payoff came later. `boomtown` — closed books, and a vote that can end the game before any chain
+reaches the end size — is a third preset rather than a branch in the engine: it adds two keys
+(`forcedVisibility`, `endVote`) and inherits every classic number. **It is the default preset** —
+the reconstructions are here so a table that wants the published rules can have them, not as the
+thing on offer. Unlike the other two it is *not*
+a reconstruction of anyone's rulebook; it is this project's own design, and the docs and the UI say
+so rather than presenting three peers. The 2015 secondary‑bonus column fits no multiplier, so
 it ships as a literal lookup table verified against the rulebook's worked example.
 
 ### A custom headless engine, not a framework
@@ -394,7 +404,7 @@ thin authority over an engine that was already trusted.
 
 | File | What it holds |
 |---|---|
-| `docs/rules.md` | The complete rules model, reconciled from both editions — turn structure, merger sequencing, bonus ties, the full price/bonus table, edition config keys, invariants |
+| `docs/rules.md` | The complete rules model — the two published editions reconciled, the Boomtown variant specified, turn structure, merger sequencing, bonus ties, the full price/bonus table, edition config keys, invariants |
 | `docs/naming.md` | The 28‑company pool, the merged‑name rule, flavour accretion, card consolidation |
 | `docs/decisions.md` | What was decided and why, what is still open, and the traps already hit |
 | `docs/deploying.md` | Deploying the PartyKit room and building/signing the desktop installers; the app's icon and name |

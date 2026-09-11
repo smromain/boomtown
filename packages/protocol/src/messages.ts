@@ -85,7 +85,7 @@ export interface ErrorMessage {
  * minus per-seat human/bot names, which the lobby assigns as people join. */
 export interface RoomConfig {
   readonly seatCount: number;
-  readonly edition: 'classic' | 'edition-2015';
+  readonly edition: 'classic' | 'edition-2015' | 'boomtown';
   readonly visibility: 'open' | 'hidden';
   /** Seat index -> bot difficulty (1–10). Absent index = human seat. */
   readonly bots: Readonly<Record<number, number>>;

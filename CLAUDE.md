@@ -7,12 +7,12 @@ Design is complete and agreed. **No application code exists yet**; the next step
 
 | File | What it holds |
 |---|---|
-| `docs/rules.md` | The complete rules model, reconciled from both editions. Turn structure, merger sequencing, bonus ties, the full price/bonus table, edition config keys, invariants. |
+| `docs/rules.md` | The complete rules model: the two published editions reconciled, and the Boomtown variant specified. Turn structure, merger sequencing, bonus ties, the full price/bonus table, edition config keys, invariants. |
 | `docs/naming.md` | The 28-company pool, the merged-name rule, flavour accretion, card consolidation, config. |
 | `docs/decisions.md` | What was decided and why, what is still open, and the traps already hit. |
 | `design/build.py` | Generates the design canvas **and** is the reference implementation of the naming rules. |
 
-Published design canvas (5 artboards over 3 pages):
+Published design canvas (9 artboards over 3 pages):
 https://claude.ai/code/artifact/f1b58905-2da0-4cd0-9c2e-8d65624260a3
 
 ## Legal position, stated once
@@ -25,12 +25,18 @@ which are used. Everything in this project is original or a parody of a defunct 
 ## Constraints that shape the architecture
 
 - **The ruleset is data, not code.** Two published editions disagree on safe size, end trigger,
-  bonus tiers and price bands. One engine, edition as a config object. Default to classic.
+  bonus tiers and price bands. One engine, edition as a config object. A third preset,
+  **Boomtown**, is the project's own variant rather than a reconstruction — classic numbers plus
+  closed books and a vote that can end the game early — and is a preset, not a fork. **It is the
+  default**, so a bare `createGame` deals a closed-books table whose turn can hold at end-check for
+  a motion; a caller that wants the plain published game must ask for `classic` by name.
 - **The engine must expose legal moves and evaluate state**, because AI opponents were chosen
   alongside hot-seat and online play.
 - **Hidden information is real.** Hand tiles and the draw pile are always hidden; online play needs
   an authoritative server handing each client a filtered view. Cash and holdings visibility is a
-  per-table setting, not a rule.
+  per-table setting, not a rule — for the two published editions. The Boomtown preset fixes it
+  closed (`forcedVisibility`), because at an open table its register is already public and the
+  disclosure it charges for costs nothing.
 - **A corporation has two names.** `baseName` belongs to the headquarters marker and never changes
   — held defunct stock, refounding and the board badge all key off it. `displayName` is *derived*
   from the base name plus an ordered list of what it has eaten, never stored.

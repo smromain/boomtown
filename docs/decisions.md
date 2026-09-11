@@ -4,7 +4,8 @@
 
 | Decision | Choice | Why |
 |---|---|---|
-| Ruleset | **Configurable**, defaulting to classic | The two rulebooks disagree on safe size, end trigger, bonus tiers and price bands. One data-driven config covers both editions and house rules; see `rules.md`. |
+| Ruleset | **Configurable**, defaulting to Boomtown | The two rulebooks disagree on safe size, end trigger, bonus tiers and price bands. One data-driven config covers both editions, our own Boomtown variant, and house rules; see `rules.md`. |
+| Going Public | **Shipped**, as a third preset named **Boomtown** | Classic numbers plus closed books and a vote that can end the game early. A preset rather than a change to either published edition: nobody has to accept a changed ending to a ruleset they know, and forced-hidden visibility is what the preset *is* rather than an exception carved out of a shipped edition. Built across https://github.com/smromain/boomtown/issues/23. The full design note, with the game theory and a worked tally, is the design canvas's sibling artifact: https://claude.ai/code/artifact/16f2c904-19b8-4c7b-a477-5a9cf95db85e |
 | Play modes | Local hot-seat, online multiplayer, **and** AI opponents | Chosen together. Online multiplayer is what forces an authoritative server: the tile bag and hands are genuinely hidden information. AI needs the engine to expose a clean legal-move list and a state evaluator. |
 | Visual direction | **Saxon City** direction, now "Boomtown" | Picked from three: Board Room (the board is the subject), Saxon City (the corporations are), Trading Floor (the money is). The other two are kept on the canvas's "Earlier directions" page for reference. |
 | Title | **Boomtown** | Original; the original game's name is a live trademark. |
@@ -30,7 +31,24 @@
   riskiest single element in the pool and the first thing to swap if anyone gets nervous.
 - **The "riffing on" column** in `naming.md` and on the pool artboard is a design note so the list
   can be reviewed. It must not ship as a string anywhere in the product.
-- **A vote-to-end ruleset, "Going Public", proposed but not built.** Classic as the baseline plus
+- **"Boomtown" — a third preset carrying the Going Public ending.** *Shipped* — this entry is kept
+  for the reasoning, not as a live question; the rules themselves are specified in `rules.md`.
+  Sliced and built across https://github.com/smromain/boomtown/issues/23. It is a **third preset alongside
+  Classic and Modern, and neither published edition changes** — which removes the sharpest
+  objection to the design (nobody has to accept a changed ending to a ruleset they know) and makes
+  the forced-hidden visibility what the preset *is* rather than an exception carved out of a
+  shipped edition. `CLAUDE.md`'s "visibility is a per-table setting, not a rule" therefore stands
+  for the editions it was written about. Named simply **Boomtown**: the label lands in a small-caps
+  chip beside the turn counter where a longer name is several times the width of the others, and
+  the game's own name is the right one for the game's own ruleset.
+  Scoping turned up that the decision channel already exists: `PendingDecision` flows engine →
+  `viewFor` → client store → `DecisionModal` → bots and every consumer downstream is written
+  against it generically, so only four places hard-code `state.merger` (`viewFor`, `legalMoves`,
+  the server's `seatOnClock`, the AI's lookahead). A vote is a new variant on a working channel,
+  not a new system.
+
+- **The Going Public mechanic itself, as designed.** *Shipped, with two dials moved by
+  measurement rather than argument — see the simulation note at the end of this entry.* Classic as the baseline plus
   one addition: once two corporations are safe, a player may move to liquidate early, carried by a
   supermajority of a register where one share in a *safe* corporation is one vote. Raising a motion
   publishes that register, and if the motion **fails**, everyone who backed it opens their books
@@ -81,6 +99,26 @@
     continue. The yes-coalition is normally one player against the rest, and the vote becomes a
     ritual. Weighting by shareholding is what makes it a real decision; a supermajority is what
     stops the leader self-serving.
+
+  **What shipped, and what the simulation changed** (https://github.com/smromain/boomtown/issues/27,
+  ~200 games per configuration):
+  - **The quota base is the register, not votes cast.** Only a fixed denominator can settle a
+    motion before everyone has spoken, and abstention — the thing that would make the two bases
+    genuinely differ — is not implemented.
+  - **⅔ at three and four seats, ½ at five and six.** ⅔ carries 63% of the time at three seats and
+    only 6% at six: coordinating a supermajority gets harder with every seat, and everyone waits
+    for someone else to move against the leader. `quotaBySeats` corrects it.
+  - **Quorum two, not three.** Two safe corporations gives a motion in 53–72% of games against
+    7–17% at quorum three, and a mechanic nobody uses is the likeliest way this design fails, well
+    ahead of unbalancing anything.
+  - **The notice period did not ship at all**, at any seat count.
+  - **Bots vote on standing, not on score.** Routing the vote through the generic evaluator made
+    every bot vote yes and every motion carry at every quota, because settlement realises
+    *everyone's* equity at full value — ending the game raises everybody's score. The quota was
+    measuring nothing. A player votes on where they stand, not on their balance.
+  - **The motion was unreachable when first built**, and twenty engine tests missed it because they
+    set the step by hand: `finishTurn` only held at the end-check step when an end condition was
+    met, and a motion is legal only while one is *not*. Playing whole games found it in one run.
 
 - **Bots are handed the authoritative state, not a filtered view.** `attachBotDriver` calls
   `chooseMove(options.snapshot(), seat, rng)`, and `snapshot()` returns the full `GameState`.

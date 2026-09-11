@@ -1048,23 +1048,36 @@ def r_merger():
       % (R_PANEL, R_RULE, R_ACC, k, t, R_MUTED, d) for k, t, d in steps)
 
 def r_config():
-    rows = [("Board", "100 tiles, dimensions not stated in the rulebook", "12 × 9 = 108 tiles, 1A – 12I", "boardCols / boardRows"),
-            ("Safe size", "10 or more tiles", "11 or more tiles", "safeSize"),
-            ("End trigger", "one corporation at 38+", "one chain at 41+", "endChainSize"),
-            ("Bonus tiers", "primary · secondary · tertiary", "majority · minority", "bonusTiers"),
-            ("Price bands", "2, 3, 4, 5, 6–7, 8–17, 18–27, 28–37, 38+", "2, 3, 4, 5, 6–10, 11–20, 21–30, 31–40, 41+", "priceBands"),
-            ("Sole shareholder", "takes primary <em>and</em> tertiary", "takes both bonuses", "soleHolderPolicy"),
-            ("Dead tiles", "discarded face-up and replaced at end of turn", "not addressed — tile stays in hand", "deadTilePolicy"),
-            ("Two-player rule", "the bank is a shareholder; its holding is drawn from the tile pile each merger", "not addressed", "phantomShareholder")]
-    head = ('<div style="display:grid;grid-template-columns:150px 1fr 1fr 168px;gap:0;padding:0 14px 9px;'
+    """The divergence table.
+
+    Two of the three columns are reconstructions of published editions and
+    differ only in numbers; Boomtown is the project's own variant, so its
+    column is mostly "as classic" plus two keys the other two have no row for
+    at all. Stating that in the table is the honest version — three peers
+    would not be.
+    """
+    rows = [("Board", "100 tiles, dimensions not stated in the rulebook", "12 × 9 = 108 tiles, 1A – 12I", "as classic", "boardCols / boardRows"),
+            ("Safe size", "10 or more tiles", "11 or more tiles", "as classic", "safeSize"),
+            ("End trigger", "one corporation at 38+", "one chain at 41+", "one chain at 41+ <em>or</em> a carried motion", "endChainSize"),
+            ("Bonus tiers", "primary · secondary · tertiary", "majority · minority", "as classic", "bonusTiers"),
+            ("Price bands", "2, 3, 4, 5, 6–7, 8–17, 18–27, 28–37, 38+", "2, 3, 4, 5, 6–10, 11–20, 21–30, 31–40, 41+", "as classic", "priceBands"),
+            ("Sole shareholder", "takes primary <em>and</em> tertiary", "takes both bonuses", "as classic", "soleHolderPolicy"),
+            ("Dead tiles", "discarded face-up and replaced at end of turn", "not addressed — tile stays in hand", "as classic", "deadTilePolicy"),
+            ("Two-player rule", "the bank is a shareholder; its holding is drawn from the tile pile each merger", "not addressed", "as classic — but no vote below 3 seats", "phantomShareholder"),
+            ("Cash and holdings", "a table setting, not a rule", "a table setting, not a rule", "<strong>always hidden</strong> — the ruleset fixes it", "forcedVisibility"),
+            ("Vote to end", "—", "—", "see <em>Going public</em> below", "endVote")]
+    cols = "142px 1fr 1fr 1fr 150px"
+    head = ('<div style="display:grid;grid-template-columns:%s;gap:0;padding:0 14px 9px;'
             'border-bottom:1px solid %s" class="lbl"><div>Rule</div><div>2015 Avalon Hill</div>'
-            '<div>Classic</div><div>Config key</div></div>' % R_RULE)
+            '<div>Classic</div><div style="color:%s">Boomtown — ours</div><div>Config key</div></div>'
+            % (cols, R_RULE, R_ACC))
     body = "".join(
-      '<div style="display:grid;grid-template-columns:150px 1fr 1fr 168px;gap:0;padding:11px 14px;'
+      '<div style="display:grid;grid-template-columns:%s;gap:0;padding:11px 14px;'
       'border-bottom:1px solid rgba(223,217,207,.7);font-size:12px;line-height:1.45">'
       '<div style="font-weight:600">%s</div><div style="color:%s">%s</div><div style="color:%s">%s</div>'
+      '<div style="color:%s">%s</div>'
       '<div class="m" style="font-size:11px;color:%s">%s</div></div>'
-      % (r, R_MUTED, a, R_MUTED, b, R_ACC, k) for r, a, b, k in rows)
+      % (cols, r, R_MUTED, a, R_MUTED, b, R_INK, c, R_ACC, k) for r, a, b, c, k in rows)
     return '<div style="background:%s;border:1px solid %s;border-radius:3px;padding:14px 0 0">%s%s</div>' % (R_PANEL, R_RULE, head, body)
 
 def r_table():
@@ -1172,19 +1185,63 @@ def r_open():
       '<div style="font-size:11.5px;line-height:1.55;color:%s">%s</div></div></div>'
       % (R_PANEL, R_RULE, R_ACC, t, R_MUTED, d) for t, d in items)
 
+def r_going_public():
+    """Boomtown's second ending. Reads as a sequence because it is one — the
+    order of the five beats is the whole design, and the price lands last on
+    purpose."""
+    steps = [
+      ("1", "The window opens", "Once <strong>two corporations are safe</strong>, and only while no ordinary end condition is met. Once the game can simply be announced, asking is strictly worse than announcing — so the two endings never overlap."),
+      ("2", "A player moves to liquidate", "At the end-check step of their own turn, <strong>once each per game</strong>. Raising <em>is</em> voting for it: nobody proposes an ending and then votes it down."),
+      ("3", "The register is published", "One vote per share held in a <strong>safe</strong> corporation — the only companies certain to still exist at settlement. Published on the first motion of the game and never un-published. It can only grow, so the electorate cannot be attacked."),
+      ("4", "Everyone votes, mover first, then clockwise", "It carries on <strong>two thirds of the register</strong> — half at five or six seats, where coordinating a supermajority gets harder and responsibility diffuses — with <strong>at least two backers</strong>. The game ends there and then."),
+      ("5", "If it fails, the backers open their books", "Cash and holdings visible to the table for the rest of the game. Voting against costs nothing, so the expected price of a yes is <em>P(fail) × your privacy</em> — which taxes speculative and spiteful votes precisely and leaves sincere ones nearly free."),
+    ]
+    flow = '<div style="display:flex;flex-direction:column;gap:8px">%s</div>' % "".join(
+      '<div style="display:flex;gap:14px;background:%s;border:1px solid %s;border-radius:3px;padding:12px 15px">'
+      '<span class="m" style="width:18px;flex-shrink:0;color:%s;font-size:13px">%s</span>'
+      '<div style="flex-grow:1"><div style="font-size:13px;font-weight:600;margin-bottom:3px">%s</div>'
+      '<div style="font-size:11.5px;line-height:1.5;color:%s">%s</div></div></div>'
+      % (R_PANEL, R_RULE, R_ACC, k, t, R_MUTED, d) for k, t, d in steps)
+
+    dials = [("quorumSafeCorps", "2", "a motion in 53–72% of games, against 7–17% at three"),
+             ("quota", "2/3", "carries 63% of the time at three seats"),
+             ("quotaBySeats", "1/2 at 5 – 6", "2/3 carries only 6% at six seats"),
+             ("quotaBase", "register", "only a fixed denominator can settle before every seat has spoken"),
+             ("minBackers", "2", "the earliest legal register can be two-thirds held by one player"),
+             ("motionsPerPlayer", "1", "scarcity is what makes the timing a decision"),
+             ("minPlayers", "3", "two players have no table to convince")]
+    table = ('<div style="background:%s;border:1px solid %s;border-radius:3px;padding:14px 0 0;margin-top:4px">'
+             '<div style="display:grid;grid-template-columns:190px 128px 1fr;gap:0;padding:0 14px 9px;'
+             'border-bottom:1px solid %s" class="lbl"><div>Key</div><div>Ships as</div>'
+             '<div>Why, from the simulation</div></div>%s'
+             '<div style="padding:12px 14px;font-size:11.5px;line-height:1.55;color:%s">'
+             'Every number above came out of <strong style="color:%s">roughly 200 headless games per '
+             'configuration</strong> rather than out of taste. The failure mode the sweep was built to '
+             'catch is not imbalance — it is a mechanic nobody ever uses.</div></div>'
+             % (R_PANEL, R_RULE, R_RULE,
+                "".join('<div style="display:grid;grid-template-columns:190px 128px 1fr;gap:0;padding:10px 14px;'
+                        'border-bottom:1px solid rgba(223,217,207,.7);font-size:12px;line-height:1.45">'
+                        '<div class="m" style="color:%s">%s</div><div class="m">%s</div>'
+                        '<div style="color:%s">%s</div></div>' % (R_ACC, k, v, R_MUTED, w)
+                        for k, v, w in dials),
+                R_MUTED, R_ACC))
+    return flow + table
+
 def build_rules():
     body = (
-      '<div style="width:1440px;min-height:4400px;background:%s;color:%s;font-family:\'IBM Plex Sans\',Helvetica,Arial,sans-serif;'
+      '<div style="width:1440px;min-height:4600px;background:%s;color:%s;font-family:\'IBM Plex Sans\',Helvetica,Arial,sans-serif;'
       'font-size:13px;padding:44px 52px 56px;display:flex;flex-direction:column;gap:38px">'
       '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:40px">'
       '<div style="display:flex;flex-direction:column;gap:9px">'
       '<span class="lbl">Boomtown · web version</span>'
       '<span style="font-size:34px;font-weight:600;letter-spacing:-.02em">Rules model</span>'
-      '<span style="font-size:13.5px;line-height:1.5;color:%s;max-width:720px">Reconciled from the 2015 Avalon Hill '
-      'rulebook and the classic rules. Where the two disagree the difference is configuration, not a fork — '
-      'the column on the right of each divergence is the key the engine reads.</span></div>'
+      '<span style="font-size:13.5px;line-height:1.5;color:%s;max-width:760px">Two rule sets are reconstructions, '
+      'reconciled from the 2015 Avalon Hill rulebook and the classic rules; where they disagree the difference is '
+      'configuration, not a fork, and the column on the right of each divergence is the key the engine reads. '
+      'The third, <strong>Boomtown</strong>, is ours rather than anyone\'s rulebook: classic numbers, closed '
+      'books, and an ending that can be put to a vote.</span></div>'
       '<div style="display:flex;gap:10px">%s</div></div>'
-      '%s%s%s%s%s%s%s</div>'
+      '%s%s%s%s%s%s%s%s</div>'
       % (R_BG, R_INK, R_MUTED,
          "".join('<div style="border:1px solid %s;border-radius:3px;padding:9px 13px;text-align:right">'
                  '<div class="lbl" style="margin-bottom:3px">%s</div>'
@@ -1192,7 +1249,8 @@ def build_rules():
                  for a, b in [("Players", "2 – 6"), ("Corporations", "7"), ("Shares each", "25"), ("Start cash", "$6,000")]),
          r_section("Turn", "one placement, an optional purchase, a draw", r_flow()),
          r_section("Merger resolution", "the only part of the game with real sequencing", r_merger()),
-         r_section("Edition configuration", "every divergence between the two rule sets", r_config()),
+         r_section("Edition configuration", "every divergence between the three rule sets", r_config()),
+         r_section("Going public", "Boomtown's second ending — ours, not anyone's rulebook", r_going_public()),
          r_section("Price and bonus table", "the numbers, exactly as printed", r_table()),
          r_section("Bonus ties, worked", "the position on the board opposite, settled under both rule sets", r_example()),
          r_section("Invariants", "things the engine must never allow to drift", r_invariants()),
@@ -1789,7 +1847,7 @@ def build_canvas():
         {"file": "Names.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 2680, "title": "Merged names", "print": "flow", "page": "page-1"},
         {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "The pool", "print": "flow", "page": "page-1"},
         {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
-        {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4520, "title": "Rules model",
+        {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4720, "title": "Rules model",
          "print": "flow", "page": "page-2"},
         {"file": "BoardRoom.dc.html",    "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "A - Board Room", "page": "page-3"},
         {"file": "TradingFloor.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "C - Trading Floor", "page": "page-3"},

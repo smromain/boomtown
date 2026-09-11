@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PRESETS, type Ruleset } from '@boomtown/engine';
 import {
   createGameClient,
   isLocalTurn,
@@ -9,13 +10,14 @@ import {
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-async function client(visibility?: 'open' | 'hidden'): Promise<GameClient> {
+async function client(visibility?: 'open' | 'hidden', ruleset?: Ruleset): Promise<GameClient> {
   const transport = localTransport({
     setup: {
       seats: [{ name: 'A' }, { name: 'B' }, { name: 'C' }],
       seed: 42,
       turnOrder: [0, 1, 2],
       ...(visibility ? { visibility } : {}),
+      ...(ruleset ? { ruleset } : {}),
     },
     controls: [0, 1, 2],
   });
@@ -70,7 +72,9 @@ describe('createGameClient', () => {
     const hidden = await client('hidden');
     expect(hidden.store.getState().views[0]!.seats[1]?.cash).toBeNull();
 
-    const open = await client('open');
+    // On `classic`: the default preset forces the books closed, so "open" is
+    // only a table setting on a ruleset that leaves it to the table.
+    const open = await client('open', PRESETS.classic);
     expect(open.store.getState().views[0]!.seats[1]?.cash).toBe(6000);
   });
 

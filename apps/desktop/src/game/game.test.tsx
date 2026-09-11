@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { INDUSTRIES } from '@boomtown/engine';
 import { ActionBar } from './ActionBar.js';
 import { OutOfPlay } from './OutOfPlay.js';
-import { BuyModal } from './BuyModal.js';
+import { TurnModal } from './TurnModal.js';
 import { CorporationBand, TrayStrip } from './CorporationBand.js';
 import { Shareholders } from './Shareholders.js';
 import { StoryCard } from './StoryCard.js';
@@ -100,8 +100,46 @@ describe('Shareholders', () => {
   });
 
   it('shows every seat cash under the open setting', async () => {
-    await renderPanel(<Shareholders />, { visibility: 'open' });
+    // `classic`: the default preset forces the books closed, so an open table
+    // only exists on a ruleset that leaves visibility to the table.
+    await renderPanel(<Shareholders />, { visibility: 'open', edition: 'classic' });
     expect(screen.getAllByText('$6,000')).toHaveLength(3);
+  });
+
+  // Regression: an all-bot table disclosed everybody's books. A hot-seat client
+  // holds a view for every seat, and this panel read the seat *on the clock* —
+  // so each bot's own cash and holdings rendered as its turn came round, and one
+  // turn cycle showed the watcher the whole table. Under Boomtown that is the
+  // mechanic leaking, not a cosmetic slip.
+  it('shows a watcher nothing private at an all-bot table, whichever bot is on the clock', async () => {
+    const { client } = await renderPanel(<Shareholders />, {
+      edition: 'boomtown',
+      localSeats: [], // nobody at this screen owns a seat
+      craft: (state) => {
+        state.seats[1]!.cash = 1234;
+        state.seats[1]!.holdings.books = 4;
+        state.turnPointer = 1; // a bot is on the clock
+      },
+    });
+    const rows = screen.getByRole('region', { name: 'Shareholders' });
+
+    // names are public and still render; nothing else does
+    expect(within(rows).getByText(/Ben/)).toBeInTheDocument();
+    expect(rows.textContent).not.toMatch(/\$\d/);
+    expect(within(rows).getAllByText('—')).toHaveLength(6); // cash + holdings, three seats
+
+    // and it stays that way as the clock moves round the table
+    await act(async () => {
+      client.dispatch({ type: 'end-turn', seat: 1 });
+      await flush();
+    });
+    expect(screen.getByRole('region', { name: 'Shareholders' }).textContent).not.toMatch(/\$\d/);
+  });
+
+  it('still shows a seated player their own books', async () => {
+    await renderPanel(<Shareholders />, { edition: 'boomtown', localSeats: [0] });
+    const rows = screen.getByRole('region', { name: 'Shareholders' });
+    expect(within(rows).getByText('$6,000')).toBeInTheDocument();
   });
 });
 
@@ -330,7 +368,7 @@ describe('TurnHandoff (hot-seat turn boundary)', () => {
     const { client } = await renderPanel(
       <>
         <DecisionModal />
-        <BuyModal />
+        <TurnModal />
         <TurnHandoff config={humans(3)} />
       </>,
       {
@@ -374,9 +412,9 @@ describe('TurnHandoff (hot-seat turn boundary)', () => {
   });
 });
 
-describe('BuyModal', () => {
+describe('TurnModal', () => {
   it('opens on the buy step with the buy controls inside', async () => {
-    await renderPanel(<BuyModal />, {
+    await renderPanel(<TurnModal />, {
       craft: (state) => {
         seedCorp(state, 'video', ['5H', '5I', '4I']);
         state.step = 'buy';
@@ -391,7 +429,7 @@ describe('BuyModal', () => {
   });
 
   it('stays closed outside the buy step', async () => {
-    await renderPanel(<BuyModal />, {
+    await renderPanel(<TurnModal />, {
       craft: (state) => {
         state.step = 'place';
       },
@@ -400,7 +438,7 @@ describe('BuyModal', () => {
   });
 
   it('stays closed on a bot / remote seat buy step — the modal is not the human\'s', async () => {
-    await renderPanel(<BuyModal />, {
+    await renderPanel(<TurnModal />, {
       localSeats: [0], // seats 1 & 2 are not local
       craft: (state) => {
         seedCorp(state, 'video', ['5H', '5I', '4I']);
@@ -412,7 +450,7 @@ describe('BuyModal', () => {
   });
 
   it('minimizes to a pill and restores', async () => {
-    await renderPanel(<BuyModal />, {
+    await renderPanel(<TurnModal />, {
       craft: (state) => {
         seedCorp(state, 'video', ['5H', '5I', '4I']);
         state.step = 'buy';
@@ -456,18 +494,6 @@ describe('OutOfPlay', () => {
 });
 
 describe('ActionBar', () => {
-  it('offers the end-of-game choice at the end-check step', async () => {
-    const rowA = Array.from({ length: 11 }, (_, i) => `${i + 1}A`);
-    await renderPanel(<ActionBar />, {
-      craft: (state) => {
-        seedCorp(state, 'video', rowA); // safe, only corp -> end condition holds
-        state.step = 'end-check';
-      },
-    });
-    expect(screen.getByRole('button', { name: 'End the game' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Keep playing' })).toBeInTheDocument();
-  });
-
   it('offers a skip when no hand tile is playable', async () => {
     const rowA = Array.from({ length: 11 }, (_, i) => `${i + 1}A`);
     const rowC = Array.from({ length: 11 }, (_, i) => `${i + 1}C`);
@@ -484,16 +510,54 @@ describe('ActionBar', () => {
 
   it('renders nothing when the seat on the clock is not a local seat (a bot / remote turn)', async () => {
     const rowA = Array.from({ length: 11 }, (_, i) => `${i + 1}A`);
+    const rowC = Array.from({ length: 11 }, (_, i) => `${i + 1}C`);
     await renderPanel(<ActionBar />, {
       localSeats: [0, 1], // seat 2 is a bot
       craft: (state) => {
         seedCorp(state, 'video', rowA);
+        seedCorp(state, 'books', rowC);
+        state.hands[2] = ['1B']; // dead tile: the bot cannot place
         state.turnPointer = 2; // bot on the clock
+      },
+    });
+    // the bug: the watching human saw (and could click) the bot's own action
+    expect(screen.queryByRole('button', { name: 'Skip placement' })).not.toBeInTheDocument();
+  });
+});
+
+describe('TurnModal at the end-check step', () => {
+  it('offers the end-of-game choice, where the turn is actually waiting', async () => {
+    // Regression: this lived in a card at the foot of the right rail, below the
+    // fold. The buy modal would close onto a turn that looked stuck because the
+    // only way forward was off screen.
+    const rowA = Array.from({ length: 11 }, (_, i) => `${i + 1}A`);
+    await renderPanel(<TurnModal />, {
+      craft: (state) => {
+        seedCorp(state, 'video', rowA); // safe, only corp -> end condition holds
         state.step = 'end-check';
       },
     });
-    // the bug: the watching human saw (and could click) "End the game" for the bot
-    expect(screen.queryByRole('button', { name: 'End the game' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Keep playing' })).not.toBeInTheDocument();
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('button', { name: /End the game/ })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /Keep playing/ })).toBeInTheDocument();
+  });
+
+  it('stays open across the buy step and the end-check that follows it', async () => {
+    const rowA = Array.from({ length: 11 }, (_, i) => `${i + 1}A`);
+    const { client } = await renderPanel(<TurnModal />, {
+      craft: (state) => {
+        seedCorp(state, 'video', rowA);
+        state.step = 'buy';
+      },
+    });
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await act(async () => {
+      client.dispatch({ type: 'buy-shares', seat: 0, picks: {} });
+      await flush();
+    });
+    // Same dialog, new content — never a frame with the board and no prompt.
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('button', { name: /End the game/ })).toBeInTheDocument();
   });
 });

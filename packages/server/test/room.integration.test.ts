@@ -236,6 +236,9 @@ function pickHumanMove(view: Extract<RoomMessage, { type: 'update' }>['view']) {
     const d = view.pendingDecision;
     if (d.type === 'choose-survivor') return { type: 'choose-survivor' as const, seat: view.you, survivor: d.options[0]! };
     if (d.type === 'choose-defunct-order') return { type: 'choose-defunct-order' as const, seat: view.you, next: d.options[0]! };
+    // `PendingDecision` now also carries a motion vote (#26); this scripted
+    // client only ever drives mergers, so anything else is not its business.
+    if (d.type === 'cast-vote') return { type: 'cast-vote' as const, seat: view.you, inFavour: false };
     return { type: 'dispose-shares' as const, seat: view.you, hold: d.shares, sell: 0, trade: 0 };
   }
   if (view.step === 'place') {

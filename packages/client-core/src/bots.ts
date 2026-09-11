@@ -1,5 +1,5 @@
 import { makeRng, type Command, type GameState, type Rng, type Seat } from '@boomtown/engine';
-import { heuristicPolicy, type Policy } from '@boomtown/ai';
+import { beliefState, heuristicPolicy, type Policy } from '@boomtown/ai';
 import type { GameClient } from './dispatch.js';
 
 /** One bot seat: which seat, and how it decides. */
@@ -127,7 +127,14 @@ export function attachBotDriver(
     }
     let choice: { command: Command; rng: Rng } | null;
     try {
-      choice = policies.get(seat)!.chooseMove(options.snapshot(), seat, rng);
+      // The belief state, never the authoritative one. A policy has to run
+      // `reduce` to look ahead, so the boundary cannot be a narrower argument —
+      // it has to be a redacted `GameState`. This way no policy can reach
+      // another seat's holdings, hand or the bag even by accident, including
+      // any policy added later (#25).
+      choice = policies
+        .get(seat)!
+        .chooseMove(beliefState(options.snapshot(), seat, client.store.getState().log), seat, rng);
     } catch (error) {
       // A throwing decision must not kill the driver. Report it, then leave the
       // store subscription live so the next change retries.

@@ -37,7 +37,8 @@ function drawSeed(): number {
 /** The seat that owes the next command, or null when the game is over. */
 export function seatOnClock(state: GameState): Seat | null {
   if (state.status !== 'playing') return null;
-  return state.merger?.pending?.seat ?? activeSeat(state);
+  // Either machine can own the clock: a merger decision, or a vote on a motion.
+  return state.merger?.pending?.seat ?? state.motion?.pending?.seat ?? activeSeat(state);
 }
 
 /** What the room sends to one seat's connection. */

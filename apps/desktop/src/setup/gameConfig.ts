@@ -55,6 +55,22 @@ export function toSetupOptions(config: GameConfig): SetupOptions {
   };
 }
 
+/**
+ * The visibility this config will actually play at. A ruleset may require one
+ * (Boomtown forces closed books), in which case the table's own choice is
+ * ignored — the engine enforces this in `createGame`, and the setup screens use
+ * this to show what will happen rather than letting a player pick something
+ * that will be quietly overridden.
+ */
+export function effectiveVisibility(config: GameConfig): Visibility {
+  return PRESETS[config.edition].forcedVisibility ?? config.visibility;
+}
+
+/** Whether the ruleset fixes visibility, so the control should be disabled. */
+export function visibilityIsFixed(config: GameConfig): boolean {
+  return PRESETS[config.edition].forcedVisibility !== undefined;
+}
+
 /** Clamp the seat list to 2–6, adding or trimming from the end. */
 export function resizeSeats(seats: readonly SeatConfig[], count: number): SeatConfig[] {
   const target = Math.max(RULES.minPlayers, Math.min(RULES.maxPlayers, count));

@@ -25,6 +25,7 @@ export type EngineErrorCode =
   | 'trade-not-even'
   | 'trade-exceeds-bank'
   | 'end-condition-not-met'
+  | 'illegal-motion'
   | 'game-over';
 
 export function err(code: EngineErrorCode, message: string): { ok: false; error: EngineError } {

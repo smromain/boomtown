@@ -5,10 +5,18 @@ import {
   makeRng,
   reduce,
   type Command,
+  type EngineEvent,
   type GameState,
   type Seat,
 } from '@boomtown/engine';
-import { difficulty, heuristicPolicy, normalizeDifficulty, type Policy } from '../src/index.js';
+import {
+  difficulty,
+  heuristicPolicy,
+  ledgerFrom,
+  normalizeDifficulty,
+  redactFor,
+  type Policy,
+} from '../src/index.js';
 
 /** A fresh 4-seat classic game on a fixed seed. */
 function game(seed = 7): GameState {
@@ -29,11 +37,23 @@ function playOut(
   let state = initial;
   let rng = makeRng(seed);
   let guard = 0;
+  // The public log, accumulated as the game runs — it is what the ledger folds,
+  // and the only thing a redacted bot has to reason about opponents with.
+  const log: EngineEvent[] = [];
 
   while (state.status === 'playing') {
     if (guard++ > 5000) throw new Error('game did not terminate');
-    const seat = state.merger?.pending?.seat ?? state.turnOrder[state.turnPointer]!;
-    const choice = policyFor(seat).chooseMove(state, seat, rng);
+    // A motion owns the clock the same way a merger does, so the seat that owes
+    // a move is not always the active one. This harness predates the motion and
+    // only ever ran classic games, so step `vote` was unreachable here until
+    // Boomtown became the default — at which point every playout died on it.
+    const seat =
+      state.merger?.pending?.seat ?? state.motion?.pending?.seat ?? state.turnOrder[state.turnPointer]!;
+    // Redacted, exactly as the real driver does it (#25). A harness that fed
+    // policies the authoritative state would be measuring a different game from
+    // the one anyone plays — which matters most for the tuning runs this
+    // function exists to support.
+    const choice = policyFor(seat).chooseMove(redactFor(state, seat, ledgerFrom(log, state.seats.length)), seat, rng);
     if (!choice) throw new Error(`no move for seat ${seat} at step ${state.step}`);
     rng = choice.rng;
     const result = reduce(state, choice.command);
@@ -41,6 +61,7 @@ function playOut(
       throw new Error(`policy emitted an illegal ${choice.command.type}: ${result.error.code}`);
     }
     state = result.state;
+    log.push(...result.events);
   }
   return state;
 }

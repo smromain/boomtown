@@ -24,6 +24,30 @@ describe('settings store', () => {
     expect(loaded.visibility).toBe('open'); // untouched default
   });
 
+  describe('v1 → v2 migration', () => {
+    // A blob written before the Boomtown preset existed. Note what wrote it:
+    // muting the sound persists the whole settings object, so almost every
+    // install has an edition stored whether or not anyone chose one.
+    const v1 = { visibility: 'open', botDifficulty: 5, edition: 'classic', seatCount: 3, partykitHost: '', muted: true, playerName: '' };
+
+    it('drops an edition stored before the choice existed, so the new default lands', () => {
+      localStorage.setItem('boomtown.settings', JSON.stringify(v1));
+      expect(loadSettings().edition).toBe('boomtown');
+      // and only the edition — every other stored preference survives
+      expect(loadSettings().muted).toBe(true);
+    });
+
+    it('leaves a v2 blob alone, so a deliberate Classic choice sticks', () => {
+      saveSettings({ ...DEFAULT_SETTINGS, edition: 'classic' });
+      expect(loadSettings().edition).toBe('classic');
+    });
+
+    it('reaches the new game screen, not just the store', () => {
+      localStorage.setItem('boomtown.settings', JSON.stringify(v1));
+      expect(defaultConfig().edition).toBe('boomtown');
+    });
+  });
+
   it('sound is on (muted: false) by default (R9)', () => {
     expect(loadSettings().muted).toBe(false);
   });

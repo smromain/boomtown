@@ -60,6 +60,22 @@ export function describeEvent(event: EngineEvent, view?: ClientView | null): str
       return `— ${p(event.seat)}'s turn —`;
     case 'end-announced':
       return `${p(event.seat)} announced the end`;
+    case 'motion-raised':
+      return `${p(event.seat)} moved to liquidate`;
+    case 'register-published':
+      return 'The share register is now public';
+    case 'vote-cast':
+      return `${p(event.seat)} voted ${event.inFavour ? 'for' : 'against'} (${event.weight} ${
+        event.weight === 1 ? 'share' : 'shares'
+      })`;
+    case 'motion-carried':
+      return `The motion carried, ${event.yes} of ${event.total}`;
+    case 'motion-failed':
+      return `The motion failed, ${event.yes} of ${event.total}`;
+    case 'books-opened':
+      return `${event.seats.map((s) => who(view, s)).join(' and ')} ${
+        event.seats.length > 1 ? 'open their books' : 'opens their books'
+      }`;
     case 'game-over':
       return `Game over — winner${event.result.winners.length > 1 ? 's' : ''} ${event.result.winners
         .map((s) => who(view, s))

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   INDUSTRIES,
   POOL,
+  PRESETS,
   RULES,
   TOTAL_SHARES,
   classic,
@@ -81,9 +82,62 @@ describe('viewFor', () => {
   });
 
   it('shows opponent cash and holdings when the table is set to open', () => {
-    const open = createGame({ seats, seed: 3, visibility: 'open' });
+    // `classic` by name: the default preset is `boomtown`, which forces the
+    // books closed, so an open table has to be asked for on a ruleset that
+    // permits one.
+    const open = createGame({ seats, seed: 3, visibility: 'open', ruleset: PRESETS.classic });
     const view = viewFor(open, 0);
     expect(view.seats[1]?.cash).toBe(RULES.startingCash);
     expect(view.seats[1]?.holdings).not.toBeNull();
+  });
+});
+
+describe('the Boomtown preset', () => {
+  it('forces closed books, whatever the table asked for', () => {
+    // Enforced in `createGame` rather than at the call sites that build setup
+    // options, so no path into the engine can start an open Boomtown table —
+    // including this one, which asks for exactly that.
+    const state = createGame({
+      seats: [{ name: 'A' }, { name: 'B' }],
+      seed: 1,
+      turnOrder: [0, 1],
+      ruleset: PRESETS.boomtown,
+      visibility: 'open',
+    });
+    expect(state.visibility).toBe('hidden');
+  });
+
+  it('leaves the published editions to the table', () => {
+    for (const id of ['classic', 'edition-2015'] as const) {
+      const state = createGame({
+        seats: [{ name: 'A' }, { name: 'B' }],
+        seed: 1,
+        turnOrder: [0, 1],
+        ruleset: PRESETS[id],
+        visibility: 'open',
+      });
+      expect({ id, visibility: state.visibility }).toEqual({ id, visibility: 'open' });
+    }
+  });
+
+  it('plays by classic rules apart from what it adds — a variant, not a new rulebook', () => {
+    const { boomtown, classic } = PRESETS;
+    const { id: _b, forcedVisibility: _v, endVote: _e, ...boomtownRules } = boomtown;
+    const { id: _c, ...classicRules } = classic;
+    expect(boomtownRules).toEqual(classicRules);
+  });
+
+  it('is the only preset with a vote to end', () => {
+    expect(PRESETS.boomtown.endVote).toBeDefined();
+    expect(PRESETS.classic.endVote).toBeUndefined();
+    expect(PRESETS['edition-2015'].endVote).toBeUndefined();
+  });
+
+  it('is reachable through PRESETS for every id in the union', () => {
+    // `Record<RulesetId, Ruleset>` makes this a compile-time guarantee; the
+    // runtime check catches a preset registered under the wrong key.
+    for (const [id, preset] of Object.entries(PRESETS)) {
+      expect({ key: id, id: preset.id }).toEqual({ key: id, id });
+    }
   });
 });

@@ -3,31 +3,21 @@ import { Button } from '../ui/Button.js';
 import styles from './game.module.css';
 
 /**
- * The contextual action beside the tile rack: the end‑of‑game choice at the
- * end‑check step, or a skip when nothing is playable. The buy step has its own
- * modal (`BuyModal`), so it is not handled here.
+ * The contextual action beside the tile rack. Only one case is left: a turn
+ * that cannot start because nothing in hand is playable.
+ *
+ * The end-of-turn choice used to live here too and now sits in `TurnModal`,
+ * because a card at the foot of the right rail is below the fold and was
+ * routinely missed — the buy modal would close and the game looked stuck. This
+ * case keeps its card: the rack directly above it is the explanation (every
+ * tile greyed out), so the card confirms what the rack already shows rather
+ * than being the only sign the turn is waiting.
  */
 export function ActionBar() {
   const view = useLocalActiveView();
   const busy = useGameState((state) => state.inFlight != null);
   const client = useGameClient();
   if (!view) return null;
-
-  if (view.step === 'end-check') {
-    return (
-      <div className={styles.actionCard} aria-label="End of game">
-        <p className={styles.actionPrompt}>A corporation is safe or at the end size.</p>
-        <div className={styles.actionButtons}>
-          <Button variant="primary" disabled={busy} onClick={() => client.dispatch({ type: 'announce-end', seat: view.you })}>
-            End the game
-          </Button>
-          <Button variant="secondary" disabled={busy} onClick={() => client.dispatch({ type: 'end-turn', seat: view.you })}>
-            Keep playing
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   if (view.step === 'place' && !view.handTiles.some((tile) => tile.playable)) {
     return (

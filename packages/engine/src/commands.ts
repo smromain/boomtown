@@ -15,6 +15,8 @@ export type Command =
   | ChooseDefunctOrder
   | DisposeShares
   | AnnounceEnd
+  | MoveToLiquidate
+  | CastVote
   | EndTurn;
 
 export interface PlaceTile {
@@ -59,6 +61,22 @@ export interface DisposeShares {
   readonly sell: number;
   /** Shares traded 2-for-1 into the survivor. Must be even. */
   readonly trade: number;
+}
+
+/**
+ * Move to liquidate — the Going Public ending (#26). Raised at the `end-check`
+ * step, and only while the normal ending is *not* yet available.
+ */
+export interface MoveToLiquidate {
+  readonly type: 'move-to-liquidate';
+  readonly seat: Seat;
+}
+
+/** A vote on an open motion. Raising a motion already counts as a yes. */
+export interface CastVote {
+  readonly type: 'cast-vote';
+  readonly seat: Seat;
+  readonly inFavour: boolean;
 }
 
 /** Announce the end at the `end-check` step. The game ends after this turn. */

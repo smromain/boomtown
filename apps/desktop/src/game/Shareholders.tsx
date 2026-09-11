@@ -1,6 +1,5 @@
 import { INDUSTRIES, INDUSTRY_INFO } from '@boomtown/engine';
-import { activeView } from '@boomtown/client-core';
-import { useGameState } from '../client/GameClientProvider.js';
+import { useOwnView } from '../client/ownView.js';
 import { IndustryMark } from './marks.js';
 import { Panel } from '../ui/Panel.js';
 import styles from './game.module.css';
@@ -11,7 +10,11 @@ import styles from './game.module.css';
  * industry mark, not just the dot), plus cash.
  */
 export function Shareholders() {
-  const view = useGameState(activeView);
+  // `useOwnView`, never `activeView`: a hot-seat client holds a view for every
+  // seat, so reading the seat on the clock showed each bot its own cash and
+  // holdings in turn — one full turn cycle disclosed the whole table, which is
+  // precisely what Boomtown's closed books exist to prevent.
+  const view = useOwnView();
   if (!view) return null;
 
   return (

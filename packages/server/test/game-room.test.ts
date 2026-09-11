@@ -303,3 +303,28 @@ function seatViewMaybe(updates: import('@boomtown/server').Outbound[], seat: num
   }
   return null;
 }
+
+describe('the Boomtown preset online', () => {
+  it('deals a closed-book table even when the room config says open', () => {
+    // The room config carries whatever the host's lobby sent; the ruleset wins.
+    // Enforced in `createGame`, so the server needs no rule of its own — this
+    // test exists to prove the server path really does inherit it.
+    const options = setupOptionsFor(baseConfig({ edition: 'boomtown', visibility: 'open' }), [
+      'Ana',
+      'Bo',
+      'Cy',
+    ]);
+    const state = createGame(options);
+    expect(state.visibility).toBe('hidden');
+    expect(state.ruleset.id).toBe('boomtown');
+  });
+
+  it('still lets a classic room be open', () => {
+    const options = setupOptionsFor(baseConfig({ edition: 'classic', visibility: 'open' }), [
+      'Ana',
+      'Bo',
+      'Cy',
+    ]);
+    expect(createGame(options).visibility).toBe('open');
+  });
+});
