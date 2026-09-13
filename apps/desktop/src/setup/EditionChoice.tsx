@@ -1,5 +1,6 @@
 import { PRESETS, type RulesetId } from '@boomtown/engine';
 import { editionLabel } from './editionLabel.js';
+import { copy, fill } from '../copy/copy.js';
 import styles from './form.module.css';
 
 /**
@@ -19,11 +20,11 @@ const ORDER: readonly RulesetId[] = ['boomtown', 'classic', 'edition-2015'];
 
 export function editionSummary(id: RulesetId): string {
   const ruleset = PRESETS[id];
-  return [
-    `safe at ${ruleset.safeSize}`,
-    `ends at ${ruleset.endChainSize}`,
-    `${ruleset.bonusTiers} bonus tiers`,
-  ].join(' · ');
+  return fill(copy.setup.edition.summary, {
+    safe: ruleset.safeSize,
+    end: ruleset.endChainSize,
+    tiers: ruleset.bonusTiers,
+  });
 }
 
 /**
@@ -35,8 +36,8 @@ export function editionSummary(id: RulesetId): string {
 export function editionExtra(id: RulesetId): string | null {
   const ruleset = PRESETS[id];
   const extras = [
-    ...(ruleset.forcedVisibility === 'hidden' ? ['closed books'] : []),
-    ...(ruleset.endVote ? ['a vote can end it early'] : []),
+    ...(ruleset.forcedVisibility === 'hidden' ? [copy.setup.edition.closedBooks] : []),
+    ...(ruleset.endVote ? [copy.setup.edition.voteEndsEarly] : []),
   ];
   return extras.length > 0 ? extras.join(' · ') : null;
 }
@@ -50,7 +51,7 @@ export function EditionChoice({
 }) {
   return (
     <div className={styles.field}>
-      <span id="edition-label">Edition</span>
+      <span id="edition-label">{copy.setup.edition.label}</span>
       {/* A radiogroup of buttons rather than <input type="radio">: the whole
           card is the target, and the description belongs inside it. */}
       <div className={styles.editions} role="radiogroup" aria-labelledby="edition-label">

@@ -5,6 +5,7 @@ import { Marquee } from './Marquee.js';
 import { Skyline } from '../art/Skyline.js';
 import { useReference } from '../reference/ReferenceContext.js';
 import styles from './band.module.css';
+import { copy, fill } from '../copy/copy.js';
 
 /**
  * The corporation band from the Main artboard: one card per active corporation,
@@ -22,7 +23,7 @@ export function CorporationBand() {
 
   if (active.length === 0) {
     return (
-      <section className={styles.bandEmpty} aria-label="Corporations">
+      <section className={styles.bandEmpty} aria-label={copy.game.corporations}>
         <Skyline tone="ink" className={styles.bandEmptyArt} />
         <div className={styles.bandEmptyMarks}>
           {INDUSTRIES.map((industry) => (
@@ -31,13 +32,13 @@ export function CorporationBand() {
             </span>
           ))}
         </div>
-        <span>No corporations founded yet. Place two adjacent tiles to start one.</span>
+        <span>{copy.game.noCorporations}</span>
       </section>
     );
   }
 
   return (
-    <section className={styles.band} aria-label="Corporations">
+    <section className={styles.band} aria-label={copy.game.corporations}>
       {active.map((industry) => (
         <CorpCard
           key={industry}
@@ -59,23 +60,23 @@ export function TrayStrip() {
 
   if (tray.length === 0) {
     return (
-      <section className={styles.trayEmpty} aria-label="In the tray">
+      <section className={styles.trayEmpty} aria-label={copy.game.inTray}>
         <Skyline tone="ink" className={styles.trayEmptyArt} />
-        <span className={styles.trayNote}>Every corporation is founded. The skyline is complete — for now.</span>
+        <span className={styles.trayNote}>{copy.game.trayAllFounded}</span>
       </section>
     );
   }
 
   return (
-    <section className={styles.tray} aria-label="In the tray">
-      <span className={styles.trayTitle}>In the tray</span>
+    <section className={styles.tray} aria-label={copy.game.inTray}>
+      <span className={styles.trayTitle}>{copy.game.inTray}</span>
       {tray.map((industry) => (
         <span key={industry} className={styles.trayItem}>
           <IndustryMark industry={industry} color={INDUSTRY_INFO[industry].color} size={15} />
           <span className="serif">{view.corporations[industry].baseName}</span>
         </span>
       ))}
-      <span className={styles.trayNote}>Free to found again, under their own names.</span>
+      <span className={styles.trayNote}>{copy.game.trayNote}</span>
     </section>
   );
 }
@@ -91,7 +92,7 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
       type="button"
       className={styles.card}
       style={{ flexGrow: corp.eaten.length + 1 }}
-      aria-label={`${corp.displayName} — stock reference`}
+      aria-label={fill(copy.game.corpCardLabel, { name: corp.displayName })}
       onClick={() => openCorp(industry)}
     >
       {/* Cap band (U1 framing device): a colour-filled strip holding the
@@ -99,8 +100,8 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
       <div className={styles.cap} style={{ background: `linear-gradient(160deg, color-mix(in srgb, ${color} 88%, #fff), ${color})`, color: ink }}>
         <IndustryMark industry={industry} color={ink} size={22} />
         <span className={styles.capTier}>
-          Tier {tier}
-          {corp.safe && ' · safe'}
+          {fill(copy.game.tier, { n: tier })}
+          {corp.safe && copy.game.safeSuffix}
         </span>
       </div>
 
@@ -114,7 +115,7 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
 
         <div className={styles.priceRow}>
           <span className={`serif tabnum ${styles.price}`}>${corp.sharePrice}</span>
-          <span className={`tabnum ${styles.size}`}>{corp.size} tiles</span>
+          <span className={`tabnum ${styles.size}`}>{fill(copy.game.sizeTiles, { n: corp.size })}</span>
           {corp.eaten.length > 0 && (
             <span className={styles.lineage}>
               {corp.eaten.map((eatenIndustry, index) => (
@@ -131,10 +132,8 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
 
         <div className={styles.stake}>
           <div className={styles.stakeLabels}>
-            <span>your stake</span>
-            <span className="tabnum">
-              {mine} of {issued}
-            </span>
+            <span>{copy.game.yourStake}</span>
+            <span className="tabnum">{fill(copy.game.stakeOf, { mine, issued })}</span>
           </div>
           <div className={styles.bar}>
             <div className={styles.barFill} style={{ width: `${pct}%`, background: color }} />

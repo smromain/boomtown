@@ -1,5 +1,8 @@
 import { useGameClient, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import styles from '../decisions/decisions.module.css';
+import { copy } from '../copy/copy.js';
+
+const e = copy.game.endTurn;
 
 /**
  * The end-of-turn choice: announce the end, move to liquidate, or play on.
@@ -28,39 +31,30 @@ export function EndTurnPrompt() {
 
   return (
     <div>
-      <h2>{canAnnounce ? 'The game can end here' : canMove ? 'Before you finish' : 'Your turn is over'}</h2>
+      <h2>{canAnnounce ? e.titleCanEnd : canMove ? e.titleBeforeFinish : e.titleOver}</h2>
       <p className={styles.seat}>
-        {canAnnounce
-          ? 'A corporation is safe or at the end size. Ending is a choice — nobody is forced.'
-          : canMove
-            ? 'No corporation has reached the end size, but you may ask the table to wind the game up.'
-            : 'Nothing left to do this turn.'}
+        {canAnnounce ? e.noteCanEnd : canMove ? e.noteCanMove : e.noteOver}
       </p>
 
       <div className={styles.options}>
         {canAnnounce && (
           <button type="button" className={styles.option} disabled={busy} onClick={() => client.dispatch({ type: 'announce-end', seat: view.you })}>
-            <span className={styles.optionName}>End the game</span>
-            <span className={styles.optionRef}>
-              You finish this turn and nobody gets another. Final scoring follows.
-            </span>
+            <span className={styles.optionName}>{e.endGame}</span>
+            <span className={styles.optionRef}>{e.endGameNote}</span>
           </button>
         )}
 
         <button type="button" className={styles.option} disabled={busy} onClick={endTurn}>
-          <span className={styles.optionName}>{canAnnounce ? 'Keep playing' : 'End turn'}</span>
+          <span className={styles.optionName}>{canAnnounce ? e.keepPlaying : e.endTurn}</span>
           <span className={styles.optionRef}>
-            {canAnnounce ? 'Pass to the next player and leave the ending for later.' : 'Pass to the next player.'}
+            {canAnnounce ? e.keepPlayingNote : e.endTurnNote}
           </span>
         </button>
 
         {canMove && (
           <button type="button" className={styles.option} disabled={busy} onClick={() => client.dispatch({ type: 'move-to-liquidate', seat: view.you })}>
-            <span className={styles.optionName}>Move to liquidate</span>
-            <span className={styles.optionRef}>
-              Everyone votes their shares in safe corporations. If it fails, every backer plays the
-              rest of the game with open books — including you.
-            </span>
+            <span className={styles.optionName}>{e.moveToLiquidate}</span>
+            <span className={styles.optionRef}>{e.moveToLiquidateNote}</span>
           </button>
         )}
       </div>

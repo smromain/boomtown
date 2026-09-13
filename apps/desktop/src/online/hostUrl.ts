@@ -1,4 +1,5 @@
 import { loadSettings } from '../settings/settings.js';
+import { copy } from '../copy/copy.js';
 
 /**
  * The PartyKit host the online client connects to. Precedence:
@@ -19,10 +20,7 @@ export function partykitHost(): string {
   if (baked) return baked;
 
   if (import.meta.env.PROD) {
-    throw new Error(
-      'No online host is configured. This release was built without VITE_PARTYKIT_HOST ' +
-        '(apps/desktop/.env.production) — set an "Online host" in Settings to play online.',
-    );
+    throw new Error(copy.online.noHostConfigured);
   }
 
   return 'localhost:1999';

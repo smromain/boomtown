@@ -1,5 +1,6 @@
 import { PRESETS, RULES, type RulesetId, type SetupOptions, type Visibility } from '@boomtown/engine';
 import { loadSettings } from '../settings/settings.js';
+import { copy, fill } from '../copy/copy.js';
 
 export type SeatKind = 'human' | 'bot';
 
@@ -24,7 +25,7 @@ export function defaultConfig(): GameConfig {
   const count = Math.max(RULES.minPlayers, Math.min(RULES.maxPlayers, s.seatCount));
   return {
     seats: Array.from({ length: count }, (_, i) => ({
-      name: `Player ${i + 1}`,
+      name: fill(copy.setup.seat.defaultName, { n: i + 1 }),
       kind: 'human' as const,
       difficulty: s.botDifficulty,
     })),
@@ -38,9 +39,11 @@ export function defaultConfig(): GameConfig {
  * that the bot driver can play every seat (KTD7) — it just runs on its own.
  */
 export function configError(config: GameConfig): string | null {
-  if (config.seats.length < RULES.minPlayers) return `Need at least ${RULES.minPlayers} seats`;
-  if (config.seats.length > RULES.maxPlayers) return `At most ${RULES.maxPlayers} seats`;
-  if (config.seats.some((seat) => seat.name.trim() === '')) return 'Every seat needs a name';
+  if (config.seats.length < RULES.minPlayers)
+    return fill(copy.setup.errors.tooFewSeats, { n: RULES.minPlayers });
+  if (config.seats.length > RULES.maxPlayers)
+    return fill(copy.setup.errors.tooManySeats, { n: RULES.maxPlayers });
+  if (config.seats.some((seat) => seat.name.trim() === '')) return copy.setup.errors.namelessSeat;
   return null;
 }
 
@@ -76,7 +79,11 @@ export function resizeSeats(seats: readonly SeatConfig[], count: number): SeatCo
   const target = Math.max(RULES.minPlayers, Math.min(RULES.maxPlayers, count));
   const next = seats.slice(0, target);
   while (next.length < target) {
-    next.push({ name: `Player ${next.length + 1}`, kind: 'human', difficulty: 5 });
+    next.push({
+      name: fill(copy.setup.seat.defaultName, { n: next.length + 1 }),
+      kind: 'human',
+      difficulty: 5,
+    });
   }
   return next;
 }

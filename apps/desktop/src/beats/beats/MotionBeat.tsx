@@ -3,6 +3,10 @@ import type { PlayerView, Seat } from '@boomtown/engine';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
+import { copy, fill } from '../../copy/copy.js';
+import { listOf } from '../../game/story.js';
+
+const m = copy.beats.motion;
 
 const HOLD_MS = 3000;
 
@@ -36,7 +40,7 @@ export function MotionBeat({
   dismiss: () => void;
 }) {
   const reduced = useReducedMotion();
-  const name = (seat: Seat) => view.seats[seat]?.name ?? `Player ${seat + 1}`;
+  const name = (seat: Seat) => view.seats[seat]?.name ?? fill(copy.common.playerFallback, { n: seat + 1 });
 
   useEffect(() => {
     if (carried) soundManager.play('endgame');
@@ -49,37 +53,35 @@ export function MotionBeat({
     <div
       className={styles.curtain}
       role="dialog"
-      aria-label={carried ? 'The motion carried' : 'The motion failed'}
+      aria-label={carried ? m.carriedLabel : m.failedLabel}
       onClick={dismiss}
     >
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 14 }}>
-        <div className={styles.kicker}>motion to liquidate</div>
+        <div className={styles.kicker}>{m.kicker}</div>
         <div className={`serif ${reduced ? '' : styles.rise}`} style={{ fontSize: 64, marginTop: 6 }}>
-          {carried ? 'The motion carries' : 'The motion fails'}
+          {carried ? m.carries : m.fails}
         </div>
         <div className={`serif tabnum`} style={{ fontSize: 20, color: '#d8cfc3' }}>
-          {yes} of {total} shares in favour
+          {fill(m.sharesInFavour, { yes, total })}
         </div>
         <div style={{ fontSize: 14, color: '#b8ac9f', maxWidth: '52ch', lineHeight: 1.55 }}>
           {carried ? (
-            <>The table votes to wind the game up. No further turns — final scoring follows.</>
+            <>{m.carriedNote}</>
           ) : backers.length > 0 ? (
             <>
-              {listNames(backers.map(name))} backed it and {backers.length === 1 ? 'plays' : 'play'} on with open
-              books — cash and holdings visible to everyone for the rest of the game.
+              {fill(backers.length === 1 ? m.backersOne : m.backersMany, {
+                names: listOf(backers.map(name)),
+              })}
             </>
           ) : (
-            <>The game continues.</>
+            <>{m.continues}</>
           )}
         </div>
       </div>
-      <span className={styles.hint}>click or press space</span>
+      <span className={styles.hint}>{copy.beats.hint}</span>
     </div>
   );
 }
 
 /** "Ana", "Ana and Ben", "Ana, Ben and Cy". */
-function listNames(names: readonly string[]): string {
-  if (names.length <= 1) return names[0] ?? '';
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-}
+

@@ -3,6 +3,7 @@ import { useOwnView } from '../client/ownView.js';
 import { IndustryMark } from './marks.js';
 import { Panel } from '../ui/Panel.js';
 import styles from './game.module.css';
+import { copy } from '../copy/copy.js';
 
 /**
  * The Shareholders panel from the Main artboard: each seat's holdings as
@@ -18,8 +19,8 @@ export function Shareholders() {
   if (!view) return null;
 
   return (
-    <Panel as="section" frame="top-rule" className={styles.card} aria-label="Shareholders">
-      <div className={`serif ${styles.cardHeading}`}>Shareholders</div>
+    <Panel as="section" frame="top-rule" className={styles.card} aria-label={copy.game.shareholders}>
+      <div className={`serif ${styles.cardHeading}`}>{copy.game.shareholders}</div>
       {view.seats.map((seat, index) => (
         <div key={seat.name} className={styles.holder} data-active={index === view.activeSeat}>
           <span className={styles.holderName}>

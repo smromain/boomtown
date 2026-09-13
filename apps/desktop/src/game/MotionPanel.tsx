@@ -3,6 +3,9 @@ import { useAnyView } from '../client/GameClientProvider.js';
 import { Panel } from '../ui/Panel.js';
 import { tallyOf } from './motion.js';
 import styles from './game.module.css';
+import { copy, fill } from '../copy/copy.js';
+
+const m = copy.game.motion;
 
 /**
  * The register and the vote on it (#26) — Boomtown's only panel, and only ever
@@ -24,23 +27,27 @@ export function MotionPanel() {
   if (!view || !view.registerPublic || !view.register) return null;
 
   const tally = tallyOf(view);
-  const name = (seat: Seat) => view.seats[seat]?.name ?? `Player ${seat + 1}`;
+  const name = (seat: Seat) => view.seats[seat]?.name ?? fill(copy.common.playerFallback, { n: seat + 1 });
   const weights = view.register;
   const seats = Object.keys(weights).map(Number);
 
   return (
-    <Panel as="section" frame="top-rule" className={styles.card} aria-label="The register">
+    <Panel as="section" frame="top-rule" className={styles.card} aria-label={m.label}>
       <div className={`serif ${styles.cardHeading}`}>
-        {tally ? 'Motion to liquidate' : 'The register'}
+        {tally ? m.headingMotion : m.headingRegister}
       </div>
 
       {tally ? (
         <p className={styles.quiet}>
-          {name(tally.by)} moved to wind the game up. {tally.needed} of {tally.total} shares carry it
-          {tally.minBackers > 1 ? `, and at least ${tally.minBackers} players must back it` : ''}.
+          {fill(m.moved, {
+            name: name(tally.by),
+            needed: tally.needed,
+            total: tally.total,
+            backers: tally.minBackers > 1 ? fill(m.movedBackers, { n: tally.minBackers }) : '',
+          })}
         </p>
       ) : (
-        <p className={styles.quiet}>Shares held in safe corporations — one vote each.</p>
+        <p className={styles.quiet}>{m.registerNote}</p>
       )}
 
       {tally && <QuotaBar view={view} />}
@@ -51,9 +58,17 @@ export function MotionPanel() {
           <div key={seat} className={styles.voteRow} data-waiting={tally?.waitingOn === seat}>
             <span className={styles.holderName}>{name(seat)}</span>
             <span className={styles.voteMark}>
-              {!tally ? null : vote === true ? 'for' : vote === false ? 'against' : tally.waitingOn === seat ? 'voting…' : '—'}
+              {!tally
+                ? null
+                : vote === true
+                  ? m.for
+                  : vote === false
+                    ? m.against
+                    : tally.waitingOn === seat
+                      ? m.voting
+                      : m.undecided}
             </span>
-            {view.openBooks.includes(seat) && <span className={styles.voteOpen}>open books</span>}
+            {view.openBooks.includes(seat) && <span className={styles.voteOpen}>{m.openBooks}</span>}
             <span className={`tabnum ${styles.voteWeight}`}>{weights[seat] ?? 0}</span>
           </div>
         );
@@ -81,14 +96,15 @@ function QuotaBar({ view }: { view: PlayerView }) {
         aria-valuenow={tally.yes}
         aria-valuemin={0}
         aria-valuemax={tally.total}
-        aria-label={`${tally.yes} of ${tally.total} shares in favour, ${tally.needed} needed`}
+        aria-label={fill(m.barLabel, { yes: tally.yes, total: tally.total, needed: tally.needed })}
       >
         <span className={styles.voteBarFill} data-carrying={carrying} style={{ width: `${pct(tally.yes)}%` }} />
         <span className={styles.voteBarQuota} style={{ left: `${pct(tally.needed)}%` }} />
       </div>
       <p className={styles.quiet}>
-        <span className="tabnum">{tally.yes}</span> for, <span className="tabnum">{tally.no}</span> against,{' '}
-        <span className="tabnum">{tally.undecided}</span> yet to vote.
+        <span className="tabnum">{tally.yes}</span> {m.tally}
+        <span className="tabnum">{tally.no}</span> {m.tallyAgainst}
+        <span className="tabnum">{tally.undecided}</span> {m.tallyUndecided}
       </p>
     </>
   );

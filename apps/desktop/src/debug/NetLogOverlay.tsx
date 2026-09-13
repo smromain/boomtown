@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { formatEntry, netlog, type NetLogEntry } from '@boomtown/client-core';
 import styles from './netlog.module.css';
+// `copy` is taken here by the copy-to-clipboard handler below.
+import { copy as strings } from '../copy/copy.js';
 
 /**
  * The online-play timeline, on screen. Ctrl/Cmd+Shift+L toggles it from
@@ -47,9 +49,9 @@ export function NetLogOverlay() {
   };
 
   return (
-    <aside className={styles.panel} aria-label="Online play log">
+    <aside className={styles.panel} aria-label={strings.netlog.label}>
       <header className={styles.head}>
-        <strong>Online play log</strong>
+        <strong>{strings.netlog.title}</strong>
         <span className={styles.count}>{entries.length} entries</span>
         <label className={styles.toggle}>
           <input
@@ -63,7 +65,7 @@ export function NetLogOverlay() {
           capture
         </label>
         <button type="button" onClick={copy}>
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? strings.netlog.copied : strings.netlog.copy}
         </button>
         <button
           type="button"
@@ -74,7 +76,7 @@ export function NetLogOverlay() {
         >
           Clear
         </button>
-        <button type="button" onClick={() => setOpen(false)} aria-label="Close the online play log">
+        <button type="button" onClick={() => setOpen(false)} aria-label={strings.netlog.close}>
           ✕
         </button>
       </header>
@@ -82,8 +84,8 @@ export function NetLogOverlay() {
         {entries.length === 0 && (
           <li className={styles.empty}>
             {enabled
-              ? 'Nothing yet. Create or join a room and the frames land here.'
-              : 'Capture is off. Turn it on, then create or join a room.'}
+              ? strings.netlog.emptyOn
+              : strings.netlog.emptyOff}
           </li>
         )}
         {entries.map((entry) => (

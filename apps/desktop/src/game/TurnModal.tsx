@@ -7,6 +7,7 @@ import { useActiveBeat } from '../beats/BeatContext.js';
 import { coversTheScreen } from '../beats/beatTriggers.js';
 import { BuyControls } from '../panels/BuyControls.js';
 import { EndTurnPrompt } from './EndTurnPrompt.js';
+import { copy } from '../copy/copy.js';
 import styles from '../decisions/decisions.module.css';
 
 /**
@@ -78,7 +79,7 @@ export function TurnModal() {
   if (open && minimized) {
     return (
       <button type="button" className={styles.minimizedPill} onClick={() => setMinimized(false)}>
-        {atBuy ? 'Resume buying stock ↑' : 'Resume ending your turn ↑'}
+        {atBuy ? copy.game.resumeBuying : copy.game.resumeEnding}
       </button>
     );
   }
@@ -93,9 +94,9 @@ export function TurnModal() {
           onEscapeKeyDown={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
-          <Dialog.Title className={styles.srOnly}>{atBuy ? 'Buy stock' : 'End of game'}</Dialog.Title>
+          <Dialog.Title className={styles.srOnly}>{atBuy ? copy.buy.title : copy.game.endOfGameTitle}</Dialog.Title>
           <button type="button" className={styles.minimizeButton} onClick={() => setMinimized(true)}>
-            Peek at the board ↓
+            {copy.decisions.peek}
           </button>
           {atBuy ? <BuyControls /> : <EndTurnPrompt />}
         </Dialog.Content>

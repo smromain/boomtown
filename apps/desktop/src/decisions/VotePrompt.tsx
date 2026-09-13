@@ -2,6 +2,9 @@ import type { PendingDecision, Seat } from '@boomtown/engine';
 import { useGameClient, useAnyView } from '../client/GameClientProvider.js';
 import { tallyOf } from '../game/motion.js';
 import styles from './decisions.module.css';
+import { copy, fill } from '../copy/copy.js';
+
+const v = copy.decisions.vote;
 
 type Decision = Extract<PendingDecision, { type: 'cast-vote' }>;
 
@@ -23,7 +26,8 @@ export function VotePrompt({ decision }: { decision: Decision }) {
   const client = useGameClient();
   const view = useAnyView();
   const tally = view ? tallyOf(view) : null;
-  const name = (seat: Seat) => view?.seats[seat]?.name ?? `Player ${seat + 1}`;
+  const name = (seat: Seat) =>
+    view?.seats[seat]?.name ?? fill(copy.common.playerFallback, { n: seat + 1 });
   const weight = view?.motion?.weights[decision.seat] ?? 0;
 
   const cast = (inFavour: boolean) =>
@@ -31,29 +35,26 @@ export function VotePrompt({ decision }: { decision: Decision }) {
 
   return (
     <div>
-      <h2>Wind the game up?</h2>
+      <h2>{v.title}</h2>
       <p className={styles.seat}>
-        {name(decision.motionBy)} moved to liquidate — you vote {weight} {weight === 1 ? 'share' : 'shares'}
+        {fill(weight === 1 ? v.seatOne : v.seatMany, { name: name(decision.motionBy), n: weight })}
       </p>
 
       {tally && (
         <p className={styles.voteState}>
-          <span className="tabnum">{tally.yes}</span> of {tally.total} shares in favour so far;{' '}
-          <span className="tabnum">{tally.needed}</span> carries it.
+          <span className="tabnum">{tally.yes}</span> {fill(v.tallyLead, { total: tally.total })}{' '}
+          <span className="tabnum">{tally.needed}</span> {v.tallyTail}
         </p>
       )}
 
       <div className={styles.options}>
         <button type="button" className={styles.option} onClick={() => cast(true)}>
-          <span className={styles.optionName}>Vote to liquidate</span>
-          <span className={styles.optionRef}>
-            Ends the game now if the motion carries. If it fails, you play the rest of the game with your cash
-            and holdings visible to everyone.
-          </span>
+          <span className={styles.optionName}>{v.for}</span>
+          <span className={styles.optionRef}>{v.forNote}</span>
         </button>
         <button type="button" className={styles.option} onClick={() => cast(false)}>
-          <span className={styles.optionName}>Vote against</span>
-          <span className={styles.optionRef}>Play on. A vote against costs you nothing either way.</span>
+          <span className={styles.optionName}>{v.against}</span>
+          <span className={styles.optionRef}>{v.againstNote}</span>
         </button>
       </div>
     </div>

@@ -1,6 +1,8 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { useAnyView } from '../client/GameClientProvider.js';
 import { editionLabel } from '../setup/editionLabel.js';
+import { Rich } from '../copy/Rich.js';
+import { copy, fill } from '../copy/copy.js';
 import { corpsByTier, fullChart } from './priceReference.js';
 import styles from './reference.module.css';
 
@@ -10,6 +12,8 @@ import styles from './reference.module.css';
  * secondary bonus column from the same component — and each founded corporation
  * is marked on the row it currently sits.
  */
+const c = copy.reference;
+
 export function StockReference({ open, onClose }: { open: boolean; onClose: () => void }) {
   const view = useAnyView();
   if (!view) return null;
@@ -25,15 +29,14 @@ export function StockReference({ open, onClose }: { open: boolean; onClose: () =
         <Dialog.Content className={styles.chart} aria-describedby={undefined}>
           <header className={styles.head}>
             <div>
-              <Dialog.Title className="serif">Stock reference</Dialog.Title>
+              <Dialog.Title className="serif">{c.stock.title}</Dialog.Title>
               <p className={styles.sub}>
-                {editionLabel(view.ruleset.id)} rule set · price and bonuses by corporation size ·
-                highlighted rows are where the market stands now
+                {fill(c.stock.sub, { edition: editionLabel(view.ruleset.id) })}
               </p>
             </div>
             <div className={styles.headRight}>
-              <span className={styles.safeNote}>safe at {view.ruleset.safeSize} tiles</span>
-              <Dialog.Close className={styles.close} aria-label="Close">
+              <span className={styles.safeNote}>{fill(c.safeNote, { n: view.ruleset.safeSize })}</span>
+              <Dialog.Close className={styles.close} aria-label={c.close}>
                 ✕
               </Dialog.Close>
             </div>
@@ -45,7 +48,7 @@ export function StockReference({ open, onClose }: { open: boolean; onClose: () =
                 <tr>
                   {([1, 2, 3] as const).map((tier) => (
                     <th key={tier} className={styles.tierHead}>
-                      <span className={styles.tierLabel}>Tier {tier}</span>
+                      <span className={styles.tierLabel}>{fill(c.stock.tier, { n: tier })}</span>
                       <span className={styles.tierCorps}>
                         {byTier[tier].map((c) => (
                           <span
@@ -59,10 +62,10 @@ export function StockReference({ open, onClose }: { open: boolean; onClose: () =
                       </span>
                     </th>
                   ))}
-                  <th className={styles.money}>Share</th>
-                  <th className={styles.money}>{threeCols ? 'Primary' : 'Majority'}</th>
-                  {threeCols && <th className={styles.money}>Secondary</th>}
-                  <th className={styles.money}>{threeCols ? 'Tertiary' : 'Minority'}</th>
+                  <th className={styles.money}>{c.stock.share}</th>
+                  <th className={styles.money}>{threeCols ? c.stock.primary : c.stock.majority}</th>
+                  {threeCols && <th className={styles.money}>{c.stock.secondary}</th>}
+                  <th className={styles.money}>{threeCols ? c.stock.tertiary : c.stock.minority}</th>
                 </tr>
               </thead>
               <tbody>
@@ -104,10 +107,8 @@ export function StockReference({ open, onClose }: { open: boolean; onClose: () =
           </div>
 
           <footer className={styles.foot}>
-            {threeCols
-              ? 'Primary is ten times the share price; secondary and tertiary are the printed lookup. '
-              : 'Majority is always ten times the share price and minority five times. '}
-            A merged corporation prices on the <strong>survivor’s</strong> tier — whatever it swallows.
+            {threeCols ? c.stock.footThree : c.stock.footTwo}
+            <Rich text={c.stock.footTail} />
           </footer>
         </Dialog.Content>
       </Dialog.Portal>

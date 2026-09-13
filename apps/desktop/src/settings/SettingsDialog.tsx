@@ -7,23 +7,28 @@ import type { PreviewKind } from '../beats/debug/fixtures.js';
 import { Choice } from '../setup/Choice.js';
 import { Button } from '../ui/Button.js';
 import { MUSIC_SOURCE, TRACKS, musicManager } from '../audio/musicManager.js';
+import { copy, fill } from '../copy/copy.js';
 import form from '../setup/form.module.css';
 import decisionStyles from '../decisions/decisions.module.css';
 import styles from './settings.module.css';
 
+const c = copy.settings;
+
 /** "Music: 40%", or "Music: off" at the bottom of the range — a slider sitting
  *  at zero should say what that means rather than leave it to be inferred. */
 const level = (label: string, volume: number): string =>
-  `${label}: ${volume === 0 ? 'off' : `${Math.round(volume * 100)}%`}`;
+  volume === 0
+    ? fill(c.levelOff, { label })
+    : fill(c.levelValue, { label, value: Math.round(volume * 100) });
 
 const DEBUG_BEATS: readonly { readonly kind: PreviewKind; readonly label: string }[] = [
-  { kind: 'founding', label: 'Founding' },
-  { kind: 'buy-stock', label: 'Buy stock' },
-  { kind: 'merger', label: 'Merger (2-way)' },
-  { kind: 'merger-three-way', label: 'Merger (3-way)' },
-  { kind: 'motion', label: 'Motion' },
-  { kind: 'endgame', label: 'Endgame' },
-  { kind: 'victory', label: 'Victory' },
+  { kind: 'founding', label: c.debug.founding },
+  { kind: 'buy-stock', label: c.debug.buyStock },
+  { kind: 'merger', label: c.debug.mergerTwo },
+  { kind: 'merger-three-way', label: c.debug.mergerThree },
+  { kind: 'motion', label: c.debug.motion },
+  { kind: 'endgame', label: c.debug.endgame },
+  { kind: 'victory', label: c.debug.victory },
 ];
 
 /**
@@ -97,83 +102,84 @@ export function SettingsDialog({
         <Dialog.Content className={styles.settings} aria-describedby={undefined}>
           <header className={styles.head}>
             <div>
-              <span className={`kicker ${form.eyebrow}`}>preferences · this machine</span>
-              <Dialog.Title className={form.title}>Settings</Dialog.Title>
-              <p className={form.lede}>
-                What a new table starts with, and how loud it is. A game already dealt keeps the
-                rules it was dealt under.
-              </p>
+              <span className={`kicker ${form.eyebrow}`}>{c.eyebrow}</span>
+              <Dialog.Title className={form.title}>{c.title}</Dialog.Title>
+              <p className={form.lede}>{c.lede}</p>
             </div>
-            <Dialog.Close className={styles.close} aria-label="Close">
+            <Dialog.Close className={styles.close} aria-label={c.close}>
               ✕
             </Dialog.Close>
           </header>
 
           <div className={styles.body}>
             <div className={styles.columns}>
-              <section className={styles.column} aria-label="New table defaults">
-                <span className={styles.columnLabel}>A new table</span>
+              <section className={styles.column} aria-label={c.newTable}>
+                <span className={styles.columnLabel}>{c.newTable}</span>
 
                 <div className={form.field}>
-                  <span>Default edition</span>
+                  <span>{c.defaultEdition}</span>
                   <Choice
-                    label="Default edition"
+                    label={c.defaultEdition}
                     value={draft.edition}
                     options={[
-                      { value: 'boomtown' as RulesetId, label: 'Boomtown' },
-                      { value: 'classic' as RulesetId, label: 'Classic' },
-                      { value: 'edition-2015' as RulesetId, label: 'Modern' },
+                      { value: 'boomtown' as RulesetId, label: copy.editions.boomtown },
+                      { value: 'classic' as RulesetId, label: copy.editions.classic },
+                      { value: 'edition-2015' as RulesetId, label: copy.editions.modern },
                     ]}
                     onChange={(edition) => patch({ edition })}
                   />
                 </div>
 
                 <div className={form.field}>
-                  <span>Default seats</span>
+                  <span>{c.defaultSeats}</span>
                   <Choice
-                    label="Default seats"
+                    label={c.defaultSeats}
                     numeric
                     value={draft.seatCount}
                     options={Array.from(
                       { length: RULES.maxPlayers - RULES.minPlayers + 1 },
                       (_, i) => RULES.minPlayers + i,
-                    ).map((n) => ({ value: n, label: String(n), description: `${n} seats` }))}
+                    ).map((n) => ({
+                      value: n,
+                      label: String(n),
+                      description: fill(c.seatsDescription, { n }),
+                    }))}
                     onChange={(seatCount) => patch({ seatCount })}
                   />
                 </div>
 
                 <div className={form.field}>
-                  <span>Default cash and holdings</span>
+                  <span>{c.defaultVisibility}</span>
                   <Choice
-                    label="Default cash and holdings"
+                    label={c.defaultVisibility}
                     value={draft.visibility}
                     options={[
-                      { value: 'open' as Visibility, label: 'Open books' },
-                      { value: 'hidden' as Visibility, label: 'Closed books' },
+                      { value: 'open' as Visibility, label: c.openBooks },
+                      { value: 'hidden' as Visibility, label: c.closedBooks },
                     ]}
                     onChange={(visibility) => patch({ visibility })}
                   />
                 </div>
 
                 <label className={form.field}>
-                  <span>Default bot difficulty · {draft.botDifficulty}</span>
+                  <span>{fill(c.botDifficultyValue, { n: draft.botDifficulty })}</span>
                   <input
                     type="range"
                     className={styles.slider}
                     min={1}
                     max={10}
                     value={draft.botDifficulty}
-                    aria-label="Default bot difficulty"
+                    aria-label={c.botDifficulty}
                     onChange={(e) => patch({ botDifficulty: Number(e.target.value) })}
                   />
                 </label>
               </section>
 
-              <section className={styles.column} aria-label="This machine">
-                <span className={styles.columnLabel}>This machine</span>
+              <section className={styles.column} aria-label={c.thisMachine}>
+                <span className={styles.columnLabel}>{c.thisMachine}</span>
 
                 <label className={form.field}>
-                  <span>{level('Sound effects', draft.effectsVolume)}</span>
+                  <span>{level(c.effectsLabel, draft.effectsVolume)}</span>
                   <input
                     type="range"
                     className={styles.slider}
@@ -181,13 +187,13 @@ export function SettingsDialog({
                     max={100}
                     step={5}
                     value={Math.round(draft.effectsVolume * 100)}
-                    aria-label="Sound effect volume"
+                    aria-label={c.effectsVolume}
                     onChange={(e) => patch({ effectsVolume: Number(e.target.value) / 100 })}
                   />
                 </label>
 
                 <label className={form.field}>
-                  <span>{level('Music', draft.musicVolume)}</span>
+                  <span>{level(c.musicLabel, draft.musicVolume)}</span>
                   <input
                     type="range"
                     className={styles.slider}
@@ -195,33 +201,33 @@ export function SettingsDialog({
                     max={100}
                     step={5}
                     value={Math.round(draft.musicVolume * 100)}
-                    aria-label="Music volume"
+                    aria-label={c.musicVolume}
                     onChange={(e) => patch({ musicVolume: Number(e.target.value) / 100 })}
                   />
                 </label>
 
                 <label className={form.field}>
-                  <span>Online host</span>
+                  <span>{c.onlineHost}</span>
                   <input
                     type="text"
                     className={form.input}
                     value={draft.partykitHost}
-                    aria-label="Online host"
-                    placeholder="host.partykit.dev"
+                    aria-label={c.onlineHost}
+                    placeholder={c.onlineHostPlaceholder}
                     onChange={(e) => patch({ partykitHost: e.target.value })}
                   />
-                  <span className={form.note}>Blank uses the server the app ships with.</span>
+                  <span className={form.note}>{c.onlineHostNote}</span>
                 </label>
 
                 <div className={form.field}>
-                  <span>Log online play</span>
+                  <span>{c.logging}</span>
                   <Choice
                     quiet
-                    label="Log online play"
+                    label={c.logging}
                     value={logging ? 'on' : 'off'}
                     options={[
-                      { value: 'on', label: 'On' },
-                      { value: 'off', label: 'Off' },
+                      { value: 'on', label: c.on },
+                      { value: 'off', label: c.off },
                     ]}
                     onChange={(value) => {
                       // Persisted immediately, not on Save: a player being
@@ -231,13 +237,13 @@ export function SettingsDialog({
                       setLogging(value === 'on');
                     }}
                   />
-                  <span className={form.note}>Ctrl/Cmd+Shift+L reads the log back.</span>
+                  <span className={form.note}>{c.loggingNote}</span>
                 </div>
               </section>
             </div>
 
-            <section className={styles.credits} aria-label="Music credits">
-              <span className={styles.columnLabel}>Music</span>
+            <section className={styles.credits} aria-label={c.musicCredits}>
+              <span className={styles.columnLabel}>{c.musicLabel}</span>
               <ul className={styles.creditList}>
                 {TRACKS.map((track) => (
                   <li key={track.id}>
@@ -250,7 +256,7 @@ export function SettingsDialog({
 
             {import.meta.env.DEV && onDebugTrigger && (
               <section className={styles.debug}>
-                <span className={styles.columnLabel}>Debug — preview a beat</span>
+                <span className={styles.columnLabel}>{c.debug.heading}</span>
                 <div className={styles.debugButtons}>
                   {DEBUG_BEATS.map(({ kind, label }) => (
                     <button
@@ -272,10 +278,10 @@ export function SettingsDialog({
 
           <footer className={styles.actions}>
             <Button variant="ghost" onClick={() => setDraft(DEFAULT_SETTINGS)}>
-              Reset
+              {c.reset}
             </Button>
             <Button variant="primary" onClick={save}>
-              Save
+              {c.save}
             </Button>
           </footer>
         </Dialog.Content>

@@ -12,6 +12,9 @@ import { FoundPrompt } from './FoundPrompt.js';
 import { SurvivorPrompt } from './SurvivorPrompt.js';
 import { VotePrompt } from './VotePrompt.js';
 import styles from './decisions.module.css';
+import { copy, fill } from '../copy/copy.js';
+
+const d = copy.decisions;
 
 /**
  * The one modal that surfaces every decision the engine can raise for a seat
@@ -55,7 +58,8 @@ export function DecisionModal() {
   // to a local human. `view` would then be null and every name would silently
   // fall back to "Player N" — including the disposing seat's own name.
   const anyView = useAnyView();
-  const seatName = (seat: number) => anyView?.seats[seat]?.name ?? `Player ${seat + 1}`;
+  const seatName = (seat: number) =>
+    anyView?.seats[seat]?.name ?? fill(copy.common.playerFallback, { n: seat + 1 });
   const { claim, needsHandoff } = useHotSeat();
   const { active: activeBeat } = useActiveBeat();
   const needsFound = view?.step === 'found' && view.pendingFound != null;
@@ -73,7 +77,8 @@ export function DecisionModal() {
 
   // minimize is founding or disposal only, and never while a hand-off is owed
   const canMinimize = (needsFound || decision?.type === 'dispose-shares') && !handoff;
-  const resumeLabel = decision?.type === 'dispose-shares' ? 'Resume trading in stock ↑' : 'Resume founding ↑';
+  const resumeLabel =
+    decision?.type === 'dispose-shares' ? d.resumeDisposal : d.resumeFounding;
   const [minimized, setMinimized] = useState(false);
   useEffect(() => {
     if (!canMinimize) setMinimized(false);
@@ -110,7 +115,7 @@ export function DecisionModal() {
           onEscapeKeyDown={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
-          <Dialog.Title className={styles.srOnly}>Game decision</Dialog.Title>
+          <Dialog.Title className={styles.srOnly}>{d.title}</Dialog.Title>
 
           {canMinimize && (
             <button
@@ -118,23 +123,23 @@ export function DecisionModal() {
               className={styles.minimizeButton}
               onClick={() => setMinimized(true)}
             >
-              Peek at the board ↓
+              {d.peek}
             </button>
           )}
 
           {handoff && owedSeat != null ? (
             <div className={styles.handoff}>
-              <p className={styles.handoffKicker}>Hand the machine to</p>
+              <p className={styles.handoffKicker}>{d.handoffKicker}</p>
               <h2 className="serif">{seatName(owedSeat)}</h2>
               <p className={styles.handoffHint}>
-                Only {seatName(owedSeat)} should see the next screen — it shows their holdings.
+                {fill(d.handoffHint, { name: seatName(owedSeat) })}
               </p>
               <button
                 type="button"
                 className={styles.handoffReady}
                 onClick={() => claim(owedSeat)}
               >
-                I&rsquo;m {seatName(owedSeat)} — show my decision
+                {fill(d.handoffButton, { name: seatName(owedSeat) })}
               </button>
             </div>
           ) : (

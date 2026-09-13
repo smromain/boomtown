@@ -1,6 +1,7 @@
 import type { HandTileEffect } from '@boomtown/client-core';
 import { useGameClient, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import styles from './game.module.css';
+import { copy } from '../copy/copy.js';
 
 const EFFECT_LABEL: Record<HandTileEffect, string> = {
   nothing: 'idle',
@@ -19,7 +20,7 @@ export function TileRack() {
   if (!view) return null;
 
   return (
-    <section className={styles.rack} aria-label="Your tiles">
+    <section className={styles.rack} aria-label={copy.game.yourTiles}>
       <div className={`serif ${styles.rackHeading}`}>
         Your tiles — {view.seats[view.you]?.name ?? `seat ${view.you + 1}`}
       </div>

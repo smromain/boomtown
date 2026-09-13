@@ -5,8 +5,17 @@ import { IndustryMark } from './marks.js';
 import { Marquee } from './Marquee.js';
 import { Panel } from '../ui/Panel.js';
 import { Skyline } from '../art/Skyline.js';
-import { eventIndustry, isHeadline, latestMerger, mergerProse, tierWord, type BonusLine } from './story.js';
+import {
+  eventIndustry,
+  isHeadline,
+  latestMerger,
+  listOf,
+  mergerProse,
+  tierWord,
+  type BonusLine,
+} from './story.js';
 import styles from './game.module.css';
+import { copy, fill } from '../copy/copy.js';
 
 /**
  * The story panel from the Main artboard. When a merger is in play it narrates
@@ -24,11 +33,11 @@ export function StoryCard() {
   if (!merger) {
     const recent = log.slice(-7);
     return (
-      <section className={styles.quietLog} aria-label="Story">
+      <section className={styles.quietLog} aria-label={copy.story.label}>
         {recent.length === 0 ? (
           <div className={styles.storyEmpty}>
             <Skyline tone="ink" className={styles.storyEmptyArt} />
-            <p className={styles.quiet}>No moves yet. Place a tile to begin.</p>
+            <p className={styles.quiet}>{copy.story.noMovesYet}</p>
           </div>
         ) : (
           <ol className={styles.log}>
@@ -56,13 +65,15 @@ export function StoryCard() {
   const survivorColor = merger.survivor ? INDUSTRY_INFO[merger.survivor].color : 'var(--ink)';
   const names = merger.corporations.map((industry) => view.corporations[industry].baseName);
   const prose = mergerProse(merger, view);
-  const nameOf = (seat: number) => view.seats[seat]?.name ?? `Seat ${seat}`;
+  const nameOf = (seat: number) => view.seats[seat]?.name ?? fill(copy.common.seatFallback, { n: seat });
 
   return (
-    <Panel as="section" frame="top-rule" className={`${styles.card} ${styles.story}`} aria-label="Story">
+    <Panel as="section" frame="top-rule" className={`${styles.card} ${styles.story}`} aria-label={copy.story.label}>
       <div className={styles.storyHeading} style={{ color: survivorColor }}>
         {merger.survivor && <IndustryMark industry={merger.survivor} color={survivorColor} size={22} />}
-        <span className="serif">{`${names.join(' + ')} merge at ${merger.placedTile}`}</span>
+        <span className="serif">
+          {fill(copy.story.heading, { names: names.join(' + '), tile: merger.placedTile })}
+        </span>
       </div>
 
       {prose && (
@@ -76,15 +87,12 @@ export function StoryCard() {
       {merger.survivor && (
         <div className={styles.rename}>
           <span className={styles.renameLabel}>
-            {merger.complete ? 'Now trading as' : 'Will trade as'}
+            {merger.complete ? copy.story.nowTradingAs : copy.story.willTradeAs}
           </span>
           <Marquee className={`serif ${styles.renameName}`} style={{ color: survivorColor }}>
             {survivorName}
           </Marquee>
-          <span className={styles.renameNote}>
-            Its name grows with a piece of every company it takes over. Your shares in it stay
-            yours.
-          </span>
+          <span className={styles.renameNote}>{copy.story.renameNote}</span>
         </div>
       )}
 
@@ -99,8 +107,8 @@ export function StoryCard() {
       <p className={styles.quiet}>
         {bonusFootnote(merger.bonuses) ??
           (merger.complete
-            ? `${survivorName} carries on, larger than before.`
-            : 'Resolve the merger in the prompt.')}
+            ? fill(copy.story.carriesOn, { name: survivorName })
+            : copy.story.resolveInPrompt)}
       </p>
     </Panel>
   );
@@ -117,16 +125,16 @@ function BonusColumn({
 }) {
   const split = line.seats.length > 1;
   const who = split
-    ? `${line.seats.slice(0, -1).map(nameOf).join(', ')} and ${nameOf(line.seats.at(-1)!)}, tied at their shares`
+    ? fill(copy.story.tiedWho, { names: listOf(line.seats.map(nameOf)) })
     : nameOf(line.seats[0]!);
   return (
     <div className={styles.bonusCol}>
       <span className={styles.bonusWho}>
-        {who} · {tierWord(line.tier, bonusTiers)}
+        {fill(copy.story.whoTier, { who, tier: tierWord(line.tier, bonusTiers) })}
       </span>
       <span className={`serif tabnum ${styles.bonusAmount}`}>
         ${line.amount.toLocaleString()}
-        {split ? ' each' : ''}
+        {split ? copy.story.each : ''}
       </span>
     </div>
   );
@@ -134,7 +142,7 @@ function BonusColumn({
 
 function bonusFootnote(bonuses: readonly BonusLine[]): string | null {
   if (bonuses.some((b) => b.seats.length > 1)) {
-    return 'Tied for a tier, so those bonuses are combined and split evenly.';
+    return copy.story.tiedFootnote;
   }
   return null;
 }

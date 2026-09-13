@@ -4,13 +4,14 @@ import { IndustryMark } from '../../game/marks.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
+import { copy, fill } from '../../copy/copy.js';
 
 const HOLD_MS = 2400;
 
 /** The endgame trigger beat (R6): a table-level moment, fires for every seat. */
 export function EndgameBeat({ seat, view, dismiss }: { seat: Seat; view: PlayerView; dismiss: () => void }) {
   const reduced = useReducedMotion();
-  const who = view.seats[seat]?.name ?? `Player ${seat + 1}`;
+  const who = view.seats[seat]?.name ?? fill(copy.common.playerFallback, { n: seat + 1 });
   const active = INDUSTRIES.filter((industry) => view.corporations[industry].founded);
 
   useEffect(() => {
@@ -21,9 +22,9 @@ export function EndgameBeat({ seat, view, dismiss }: { seat: Seat; view: PlayerV
   }, [reduced]);
 
   return (
-    <div className={styles.curtain} role="dialog" aria-label="The endgame is triggered" onClick={dismiss}>
+    <div className={styles.curtain} role="dialog" aria-label={copy.beats.endgame.label} onClick={dismiss}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 14 }}>
-        <div className={styles.kicker}>the game is over</div>
+        <div className={styles.kicker}>{copy.beats.endgame.kicker}</div>
         <div className={`serif ${reduced ? '' : styles.rise}`} style={{ fontSize: 64, marginTop: 6 }}>
           The endgame is triggered
         </div>
@@ -51,7 +52,7 @@ export function EndgameBeat({ seat, view, dismiss }: { seat: Seat; view: PlayerV
           ))}
         </div>
       </div>
-      <span className={styles.hint}>click or press space</span>
+      <span className={styles.hint}>{copy.beats.hint}</span>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { NetLogOverlay } from './debug/NetLogOverlay.js';
 import type { PreviewKind } from './beats/debug/fixtures.js';
 import { configFromRoom, type OnlineGame } from './online/onlineGame.js';
 import { Cog6ToothIcon, GlobeAltIcon, UsersIcon } from '@heroicons/react/24/solid';
+import { copy } from './copy/copy.js';
 import { Skyline } from './art/Skyline.js';
 import logoUrl from './assets/boomtown-logo.png';
 import styles from './lobby/lobby.module.css';
@@ -77,11 +78,11 @@ export function App() {
     switch (current.kind) {
       case 'menu':
         return (
-          <section className={styles.launch} aria-label="Main menu">
+          <section className={styles.launch} aria-label={copy.menu.label}>
             <Skyline tone="chrome" className={styles.launchArt} />
             <div className={styles.launchContent}>
-              <img src={logoUrl} alt="Boomtown" className={styles.logo} />
-              <p className={styles.launchTagline}>seven start-ups, one skyline</p>
+              <img src={logoUrl} alt={copy.app.name} className={styles.logo} />
+              <p className={styles.launchTagline}>{copy.app.tagline}</p>
               {/* Plates, not buttons. This screen is the table before anything
                   is on it, and the two ways in are the game's own material —
                   the hand tile's thickness and press, borrowed whole — rather
@@ -92,31 +93,31 @@ export function App() {
                 <button
                   type="button"
                   className={styles.launchPlate}
-                  aria-label="Local game"
+                  aria-label={copy.menu.local.name}
                   onClick={() => setScreen({ kind: 'local-setup' })}
                 >
                   <UsersIcon width={22} height={22} className={styles.launchPlateMark} aria-hidden />
-                  <span className={`serif ${styles.launchPlateName}`}>Local game</span>
+                  <span className={`serif ${styles.launchPlateName}`}>{copy.menu.local.name}</span>
                   <span className={styles.launchPlateNote} aria-hidden>
-                    hot seat · one machine
+                    {copy.menu.local.note}
                   </span>
                 </button>
                 <button
                   type="button"
                   className={styles.launchPlate}
-                  aria-label="Play online"
+                  aria-label={copy.menu.online.name}
                   onClick={() => setScreen({ kind: 'online-setup' })}
                 >
                   <GlobeAltIcon width={22} height={22} className={styles.launchPlateMark} aria-hidden />
-                  <span className={`serif ${styles.launchPlateName}`}>Play online</span>
+                  <span className={`serif ${styles.launchPlateName}`}>{copy.menu.online.name}</span>
                   <span className={styles.launchPlateNote} aria-hidden>
-                    a room · a code to join
+                    {copy.menu.online.note}
                   </span>
                 </button>
               </div>
               <button type="button" className={styles.launchChip} onClick={() => setSettingsOpen(true)}>
                 <Cog6ToothIcon width={13} height={13} aria-hidden />
-                Settings
+                {copy.menu.settings}
               </button>
             </div>
             <SettingsDialog

@@ -5,14 +5,15 @@ import { useGameClient, useGameState } from '../client/GameClientProvider.js';
 import { debugDump } from '../debug/dump.js';
 import type { GameConfig } from '../setup/gameConfig.js';
 import styles from './game.module.css';
+import { copy, fill } from '../copy/copy.js';
 
 const STEP_LABEL: Record<string, string> = {
-  place: 'placing a tile',
-  found: 'founding a corporation',
-  merge: 'resolving a merger',
-  buy: 'buying stock',
-  'end-check': 'deciding whether to end the game',
-  vote: 'voting on a motion to liquidate',
+  place: copy.game.waiting.steps.place,
+  found: copy.game.waiting.steps.found,
+  merge: copy.game.waiting.steps.merge,
+  buy: copy.game.waiting.steps.buy,
+  'end-check': copy.game.waiting.steps.endCheck,
+  vote: copy.game.waiting.steps.vote,
 };
 
 /**
@@ -29,7 +30,7 @@ const STEP_LABEL: Record<string, string> = {
 function activeName(state: GameClientState, config: GameConfig): string {
   const seat = state.activeSeat;
   if (seat == null) return 'the next player';
-  return anyView(state)?.seats[seat]?.name ?? config.seats[seat]?.name ?? `Player ${seat + 1}`;
+  return anyView(state)?.seats[seat]?.name ?? config.seats[seat]?.name ?? fill(copy.common.playerFallback, { n: seat + 1 });
 }
 
 /** How long the same seat can hold the clock before we offer a manual nudge. */
@@ -65,7 +66,7 @@ export function WaitingForSeat({
   // to the generic "taking their turn" for precisely the seats it describes.
   const doing = useGameState((state) => {
     const step = anyView(state)?.step;
-    return step ? STEP_LABEL[step] ?? 'taking their turn' : 'taking their turn';
+    return (step ? STEP_LABEL[step] : null) ?? copy.game.waiting.steps.fallback;
   });
   // Config, not view: bot-ness is a table fact rather than engine state, and
   // `App` now reconciles the online config from `room-state`, so this is the
@@ -99,12 +100,12 @@ export function WaitingForSeat({
   }, [activeSeat, kind, snapshot, client, dev]);
 
   return (
-    <div className={styles.waiting} role="status" aria-label="Waiting for another player">
-      <p className={styles.waitingKicker}>{kind === 'bot' ? 'Bot' : 'Player'}</p>
-      <h2 className="serif">{name}</h2>
-      <p className={styles.waitingHint}>
-        {name} is {doing}…
+    <div className={styles.waiting} role="status" aria-label={copy.game.waiting.label}>
+      <p className={styles.waitingKicker}>
+        {kind === 'bot' ? copy.game.waiting.bot : copy.game.waiting.player}
       </p>
+      <h2 className="serif">{name}</h2>
+      <p className={styles.waitingHint}>{fill(copy.game.waiting.doing, { name, doing })}</p>
       {dev && showNudge && nudge && (
         <button
           type="button"
@@ -121,7 +122,7 @@ export function WaitingForSeat({
             setShowNudge(false);
           }}
         >
-          {name} is taking a while — nudge them
+          {fill(copy.game.waiting.nudge, { name })}
         </button>
       )}
     </div>
