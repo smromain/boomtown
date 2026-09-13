@@ -53,6 +53,14 @@ export interface BotStuckReport {
 export interface BotDriver {
   /** Detach the driver and stop all timers. */
   detach: () => void;
+  /**
+   * Hold the bots where they are, or let them go again. The UI holds them while
+   * a beat owns the screen: a bot that keeps playing behind a curtain buries the
+   * moment being shown under events nobody has seen yet, and the beat queue —
+   * which collapses to the latest — then drops most of them. Paused, no bot is
+   * "owed a move", so the stuck watchdog stays quiet too.
+   */
+  setPaused: (paused: boolean) => void;
   /** Force an immediate move attempt for whichever bot owes the next command.
    *  A manual escape hatch for the UI if a bot ever appears stuck. No-op when no
    *  bot is on the clock. */
@@ -97,6 +105,7 @@ export function attachBotDriver(
   let watchdog: ReturnType<typeof setTimeout> | null = null;
   let owedSince: number | null = null;
   let stopped = false;
+  let paused = false;
 
   const clearPending = () => {
     if (pending !== null) {
@@ -108,6 +117,7 @@ export function attachBotDriver(
 
   /** The seat that owes the next command, if it is a bot we drive. */
   const botToMove = (): Seat | null => {
+    if (paused) return null;
     const state = client.store.getState();
     if (state.status !== 'ready') return null;
     if (state.inFlight !== null) return null; // wait for the echo to reconcile
@@ -206,6 +216,20 @@ export function attachBotDriver(
     unsubscribe();
   };
 
+  const setPaused = (next: boolean) => {
+    if (paused === next) return;
+    paused = next;
+    if (paused) {
+      // Drop the think timer as well as the claim on the seat: whatever was
+      // about to land must be re-decided against the state the beat leaves
+      // behind, not the one it was chosen from.
+      clearPending();
+      owedSince = null;
+      return;
+    }
+    step();
+  };
+
   const nudge = () => {
     const seat = botToMove();
     if (seat === null) return;
@@ -214,5 +238,5 @@ export function attachBotDriver(
     fire(seat);
   };
 
-  return Object.assign(detach, { detach, nudge });
+  return Object.assign(detach, { detach, setPaused, nudge });
 }

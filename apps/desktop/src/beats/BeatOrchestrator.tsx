@@ -18,11 +18,20 @@ export function BeatOrchestrator() {
   const log = useGameState((state) => state.log);
   const pendingDecision = useGameState((state) => state.pendingDecision);
 
-  // A beat is a non-interactive overlay behind an open decision prompt — the
-  // dialog keeps focus (U10 approach step 5). Merger's own beat fires only
-  // once the merger (and every prompt it raised) is fully resolved, so this
-  // mainly guards an unrelated beat racing a founding/buy decision.
-  if (!active || pendingDecision || !view) return null;
+  if (!active || !view) return null;
+
+  // A *light* beat is a non-interactive overlay behind an open decision prompt,
+  // and the prompt keeps focus (U10 approach step 5) — so it stands down rather
+  // than float over a dialog it can't be read alongside.
+  //
+  // A beat that covers the screen does the opposite: it holds, and the prompt
+  // waits for it (`DecisionModal` and `TurnModal` stand down while it plays,
+  // the way `TurnHandoff` already did). Standing down here instead unmounted
+  // the beat mid-sequence the moment the next decision was raised — a bot's
+  // vote on a motion, say — and remounting it afterwards restarted it from
+  // stage one. On a bot table that read as the merger playing, being shoved
+  // aside by the vote, then playing again from the top.
+  if (!coversTheScreen(active) && pendingDecision) return null;
 
   // A light beat has to out-stack `TurnHandoff` (z-index 50), which no longer
   // stands down for it — otherwise the flourish plays behind an opaque card.

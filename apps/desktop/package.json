@@ -12,6 +12,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
+    "web": "vite --config vite.browser.config.mts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --project desktop",
     "smoke": "electron-vite build && cross-env BOOMTOWN_SMOKE=1 electron .",

@@ -9,6 +9,7 @@ import { BeatProvider } from './BeatContext.js';
 import { GameClientProvider } from '../client/GameClientProvider.js';
 import { TurnHandoff } from '../game/TurnHandoff.js';
 import { DecisionModal } from '../decisions/DecisionModal.js';
+import { TurnModal } from '../game/TurnModal.js';
 import { defaultConfig } from '../setup/gameConfig.js';
 import { flush, mergedName, NAMES, renderPanel, seedCorp } from '../testing/harness.js';
 import beatStyles from './beats.module.css';
@@ -266,6 +267,94 @@ describe('BeatOrchestrator (component, real dispatch)', () => {
       await userEvent.click(beat);
     });
     expect(headline).toHaveStyle({ opacity: '1' });
+  });
+
+  it('holds a covering beat through a decision raised behind it, and the prompt waits', async () => {
+    // The bug this pins: the orchestrator used to stand down for *any* pending
+    // decision, so a bot's vote on a motion raised while the merger beat was
+    // mid-sequence unmounted it — and remounting afterwards restarted it from
+    // stage one. At the table that read as the merger playing, the vote barging
+    // in, then the merger playing again.
+    const { client } = await renderPanel(
+      <BeatProvider>
+        <BeatOrchestrator />
+        <DecisionModal />
+      </BeatProvider>,
+      {
+        craft: (state) => {
+          seedCorp(state, 'video', ['2E', '3E', '4E']); // survives
+          seedCorp(state, 'books', ['6E', '7E']); // defunct, nobody holds it
+          state.hands[0] = ['5E'];
+        },
+      },
+    );
+
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+      await flush();
+    });
+    const beat = await screen.findByRole('dialog', { name: 'Merger' });
+    const headline = within(beat).getByText(mergedName('video', 'books'));
+
+    // advance two stages by hand (collide -> blend -> name)
+    await act(async () => { await userEvent.click(beat); });
+    await act(async () => { await userEvent.click(beat); });
+    expect(headline).toHaveStyle({ opacity: '1' });
+
+    // a decision lands behind the curtain
+    await act(async () => {
+      client.store.setState((state) => ({
+        ...state,
+        pendingDecision: { type: 'cast-vote', seat: 0, motionBy: 1 },
+      }));
+      await flush();
+    });
+
+    // the beat is still on screen *and* still at the stage it had reached — a
+    // remount would have put it back to `collide`, with the name hidden again
+    expect(screen.getByRole('dialog', { name: 'Merger' })).toBe(beat);
+    expect(headline).toHaveStyle({ opacity: '1' });
+    // and the vote has not opened over it
+    expect(screen.queryByText('Wind the game up?')).not.toBeInTheDocument();
+
+    // three clicks finish the beat (name -> mass -> settle -> dismiss); the
+    // prompt that was waiting takes the screen
+    await act(async () => { await userEvent.click(beat); });
+    await act(async () => { await userEvent.click(beat); });
+    await act(async () => { await userEvent.click(beat); });
+    expect(screen.queryByRole('dialog', { name: 'Merger' })).not.toBeInTheDocument();
+    expect(await screen.findByText('Wind the game up?')).toBeInTheDocument();
+  });
+
+  it('keeps the buy step shut until the merger beat has played out', async () => {
+    const { client } = await renderPanel(
+      <BeatProvider>
+        <BeatOrchestrator />
+        <TurnModal />
+      </BeatProvider>,
+      {
+        craft: (state) => {
+          seedCorp(state, 'video', ['2E', '3E', '4E']);
+          seedCorp(state, 'books', ['6E', '7E']);
+          state.hands[0] = ['5E'];
+        },
+      },
+    );
+
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+      await flush();
+    });
+    // the mergemaker is already at their buy step underneath
+    expect(client.store.getState().views[0]!.step).toBe('buy');
+    const beat = await screen.findByRole('dialog', { name: 'Merger' });
+    expect(screen.queryByRole('dialog', { name: 'Buy stock' })).not.toBeInTheDocument();
+
+    for (let i = 0; i < 5; i++) {
+      await act(async () => { await userEvent.click(beat); });
+    }
+    expect(screen.queryByRole('dialog', { name: 'Merger' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Buy stock' })).toBeInTheDocument();
   });
 
   it('names bonus tiers the way the table does: majority/minority under classic', async () => {

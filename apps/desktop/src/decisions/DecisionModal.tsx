@@ -4,6 +4,8 @@ import { localActiveView } from '@boomtown/client-core';
 import type { Seat } from '@boomtown/engine';
 import { useAnyView, useGameState, useLocalSeats } from '../client/GameClientProvider.js';
 import { useHotSeat } from '../game/HotSeatContext.js';
+import { useActiveBeat } from '../beats/BeatContext.js';
+import { coversTheScreen } from '../beats/beatTriggers.js';
 import { DefunctOrderPrompt } from './DefunctOrderPrompt.js';
 import { DisposalPrompt } from './DisposalPrompt.js';
 import { FoundPrompt } from './FoundPrompt.js';
@@ -55,8 +57,15 @@ export function DecisionModal() {
   const anyView = useAnyView();
   const seatName = (seat: number) => anyView?.seats[seat]?.name ?? `Player ${seat + 1}`;
   const { claim, needsHandoff } = useHotSeat();
+  const { active: activeBeat } = useActiveBeat();
   const needsFound = view?.step === 'found' && view.pendingFound != null;
-  const open = decision != null || needsFound;
+  // A beat that covers the screen finishes before any prompt it raised opens:
+  // the whole table is meant to watch the moment, and a dialog over the curtain
+  // (or, worse, one that tears the beat down) is what made a merger look like
+  // it played twice. Every beat is bounded and dismissible, and `BeatContext`'s
+  // watchdog is the backstop, so nothing can be held here for long.
+  const beatOwnsTheScreen = activeBeat != null && coversTheScreen(activeBeat);
+  const open = (decision != null || needsFound) && !beatOwnsTheScreen;
 
   // the seat that must act now
   const owedSeat: Seat | null = decision?.seat ?? (needsFound ? view!.you : null);
@@ -81,7 +90,9 @@ export function DecisionModal() {
     setTrade(0);
   }, [disposalKey]);
 
-  if (open && minimized && canMinimize) {
+  if (!open) return null;
+
+  if (minimized && canMinimize) {
     return (
       <button type="button" className={styles.minimizedPill} onClick={() => setMinimized(false)}>
         {resumeLabel}

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Board } from '../board/Board.js';
 import {
   GameClientProvider,
@@ -5,7 +6,8 @@ import {
   useIsLocalTurn,
 } from '../client/GameClientProvider.js';
 import { BeatOrchestrator } from '../beats/BeatOrchestrator.js';
-import { BeatProvider } from '../beats/BeatContext.js';
+import { BeatProvider, useActiveBeat } from '../beats/BeatContext.js';
+import { coversTheScreen } from '../beats/beatTriggers.js';
 import { DecisionModal } from '../decisions/DecisionModal.js';
 import type { StartedGame } from '../setup/NewGame.js';
 import { ActionBar } from './ActionBar.js';
@@ -66,11 +68,35 @@ export function GameScreen({ game, onExit }: { game: StartedGame; onExit?: () =>
             <TurnHandoff config={game.config} />
             <ErrorToast />
             <BeatOrchestrator />
+            <BotHold pause={game.pauseBots} />
           </BeatProvider>
         </ReferenceProvider>
       </HotSeatProvider>
     </GameClientProvider>
   );
+}
+
+/**
+ * Holds the bot seats still while a beat covers the screen. Without it the
+ * table plays on behind the curtain: by the time a merger's climax has
+ * finished, the mergemaker has bought, the next seat has moved and a motion may
+ * have been raised and settled — all unwatched, and all collapsed out of the
+ * beat queue, which keeps only the latest. Beats are bounded and dismissible,
+ * and `BeatContext`'s watchdog ends any that isn't, so this can only ever be a
+ * pause of seconds.
+ *
+ * A light beat (the buy-stock flourish) doesn't hold anything: it covers
+ * nothing and the turn has already moved on underneath it.
+ */
+function BotHold({ pause }: { pause: ((paused: boolean) => void) | undefined }) {
+  const { active } = useActiveBeat();
+  const held = active != null && coversTheScreen(active);
+  useEffect(() => {
+    if (!pause) return;
+    pause(held);
+    return () => pause(false);
+  }, [pause, held]);
+  return null;
 }
 
 function PlayArea({

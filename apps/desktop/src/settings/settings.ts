@@ -17,8 +17,26 @@ export interface Settings {
   readonly seatCount: number;
   /** Override for the PartyKit host; blank = use the build-time default. */
   readonly partykitHost: string;
-  /** Sound effects (R9). Sound ships on by default; the header mute control persists this. */
-  readonly muted: boolean;
+  /**
+   * Sound effect volume, 0–1 (R9). The header's speaker button opens a slider
+   * onto this; 0 is silence, which is what a mute amounts to.
+   */
+  readonly effectsVolume: number;
+  /**
+   * Music volume, 0–1, set independently of the effects. It defaults lower
+   * because a soundtrack sits under the table talk while the effects mark the
+   * game's moments — but that is a starting balance, not a fixed ratio, and the
+   * two sliders part company the moment anyone moves one.
+   */
+  readonly musicVolume: number;
+  /** Background music. Music ships on by default; the header's music button
+   *  persists this. Separate from `muted` so a table can keep the effects that
+   *  mark the game's moments while turning the soundtrack off, or the reverse. */
+  readonly musicMuted: boolean;
+  /** The id of the track the back/forward buttons are parked on. An id rather
+   *  than a position, so reordering the tracks can't silently move a table's
+   *  choice to a different one. It survives leaving a game. */
+  readonly musicTrack: string;
   /**
    * The name this player joins online rooms under. Blank until they play
    * online once, at which point the lobby seeds it with a generated name and
@@ -37,7 +55,7 @@ export interface Settings {
  * Bump this when a shipped default changes and the stored value should give
  * way to it — see `migrate` for what each bump does.
  */
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 4;
 
 export const DEFAULT_SETTINGS: Settings = {
   visibility: 'open',
@@ -45,7 +63,10 @@ export const DEFAULT_SETTINGS: Settings = {
   edition: 'boomtown',
   seatCount: 3,
   partykitHost: '',
-  muted: false,
+  effectsVolume: 1,
+  musicVolume: 0.5,
+  musicMuted: false,
+  musicTrack: 'pleasant-creek',
   playerName: '',
   version: SETTINGS_VERSION,
 };
@@ -63,11 +84,43 @@ export const DEFAULT_SETTINGS: Settings = {
  * preset entirely, so a stored `classic` was never a choice between the two —
  * it is the old default, saved by a side effect. Anyone who picks an edition
  * from here on writes v2 and keeps it.
+ *
+ * **v2 → v3: `muted` becomes a volume, and `musicTrack` becomes an id.** The
+ * speaker button is a volume slider now, so the old boolean carries over as the
+ * only volume it could mean: silence, or everything. And `musicTrack` used to
+ * be a position in the track list, which stopped meaning anything the moment
+ * the list was reordered — a stored number is dropped rather than pointed at
+ * whichever track happens to sit there now.
+ *
+ * **v3 → v4: one volume becomes two.** Effects and music are set separately
+ * now. A stored master carries over as the level it was actually producing on
+ * each side — the effects at face value, the music at the half share it used to
+ * take — so nothing changes audibly for anyone who had set a level.
  */
-function migrate(stored: Partial<Settings>): Partial<Settings> {
-  if ((stored.version ?? 1) >= 2) return stored;
-  const { edition: _staleDefault, ...rest } = stored;
-  return rest;
+function migrate(
+  stored: Partial<Settings> & { muted?: boolean; volume?: number },
+): Partial<Settings> {
+  let next: Partial<Settings> & { muted?: boolean; volume?: number } = stored;
+  if ((next.version ?? 1) < 2) {
+    const { edition: _staleDefault, ...rest } = next;
+    next = rest;
+  }
+  if ((next.version ?? 1) < 3) {
+    const { muted, musicTrack, ...rest } = next;
+    next = {
+      ...rest,
+      ...(muted !== undefined ? { volume: muted ? 0 : 1 } : {}),
+      ...(typeof musicTrack === 'string' ? { musicTrack } : {}),
+    };
+  }
+  if ((next.version ?? 1) < 4) {
+    const { volume, ...rest } = next;
+    next =
+      typeof volume === 'number'
+        ? { ...rest, effectsVolume: volume, musicVolume: volume * 0.5 }
+        : rest;
+  }
+  return next;
 }
 
 const KEY = 'boomtown.settings';

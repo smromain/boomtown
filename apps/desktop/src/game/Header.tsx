@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react';
-import { SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/solid';
+import {
+  BackwardIcon,
+  ForwardIcon,
+  MusicalNoteIcon,
+  NoSymbolIcon,
+  SpeakerWaveIcon,
+  SpeakerXMarkIcon,
+} from '@heroicons/react/24/solid';
 import type { TurnStep } from '@boomtown/engine';
 import { useAnyView, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import { useReference } from '../reference/ReferenceContext.js';
 import { editionLabel } from '../setup/editionLabel.js';
 import { soundManager } from '../audio/soundManager.js';
+import { musicManager } from '../audio/musicManager.js';
 import { Button } from '../ui/Button.js';
 import logoUrl from '../assets/boomtown-logo.png';
 import styles from './game.module.css';
@@ -34,14 +42,56 @@ export function Header() {
   const { openChart, openRules } = useReference();
   // Lives in the always-rendered brand region rather than the status block
   // below (KTD5): the status block used to vanish on a bot's or a remote
-  // player's turn, exactly when a spectator most wants the mute control. It no
-  // longer does, but the mute control still belongs with the brand — it is a
+  // player's turn, exactly when a spectator most wants the volume control. It
+  // no longer does, but the volume still belongs with the brand — it is a
   // property of the app, not of the table.
-  const [muted, setMuted] = useState(() => soundManager.isMuted());
-  const toggleMuted = () => {
-    const next = !muted;
-    soundManager.setMuted(next);
-    setMuted(next);
+  //
+  // The speaker opens a pair of sliders rather than toggling silence — effects
+  // and music set separately, each labelled by its own icon, and zero on either
+  // is the mute that button used to be. Kept behind a click because the chrome
+  // is a strip, not a mixing desk: the sliders are for setting a level, not for
+  // reading one.
+  const [effectsVolume, setEffectsVolume] = useState(() => soundManager.volume());
+  const [musicVolume, setMusicVolume] = useState(() => musicManager.volume());
+  const [volumeOpen, setVolumeOpen] = useState(false);
+  const changeEffects = (next: number) => {
+    // Effects take the new level the next time one fires — they are half a
+    // second long, so there is nothing playing to correct.
+    soundManager.setVolume(next);
+    setEffectsVolume(next);
+  };
+  const changeMusic = (next: number) => {
+    // A track is minutes long, so `setVolume` pushes the change onto it now.
+    musicManager.setVolume(next);
+    setMusicVolume(next);
+  };
+
+  // Music plays while a game is on screen and stops when the table is left —
+  // which keeps it true that whenever music is audible, both controls for it
+  // are on screen. (The menu has neither.)
+  const [track, setTrack] = useState(() => musicManager.current());
+  const [musicMuted, setMusicMuted] = useState(() => musicManager.isMuted());
+  useEffect(() => {
+    musicManager.begin();
+    return () => musicManager.release();
+  }, []);
+  // Naming the track for a moment after a skip is the only feedback the arrows
+  // can give: nothing about a back/forward icon says which of four you landed
+  // on, and a permanent title would be one more thing to read in the chrome.
+  const [announcing, setAnnouncing] = useState(false);
+  useEffect(() => {
+    if (!announcing) return;
+    const timer = window.setTimeout(() => setAnnouncing(false), 2600);
+    return () => window.clearTimeout(timer);
+  }, [announcing, track]);
+  const skip = (to: 'previous' | 'next') => () => {
+    setTrack(to === 'next' ? musicManager.next() : musicManager.previous());
+    setAnnouncing(true);
+  };
+  const toggleMusic = () => {
+    const next = !musicMuted;
+    musicManager.setMuted(next);
+    setMusicMuted(next);
   };
 
   // "?" opens the stock reference and F1 the rules, unless a text field has
@@ -70,12 +120,81 @@ export function Header() {
         <button
           type="button"
           className={styles.muteButton}
-          onClick={toggleMuted}
-          aria-label={muted ? 'Unmute sound' : 'Mute sound'}
-          aria-pressed={muted}
+          onClick={() => setVolumeOpen((open) => !open)}
+          aria-label="Volume"
+          aria-expanded={volumeOpen}
         >
-          {muted ? <SpeakerXMarkIcon width={16} height={16} /> : <SpeakerWaveIcon width={16} height={16} />}
+          {effectsVolume === 0 ? (
+            <SpeakerXMarkIcon width={16} height={16} />
+          ) : (
+            <SpeakerWaveIcon width={16} height={16} />
+          )}
         </button>
+        {volumeOpen && (
+          <span className={styles.volumeGroup}>
+            <span className={styles.volumeRow}>
+              {/* The icons are the labels: two bare sliders side by side would
+                  say nothing about which is which. */}
+              <SpeakerWaveIcon width={13} height={13} aria-hidden />
+              <input
+                type="range"
+                className={styles.volumeSlider}
+                min={0}
+                max={100}
+                step={5}
+                value={Math.round(effectsVolume * 100)}
+                aria-label="Sound effect volume"
+                onChange={(e) => changeEffects(Number(e.target.value) / 100)}
+              />
+            </span>
+            <span className={styles.volumeRow}>
+              <MusicalNoteIcon width={13} height={13} aria-hidden />
+              <input
+                type="range"
+                className={styles.volumeSlider}
+                min={0}
+                max={100}
+                step={5}
+                value={Math.round(musicVolume * 100)}
+                aria-label="Music volume"
+                onChange={(e) => changeMusic(Number(e.target.value) / 100)}
+              />
+            </span>
+          </span>
+        )}
+        <span className={styles.musicGroup}>
+          <button
+            type="button"
+            className={`${styles.muteButton} ${styles.skipButton}`}
+            onClick={skip('previous')}
+            aria-label="Previous track"
+          >
+            <BackwardIcon width={14} height={14} />
+          </button>
+          <button
+            type="button"
+            className={styles.muteButton}
+            onClick={toggleMusic}
+            aria-label={musicMuted ? `Unmute music — ${track.title}` : `Mute music — ${track.title}`}
+            aria-pressed={musicMuted}
+            title={track.title}
+          >
+            {musicMuted ? <NoSymbolIcon width={16} height={16} /> : <MusicalNoteIcon width={16} height={16} />}
+          </button>
+          <button
+            type="button"
+            className={`${styles.muteButton} ${styles.skipButton}`}
+            onClick={skip('next')}
+            aria-label="Next track"
+          >
+            <ForwardIcon width={14} height={14} />
+          </button>
+        </span>
+        {announcing && (
+          <span className={styles.trackName} aria-hidden>
+            {track.title}
+          </span>
+        )}
       </div>
       {view && (
         <div className={styles.status}>

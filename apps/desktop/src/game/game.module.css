@@ -74,6 +74,65 @@
   color: var(--accent);
 }
 
+/* The three music controls read as one instrument rather than three loose
+   buttons, so they sit tighter to each other than to the speaker beside them. */
+.musicGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  margin-left: 6px;
+}
+
+/* The arrows serve the note between them; at full weight three equal icons in a
+   row would read as three unrelated controls. */
+.skipButton {
+  width: 22px;
+  margin-left: 0;
+  opacity: 0.7;
+}
+
+.skipButton:hover {
+  opacity: 1;
+}
+
+
+.volumeGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 4px 0 6px;
+  color: var(--chrome-muted);
+}
+
+.volumeRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.volumeSlider {
+  width: 72px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.trackName {
+  margin-left: 2px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chrome-muted);
+  white-space: nowrap;
+  animation: trackNameIn 200ms ease-out;
+}
+
+@keyframes trackNameIn {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+}
+
 .status {
   display: flex;
   align-items: center;

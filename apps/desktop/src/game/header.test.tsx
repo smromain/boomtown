@@ -1,10 +1,25 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Header } from './Header.js';
+import { musicManager, TRACKS } from '../audio/musicManager.js';
+import { soundManager } from '../audio/soundManager.js';
 import { ReferenceProvider } from '../reference/ReferenceContext.js';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '../settings/settings.js';
 import { renderPanel } from '../testing/harness.js';
+
+vi.mock('howler', () => ({
+  Howl: vi.fn().mockImplementation(() => {
+    let playing = false;
+    return {
+      play: vi.fn(() => { playing = true; }),
+      stop: vi.fn(() => { playing = false; }),
+      unload: vi.fn(() => { playing = false; }),
+      volume: vi.fn(),
+      playing: () => playing,
+    };
+  }),
+}));
 
 /** The header wired to its reference modals, the way `GameScreen` mounts it. */
 const withReference = (
@@ -14,26 +29,132 @@ const withReference = (
 );
 
 afterEach(() => {
+  musicManager.release();
   localStorage.clear();
+  vi.clearAllMocks();
 });
 
-describe('Header mute control', () => {
-  it('renders in the always-rendered brand region and toggles the persisted setting', async () => {
+describe('Header volume controls', () => {
+  it('opens a slider each for the effects and the music, set independently', async () => {
     const user = userEvent.setup();
     await renderPanel(<Header />);
 
-    const mute = screen.getByRole('button', { name: 'Mute sound' });
-    expect(mute).toHaveAttribute('aria-pressed', 'false');
+    const speaker = screen.getByRole('button', { name: 'Volume' });
+    expect(speaker).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('slider', { name: 'Sound effect volume' })).not.toBeInTheDocument();
 
-    await user.click(mute);
-    expect(screen.getByRole('button', { name: 'Unmute sound' })).toHaveAttribute('aria-pressed', 'true');
-    expect(loadSettings().muted).toBe(true);
+    await user.click(speaker);
+    const effects = screen.getByRole('slider', { name: 'Sound effect volume' });
+    const music = screen.getByRole('slider', { name: 'Music volume' });
+    // music starts lower — a soundtrack sits under the effects, but only to start
+    expect(effects).toHaveValue('100');
+    expect(music).toHaveValue('50');
+
+    fireEvent.change(effects, { target: { value: '40' } });
+    expect(loadSettings().effectsVolume).toBeCloseTo(0.4);
+    expect(loadSettings().musicVolume).toBeCloseTo(0.5); // untouched
+
+    fireEvent.change(music, { target: { value: '90' } });
+    expect(loadSettings().musicVolume).toBeCloseTo(0.9);
+    expect(loadSettings().effectsVolume).toBeCloseTo(0.4); // still untouched
   });
 
-  it('starts muted when the saved setting says so', async () => {
-    saveSettings({ ...DEFAULT_SETTINGS, muted: true });
+  it('crosses out the speaker when the effects hit zero', async () => {
+    const user = userEvent.setup();
     await renderPanel(<Header />);
-    expect(screen.getByRole('button', { name: 'Unmute sound' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Volume' }));
+    fireEvent.change(screen.getByRole('slider', { name: 'Sound effect volume' }), {
+      target: { value: '0' },
+    });
+
+    expect(soundManager.isMuted()).toBe(true);
+    // and the music, which has its own slider, plays on
+    expect(loadSettings().musicVolume).toBeGreaterThan(0);
+  });
+
+  it('starts from the saved levels, and puts the sliders away again on a second click', async () => {
+    saveSettings({ ...DEFAULT_SETTINGS, effectsVolume: 0.25, musicVolume: 0.75 });
+    const user = userEvent.setup();
+    await renderPanel(<Header />);
+
+    await user.click(screen.getByRole('button', { name: 'Volume' }));
+    expect(screen.getByRole('slider', { name: 'Sound effect volume' })).toHaveValue('25');
+    expect(screen.getByRole('slider', { name: 'Music volume' })).toHaveValue('75');
+
+    await user.click(screen.getByRole('button', { name: 'Volume' }));
+    expect(screen.queryByRole('slider', { name: 'Music volume' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Header music controls', () => {
+  it('skips forward and back through the tracks, wrapping in both directions', async () => {
+    const user = userEvent.setup();
+    await renderPanel(<Header />);
+
+    expect(screen.getByRole('button', { name: `Mute music — ${TRACKS[0]!.title}` })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Next track' }));
+    expect(screen.getByRole('button', { name: `Mute music — ${TRACKS[1]!.title}` })).toBeInTheDocument();
+    expect(loadSettings().musicTrack).toBe(TRACKS[1]!.id);
+    // the arrows say what they landed on — the icon can't
+    expect(screen.getByText(TRACKS[1]!.title)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Previous track' }));
+    expect(screen.getByRole('button', { name: `Mute music — ${TRACKS[0]!.title}` })).toBeInTheDocument();
+
+    // back past the first lands on the last rather than sticking
+    await user.click(screen.getByRole('button', { name: 'Previous track' }));
+    expect(
+      screen.getByRole('button', { name: `Mute music — ${TRACKS.at(-1)!.title}` }),
+    ).toBeInTheDocument();
+  });
+
+  it('turns the music off and on again, persisting it', async () => {
+    const user = userEvent.setup();
+    await renderPanel(<Header />);
+
+    const music = screen.getByRole('button', { name: `Mute music — ${TRACKS[0]!.title}` });
+    expect(music).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(music);
+    const off = screen.getByRole('button', { name: `Unmute music — ${TRACKS[0]!.title}` });
+    expect(off).toHaveAttribute('aria-pressed', 'true');
+    expect(loadSettings().musicMuted).toBe(true);
+
+    await user.click(off);
+    expect(loadSettings().musicMuted).toBe(false);
+  });
+
+  it('swaps the note for heroicons\' no-symbol when the music is off, the way the speaker swaps too', async () => {
+    const user = userEvent.setup();
+    await renderPanel(<Header />);
+
+    const music = screen.getByRole('button', { name: /^Mute music/ });
+    const note = music.innerHTML;
+    expect(music.querySelector('svg')).toBeInTheDocument();
+
+    await user.click(music);
+    const off = screen.getByRole('button', { name: /^Unmute music/ });
+    // a different icon, and still an icon — not an empty button or a CSS trick
+    expect(off.innerHTML).not.toBe(note);
+    expect(off.querySelector('svg')).toBeInTheDocument();
+  });
+
+  it('is its own switch: turning the music off leaves both volumes where they were', async () => {
+    const user = userEvent.setup();
+    await renderPanel(<Header />);
+
+    await user.click(screen.getByRole('button', { name: /^Mute music/ }));
+    expect(loadSettings().musicMuted).toBe(true);
+    expect(loadSettings().musicVolume).toBe(DEFAULT_SETTINGS.musicVolume);
+    expect(loadSettings().effectsVolume).toBe(DEFAULT_SETTINGS.effectsVolume);
+  });
+
+  it('picks up the remembered track rather than starting over at the first', async () => {
+    saveSettings({ ...DEFAULT_SETTINGS, musicTrack: TRACKS[2]!.id });
+    await renderPanel(<Header />);
+    expect(screen.getByRole('button', { name: `Mute music — ${TRACKS[2]!.title}` })).toBeInTheDocument();
   });
 });
 

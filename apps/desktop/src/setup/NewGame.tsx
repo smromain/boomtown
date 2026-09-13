@@ -29,6 +29,10 @@ export interface StartedGame {
   /** Forces the bot on the clock to move now — a manual unstick for the UI.
    *  Absent when the table has no bots. */
   nudgeBots?: () => void;
+  /** Holds the bots while a beat owns the screen, so the moment being shown
+   *  isn't buried under moves nobody has watched. Absent when the table has no
+   *  bots. */
+  pauseBots?: (paused: boolean) => void;
   /** The authoritative state, for dev diagnostics. Local games only. */
   snapshot?: () => GameState;
 }
@@ -78,6 +82,7 @@ export function NewGame({
       });
       started.detachBots = driver.detach;
       started.nudgeBots = driver.nudge;
+      started.pauseBots = driver.setPaused;
     }
 
     void client.connect().then(() => onStart(started));
