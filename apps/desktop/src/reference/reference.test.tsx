@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -165,53 +166,72 @@ describe('ReferenceProvider wiring', () => {
 describe('RulesReference modal', () => {
   const open = <RulesReference open onClose={() => {}} onOpenChart={() => {}} />;
 
+  /** Turn to a section by its name, the way its dot is labelled. */
+  const goTo = async (title: string | RegExp) => {
+    await userEvent.click(screen.getByRole('button', { name: title }));
+  };
+  const dialog = () => screen.getByRole('dialog', { name: 'How to play' });
+
   it('reads the classic ruleset rather than hardcoding it', async () => {
     await renderPanel(open, { edition: 'classic' });
-    const dialog = screen.getByRole('dialog', { name: 'How to play' });
-    expect(dialog).toHaveTextContent('Classic');
-    expect(dialog).toHaveTextContent('safe at 11 tiles');
-    expect(dialog).toHaveTextContent('11+ tiles — cannot be dissolved');
-    expect(dialog).toHaveTextContent('41+ tiles in one corporation');
-    expect(dialog).toHaveTextContent('majority · minority');
-    expect(dialog).toHaveTextContent('both bonuses');
+    expect(dialog()).toHaveTextContent('Classic');
+    expect(dialog()).toHaveTextContent('safe at 11 tiles');
+
+    await goTo('What Classic sets');
+    expect(dialog()).toHaveTextContent('11+ tiles — cannot be dissolved');
+    expect(dialog()).toHaveTextContent('41+ tiles in one corporation');
+    expect(dialog()).toHaveTextContent('majority · minority');
+    expect(dialog()).toHaveTextContent('both bonuses');
+
     // the classic board geometry, straight off the ruleset
-    expect(dialog).toHaveTextContent('12 × 9');
+    await goTo('The table');
+    expect(dialog()).toHaveTextContent('12 × 9');
   });
 
   it('says something different under the 2015 edition — every edition-bound row moves', async () => {
     await renderPanel(open, { edition: 'edition-2015' });
-    const dialog = screen.getByRole('dialog', { name: 'How to play' });
-    expect(dialog).toHaveTextContent('Modern');
-    expect(dialog).toHaveTextContent('safe at 10 tiles');
-    expect(dialog).toHaveTextContent('10+ tiles — cannot be dissolved');
-    expect(dialog).toHaveTextContent('38+ tiles in one corporation');
-    expect(dialog).toHaveTextContent('primary · secondary · tertiary');
-    expect(dialog).toHaveTextContent('primary and tertiary — not secondary');
-    expect(dialog).toHaveTextContent('rounded up to the nearest $100');
-    expect(dialog).not.toHaveTextContent('majority · minority');
+    expect(dialog()).toHaveTextContent('Modern');
+    expect(dialog()).toHaveTextContent('safe at 10 tiles');
+
+    await goTo('What Modern sets');
+    expect(dialog()).toHaveTextContent('10+ tiles — cannot be dissolved');
+    expect(dialog()).toHaveTextContent('38+ tiles in one corporation');
+    expect(dialog()).toHaveTextContent('primary · secondary · tertiary');
+    expect(dialog()).toHaveTextContent('primary and tertiary — not secondary');
+    expect(dialog()).toHaveTextContent('rounded up to the nearest $100');
+    expect(dialog()).not.toHaveTextContent('majority · minority');
   });
 
   it('explains the whole Boomtown ending without reference to anything outside the modal', async () => {
     await renderPanel(open, { edition: 'boomtown' });
-    const dialog = screen.getByRole('dialog', { name: 'How to play' });
+    expect(dialog()).toHaveTextContent('Boomtown');
 
-    expect(dialog).toHaveTextContent('Boomtown');
     // the window, the register, the quota and the price of a yes — the four
     // things a player cannot work out from the board
-    expect(dialog).toHaveTextContent(/2 corporations are safe/);
-    expect(dialog).toHaveTextContent(/one vote per share held in a/i);
-    expect(dialog).toHaveTextContent(/67% of the register/);
-    expect(dialog).toHaveTextContent(/opens? their books/i);
+    await goTo('Going public');
+    expect(dialog()).toHaveTextContent(/2 corporations are safe/);
+    expect(dialog()).toHaveTextContent(/one vote per share held in a/i);
+    expect(dialog()).toHaveTextContent(/67% of the register/);
+    expect(dialog()).toHaveTextContent(/opens? their books/i);
+
     // and the rule that makes the whole thing a bluffing game
-    expect(dialog).toHaveTextContent(/The books are closed/);
+    await goTo('Worth knowing');
+    expect(dialog()).toHaveTextContent(/The books are closed/);
   });
 
-  it('says nothing about a vote under a rule set that has none', async () => {
+  it('says nothing about a vote under a rule set that has none — not even a section for it', async () => {
     await renderPanel(open, { edition: 'classic' });
-    const dialog = screen.getByRole('dialog', { name: 'How to play' });
-    expect(dialog).not.toHaveTextContent(/Going public/i);
-    expect(dialog).not.toHaveTextContent(/move to liquidate/i);
-    expect(dialog).not.toHaveTextContent(/register/i);
+    expect(screen.queryByRole('button', { name: 'Going public' })).not.toBeInTheDocument();
+
+    // every section, walked end to end: the vote is nowhere in the whole modal
+    for (let i = 0; i < 10; i++) {
+      expect(dialog()).not.toHaveTextContent(/Going public/i);
+      expect(dialog()).not.toHaveTextContent(/move to liquidate/i);
+      expect(dialog()).not.toHaveTextContent(/register/i);
+      const next = screen.getByRole('button', { name: 'Next section' });
+      if ((next as HTMLButtonElement).disabled) break;
+      await userEvent.click(next);
+    }
   });
 
   it('is reachable on a turn that is not yours — the rules belong to the table, not the seat', async () => {
@@ -224,13 +244,97 @@ describe('RulesReference modal', () => {
         state.turnPointer = 1;
       },
     });
-    expect(screen.getByRole('dialog', { name: 'How to play' })).toHaveTextContent('Classic');
+    expect(dialog()).toHaveTextContent('Classic');
   });
 
   it('names the merger sequencing rule that everything else depends on', async () => {
     await renderPanel(open);
-    const dialog = screen.getByRole('dialog', { name: 'How to play' });
-    expect(dialog).toHaveTextContent(/never counts/i);
-    expect(dialog).toHaveTextContent(/largest first/i);
+    await goTo('When corporations merge');
+    expect(dialog()).toHaveTextContent(/never counts/i);
+    expect(dialog()).toHaveTextContent(/largest first/i);
+  });
+});
+
+describe('RulesReference carousel', () => {
+  const open = <RulesReference open onClose={() => {}} onOpenChart={() => {}} />;
+  const dialog = () => screen.getByRole('dialog', { name: 'How to play' });
+
+  it('shows one section at a time, and steps through them in order', async () => {
+    await renderPanel(open, { edition: 'boomtown' });
+
+    // the turn is first, and the merger it can cause is not also on screen
+    expect(dialog()).toHaveTextContent('Your turn, in order');
+    expect(dialog()).not.toHaveTextContent(/never counts/i);
+    expect(screen.getByText('Section 1 of 6')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Next section' }));
+    expect(dialog()).toHaveTextContent('When corporations merge');
+    expect(dialog()).not.toHaveTextContent('Place a tile');
+    expect(screen.getByText('Section 2 of 6')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Previous section' }));
+    expect(dialog()).toHaveTextContent('Your turn, in order');
+  });
+
+  it('stops at both ends rather than wrapping — it is a read-through, not a loop', async () => {
+    await renderPanel(open, { edition: 'boomtown' });
+    expect(screen.getByRole('button', { name: 'Previous section' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next section' })).toBeEnabled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'What Boomtown sets' }));
+    expect(screen.getByText('Section 6 of 6')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next section' })).toBeDisabled();
+  });
+
+  it('jumps straight to a section from its dot, and marks where you are', async () => {
+    await renderPanel(open, { edition: 'boomtown' });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Going public' }));
+    expect(dialog()).toHaveTextContent(/wind the game up/i);
+    expect(screen.getByRole('button', { name: 'Going public' })).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByRole('button', { name: 'The table' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('pages on the arrow keys, so the whole thing works without a mouse', async () => {
+    await renderPanel(open, { edition: 'boomtown' });
+
+    await userEvent.keyboard('{ArrowRight}');
+    expect(dialog()).toHaveTextContent('When corporations merge');
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(dialog()).toHaveTextContent('Your turn, in order');
+    // and it holds at the first section rather than wrapping to the last
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(dialog()).toHaveTextContent('Your turn, in order');
+  });
+
+  it('drops the sections a rule set has no rules for, and counts what is left', async () => {
+    await renderPanel(open, { edition: 'classic' });
+    expect(screen.getByText('Section 1 of 5')).toBeInTheDocument();
+  });
+
+  it('opens at the first section every time — a second look is a second question', async () => {
+    // Closed and reopened from inside the tree, the way the header's Rules
+    // button does it: `rerender` would drop the game provider this modal reads.
+    function Reopenable() {
+      const [isOpen, setOpen] = useState(true);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen((o) => !o)}>
+            toggle rules
+          </button>
+          <RulesReference open={isOpen} onClose={() => setOpen(false)} onOpenChart={() => {}} />
+        </>
+      );
+    }
+    await renderPanel(<Reopenable />, { edition: 'boomtown' });
+
+    await userEvent.click(screen.getByRole('button', { name: 'The table' }));
+    expect(dialog()).toHaveTextContent('Starting cash');
+
+    // closed from the modal's own ✕ — everything outside it is aria-hidden
+    // while it is open, which is the modal doing its job
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await userEvent.click(screen.getByRole('button', { name: 'toggle rules' }));
+    expect(dialog()).toHaveTextContent('Your turn, in order');
   });
 });

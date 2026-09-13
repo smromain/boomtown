@@ -343,11 +343,99 @@ tr[data-live='true'] {
 }
 
 .rulesBody {
+  /* A fixed height, not a fitted one: the section cards differ in length, and a
+     body that resized under every step would make the arrows move as you used
+     them. Tall enough for the longest of them; `auto` is the safety valve for a
+     small window rather than the normal way to read a card. */
+  height: 26rem;
+  max-height: 60vh;
   overflow: auto;
   padding: 16px 22px 20px;
   display: flex;
   flex-direction: column;
+  /* Short cards sit in the middle of that height rather than hugging the top
+     over a void. `safe` so a card that does overflow still starts at the top
+     and stays scrollable, instead of being centred out of reach. */
+  justify-content: safe center;
   gap: 20px;
+}
+
+/* `.foot` is shared with the other reference modals, so the rules' two-part
+   footer — where you are, and where the numbers live — layers on rather than
+   changing it for everyone. */
+.rulesFoot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.rulesNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 22px;
+  border-top: 1px solid var(--rule);
+}
+
+.rulesStep {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--input);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.rulesStep:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Kept in place rather than hidden at the ends: a control that vanishes takes
+   the layout with it, and its absence says less than its being spent. */
+.rulesStep:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.rulesDots {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rulesDot {
+  display: block;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 1px solid var(--rule-strong, var(--rule));
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.rulesDot:hover {
+  border-color: var(--accent);
+}
+
+.rulesDot[aria-current='step'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  /* The section you are on is wider as well as filled — a colour difference
+     alone is the one cue a colourblind reader may not get. */
+  width: 18px;
+  border-radius: 4px;
 }
 
 .rulesSection {

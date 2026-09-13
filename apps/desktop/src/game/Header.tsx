@@ -198,9 +198,16 @@ export function Header() {
       </div>
       {view && (
         <div className={styles.status}>
-          <span className={styles.statusLabel}>{editionLabel(view.ruleset.id)}</span>
-          <span className={styles.turnReadout}>
-            <span className={styles.statusLabel}>Turn</span> <span className="serif tabnum">{turn}</span>
+          {/* The edition and the turn count are one line of type read across,
+              so they share a baseline. Grouping them is what makes that
+              possible: the row itself has to centre, because the reference
+              buttons beside them are twice the height of any text in it. */}
+          <span className={styles.statusText}>
+            <span className={styles.statusLabel}>{editionLabel(view.ruleset.id)}</span>
+            <span className={styles.turnReadout}>
+              <span className={styles.statusLabel}>Turn</span>{' '}
+              <span className={`serif tabnum ${styles.turnNumber}`}>{turn}</span>
+            </span>
           </span>
           <div className={styles.referenceGroup}>
             <Button variant="onChrome" className={styles.reference} onClick={openChart}>
