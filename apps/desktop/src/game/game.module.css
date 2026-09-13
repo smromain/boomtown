@@ -167,15 +167,16 @@
    is on the clock. It used to fill the board slot; the board now stays on
    screen (read-only) on those turns, so this is a card, not a takeover. */
 .waiting {
+  flex: 1;
   background: var(--surface);
   border-radius: 4px;
   box-shadow: var(--elev-1);
-  padding: 14px 16px;
+  padding: 10px 16px;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px 14px;
   color: var(--muted);
 }
 
@@ -397,10 +398,10 @@
   background: var(--surface);
   border-radius: 4px;
   box-shadow: var(--elev-1);
-  padding: 14px 16px;
+  padding: 12px 16px;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  gap: 14px;
 }
 
 .actionPrompt {
@@ -648,6 +649,24 @@
 }
 
 /* Tile rack */
+/*
+ * The hand strip — your tiles and the contextual action, across the foot of
+ * the screen under the board. Laid out as a row so the rack sits on the left
+ * where the board is and the action reads as its consequence; the waiting card
+ * takes the whole strip on someone else's turn.
+ */
+.hand {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  min-height: 0;
+}
+
+.hand > :last-child:not(:first-child) {
+  margin-left: auto;
+}
+
 .rack {
   flex-shrink: 0;
   display: flex;
@@ -717,4 +736,65 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+/*
+ * Short-window density. The app's floor is 1024x700 (`electron/window.ts`) and
+ * the fullest table — six seats, seven companies, a motion open — asks for
+ * more height than that has: the rail alone wanted 762px against 340 before
+ * the hand moved to its own strip.
+ *
+ * So under 820px the screen tightens rather than scrolls: the band gives up
+ * its flavour line, the cards lose a little air, the rack shrinks a size, and
+ * the tables close up their rows. Nothing is removed — every number on the
+ * table at full size is still on the table here.
+ */
+@media (max-height: 900px) {
+  .body {
+    gap: 10px;
+    padding: 10px 18px 12px;
+  }
+
+  .middle {
+    gap: 18px;
+  }
+
+  .column {
+    gap: 8px;
+  }
+
+  .card {
+    padding: 8px 12px 6px;
+  }
+
+  .cardHeading {
+    font-size: 15px;
+  }
+
+  .holder {
+    height: 22px;
+  }
+
+  .voteRow {
+    height: 20px;
+  }
+
+  .rackHeading {
+    font-size: 13px;
+  }
+
+  .rackTile {
+    width: 48px;
+  }
+
+  .rackTileId {
+    width: 42px;
+    height: 42px;
+    font-size: 16px;
+    border-radius: 7px;
+  }
+
+  .hand {
+    gap: 14px;
+  }
 }

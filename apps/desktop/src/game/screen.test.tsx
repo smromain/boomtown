@@ -43,6 +43,17 @@ describe('GameScreen turn gating', () => {
     expect(screen.queryByRole('status', { name: 'Waiting for another player' })).not.toBeInTheDocument();
   });
 
+  it('keeps the hand out of the rail, where it had no room', async () => {
+    await mount([0, 2], 0);
+    const rack = screen.getByRole('region', { name: 'Your tiles' });
+    // The rail carries the story, the shareholders and the register; at six
+    // seats with a motion open that is already more than the smallest window
+    // can show, so the hand sits under the board instead. Inside the rail it
+    // was simply below the fold.
+    expect(rack.closest('[data-rail]')).toBeNull();
+    expect(screen.getByRole('region', { name: 'Story' }).closest('[data-rail]')).not.toBeNull();
+  });
+
   it('keeps the board (read-only) but hides the rack, and names the bot on its turn', async () => {
     await mount([0, 2], 1); // seat 1 (bot) on the clock
     // The board stays up so you can watch the game while you wait (#13) —

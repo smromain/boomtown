@@ -238,3 +238,31 @@
   height: 100%;
   opacity: 0.12;
 }
+
+/*
+ * Short-window density (see game.module.css). The band is a fifth of a 700px
+ * window; at that height the flavour line is the part that can go — the name,
+ * the price, the size and your stake are all load-bearing, and a joke is not.
+ */
+@media (max-height: 900px) {
+  .band {
+    height: 158px;
+  }
+
+  .bandEmpty {
+    height: 158px;
+  }
+
+  .flavour {
+    display: none;
+  }
+
+  .cardBody {
+    padding: 9px 12px 11px;
+    gap: 7px;
+  }
+
+  .name {
+    font-size: 17px;
+  }
+}
