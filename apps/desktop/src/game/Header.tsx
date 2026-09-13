@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/solid';
+import { MusicalNoteIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/solid';
 import type { TurnStep } from '@boomtown/engine';
 import { useAnyView, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import { useReference } from '../reference/ReferenceContext.js';
 import { editionLabel } from '../setup/editionLabel.js';
 import { soundManager } from '../audio/soundManager.js';
+import { musicManager } from '../audio/musicManager.js';
 import { Button } from '../ui/Button.js';
 import logoUrl from '../assets/boomtown-logo.png';
 import styles from './game.module.css';
@@ -42,6 +43,31 @@ export function Header() {
     const next = !muted;
     soundManager.setMuted(next);
     setMuted(next);
+    // One switch for the whole app: the speaker button stops the music as well
+    // as the effects, and unmuting picks the track back up.
+    musicManager.syncMute();
+  };
+
+  // Music plays while a game is on screen and stops when the table is left —
+  // which keeps it true that whenever music is audible, both controls for it
+  // are on screen. (The menu has neither.)
+  const [track, setTrack] = useState(() => musicManager.current());
+  useEffect(() => {
+    musicManager.begin();
+    return () => musicManager.release();
+  }, []);
+  // Naming the track for a moment after a click is the only feedback a cycling
+  // button can give: the icon can't say which of four it landed on, and a
+  // permanent title would be a fifth thing to read in the chrome.
+  const [announcing, setAnnouncing] = useState(false);
+  useEffect(() => {
+    if (!announcing) return;
+    const timer = window.setTimeout(() => setAnnouncing(false), 2600);
+    return () => window.clearTimeout(timer);
+  }, [announcing, track]);
+  const nextTrack = () => {
+    setTrack(musicManager.next());
+    setAnnouncing(true);
   };
 
   // "?" opens the stock reference and F1 the rules, unless a text field has
@@ -76,6 +102,21 @@ export function Header() {
         >
           {muted ? <SpeakerXMarkIcon width={16} height={16} /> : <SpeakerWaveIcon width={16} height={16} />}
         </button>
+        <button
+          type="button"
+          className={styles.muteButton}
+          onClick={nextTrack}
+          data-quiet={muted || undefined}
+          aria-label={`Music: ${track.title}${muted ? ' (muted)' : ''} — play the next track`}
+          title={track.title}
+        >
+          <MusicalNoteIcon width={16} height={16} />
+        </button>
+        {announcing && (
+          <span className={styles.trackName} aria-hidden>
+            {track.title}
+          </span>
+        )}
       </div>
       {view && (
         <div className={styles.status}>

@@ -17,8 +17,12 @@ export interface Settings {
   readonly seatCount: number;
   /** Override for the PartyKit host; blank = use the build-time default. */
   readonly partykitHost: string;
-  /** Sound effects (R9). Sound ships on by default; the header mute control persists this. */
+  /** Sound effects (R9) *and* music. Sound ships on by default; the header mute
+   *  control persists this — it silences the whole app, not just the blips. */
   readonly muted: boolean;
+  /** Index into `TRACKS` of the background track the music button is on. The
+   *  cycle survives leaving a game, so a table isn't re-picking it every sitting. */
+  readonly musicTrack: number;
   /**
    * The name this player joins online rooms under. Blank until they play
    * online once, at which point the lobby seeds it with a generated name and
@@ -46,6 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
   seatCount: 3,
   partykitHost: '',
   muted: false,
+  musicTrack: 0,
   playerName: '',
   version: SETTINGS_VERSION,
 };

@@ -1,10 +1,23 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Header } from './Header.js';
+import { musicManager, TRACKS } from '../audio/musicManager.js';
 import { ReferenceProvider } from '../reference/ReferenceContext.js';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '../settings/settings.js';
 import { renderPanel } from '../testing/harness.js';
+
+vi.mock('howler', () => ({
+  Howl: vi.fn().mockImplementation(() => {
+    let playing = false;
+    return {
+      play: vi.fn(() => { playing = true; }),
+      stop: vi.fn(() => { playing = false; }),
+      unload: vi.fn(() => { playing = false; }),
+      playing: () => playing,
+    };
+  }),
+}));
 
 /** The header wired to its reference modals, the way `GameScreen` mounts it. */
 const withReference = (
@@ -14,7 +27,9 @@ const withReference = (
 );
 
 afterEach(() => {
+  musicManager.release();
   localStorage.clear();
+  vi.clearAllMocks();
 });
 
 describe('Header mute control', () => {
@@ -34,6 +49,39 @@ describe('Header mute control', () => {
     saveSettings({ ...DEFAULT_SETTINGS, muted: true });
     await renderPanel(<Header />);
     expect(screen.getByRole('button', { name: 'Unmute sound' })).toBeInTheDocument();
+  });
+});
+
+describe('Header music control', () => {
+  it('names the track it is on and cycles to the next one, persisting the choice', async () => {
+    const user = userEvent.setup();
+    await renderPanel(<Header />);
+
+    const music = screen.getByRole('button', { name: new RegExp(`Music: ${TRACKS[0]!.title}`) });
+    await user.click(music);
+
+    expect(screen.getByRole('button', { name: new RegExp(`Music: ${TRACKS[1]!.title}`) })).toBeInTheDocument();
+    expect(loadSettings().musicTrack).toBe(1);
+    // the name is said out loud for a moment, since an icon can't tell you
+    // which of four tracks the click landed on
+    expect(screen.getByText(TRACKS[1]!.title)).toBeInTheDocument();
+  });
+
+  it('picks up the remembered track rather than starting over at the first', async () => {
+    saveSettings({ ...DEFAULT_SETTINGS, musicTrack: 2 });
+    await renderPanel(<Header />);
+    expect(
+      screen.getByRole('button', { name: new RegExp(`Music: ${TRACKS[2]!.title}`) }),
+    ).toBeInTheDocument();
+  });
+
+  it('says so when the app is muted — one switch silences music and effects alike', async () => {
+    const user = userEvent.setup();
+    await renderPanel(<Header />);
+
+    await user.click(screen.getByRole('button', { name: 'Mute sound' }));
+    expect(screen.getByRole('button', { name: /Music: .*\(muted\)/ })).toBeInTheDocument();
+    expect(musicManager.current()).toBe(TRACKS[0]);
   });
 });
 

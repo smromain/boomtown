@@ -74,6 +74,29 @@
   color: var(--accent);
 }
 
+/* Muted, the music button is still live — it moves the cycle on — but it has
+   nothing to say right now, so it recedes rather than disappearing. */
+.muteButton[data-quiet] {
+  opacity: 0.45;
+}
+
+.trackName {
+  margin-left: 2px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chrome-muted);
+  white-space: nowrap;
+  animation: trackNameIn 200ms ease-out;
+}
+
+@keyframes trackNameIn {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+}
+
 .status {
   display: flex;
   align-items: center;
