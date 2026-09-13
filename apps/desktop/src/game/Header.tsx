@@ -3,6 +3,7 @@ import {
   BackwardIcon,
   ForwardIcon,
   MusicalNoteIcon,
+  NoSymbolIcon,
   SpeakerWaveIcon,
   SpeakerXMarkIcon,
 } from '@heroicons/react/24/solid';
@@ -122,13 +123,13 @@ export function Header() {
           </button>
           <button
             type="button"
-            className={`${styles.muteButton} ${musicMuted ? styles.slashed : ''}`}
+            className={styles.muteButton}
             onClick={toggleMusic}
             aria-label={musicMuted ? `Unmute music — ${track.title}` : `Mute music — ${track.title}`}
             aria-pressed={musicMuted}
             title={track.title}
           >
-            <MusicalNoteIcon width={16} height={16} />
+            {musicMuted ? <NoSymbolIcon width={16} height={16} /> : <MusicalNoteIcon width={16} height={16} />}
           </button>
           <button
             type="button"

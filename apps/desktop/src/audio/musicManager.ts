@@ -11,14 +11,25 @@ export interface Track {
   /** What the header calls it. */
   readonly title: string;
   readonly src: string;
+  /** Who wrote it, as the settings dialog credits them. It lives here rather
+   *  than in the dialog so a track can never be added without its credit. */
+  readonly credit: string;
 }
+
+/** Where every track came from, named once in the credits. */
+export const MUSIC_SOURCE = 'All tracks sourced from OpenGameArt.org';
 
 /** The order the music button cycles in. */
 export const TRACKS: readonly Track[] = [
-  { id: 'green-salon', title: 'Green Salon', src: greenSalonUrl },
-  { id: 'azure', title: 'Azure', src: azureUrl },
-  { id: '8bit-bossa', title: '8-Bit Bossa', src: bossaUrl },
-  { id: 'pleasant-creek', title: 'Pleasant Creek Loop', src: pleasantCreekUrl },
+  { id: 'green-salon', title: 'Green Salon', src: greenSalonUrl, credit: 'Composed/Authored by Yubatake' },
+  { id: 'azure', title: 'Azure', src: azureUrl, credit: 'Music by Kistol' },
+  { id: '8bit-bossa', title: '8-Bit Bossa', src: bossaUrl, credit: 'Composed/Authored by Joth' },
+  {
+    id: 'pleasant-creek',
+    title: 'Pleasant Creek Loop',
+    src: pleasantCreekUrl,
+    credit: 'Composed/Authored by Matthew Pablo',
+  },
 ];
 
 /**

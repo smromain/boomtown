@@ -67,6 +67,35 @@
   border-style: solid;
 }
 
+.credits {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.creditList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.creditTitle {
+  color: var(--ink);
+}
+
+.creditSource {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

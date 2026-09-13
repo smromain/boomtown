@@ -5,6 +5,7 @@ import { RULES, type RulesetId, type Visibility } from '@boomtown/engine';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './settings.js';
 import type { PreviewKind } from '../beats/debug/fixtures.js';
 import { Choice } from '../setup/Choice.js';
+import { MUSIC_SOURCE, TRACKS } from '../audio/musicManager.js';
 import decisionStyles from '../decisions/decisions.module.css';
 import styles from './settings.module.css';
 
@@ -22,6 +23,12 @@ const DEBUG_BEATS: readonly { readonly kind: PreviewKind; readonly label: string
  * The settings dialog: default table visibility, bot difficulty, edition, seat
  * count, and the PartyKit host override (blank = the build-time default). All
  * renderer preferences, persisted to `localStorage`.
+ *
+ * It also carries the music credits. They belong here rather than in the game
+ * chrome — the header has room to name the track playing, not to name everyone
+ * who wrote one — and here they are one scroll from the settings that govern
+ * the music itself. The list is built from `TRACKS`, so adding a track without
+ * crediting its composer is not something this dialog can be left behind by.
  *
  * In a dev build only, it also carries a debug section to preview any beat's
  * animation on fixture data — `onDebugTrigger` (when given) fires a beat
@@ -132,6 +139,18 @@ export function SettingsDialog({
               }}
             />
           </label>
+
+          <section className={styles.credits} aria-label="Music credits">
+            <span className={styles.debugLabel}>Music</span>
+            <ul className={styles.creditList}>
+              {TRACKS.map((track) => (
+                <li key={track.id}>
+                  <span className={styles.creditTitle}>{track.title}</span> — {track.credit}
+                </li>
+              ))}
+            </ul>
+            <span className={styles.creditSource}>{MUSIC_SOURCE}</span>
+          </section>
 
           {import.meta.env.DEV && onDebugTrigger && (
             <div className={styles.debug}>

@@ -6,6 +6,9 @@ import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings.js';
 import { SettingsDialog } from './SettingsDialog.js';
 import { partykitHost } from '../online/hostUrl.js';
 import { defaultConfig } from '../setup/gameConfig.js';
+import { MUSIC_SOURCE, TRACKS } from '../audio/musicManager.js';
+
+vi.mock('howler', () => ({ Howl: vi.fn().mockImplementation(() => ({})) }));
 
 afterEach(() => {
   localStorage.clear();
@@ -120,6 +123,19 @@ describe('defaultConfig seeded from settings', () => {
     expect(config.edition).toBe('edition-2015');
     expect(config.visibility).toBe('hidden');
     expect(config.seats[0]!.difficulty).toBe(8);
+  });
+});
+
+describe('SettingsDialog music credits', () => {
+  it('credits every track it can play, and says where they came from', () => {
+    render(<SettingsDialog open onClose={() => {}} />);
+
+    const credits = screen.getByRole('region', { name: 'Music credits' });
+    for (const track of TRACKS) {
+      expect(credits).toHaveTextContent(track.title);
+      expect(credits).toHaveTextContent(track.credit);
+    }
+    expect(credits).toHaveTextContent(MUSIC_SOURCE);
   });
 });
 

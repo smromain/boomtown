@@ -91,6 +91,21 @@ describe('Header music controls', () => {
     expect(loadSettings().musicMuted).toBe(false);
   });
 
+  it('swaps the note for heroicons\' no-symbol when the music is off, the way the speaker swaps too', async () => {
+    const user = userEvent.setup();
+    await renderPanel(<Header />);
+
+    const music = screen.getByRole('button', { name: /^Mute music/ });
+    const note = music.innerHTML;
+    expect(music.querySelector('svg')).toBeInTheDocument();
+
+    await user.click(music);
+    const off = screen.getByRole('button', { name: /^Unmute music/ });
+    // a different icon, and still an icon — not an empty button or a CSS trick
+    expect(off.innerHTML).not.toBe(note);
+    expect(off.querySelector('svg')).toBeInTheDocument();
+  });
+
   it('keeps the two switches apart: silencing the effects leaves the music alone', async () => {
     const user = userEvent.setup();
     await renderPanel(<Header />);

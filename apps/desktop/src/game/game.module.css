@@ -95,23 +95,6 @@
   opacity: 1;
 }
 
-/* Heroicons has no struck-through note, so the off state draws its own — the
-   speaker says the same thing by swapping to its crossed icon. */
-.slashed {
-  position: relative;
-}
-
-.slashed::after {
-  content: '';
-  position: absolute;
-  left: 5px;
-  right: 5px;
-  top: 50%;
-  height: 1.5px;
-  border-radius: 1px;
-  background: currentcolor;
-  transform: rotate(-45deg);
-}
 
 .trackName {
   margin-left: 2px;
