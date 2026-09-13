@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { netlog } from '@boomtown/client-core';
 import { RULES, type RulesetId, type Visibility } from '@boomtown/engine';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './settings.js';
 import type { PreviewKind } from '../beats/debug/fixtures.js';
 import { Choice } from '../setup/Choice.js';
-import { MUSIC_SOURCE, TRACKS } from '../audio/musicManager.js';
+import { MUSIC_SOURCE, TRACKS, musicManager } from '../audio/musicManager.js';
 import decisionStyles from '../decisions/decisions.module.css';
 import styles from './settings.module.css';
 
@@ -21,8 +21,15 @@ const DEBUG_BEATS: readonly { readonly kind: PreviewKind; readonly label: string
 
 /**
  * The settings dialog: default table visibility, bot difficulty, edition, seat
- * count, and the PartyKit host override (blank = the build-time default). All
- * renderer preferences, persisted to `localStorage`.
+ * count, sound level, and the PartyKit host override (blank = the build-time
+ * default). All renderer preferences, persisted to `localStorage`.
+ *
+ * Sound level is the same number the header's speaker slider writes, not a
+ * second one: a table that turns the volume down mid-game has set their level,
+ * and being handed it back at full the next time they load would make the
+ * in-game control feel like it didn't take. Setting it here is for doing it
+ * before a game rather than during one — a game the app opens quietly, or not
+ * at all.
  *
  * It also carries the music credits. They belong here rather than in the game
  * chrome — the header has room to name the track playing, not to name everyone
@@ -47,10 +54,22 @@ export function SettingsDialog({
   const [draft, setDraft] = useState<Settings>(loadSettings);
   const [logging, setLogging] = useState(() => netlog.isEnabled());
 
+  // This dialog stays mounted whether or not it is open, so its draft would
+  // otherwise be a snapshot of whatever the settings were when the app started
+  // — and Save would put that back, quietly undoing anything changed elsewhere
+  // since. Re-reading on open is what makes the header's volume slider and this
+  // field the same setting rather than two that fight.
+  useEffect(() => {
+    if (open) setDraft(loadSettings());
+  }, [open]);
+
   const patch = (over: Partial<Settings>) => setDraft((d) => ({ ...d, ...over }));
 
   const save = () => {
     saveSettings(draft);
+    // A track playing behind this dialog has to hear the new level now; effects
+    // pick it up as they next fire.
+    musicManager.applyVolume();
     onClose();
   };
 
@@ -113,6 +132,21 @@ export function SettingsDialog({
               onChange={(seatCount) => patch({ seatCount })}
             />
           </div>
+
+          <label className={styles.field}>
+            <span>
+              Sound level: {draft.volume === 0 ? 'off' : `${Math.round(draft.volume * 100)}%`}
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={Math.round(draft.volume * 100)}
+              aria-label="Sound level"
+              onChange={(e) => patch({ volume: Number(e.target.value) / 100 })}
+            />
+          </label>
 
           <label className={styles.field}>
             <span>Online host (blank = default)</span>

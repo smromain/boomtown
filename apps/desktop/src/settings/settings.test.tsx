@@ -1,5 +1,5 @@
 import { act } from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings.js';
@@ -7,8 +7,17 @@ import { SettingsDialog } from './SettingsDialog.js';
 import { partykitHost } from '../online/hostUrl.js';
 import { defaultConfig } from '../setup/gameConfig.js';
 import { MUSIC_SOURCE, TRACKS } from '../audio/musicManager.js';
+import { soundManager } from '../audio/soundManager.js';
 
-vi.mock('howler', () => ({ Howl: vi.fn().mockImplementation(() => ({})) }));
+vi.mock('howler', () => ({
+  Howl: vi.fn().mockImplementation(() => ({
+    play: vi.fn(),
+    stop: vi.fn(),
+    unload: vi.fn(),
+    volume: vi.fn(),
+    playing: () => false,
+  })),
+}));
 
 afterEach(() => {
   localStorage.clear();
@@ -156,6 +165,44 @@ describe('defaultConfig seeded from settings', () => {
     expect(config.edition).toBe('edition-2015');
     expect(config.visibility).toBe('hidden');
     expect(config.seats[0]!.difficulty).toBe(8);
+  });
+});
+
+describe('SettingsDialog sound level', () => {
+  it('sets the level the app loads at, and says "off" at the bottom of the range', async () => {
+    render(<SettingsDialog open onClose={() => {}} />);
+
+    const slider = screen.getByRole('slider', { name: 'Sound level' });
+    expect(slider).toHaveValue('100');
+
+    fireEvent.change(slider, { target: { value: '0' } });
+    expect(screen.getByText(/Sound level: off/i)).toBeInTheDocument();
+
+    fireEvent.change(slider, { target: { value: '45' } });
+    expect(screen.getByText('Sound level: 45%')).toBeInTheDocument();
+
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    });
+    expect(loadSettings().volume).toBeCloseTo(0.45);
+  });
+
+  it('shows the level as it stands now, not as it stood when the app started', () => {
+    // The dialog is mounted for the whole session, so a draft seeded once would
+    // hand back a stale volume — and Save would undo whatever the header's
+    // slider did during a game.
+    const { rerender } = render(<SettingsDialog open={false} onClose={() => {}} />);
+    saveSettings({ ...DEFAULT_SETTINGS, volume: 0.2 });
+
+    rerender(<SettingsDialog open onClose={() => {}} />);
+    expect(screen.getByRole('slider', { name: 'Sound level' })).toHaveValue('20');
+  });
+
+  it('a level set here is what a fresh load reads', () => {
+    render(<SettingsDialog open onClose={() => {}} />);
+    fireEvent.change(screen.getByRole('slider', { name: 'Sound level' }), { target: { value: '15' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(soundManager.volume()).toBeCloseTo(0.15);
   });
 });
 
