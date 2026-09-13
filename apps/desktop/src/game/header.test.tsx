@@ -52,36 +52,61 @@ describe('Header mute control', () => {
   });
 });
 
-describe('Header music control', () => {
-  it('names the track it is on and cycles to the next one, persisting the choice', async () => {
+describe('Header music controls', () => {
+  it('skips forward and back through the tracks, wrapping in both directions', async () => {
     const user = userEvent.setup();
     await renderPanel(<Header />);
 
-    const music = screen.getByRole('button', { name: new RegExp(`Music: ${TRACKS[0]!.title}`) });
-    await user.click(music);
+    expect(screen.getByRole('button', { name: `Mute music — ${TRACKS[0]!.title}` })).toBeInTheDocument();
 
-    expect(screen.getByRole('button', { name: new RegExp(`Music: ${TRACKS[1]!.title}`) })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Next track' }));
+    expect(screen.getByRole('button', { name: `Mute music — ${TRACKS[1]!.title}` })).toBeInTheDocument();
     expect(loadSettings().musicTrack).toBe(1);
-    // the name is said out loud for a moment, since an icon can't tell you
-    // which of four tracks the click landed on
+    // the arrows say what they landed on — the icon can't
     expect(screen.getByText(TRACKS[1]!.title)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Previous track' }));
+    expect(screen.getByRole('button', { name: `Mute music — ${TRACKS[0]!.title}` })).toBeInTheDocument();
+
+    // back past the first lands on the last rather than sticking
+    await user.click(screen.getByRole('button', { name: 'Previous track' }));
+    expect(
+      screen.getByRole('button', { name: `Mute music — ${TRACKS.at(-1)!.title}` }),
+    ).toBeInTheDocument();
+  });
+
+  it('turns the music off and on again, persisting it', async () => {
+    const user = userEvent.setup();
+    await renderPanel(<Header />);
+
+    const music = screen.getByRole('button', { name: `Mute music — ${TRACKS[0]!.title}` });
+    expect(music).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(music);
+    const off = screen.getByRole('button', { name: `Unmute music — ${TRACKS[0]!.title}` });
+    expect(off).toHaveAttribute('aria-pressed', 'true');
+    expect(loadSettings().musicMuted).toBe(true);
+
+    await user.click(off);
+    expect(loadSettings().musicMuted).toBe(false);
+  });
+
+  it('keeps the two switches apart: silencing the effects leaves the music alone', async () => {
+    const user = userEvent.setup();
+    await renderPanel(<Header />);
+
+    await user.click(screen.getByRole('button', { name: 'Mute sound' }));
+    expect(loadSettings().muted).toBe(true);
+    expect(loadSettings().musicMuted).toBe(false);
+    expect(
+      screen.getByRole('button', { name: `Mute music — ${TRACKS[0]!.title}` }),
+    ).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('picks up the remembered track rather than starting over at the first', async () => {
     saveSettings({ ...DEFAULT_SETTINGS, musicTrack: 2 });
     await renderPanel(<Header />);
-    expect(
-      screen.getByRole('button', { name: new RegExp(`Music: ${TRACKS[2]!.title}`) }),
-    ).toBeInTheDocument();
-  });
-
-  it('says so when the app is muted — one switch silences music and effects alike', async () => {
-    const user = userEvent.setup();
-    await renderPanel(<Header />);
-
-    await user.click(screen.getByRole('button', { name: 'Mute sound' }));
-    expect(screen.getByRole('button', { name: /Music: .*\(muted\)/ })).toBeInTheDocument();
-    expect(musicManager.current()).toBe(TRACKS[0]);
+    expect(screen.getByRole('button', { name: `Mute music — ${TRACKS[2]!.title}` })).toBeInTheDocument();
   });
 });
 

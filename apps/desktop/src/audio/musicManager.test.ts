@@ -52,23 +52,29 @@ describe('musicManager', () => {
     expect(instances()[0]!.play).toHaveBeenCalledOnce();
   });
 
-  it('stays silent while the app is muted — the speaker button covers music too', () => {
-    saveSettings({ ...DEFAULT_SETTINGS, muted: true });
+  it('stays silent while the music is off', () => {
+    saveSettings({ ...DEFAULT_SETTINGS, musicMuted: true });
     musicManager.play();
     expect(Howl).not.toHaveBeenCalled();
   });
 
-  it('syncMute stops the music, and picks it up again on unmute', () => {
+  it('ignores the effects mute — the two switches do not reach across', () => {
+    saveSettings({ ...DEFAULT_SETTINGS, muted: true });
+    musicManager.play();
+    expect(instances()[0]!.play).toHaveBeenCalledOnce();
+  });
+
+  it('setMuted stops the music at once, and starts it again on the way back', () => {
     musicManager.play();
     const first = instances()[0]!;
 
-    saveSettings({ ...loadSettings(), muted: true });
-    musicManager.syncMute();
+    musicManager.setMuted(true);
     expect(first.stop).toHaveBeenCalled();
+    expect(loadSettings().musicMuted).toBe(true);
 
-    saveSettings({ ...loadSettings(), muted: false });
-    musicManager.syncMute();
+    musicManager.setMuted(false);
     expect(first.play).toHaveBeenCalledTimes(2);
+    expect(loadSettings().musicMuted).toBe(false);
   });
 
   it('next() moves along the cycle, wrapping at the end', () => {
@@ -77,6 +83,17 @@ describe('musicManager', () => {
       expect(musicManager.next()).toBe(TRACKS[i]);
     }
     expect(musicManager.next()).toBe(TRACKS[0]);
+  });
+
+  it('previous() walks back, wrapping past the first to the last', () => {
+    expect(musicManager.previous()).toBe(TRACKS.at(-1));
+    expect(musicManager.previous()).toBe(TRACKS.at(-2));
+  });
+
+  it('a skip forward and back leaves the same track playing', () => {
+    musicManager.next();
+    expect(musicManager.previous()).toBe(TRACKS[0]);
+    expect(instances().at(-1)!.play).toHaveBeenCalled();
   });
 
   it('remembers the track across sittings, and plays it rather than the first', () => {
@@ -91,8 +108,8 @@ describe('musicManager', () => {
     expect(musicManager.current()).toBe(TRACKS[1]);
   });
 
-  it('cycling while muted still advances, so unmuting resumes where it was left', () => {
-    saveSettings({ ...DEFAULT_SETTINGS, muted: true });
+  it('skipping while the music is off still moves the dial, so switching it back on resumes there', () => {
+    saveSettings({ ...DEFAULT_SETTINGS, musicMuted: true });
     musicManager.next();
     expect(Howl).not.toHaveBeenCalled();
     expect(loadSettings().musicTrack).toBe(1);

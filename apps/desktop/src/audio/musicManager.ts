@@ -32,15 +32,14 @@ const VOLUME = 0.5;
  * The background music (one track at a time, looping) as a counterpart to
  * `soundManager`.
  *
- * The two share a single `muted` setting on purpose: the header's speaker
- * button is the one place a table silences the app, and a player reaching for
- * it while music plays means *stop the noise*, not "stop the blips and leave
- * the soundtrack running". So mute stops music too, and unmuting picks it back
- * up where the cycle stands.
+ * Music has its own switch (`musicMuted`) rather than riding on the effects'
+ * one. They serve different appetites: the effects mark the game's moments and
+ * a table that wants them may still not want a soundtrack under their
+ * conversation — or may want the room scored while the blips get out of the
+ * way. Either combination is reachable, and neither button reaches across.
  *
- * The music button never stops the music — it moves to the next track. Which
- * track is playing is remembered across games, so the table's choice is not
- * re-made for them every time they sit down.
+ * Which track is parked on is remembered across games, so the table's choice is
+ * not re-made for them every time they sit down.
  */
 class MusicManager {
   private howls = new Map<string, Howl>();
@@ -70,12 +69,24 @@ class MusicManager {
     return howl;
   }
 
+  isMuted(): boolean {
+    return loadSettings().musicMuted;
+  }
+
+  /** Turn the music off or back on, and act on it at once — the button that
+   *  calls this is the music's on/off, so it has to be audible immediately. */
+  setMuted(muted: boolean): void {
+    saveSettings({ ...loadSettings(), musicMuted: muted });
+    if (muted) this.stop();
+    else this.play();
+  }
+
   /**
-   * Start the current track, unless the app is muted. Safe to call as often as
+   * Start the current track, unless the music is off. Safe to call as often as
    * you like — a track already playing is left alone rather than restarted.
    */
   play(): void {
-    if (loadSettings().muted) return;
+    if (this.isMuted()) return;
     const howl = this.howlFor(this.current());
     if (!howl.playing()) howl.play();
   }
@@ -98,22 +109,27 @@ class MusicManager {
     this.howls.clear();
   }
 
-  /** Move to the next track and play it; returns the track now playing so the
-   *  caller can say its name. Cycling while muted still moves the cycle on, so
-   *  unmuting starts where the player last left it. */
+  /** The next track along, playing; returns it so the caller can say its name. */
   next(): Track {
-    this.stop();
-    const index = TRACKS.indexOf(this.current());
-    const settings = loadSettings();
-    saveSettings({ ...settings, musicTrack: (index + 1) % TRACKS.length });
-    this.play();
-    return this.current();
+    return this.step(1);
   }
 
-  /** Follow the app-wide mute after it changes: silence, or pick back up. */
-  syncMute(): void {
-    if (loadSettings().muted) this.stop();
-    else this.play();
+  /** The previous track, playing. The pair wrap in both directions: four tracks
+   *  is short enough that going back from the first should land on the last
+   *  rather than do nothing. */
+  previous(): Track {
+    return this.step(-1);
+  }
+
+  /** Moving the cycle while the music is off still moves it, so switching the
+   *  music back on starts from wherever the table left the dial. */
+  private step(delta: number): Track {
+    this.stop();
+    const index = TRACKS.indexOf(this.current());
+    const next = (index + delta + TRACKS.length) % TRACKS.length;
+    saveSettings({ ...loadSettings(), musicTrack: next });
+    this.play();
+    return this.current();
   }
 
   /**

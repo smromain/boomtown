@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import { MusicalNoteIcon, SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/solid';
+import {
+  BackwardIcon,
+  ForwardIcon,
+  MusicalNoteIcon,
+  SpeakerWaveIcon,
+  SpeakerXMarkIcon,
+} from '@heroicons/react/24/solid';
 import type { TurnStep } from '@boomtown/engine';
 import { useAnyView, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import { useReference } from '../reference/ReferenceContext.js';
@@ -43,31 +49,34 @@ export function Header() {
     const next = !muted;
     soundManager.setMuted(next);
     setMuted(next);
-    // One switch for the whole app: the speaker button stops the music as well
-    // as the effects, and unmuting picks the track back up.
-    musicManager.syncMute();
   };
 
   // Music plays while a game is on screen and stops when the table is left —
   // which keeps it true that whenever music is audible, both controls for it
   // are on screen. (The menu has neither.)
   const [track, setTrack] = useState(() => musicManager.current());
+  const [musicMuted, setMusicMuted] = useState(() => musicManager.isMuted());
   useEffect(() => {
     musicManager.begin();
     return () => musicManager.release();
   }, []);
-  // Naming the track for a moment after a click is the only feedback a cycling
-  // button can give: the icon can't say which of four it landed on, and a
-  // permanent title would be a fifth thing to read in the chrome.
+  // Naming the track for a moment after a skip is the only feedback the arrows
+  // can give: nothing about a back/forward icon says which of four you landed
+  // on, and a permanent title would be one more thing to read in the chrome.
   const [announcing, setAnnouncing] = useState(false);
   useEffect(() => {
     if (!announcing) return;
     const timer = window.setTimeout(() => setAnnouncing(false), 2600);
     return () => window.clearTimeout(timer);
   }, [announcing, track]);
-  const nextTrack = () => {
-    setTrack(musicManager.next());
+  const skip = (to: 'previous' | 'next') => () => {
+    setTrack(to === 'next' ? musicManager.next() : musicManager.previous());
     setAnnouncing(true);
+  };
+  const toggleMusic = () => {
+    const next = !musicMuted;
+    musicManager.setMuted(next);
+    setMusicMuted(next);
   };
 
   // "?" opens the stock reference and F1 the rules, unless a text field has
@@ -102,16 +111,34 @@ export function Header() {
         >
           {muted ? <SpeakerXMarkIcon width={16} height={16} /> : <SpeakerWaveIcon width={16} height={16} />}
         </button>
-        <button
-          type="button"
-          className={styles.muteButton}
-          onClick={nextTrack}
-          data-quiet={muted || undefined}
-          aria-label={`Music: ${track.title}${muted ? ' (muted)' : ''} — play the next track`}
-          title={track.title}
-        >
-          <MusicalNoteIcon width={16} height={16} />
-        </button>
+        <span className={styles.musicGroup}>
+          <button
+            type="button"
+            className={`${styles.muteButton} ${styles.skipButton}`}
+            onClick={skip('previous')}
+            aria-label="Previous track"
+          >
+            <BackwardIcon width={14} height={14} />
+          </button>
+          <button
+            type="button"
+            className={`${styles.muteButton} ${musicMuted ? styles.slashed : ''}`}
+            onClick={toggleMusic}
+            aria-label={musicMuted ? `Unmute music — ${track.title}` : `Mute music — ${track.title}`}
+            aria-pressed={musicMuted}
+            title={track.title}
+          >
+            <MusicalNoteIcon width={16} height={16} />
+          </button>
+          <button
+            type="button"
+            className={`${styles.muteButton} ${styles.skipButton}`}
+            onClick={skip('next')}
+            aria-label="Next track"
+          >
+            <ForwardIcon width={14} height={14} />
+          </button>
+        </span>
         {announcing && (
           <span className={styles.trackName} aria-hidden>
             {track.title}
