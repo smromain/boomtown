@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Howl } from 'howler';
-import { musicManager, TRACKS } from './musicManager.js';
+import { musicManager, MUSIC_MIX, TRACKS } from './musicManager.js';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '../settings/settings.js';
 
 interface FakeHowl {
   play: () => void;
+  volume: (level?: number) => void;
   stop: () => void;
   unload: () => void;
   playing: () => boolean;
@@ -23,6 +24,7 @@ vi.mock('howler', () => ({
       unload: vi.fn(() => {
         playing = false;
       }),
+      volume: vi.fn(),
       playing: () => playing,
     };
   }),
@@ -39,11 +41,36 @@ afterEach(() => {
 });
 
 describe('musicManager', () => {
-  it('plays the first track at half volume, looping', () => {
+  it('plays the first track — Pleasant Creek Loop — at half the master volume, looping', () => {
     musicManager.play();
+    expect(TRACKS[0]!.id).toBe('pleasant-creek');
     expect(Howl).toHaveBeenCalledOnce();
-    expect(vi.mocked(Howl).mock.calls[0]![0]).toMatchObject({ loop: true, volume: 0.5 });
+    expect(vi.mocked(Howl).mock.calls[0]![0]).toMatchObject({ loop: true, volume: MUSIC_MIX });
     expect(instances()[0]!.play).toHaveBeenCalledOnce();
+  });
+
+  it('keeps its half-share as the master volume moves', () => {
+    saveSettings({ ...DEFAULT_SETTINGS, volume: 0.4 });
+    musicManager.play();
+    expect(vi.mocked(Howl).mock.calls[0]![0]).toMatchObject({ volume: 0.4 * MUSIC_MIX });
+  });
+
+  it('applyVolume pushes a new level onto a track already playing', () => {
+    musicManager.play();
+    saveSettings({ ...loadSettings(), volume: 0.2 });
+    musicManager.applyVolume();
+    expect(instances()[0]!.volume).toHaveBeenCalledWith(0.2 * MUSIC_MIX);
+  });
+
+  it('applyVolume stops the music at zero rather than looping it inaudibly', () => {
+    musicManager.play();
+    saveSettings({ ...loadSettings(), volume: 0 });
+    musicManager.applyVolume();
+    expect(instances()[0]!.stop).toHaveBeenCalled();
+
+    saveSettings({ ...loadSettings(), volume: 1 });
+    musicManager.applyVolume();
+    expect(instances()[0]!.play).toHaveBeenCalledTimes(2);
   });
 
   it('does not restart a track that is already playing', () => {
@@ -58,10 +85,10 @@ describe('musicManager', () => {
     expect(Howl).not.toHaveBeenCalled();
   });
 
-  it('ignores the effects mute — the two switches do not reach across', () => {
-    saveSettings({ ...DEFAULT_SETTINGS, muted: true });
-    musicManager.play();
-    expect(instances()[0]!.play).toHaveBeenCalledOnce();
+  it('has its own switch — turning the music off leaves the master volume alone', () => {
+    musicManager.setMuted(true);
+    expect(loadSettings().volume).toBe(DEFAULT_SETTINGS.volume);
+    expect(loadSettings().musicMuted).toBe(true);
   });
 
   it('setMuted stops the music at once, and starts it again on the way back', () => {
@@ -97,22 +124,22 @@ describe('musicManager', () => {
   });
 
   it('remembers the track across sittings, and plays it rather than the first', () => {
-    saveSettings({ ...DEFAULT_SETTINGS, musicTrack: 2 });
+    saveSettings({ ...DEFAULT_SETTINGS, musicTrack: TRACKS[2]!.id });
     expect(musicManager.current()).toBe(TRACKS[2]);
     musicManager.play();
     expect(vi.mocked(Howl).mock.calls[0]![0]).toMatchObject({ src: [TRACKS[2]!.src] });
   });
 
-  it('folds a stored index past the end back to the first track', () => {
-    saveSettings({ ...DEFAULT_SETTINGS, musicTrack: TRACKS.length + 1 });
-    expect(musicManager.current()).toBe(TRACKS[1]);
+  it('falls back to the first track when the stored id names one that is gone', () => {
+    saveSettings({ ...DEFAULT_SETTINGS, musicTrack: 'a-track-we-dropped' });
+    expect(musicManager.current()).toBe(TRACKS[0]);
   });
 
   it('skipping while the music is off still moves the dial, so switching it back on resumes there', () => {
     saveSettings({ ...DEFAULT_SETTINGS, musicMuted: true });
     musicManager.next();
     expect(Howl).not.toHaveBeenCalled();
-    expect(loadSettings().musicTrack).toBe(1);
+    expect(loadSettings().musicTrack).toBe(TRACKS[1]!.id);
   });
 
   it('reuses one Howl per track across stops and starts', () => {

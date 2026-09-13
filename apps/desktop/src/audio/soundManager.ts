@@ -36,18 +36,29 @@ class SoundManager {
     return howl;
   }
 
+  /** The master volume, 0–1. Music reads the same number — see `MUSIC_MIX`. */
+  volume(): number {
+    const stored = loadSettings().volume;
+    return Number.isFinite(stored) ? Math.min(1, Math.max(0, stored)) : 1;
+  }
+
+  setVolume(volume: number): void {
+    saveSettings({ ...loadSettings(), volume: Math.min(1, Math.max(0, volume)) });
+  }
+
   isMuted(): boolean {
-    return loadSettings().muted;
+    return this.volume() === 0;
   }
 
-  setMuted(muted: boolean): void {
-    saveSettings({ ...loadSettings(), muted });
-  }
-
-  /** No-op when muted — every call site can fire-and-forget. */
+  /** No-op at zero volume — every call site can fire-and-forget. Effects are
+   *  short, so the level is set as each one fires rather than pushed onto live
+   *  playback the way music needs. */
   play(id: SoundId): void {
-    if (this.isMuted()) return;
-    this.howlFor(id).play();
+    const volume = this.volume();
+    if (volume === 0) return;
+    const howl = this.howlFor(id);
+    howl.volume(volume);
+    howl.play();
   }
 }
 

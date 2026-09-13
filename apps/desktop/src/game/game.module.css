@@ -96,6 +96,13 @@
 }
 
 
+.volumeSlider {
+  width: 84px;
+  margin: 0 2px 0 4px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 .trackName {
   margin-left: 2px;
   font-size: 11px;

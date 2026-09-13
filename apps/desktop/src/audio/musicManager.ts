@@ -1,5 +1,6 @@
 import { Howl } from 'howler';
 import { loadSettings, saveSettings } from '../settings/settings.js';
+import { soundManager } from './soundManager.js';
 
 import greenSalonUrl from '../assets/music/green-salon.ogg';
 import azureUrl from '../assets/music/azure.mp3';
@@ -19,25 +20,26 @@ export interface Track {
 /** Where every track came from, named once in the credits. */
 export const MUSIC_SOURCE = 'All tracks sourced from OpenGameArt.org';
 
-/** The order the music button cycles in. */
+/** The order the back/forward buttons walk, first track first. */
 export const TRACKS: readonly Track[] = [
-  { id: 'green-salon', title: 'Green Salon', src: greenSalonUrl, credit: 'Composed/Authored by Yubatake' },
-  { id: 'azure', title: 'Azure', src: azureUrl, credit: 'Music by Kistol' },
-  { id: '8bit-bossa', title: '8-Bit Bossa', src: bossaUrl, credit: 'Composed/Authored by Joth' },
   {
     id: 'pleasant-creek',
     title: 'Pleasant Creek Loop',
     src: pleasantCreekUrl,
     credit: 'Composed/Authored by Matthew Pablo',
   },
+  { id: 'green-salon', title: 'Green Salon', src: greenSalonUrl, credit: 'Composed/Authored by Yubatake' },
+  { id: 'azure', title: 'Azure', src: azureUrl, credit: 'Music by Kistol' },
+  { id: '8bit-bossa', title: '8-Bit Bossa', src: bossaUrl, credit: 'Composed/Authored by Joth' },
 ];
 
 /**
- * Under the table talk, not over it. Half volume is the whole reason music can
- * be on by default: at full it competes with the beats' own sounds, which carry
- * the game's moments and have to win.
+ * Music plays at half the master volume, always. Under the table talk, not over
+ * it: at parity it competes with the beats' own sounds, which carry the game's
+ * moments and have to win. The slider moves the pair together and this keeps
+ * the balance between them wherever it lands.
  */
-const VOLUME = 0.5;
+export const MUSIC_MIX = 0.5;
 
 /**
  * The background music (one track at a time, looping) as a counterpart to
@@ -63,9 +65,23 @@ class MusicManager {
   /** The track the cycle is on. A stored index past the end folds back to the
    *  first, so removing a track can't leave the player pointing at nothing. */
   current(): Track {
-    const stored = loadSettings().musicTrack;
-    const index = Number.isInteger(stored) ? ((stored % TRACKS.length) + TRACKS.length) % TRACKS.length : 0;
-    return TRACKS[index]!;
+    return TRACKS.find((track) => track.id === loadSettings().musicTrack) ?? TRACKS[0]!;
+  }
+
+  /** What music actually plays at: its fixed share of the master volume. */
+  private level(): number {
+    return soundManager.volume() * MUSIC_MIX;
+  }
+
+  /** Push a volume change onto whatever is playing. A track runs for minutes,
+   *  so unlike an effect it cannot wait for the next time it starts. */
+  applyVolume(): void {
+    const level = this.level();
+    for (const howl of this.howls.values()) howl.volume(level);
+    // Dragging the master slider to zero is a mute in every sense; the music
+    // should stop rather than loop inaudibly, and pick up again above zero.
+    if (level === 0) this.stop();
+    else this.play();
   }
 
   private howlFor(track: Track): Howl {
@@ -74,7 +90,7 @@ class MusicManager {
       // `html5: true` streams rather than decoding the whole file into memory
       // first — these are minutes-long tracks, not blips, and one of them is a
       // 17MB wav.
-      howl = new Howl({ src: [track.src], loop: true, volume: VOLUME, html5: true });
+      howl = new Howl({ src: [track.src], loop: true, volume: this.level(), html5: true });
       this.howls.set(track.id, howl);
     }
     return howl;
@@ -97,7 +113,7 @@ class MusicManager {
    * you like — a track already playing is left alone rather than restarted.
    */
   play(): void {
-    if (this.isMuted()) return;
+    if (this.isMuted() || this.level() === 0) return;
     const howl = this.howlFor(this.current());
     if (!howl.playing()) howl.play();
   }
@@ -137,8 +153,8 @@ class MusicManager {
   private step(delta: number): Track {
     this.stop();
     const index = TRACKS.indexOf(this.current());
-    const next = (index + delta + TRACKS.length) % TRACKS.length;
-    saveSettings({ ...loadSettings(), musicTrack: next });
+    const next = TRACKS[(index + delta + TRACKS.length) % TRACKS.length]!;
+    saveSettings({ ...loadSettings(), musicTrack: next.id });
     this.play();
     return this.current();
   }

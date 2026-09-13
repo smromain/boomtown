@@ -5,7 +5,8 @@ import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '../settings/settin
 
 vi.mock('howler', () => {
   const play = vi.fn();
-  return { Howl: vi.fn().mockImplementation(() => ({ play })) };
+  const volume = vi.fn();
+  return { Howl: vi.fn().mockImplementation(() => ({ play, volume })) };
 });
 
 afterEach(() => {
@@ -14,28 +15,37 @@ afterEach(() => {
 });
 
 describe('soundManager', () => {
-  it('play() triggers playback when not muted', () => {
-    saveSettings({ ...DEFAULT_SETTINGS, muted: false });
+  it('play() triggers playback at the master volume', () => {
+    saveSettings({ ...DEFAULT_SETTINGS, volume: 0.6 });
     soundManager.play('tile-place');
-    const instance = vi.mocked(Howl).mock.results[0]!.value as { play: () => void };
+    const instance = vi.mocked(Howl).mock.results[0]!.value as { play: () => void; volume: (v: number) => void };
+    expect(instance.volume).toHaveBeenCalledWith(0.6);
     expect(instance.play).toHaveBeenCalledOnce();
   });
 
-  it('play() is a no-op when muted', () => {
-    saveSettings({ ...DEFAULT_SETTINGS, muted: true });
+  it('play() is a no-op at zero — the slider bottoming out is the mute', () => {
+    saveSettings({ ...DEFAULT_SETTINGS, volume: 0 });
+    expect(soundManager.isMuted()).toBe(true);
     soundManager.play('tile-place');
     expect(vi.mocked(Howl)).not.toHaveBeenCalled();
   });
 
-  it('setMuted persists through the settings store', () => {
-    soundManager.setMuted(true);
-    expect(loadSettings().muted).toBe(true);
-    soundManager.setMuted(false);
-    expect(loadSettings().muted).toBe(false);
+  it('setVolume persists through the settings store, clamped to 0–1', () => {
+    soundManager.setVolume(0.25);
+    expect(loadSettings().volume).toBe(0.25);
+    soundManager.setVolume(4);
+    expect(loadSettings().volume).toBe(1);
+    soundManager.setVolume(-1);
+    expect(loadSettings().volume).toBe(0);
+  });
+
+  it('a stored volume that is not a number falls back to full rather than silence', () => {
+    localStorage.setItem('boomtown.settings', JSON.stringify({ version: 3, volume: 'loud' }));
+    expect(soundManager.volume()).toBe(1);
   });
 
   it('reuses one Howl instance per sound id across calls', () => {
-    saveSettings({ ...DEFAULT_SETTINGS, muted: false });
+    saveSettings({ ...DEFAULT_SETTINGS, volume: 1 });
     soundManager.play('victory');
     soundManager.play('victory');
     expect(vi.mocked(Howl)).toHaveBeenCalledTimes(1);

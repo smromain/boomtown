@@ -42,14 +42,22 @@ export function Header() {
   const { openChart, openRules } = useReference();
   // Lives in the always-rendered brand region rather than the status block
   // below (KTD5): the status block used to vanish on a bot's or a remote
-  // player's turn, exactly when a spectator most wants the mute control. It no
-  // longer does, but the mute control still belongs with the brand — it is a
+  // player's turn, exactly when a spectator most wants the volume control. It
+  // no longer does, but the volume still belongs with the brand — it is a
   // property of the app, not of the table.
-  const [muted, setMuted] = useState(() => soundManager.isMuted());
-  const toggleMuted = () => {
-    const next = !muted;
-    soundManager.setMuted(next);
-    setMuted(next);
+  //
+  // The speaker opens a slider rather than toggling silence: one number now
+  // governs the effects and the music together, and zero is the mute that
+  // button used to be. Kept behind a click because the chrome is a strip, not
+  // a mixing desk — the slider is for setting a level, not for reading one.
+  const [volume, setVolumeState] = useState(() => soundManager.volume());
+  const [volumeOpen, setVolumeOpen] = useState(false);
+  const setVolume = (next: number) => {
+    soundManager.setVolume(next);
+    setVolumeState(next);
+    // Effects take the new level the next time one fires; a track already
+    // playing has to be told.
+    musicManager.applyVolume();
   };
 
   // Music plays while a game is on screen and stops when the table is left —
@@ -106,12 +114,24 @@ export function Header() {
         <button
           type="button"
           className={styles.muteButton}
-          onClick={toggleMuted}
-          aria-label={muted ? 'Unmute sound' : 'Mute sound'}
-          aria-pressed={muted}
+          onClick={() => setVolumeOpen((open) => !open)}
+          aria-label="Volume"
+          aria-expanded={volumeOpen}
         >
-          {muted ? <SpeakerXMarkIcon width={16} height={16} /> : <SpeakerWaveIcon width={16} height={16} />}
+          {volume === 0 ? <SpeakerXMarkIcon width={16} height={16} /> : <SpeakerWaveIcon width={16} height={16} />}
         </button>
+        {volumeOpen && (
+          <input
+            type="range"
+            className={styles.volumeSlider}
+            min={0}
+            max={100}
+            step={5}
+            value={Math.round(volume * 100)}
+            aria-label="Master volume"
+            onChange={(e) => setVolume(Number(e.target.value) / 100)}
+          />
+        )}
         <span className={styles.musicGroup}>
           <button
             type="button"

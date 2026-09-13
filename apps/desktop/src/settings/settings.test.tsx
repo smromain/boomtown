@@ -36,8 +36,10 @@ describe('settings store', () => {
     it('drops an edition stored before the choice existed, so the new default lands', () => {
       localStorage.setItem('boomtown.settings', JSON.stringify(v1));
       expect(loadSettings().edition).toBe('boomtown');
-      // and only the edition — every other stored preference survives
-      expect(loadSettings().muted).toBe(true);
+      // and only the edition — every other stored preference survives, the
+      // v1 mute arriving as the volume it means (see the v2 → v3 migration)
+      expect(loadSettings().volume).toBe(0);
+      expect(loadSettings().seatCount).toBe(3);
     });
 
     it('leaves a v2 blob alone, so a deliberate Classic choice sticks', () => {
@@ -51,13 +53,44 @@ describe('settings store', () => {
     });
   });
 
-  it('sound is on (muted: false) by default (R9)', () => {
-    expect(loadSettings().muted).toBe(false);
+  it('sound is on at full volume by default (R9)', () => {
+    expect(loadSettings().volume).toBe(1);
   });
 
-  it('round-trips muted', () => {
-    saveSettings({ ...DEFAULT_SETTINGS, muted: true });
-    expect(loadSettings().muted).toBe(true);
+  it('round-trips a volume', () => {
+    saveSettings({ ...DEFAULT_SETTINGS, volume: 0.35 });
+    expect(loadSettings().volume).toBe(0.35);
+  });
+
+  describe('v2 → v3 migration', () => {
+    const v2 = (over: Record<string, unknown>) =>
+      localStorage.setItem(
+        'boomtown.settings',
+        JSON.stringify({ ...DEFAULT_SETTINGS, version: 2, ...over }),
+      );
+
+    it('reads an old mute as the volume it meant', () => {
+      v2({ muted: true });
+      expect(loadSettings().volume).toBe(0);
+      v2({ muted: false });
+      expect(loadSettings().volume).toBe(1);
+    });
+
+    it('drops a track stored as a position, which reordering made meaningless', () => {
+      v2({ musicTrack: 3 });
+      expect(loadSettings().musicTrack).toBe(DEFAULT_SETTINGS.musicTrack);
+    });
+
+    it('keeps a track already stored as an id', () => {
+      v2({ musicTrack: 'azure' });
+      expect(loadSettings().musicTrack).toBe('azure');
+    });
+
+    it('leaves a v3 blob alone', () => {
+      saveSettings({ ...DEFAULT_SETTINGS, volume: 0.5, musicTrack: 'green-salon' });
+      expect(loadSettings().volume).toBe(0.5);
+      expect(loadSettings().musicTrack).toBe('green-salon');
+    });
   });
 
   it('a session with no localStorage falls back to defaults without throwing', () => {
@@ -75,7 +108,7 @@ describe('settings store', () => {
     });
     try {
       expect(loadSettings()).toEqual(DEFAULT_SETTINGS);
-      expect(() => saveSettings({ ...DEFAULT_SETTINGS, muted: true })).not.toThrow();
+      expect(() => saveSettings({ ...DEFAULT_SETTINGS, volume: 0 })).not.toThrow();
     } finally {
       Object.defineProperty(window, 'localStorage', original);
     }
