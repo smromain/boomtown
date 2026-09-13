@@ -3,6 +3,8 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { localActiveView } from '@boomtown/client-core';
 import { useGameState, useLocalSeats } from '../client/GameClientProvider.js';
 import { useHotSeat } from './HotSeatContext.js';
+import { useActiveBeat } from '../beats/BeatContext.js';
+import { coversTheScreen } from '../beats/beatTriggers.js';
 import { BuyControls } from '../panels/BuyControls.js';
 import { EndTurnPrompt } from './EndTurnPrompt.js';
 import styles from '../decisions/decisions.module.css';
@@ -24,6 +26,9 @@ import styles from '../decisions/decisions.module.css';
  * the very glitch this is meant to remove. The steps are consecutive and the
  * seat is the same, so the whole back half of the turn happens in one place.
  *
+ * It also waits out any beat that covers the screen, the way `TurnHandoff`
+ * does — see `BeatOrchestrator`.
+ *
  * Once the game is over it stays shut: the final standings are the only thing
  * left to look at, and the turn behind them is no longer playable.
  *
@@ -43,6 +48,7 @@ import styles from '../decisions/decisions.module.css';
 export function TurnModal() {
   const local = useLocalSeats();
   const { needsHandoff } = useHotSeat();
+  const { active: activeBeat } = useActiveBeat();
   const activeSeat = useGameState((state) => state.activeSeat);
   const over = useGameState((state) => state.status === 'over');
   const step = useGameState((state) => localActiveView(state, local)?.step);
@@ -52,7 +58,11 @@ export function TurnModal() {
   // announced from, and `endGame` leaves it there. Without this guard the
   // end-of-turn prompt reopens on top of the final standings offering an "End
   // turn" the engine can only reject, so the game over screen looks broken.
-  const open = (atBuy || atEndCheck) && !over && !needsHandoff(activeSeat);
+  // A beat that covers the screen plays out first — the buy step behind a
+  // merger's climax is the mergemaker's own, and opening over it both hides the
+  // moment and asks for a decision before the table has seen what happened.
+  const beatOwnsTheScreen = activeBeat != null && coversTheScreen(activeBeat);
+  const open = (atBuy || atEndCheck) && !over && !beatOwnsTheScreen && !needsHandoff(activeSeat);
 
   const [minimized, setMinimized] = useState(false);
   useEffect(() => {

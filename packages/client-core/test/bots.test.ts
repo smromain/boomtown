@@ -18,16 +18,59 @@ function makeGame(bots: readonly number[], opts?: { seed?: number; thinkMs?: num
   const client = createGameClient(
     localTransport({ setup, controls: [0, 1, 2], engine: session }),
   );
-  const detach = attachBotDriver(client, {
+  const driver = attachBotDriver(client, {
     bots: bots.map((seat) => ({ seat, level: 8 })),
     snapshot: () => session.snapshot(),
     seed: 1,
     thinkMs: opts?.thinkMs ?? 0,
   });
-  return { client, session, detach };
+  return { client, session, detach: driver.detach, driver };
 }
 
 describe('attachBotDriver', () => {
+  it('holds every bot while paused, and picks the game back up on resume', async () => {
+    // The UI pauses the driver while a beat covers the screen. A bot that keeps
+    // playing behind the curtain buries the moment being shown.
+    const { client, driver } = makeGame([0, 1, 2]);
+    await client.connect();
+    await flush();
+    driver.setPaused(true);
+
+    const held = client.store.getState().log.length;
+    for (let i = 0; i < 50; i++) await flush();
+    expect(client.store.getState().log.length).toBe(held);
+    // a nudge must not smuggle a move past the hold either
+    driver.nudge();
+    for (let i = 0; i < 20; i++) await flush();
+    expect(client.store.getState().log.length).toBe(held);
+
+    driver.setPaused(false);
+    for (let i = 0; i < 200 && client.store.getState().log.length === held; i++) {
+      await flush();
+    }
+    expect(client.store.getState().log.length).toBeGreaterThan(held);
+    driver.detach();
+  });
+
+  it('never reports a paused bot as stuck', async () => {
+    const onStuck = vi.fn();
+    const session = new GameSession({ seats: [{ name: 'S0' }, { name: 'S1' }, { name: 'S2' }], seed: 42, turnOrder: [0, 1, 2] });
+    const client = createGameClient(localTransport({ setup: { seats: [{ name: 'S0' }, { name: 'S1' }, { name: 'S2' }], seed: 42, turnOrder: [0, 1, 2] }, controls: [0, 1, 2], engine: session }));
+    const driver = attachBotDriver(client, {
+      bots: [{ seat: 0, level: 8 }],
+      snapshot: () => session.snapshot(),
+      seed: 1,
+      thinkMs: 0,
+      onStuck,
+      watchdogMs: 20,
+    });
+    await client.connect();
+    driver.setPaused(true);
+    for (let i = 0; i < 60; i++) await flush();
+    expect(onStuck).not.toHaveBeenCalled();
+    driver.detach();
+  });
+
   it('leaves a human active seat untouched', async () => {
     const { client, detach } = makeGame([1, 2]); // seat 0 is human
     await client.connect();
