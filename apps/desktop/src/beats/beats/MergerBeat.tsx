@@ -215,7 +215,7 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
               display: 'flex',
               gap: 76,
               marginTop: at.kind === 'bonus' || reduced ? 40 : 0,
-              height: at.kind === 'bonus' || reduced ? 128 : 0,
+              height: at.kind === 'bonus' || reduced ? 164 : 0,
               opacity: at.kind === 'bonus' || reduced ? 1 : 0,
               overflow: 'hidden',
               transition: 'all 460ms ease',
@@ -229,11 +229,17 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
               >
                 <span className={styles.kicker}>
                   {activeDefunct && multi ? `${view.corporations[activeDefunct].baseName} · ` : ''}
-                  {bonus.seats.length} seat{bonus.seats.length > 1 ? 's' : ''} ·{' '}
                   {tierWord(bonus.tier, view.ruleset.bonusTiers)}
                 </span>
                 <span className="serif tabnum" style={{ display: 'block', fontSize: 56, lineHeight: 1.05, marginTop: 6, letterSpacing: '-0.03em' }}>
                   ${bonus.amount.toLocaleString()}
+                  {bonus.seats.length > 1 ? <span style={{ fontSize: 22, marginLeft: 8, opacity: 0.7 }}>each</span> : null}
+                </span>
+                {/* Who was actually paid. A seat count told you a bonus landed
+                    somewhere; the point of watching a merger is knowing who it
+                    landed on. */}
+                <span style={{ display: 'block', marginTop: 8, fontSize: 15, color: '#c9bfb2', maxWidth: 260 }}>
+                  {bonus.seats.map((seat) => view.seats[seat]?.name ?? `Seat ${seat + 1}`).join(', ')}
                 </span>
               </div>
             ))}

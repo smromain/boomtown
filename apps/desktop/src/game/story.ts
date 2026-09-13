@@ -162,9 +162,14 @@ export function latestMerger(log: readonly EngineEvent[]): MergerStory | null {
   for (const event of span) {
     if (event.type === 'survivor-chosen') survivor = event.survivor;
     else if (event.type === 'bonus-paid') {
-      // Opens a chain. `bonus-paid` always precedes the `corporation-defunct`
-      // that closes it, because the engine pays before it disposes.
-      chains.push({ defunct: event.defunct, bonuses: linesFor(event.payouts), resolved: false });
+      // The engine pays before it disposes, so this normally opens the chain.
+      // Match on the industry rather than assuming the order, though: a chain
+      // is one absorption whichever of its two events is seen first, and a
+      // reader that assumed the order counted a single absorption twice.
+      const existing = chains.findIndex((c) => c.defunct === event.defunct && c.bonuses.length === 0);
+      const line = { defunct: event.defunct, bonuses: linesFor(event.payouts) };
+      if (existing >= 0) chains[existing] = { ...chains[existing]!, ...line };
+      else chains.push({ ...line, resolved: false });
     } else if (event.type === 'corporation-defunct') {
       const open = chains.findIndex((c) => c.defunct === event.industry && !c.resolved);
       if (open >= 0) chains[open] = { ...chains[open]!, resolved: true };

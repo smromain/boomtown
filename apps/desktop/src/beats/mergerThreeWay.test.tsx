@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BeatProvider } from './BeatContext.js';
 import { stagesFor } from './beats/MergerBeat.js';
+import { latestMerger } from '../game/story.js';
 import { BeatOrchestrator } from './BeatOrchestrator.js';
 import { DebugBeatPreview } from './debug/DebugBeatPreview.js';
 import { DecisionModal } from '../decisions/DecisionModal.js';
@@ -49,6 +50,37 @@ describe('the merger beat staging', () => {
 
   it('skips a bonus stage for a chain that paid nobody', () => {
     expect(stagesFor(chains(0)).map((s) => s.kind)).toEqual(['collide', 'blend', 'name', 'mass', 'settle']);
+  });
+
+  it('counts one absorption per company eaten, whichever of its events came first', () => {
+    // The debug fixture used to list corporation-defunct before bonus-paid,
+    // which is not the order the engine emits. A reader that assumed the order
+    // opened a second chain for the same company, and a plain two-way merger
+    // played its one absorption twice, labelled "1 of 2".
+    const swapped = latestMerger([
+      { type: 'merger-started', placedTile: '4E', corporations: ['books', 'energy'] },
+      { type: 'survivor-chosen', survivor: 'books' },
+      { type: 'corporation-defunct', industry: 'energy', absorbedInto: 'books' },
+      { type: 'bonus-paid', defunct: 'energy', payouts: [{ seat: 2, tier: 'primary', amount: 3000 }] },
+      { type: 'merger-completed', survivor: 'books' },
+    ])!;
+    expect(swapped.chains.map((c) => c.defunct)).toEqual(['energy']);
+    expect(swapped.chains[0]!.bonuses).toHaveLength(1);
+
+    // and the two-way debug preview, which is what showed the doubling
+    render(<DebugBeatPreview kind="merger" onDismiss={() => {}} />);
+    expect(screen.getByRole('dialog')).not.toHaveTextContent(/absorption/i);
+  });
+
+  it('names the players a bonus was paid to, not just how many seats', async () => {
+    const user = userEvent.setup();
+    render(<DebugBeatPreview kind="merger-three-way" onDismiss={() => {}} />);
+    const dialog = screen.getByRole('dialog');
+    for (let i = 0; i < 2; i++) await act(async () => { await user.click(dialog); });
+    // The first chain paid seats 2 and 0 — a payout you cannot act on if the
+    // screen only tells you that somebody, somewhere, was paid.
+    expect(dialog).toHaveTextContent('Player 3');
+    expect(dialog).toHaveTextContent('Player 1');
   });
 
   it('shows the whole absorbed mass, one block per company eaten', async () => {

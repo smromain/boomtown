@@ -81,7 +81,7 @@ export function mergerPreview(): BeatPreview {
   const log: EngineEvent[] = [
     { type: 'merger-started', placedTile: '4E', corporations: ['books', 'energy'] },
     { type: 'survivor-chosen', survivor: 'books' },
-    { type: 'corporation-defunct', industry: 'energy', absorbedInto: 'books' },
+    // Payout first, then disposal — the order the engine actually emits.
     {
       type: 'bonus-paid',
       defunct: 'energy',
@@ -90,6 +90,7 @@ export function mergerPreview(): BeatPreview {
         { seat: 0, tier: 'secondary', amount: 1500 },
       ],
     },
+    { type: 'corporation-defunct', industry: 'energy', absorbedInto: 'books' },
     { type: 'merger-completed', survivor: 'books' },
   ];
   return { beat: { id: 'merger' }, view, log };
