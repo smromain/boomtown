@@ -280,6 +280,7 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
 
         {/* mass: the blocks consolidate into one wider block. */}
         <div
+          data-mass-row
           style={{
             display: 'flex',
             alignItems: 'flex-end',
@@ -289,7 +290,6 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
             height: past('mass') ? 76 : 0,
             opacity: past('mass') ? 1 : 0,
             overflow: 'visible',
-            position: 'relative',
             transition: 'all 620ms cubic-bezier(0.16,0.9,0.2,1)',
           }}
         >
@@ -321,23 +321,26 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
               />
             );
           })}
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: -26,
-              fontSize: 10,
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-              color: '#6f665d',
-              opacity: past('mass') ? 1 : 0,
-              transition: 'opacity 400ms ease 700ms',
-            }}
-          >
-            {survivor?.size ?? 0} tiles under one name
-            {multi ? ` · ${merger.chains.length} companies eaten` : ''}
-          </div>
+        </div>
+
+        {/* The caption is a sibling of the blocks, not a child of them: inside
+            that flex row it was sized by the blocks, so as they collapsed at
+            the settle its own box collapsed with them and the sentence wrapped
+            into a column. It belongs to the whole beat, so it gets the beat's
+            width. */}
+        <div
+          data-mass-caption
+          className={styles.kicker}
+          style={{
+            alignSelf: 'stretch',
+            marginTop: past('mass') ? 26 : 0,
+            color: '#8a8076',
+            opacity: past('mass') ? 1 : 0,
+            transition: 'opacity 400ms ease 700ms, margin-top 620ms cubic-bezier(0.16,0.9,0.2,1)',
+          }}
+        >
+          {survivor?.size ?? 0} tiles under one name
+          {multi ? ` · ${merger.chains.length} companies eaten` : ''}
         </div>
       </div>
       <span className={styles.hint}>click or press space to advance · esc to skip the rest</span>

@@ -101,6 +101,21 @@ describe('the merger beat staging', () => {
     expect(dialog).toHaveTextContent(/2 companies eaten/i);
   });
 
+  it('keeps the mass caption out of the collapsing block row', async () => {
+    const user = userEvent.setup();
+    render(<DebugBeatPreview kind="merger-three-way" onDismiss={() => {}} />);
+    const dialog = screen.getByRole('dialog');
+    for (let i = 0; i < 7; i++) await act(async () => { await user.click(dialog); });
+
+    // The caption used to be an absolutely-positioned child of the block row,
+    // so it was sized by the blocks: at the settle they collapse to nothing and
+    // took the sentence's width with them, wrapping it into a column.
+    const caption = dialog.querySelector('[data-mass-caption]')!;
+    expect(caption).toBeInTheDocument();
+    expect(caption.closest('[data-mass-row]')).toBeNull();
+    expect(caption).toHaveTextContent('9 tiles under one name · 2 companies eaten');
+  });
+
   it('keeps a single-chain merger on its original timings, and fits three chains in the watchdog', () => {
     const total = (n: number[]) => stagesFor(chains(...n)).reduce((sum, s) => sum + s.ms, 0);
     expect(total([2])).toBe(16600); // unchanged from before the restructure
