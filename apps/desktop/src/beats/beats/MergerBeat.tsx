@@ -1,52 +1,109 @@
-import { useEffect, useRef, useState } from 'react';
-import type { PlayerView } from '@boomtown/engine';
-import { INDUSTRY_INFO } from '@boomtown/engine';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Industry, PlayerView } from '@boomtown/engine';
+import { INDUSTRY_INFO, displayName } from '@boomtown/engine';
 import { tierWord, type MergerStory } from '../../game/story.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
 
 /**
- * The staged sequence (F1): each stage gets room to read before the next
- * lands, rather than the whole climax arriving at once. Timings are 2x the
- * handoff's own Direction D prototype (~18.2s full sequence) — more breathing
- * room to actually read each stage. Reduced motion collapses straight to the
- * settled name + bonuses for a short, dismissible hold — it does not run the
- * choreography (R8, still communicates via the still-frame).
+ * The staged sequence (F1): each stage gets room to read before the next lands,
+ * rather than the whole climax arriving at once.
+ *
+ * **One pass per absorption.** A merger of three or more corporations eats them
+ * one at a time, largest first, each fully resolved before the next — and this
+ * beat used to show none of that. It collided every defunct name into a single
+ * "+", blended only `defunct[0]`'s colour, and printed one flattened bonus list,
+ * so a three-way merger was indistinguishable from a two-way. The sequence the
+ * engine had carefully performed was invisible, which read at the table as the
+ * same thing happening twice.
+ *
+ * Now the collide/blend/bonus trio repeats per chain, in resolution order, and
+ * the survivor's name on the left of each collide is the name *as it stood
+ * before that absorption* — so accretion is watched rather than inferred. Only
+ * the final name, the new mass and the settle happen once, at the end.
+ *
+ * A single-chain merger keeps its original timings exactly (~16.6s). Extra
+ * chains are tighter, because the pass is repeated and the whole thing still
+ * has to finish inside `BeatContext`'s 30s watchdog: four corporations meeting
+ * at one tile is the most the board allows, so three chains — ~24s — is the
+ * worst case.
  */
-const STAGES = [
-  { id: 'collide', ms: 1400 },
-  { id: 'blend', ms: 1800 },
-  { id: 'name', ms: 2400 },
-  { id: 'mass', ms: 3000 },
-  { id: 'bonus', ms: 4400 },
-  { id: 'settle', ms: 3600 },
-] as const;
+type StageKind = 'collide' | 'blend' | 'bonus' | 'name' | 'mass' | 'settle';
+interface Stage {
+  readonly kind: StageKind;
+  readonly ms: number;
+  /** Which absorption this stage belongs to; absent on the shared tail. */
+  readonly chain?: number;
+}
+
+const SOLO = { collide: 1400, blend: 1800, bonus: 4400 };
+const MULTI = { collide: 1200, blend: 1500, bonus: 2600 };
+const TAIL: readonly Stage[] = [
+  { kind: 'name', ms: 2400 },
+  { kind: 'mass', ms: 3000 },
+  { kind: 'settle', ms: 3600 },
+];
+
+/**
+ * Takes the chains rather than a count so a chain that paid nobody can skip its
+ * bonus stage — holding the screen for four seconds on an empty figure is how
+ * this beat felt padded on a merger where nobody held the dead stock.
+ */
+export function stagesFor(chains: readonly { readonly bonuses: readonly unknown[] }[]): Stage[] {
+  const list = chains.length > 0 ? chains : [{ bonuses: [] }];
+  const per = list.length > 1 ? MULTI : SOLO;
+  const passes = list.flatMap((c, chain) => [
+    { kind: 'collide' as const, ms: per.collide, chain },
+    { kind: 'blend' as const, ms: per.blend, chain },
+    ...(c.bonuses.length > 0 ? [{ kind: 'bonus' as const, ms: per.bonus, chain }] : []),
+  ]);
+  return [...passes, ...TAIL];
+}
 
 const REDUCED_HOLD_MS = 1600;
-
-function joinNames(names: readonly string[]): string {
-  if (names.length <= 1) return names[0] ?? '';
-  return `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
-}
 
 /**
  * F1, the load-bearing moment — the climax overlay only (see `beatTriggers.ts`
  * for why this fires on `merger-completed`, not `merger-started`, and why it
- * does not replace `StoryCard`'s survivor/disposal narration). Two names
- * collide, blend into one colour, and the accreted name arrives at scale
- * before the bonuses land under it.
+ * does not replace `StoryCard`'s survivor/disposal narration).
  */
 export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; view: PlayerView; dismiss: () => void }) {
   const reduced = useReducedMotion();
   const [stage, setStage] = useState(0);
   const timer = useRef<number | undefined>(undefined);
 
+  const stages = useMemo(() => stagesFor(merger.chains), [merger.chains]);
+  const index = reduced ? stages.length - 1 : Math.min(stage, stages.length - 1);
+  const at = stages[index]!;
+  const firstIndexOf = (kind: StageKind) => stages.findIndex((s) => s.kind === kind);
+  const past = (kind: StageKind): boolean => reduced || firstIndexOf(kind) <= index;
+
   const survivor = merger.survivor ? view.corporations[merger.survivor] : null;
   const survivorColor = merger.survivor ? INDUSTRY_INFO[merger.survivor].color : '#faf6f0';
-  const defunctColor = merger.defunct[0] ? INDUSTRY_INFO[merger.defunct[0]].color : survivorColor;
-  const survivorBase = merger.survivor ? view.corporations[merger.survivor].baseName : '';
-  const defunctNames = joinNames(merger.defunct.map((industry) => view.corporations[industry].baseName));
+  const survivorBase = survivor?.baseName ?? '';
+
+  const chain = at.chain ?? merger.chains.length - 1;
+  const defunctOf = (k: number): Industry | null => merger.chains[k]?.defunct ?? null;
+  const activeDefunct = defunctOf(chain);
+  const defunctColor = activeDefunct ? INDUSTRY_INFO[activeDefunct].color : survivorColor;
+
+  /**
+   * The survivor's name as it stood *before* absorption `k` — base name plus
+   * everything eaten up to that point. Rebuilt from base names, so a defunct
+   * chain that had itself already eaten something contributes its base rather
+   * than its own accreted name; the final name at the `name` stage comes from
+   * the view and is always exact.
+   */
+  const nameBefore = (k: number): string =>
+    displayName(
+      survivorBase,
+      merger.chains.slice(0, k).map((c) => ({
+        displayName: view.corporations[c.defunct].baseName,
+        flavours: [],
+      })),
+      view.ruleset.mergeNaming,
+    );
 
   useEffect(() => {
     soundManager.play('merger');
@@ -61,28 +118,25 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
   // next one (R8 — bounded and skippable). The last stage's timer dismisses.
   useEffect(() => {
     if (reduced) return;
-    const current = STAGES[stage];
+    const current = stages[stage];
     if (!current) return;
     timer.current = window.setTimeout(() => {
-      if (stage + 1 >= STAGES.length) dismiss();
+      if (stage + 1 >= stages.length) dismiss();
       else setStage(stage + 1);
     }, current.ms);
     return () => window.clearTimeout(timer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, reduced]);
+  }, [stage, reduced, stages]);
 
   const advance = (): void => {
     if (reduced) return;
     window.clearTimeout(timer.current);
-    if (stage + 1 >= STAGES.length) dismiss();
+    if (stage + 1 >= stages.length) dismiss();
     else setStage(stage + 1);
   };
 
-  const stageId = reduced ? 'settle' : (STAGES[stage]?.id ?? 'settle');
-  const past = (id: (typeof STAGES)[number]['id']): boolean => {
-    if (reduced) return true;
-    return STAGES.findIndex((s) => s.id === id) <= stage;
-  };
+  const multi = merger.chains.length > 1;
+  const bonusLines = reduced ? merger.bonuses : (merger.chains[chain]?.bonuses ?? []);
 
   return (
     <div className={styles.curtain} role="dialog" aria-label="Merger" onClick={advance}>
@@ -91,10 +145,13 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
         style={{ background: `radial-gradient(50% 50% at 50% 50%, color-mix(in srgb, ${survivorColor} 30%, transparent) 0%, transparent 72%)` }}
       />
       <div style={{ position: 'relative', width: 860, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-        <div className={styles.kicker}>merger at {merger.placedTile}</div>
+        <div className={styles.kicker}>
+          merger at {merger.placedTile}
+          {multi && !past('name') && ` · absorption ${chain + 1} of ${merger.chains.length}`}
+        </div>
         <div className={styles.rule} />
 
-        {/* Stage 1 — collide: the two names lean into the placed tile. */}
+        {/* collide: the surviving name so far leans into the chain being eaten. */}
         <div
           style={{
             display: 'flex',
@@ -102,22 +159,22 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
             justifyContent: 'center',
             gap: 40,
             overflow: 'hidden',
-            height: stageId === 'collide' ? 64 : 0,
-            opacity: stageId === 'collide' ? 1 : 0,
-            marginTop: stageId === 'collide' ? 30 : 0,
+            height: at.kind === 'collide' ? 64 : 0,
+            opacity: at.kind === 'collide' ? 1 : 0,
+            marginTop: at.kind === 'collide' ? 30 : 0,
             transition: 'all 420ms ease',
           }}
         >
           <span className="serif" style={{ fontSize: 30, color: survivorColor }}>
-            {survivorBase}
+            {nameBefore(chain)}
           </span>
           <span style={{ fontSize: 22, color: survivorColor }}>+</span>
           <span className="serif" style={{ fontSize: 30, color: '#9c9086' }}>
-            {defunctNames}
+            {activeDefunct ? view.corporations[activeDefunct].baseName : ''}
           </span>
         </div>
 
-        {/* Stage 2 — blend: the two industry colours cross into one. */}
+        {/* blend: this chain's colour crosses into the survivor's. */}
         <div
           style={{
             position: 'relative',
@@ -125,17 +182,17 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
             alignItems: 'center',
             justifyContent: 'center',
             overflow: 'hidden',
-            height: stageId === 'blend' ? 90 : 0,
-            opacity: stageId === 'blend' ? 1 : 0,
-            marginTop: stageId === 'blend' ? 26 : 0,
+            height: at.kind === 'blend' ? 90 : 0,
+            opacity: at.kind === 'blend' ? 1 : 0,
+            marginTop: at.kind === 'blend' ? 26 : 0,
             transition: 'height 320ms ease, opacity 260ms ease, margin-top 320ms ease',
           }}
         >
           <div
-            style={{ width: 68, height: 68, borderRadius: '50%', marginRight: -18, background: survivorColor, boxShadow: '0 14px 26px -8px rgba(0,0,0,.55)', animation: stageId === 'blend' ? `${styles.blendSlideL} 1200ms ease-in-out both` : undefined }}
+            style={{ width: 68, height: 68, borderRadius: '50%', marginRight: -18, background: survivorColor, boxShadow: '0 14px 26px -8px rgba(0,0,0,.55)', animation: at.kind === 'blend' ? `${styles.blendSlideL} 1200ms ease-in-out both` : undefined }}
           />
           <div
-            style={{ width: 68, height: 68, borderRadius: '50%', marginLeft: -18, background: defunctColor, boxShadow: '0 14px 26px -8px rgba(0,0,0,.55)', animation: stageId === 'blend' ? `${styles.blendSlideR} 1200ms ease-in-out both` : undefined }}
+            style={{ width: 68, height: 68, borderRadius: '50%', marginLeft: -18, background: defunctColor, boxShadow: '0 14px 26px -8px rgba(0,0,0,.55)', animation: at.kind === 'blend' ? `${styles.blendSlideR} 1200ms ease-in-out both` : undefined }}
           />
           <div
             style={{
@@ -145,13 +202,51 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
               borderRadius: '50%',
               background: `color-mix(in srgb, ${survivorColor} 58%, ${defunctColor})`,
               boxShadow: `0 0 46px color-mix(in srgb, ${survivorColor} 45%, transparent)`,
-              opacity: stageId === 'blend' ? undefined : 0,
-              animation: stageId === 'blend' ? `${styles.blendPulse} 1200ms cubic-bezier(0.2,0.9,0.2,1) 260ms both` : undefined,
+              opacity: at.kind === 'blend' ? undefined : 0,
+              animation: at.kind === 'blend' ? `${styles.blendPulse} 1200ms cubic-bezier(0.2,0.9,0.2,1) 260ms both` : undefined,
             }}
           />
         </div>
 
-        {/* Stage 3 — name: the accreted name arrives at scale. */}
+        {/* bonus: what *this* chain paid, and to how many seats. */}
+        {bonusLines.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              gap: 76,
+              marginTop: at.kind === 'bonus' || reduced ? 40 : 0,
+              height: at.kind === 'bonus' || reduced ? 164 : 0,
+              opacity: at.kind === 'bonus' || reduced ? 1 : 0,
+              overflow: 'hidden',
+              transition: 'all 460ms ease',
+            }}
+          >
+            {bonusLines.map((bonus, i) => (
+              <div
+                key={`${chain}:${i}`}
+                style={{ textAlign: 'left' }}
+                className={at.kind === 'bonus' && !reduced ? styles.rise : undefined}
+              >
+                <span className={styles.kicker}>
+                  {activeDefunct && multi ? `${view.corporations[activeDefunct].baseName} · ` : ''}
+                  {tierWord(bonus.tier, view.ruleset.bonusTiers)}
+                </span>
+                <span className="serif tabnum" style={{ display: 'block', fontSize: 56, lineHeight: 1.05, marginTop: 6, letterSpacing: '-0.03em' }}>
+                  ${bonus.amount.toLocaleString()}
+                  {bonus.seats.length > 1 ? <span style={{ fontSize: 22, marginLeft: 8, opacity: 0.7 }}>each</span> : null}
+                </span>
+                {/* Who was actually paid. A seat count told you a bonus landed
+                    somewhere; the point of watching a merger is knowing who it
+                    landed on. */}
+                <span style={{ display: 'block', marginTop: 8, fontSize: 15, color: '#c9bfb2', maxWidth: 260 }}>
+                  {bonus.seats.map((seat) => view.seats[seat]?.name ?? `Seat ${seat + 1}`).join(', ')}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* name: the fully accreted name arrives at scale, once. */}
         <div
           className={past('name') && !past('mass') ? styles.bigName : undefined}
           style={{
@@ -183,8 +278,9 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
           <p><b>the belly of capitalism is never full.</b></p>
         </div>
 
-        {/* Stage 4 — mass: the two blocks consolidate into one wider block. */}
+        {/* mass: the blocks consolidate into one wider block. */}
         <div
+          data-mass-row
           style={{
             display: 'flex',
             alignItems: 'flex-end',
@@ -194,7 +290,6 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
             height: past('mass') ? 76 : 0,
             opacity: past('mass') ? 1 : 0,
             overflow: 'visible',
-            position: 'relative',
             transition: 'all 620ms cubic-bezier(0.16,0.9,0.2,1)',
           }}
         >
@@ -207,64 +302,46 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
               transition: 'width 700ms cubic-bezier(0.16,0.9,0.2,1) 180ms',
             }}
           />
-          <div
-            style={{
-              width: past('bonus') ? 0 : 120,
-              height: 44,
-              background: `linear-gradient(160deg, ${defunctColor}, color-mix(in srgb, ${defunctColor} 50%, #1c1917))`,
-              opacity: past('bonus') ? 0 : 0.55,
-              boxShadow: `0 6px 0 color-mix(in srgb, ${defunctColor} 40%, #1c1917)`,
-              transition: 'all 700ms cubic-bezier(0.16,0.9,0.2,1) 260ms',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: -26,
-              fontSize: 10,
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-              color: '#6f665d',
-              opacity: past('mass') ? 1 : 0,
-              transition: 'opacity 400ms ease 700ms',
-            }}
-          >
-            {survivor?.size ?? 0} tiles under one name
-          </div>
+          {/* One block per absorption, so the count in the caption is something
+              you watched happen rather than something you are told. */}
+          {merger.chains.map((absorbed, k) => {
+            const color = INDUSTRY_INFO[absorbed.defunct].color;
+            return (
+              <div
+                key={absorbed.defunct}
+                data-mass-block={absorbed.defunct}
+                style={{
+                  width: past('settle') ? 0 : 120 / Math.max(1, merger.chains.length),
+                  height: 44,
+                  background: `linear-gradient(160deg, ${color}, color-mix(in srgb, ${color} 50%, #1c1917))`,
+                  opacity: past('settle') ? 0 : 0.55,
+                  boxShadow: `0 6px 0 color-mix(in srgb, ${color} 40%, #1c1917)`,
+                  transition: `all 700ms cubic-bezier(0.16,0.9,0.2,1) ${260 + k * 120}ms`,
+                }}
+              />
+            );
+          })}
         </div>
 
-        {/* Stage 5 — bonus: bonuses land as headline figures. */}
-        {merger.bonuses.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              gap: 76,
-              marginTop: past('bonus') ? 46 : 0,
-              height: past('bonus') ? 128 : 0,
-              opacity: past('bonus') ? 1 : 0,
-              overflow: 'hidden',
-              transition: 'all 460ms ease',
-            }}
-          >
-            {merger.bonuses.map((bonus, i) => (
-              <div
-                key={i}
-                style={{ textAlign: 'left' }}
-                className={past('bonus') && !reduced ? styles.rise : undefined}
-              >
-                <span className={styles.kicker}>
-                  {bonus.seats.length} seat{bonus.seats.length > 1 ? 's' : ''} ·{' '}
-                  {tierWord(bonus.tier, view.ruleset.bonusTiers)}
-                </span>
-                <span className="serif tabnum" style={{ display: 'block', fontSize: 56, lineHeight: 1.05, marginTop: 6, letterSpacing: '-0.03em' }}>
-                  ${bonus.amount.toLocaleString()}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* The caption is a sibling of the blocks, not a child of them: inside
+            that flex row it was sized by the blocks, so as they collapsed at
+            the settle its own box collapsed with them and the sentence wrapped
+            into a column. It belongs to the whole beat, so it gets the beat's
+            width. */}
+        <div
+          data-mass-caption
+          className={styles.kicker}
+          style={{
+            alignSelf: 'stretch',
+            marginTop: past('mass') ? 26 : 0,
+            color: '#8a8076',
+            opacity: past('mass') ? 1 : 0,
+            transition: 'opacity 400ms ease 700ms, margin-top 620ms cubic-bezier(0.16,0.9,0.2,1)',
+          }}
+        >
+          {survivor?.size ?? 0} tiles under one name
+          {multi ? ` · ${merger.chains.length} companies eaten` : ''}
+        </div>
       </div>
       <span className={styles.hint}>click or press space to advance · esc to skip the rest</span>
     </div>

@@ -81,7 +81,7 @@ export function mergerPreview(): BeatPreview {
   const log: EngineEvent[] = [
     { type: 'merger-started', placedTile: '4E', corporations: ['books', 'energy'] },
     { type: 'survivor-chosen', survivor: 'books' },
-    { type: 'corporation-defunct', industry: 'energy', absorbedInto: 'books' },
+    // Payout first, then disposal — the order the engine actually emits.
     {
       type: 'bonus-paid',
       defunct: 'energy',
@@ -90,6 +90,7 @@ export function mergerPreview(): BeatPreview {
         { seat: 0, tier: 'secondary', amount: 1500 },
       ],
     },
+    { type: 'corporation-defunct', industry: 'energy', absorbedInto: 'books' },
     { type: 'merger-completed', survivor: 'books' },
   ];
   return { beat: { id: 'merger' }, view, log };
@@ -103,6 +104,50 @@ export function motionPreview(): BeatPreview {
   // The failing outcome, because it is the one with copy worth eyeballing: a
   // carried motion says the same sentence every time.
   return { beat: { id: 'motion', carried: false, backers: [1, 2], yes: 7, total: 18 }, view: viewFor(state, 0), log: [] };
+}
+
+/**
+ * Three corporations meeting at one tile: `books` survives, `energy` and `air`
+ * are eaten in that order. The shape that broke — a single-chain fixture cannot
+ * catch a beat that only knows how to show one absorption, which is exactly how
+ * the flattened bonus list and the single blended colour survived review.
+ *
+ * The two chains pay **identical amounts**, which is the specific case that used
+ * to collapse: `latestMerger` deduped bonus lines by `(tier, amount)` across the
+ * whole merger, so the second chain — and a seat that had been paid — vanished.
+ */
+export function mergerThreeWayPreview(): BeatPreview {
+  const state = baseState();
+  found(state, 'books', ['2C', '3C', '4C', '5C', '2D']);
+  found(state, 'energy', ['11E', '10F']);
+  found(state, 'air', ['8A', '9A']);
+  merge(state, 'books', 'energy');
+  merge(state, 'books', 'air');
+  const view = viewFor(state, 0);
+  const log: EngineEvent[] = [
+    { type: 'merger-started', placedTile: '4E', corporations: ['books', 'energy', 'air'] },
+    { type: 'survivor-chosen', survivor: 'books' },
+    {
+      type: 'bonus-paid',
+      defunct: 'energy',
+      payouts: [
+        { seat: 2, tier: 'primary', amount: 3000 },
+        { seat: 0, tier: 'tertiary', amount: 1500 },
+      ],
+    },
+    { type: 'corporation-defunct', industry: 'energy', absorbedInto: 'books' },
+    {
+      type: 'bonus-paid',
+      defunct: 'air',
+      payouts: [
+        { seat: 1, tier: 'primary', amount: 3000 },
+        { seat: 2, tier: 'tertiary', amount: 1500 },
+      ],
+    },
+    { type: 'corporation-defunct', industry: 'air', absorbedInto: 'books' },
+    { type: 'merger-completed', survivor: 'books' },
+  ];
+  return { beat: { id: 'merger' }, view, log };
 }
 
 export function endgamePreview(): BeatPreview {
@@ -155,12 +200,20 @@ export function victoryPreview(): BeatPreview {
   return { beat: { id: 'victory' }, view: viewFor(state, 0), log: [] };
 }
 
-export type PreviewKind = 'founding' | 'buy-stock' | 'merger' | 'motion' | 'endgame' | 'victory';
+export type PreviewKind =
+  | 'founding'
+  | 'buy-stock'
+  | 'merger'
+  | 'merger-three-way'
+  | 'motion'
+  | 'endgame'
+  | 'victory';
 
 export const BEAT_PREVIEWS: Readonly<Record<PreviewKind, () => BeatPreview>> = {
   founding: foundingPreview,
   'buy-stock': buyStockPreview,
   merger: mergerPreview,
+  'merger-three-way': mergerThreeWayPreview,
   motion: motionPreview,
   endgame: endgamePreview,
   victory: victoryPreview,

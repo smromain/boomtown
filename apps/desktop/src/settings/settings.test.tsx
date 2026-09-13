@@ -162,12 +162,14 @@ describe('SettingsDialog', () => {
     const onClose = vi.fn();
     render(<SettingsDialog open onClose={onClose} onDebugTrigger={onDebugTrigger} />);
 
-    for (const label of ['Founding', 'Buy stock', 'Merger', 'Endgame', 'Victory']) {
+    for (const label of ['Founding', 'Buy stock', 'Merger (2-way)', 'Merger (3-way)', 'Endgame', 'Victory']) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
     }
 
-    await userEvent.click(screen.getByRole('button', { name: 'Merger' }));
-    expect(onDebugTrigger).toHaveBeenCalledWith('merger');
+    // The merger beat has two scenarios, because a single-chain fixture cannot
+    // exercise a multi-chain absorption — the shape that was broken.
+    await userEvent.click(screen.getByRole('button', { name: 'Merger (3-way)' }));
+    expect(onDebugTrigger).toHaveBeenCalledWith('merger-three-way');
     expect(onClose).toHaveBeenCalledOnce();
   });
 });

@@ -84,13 +84,62 @@ export function tierWord(tier: BonusLine['tier'], bonusTiers: 2 | 3): string {
   return tier === 'primary' ? 'majority' : 'minority';
 }
 
+/**
+ * One absorption: a defunct corporation and the bonuses paid on it.
+ *
+ * A merger of three or more corporations resolves its chains **one at a time,
+ * largest first, each finished before the next begins** — that sequencing is
+ * the load-bearing part of the rules. The story has to keep the same shape, or
+ * nothing downstream can show it: before this existed the payouts from every
+ * chain were flattened into one list and deduped by `(tier, amount)`, so two
+ * equal-sized chains paying the same amounts collapsed into one and a seat that
+ * had been paid vanished from the merger's own climax.
+ */
+export interface AbsorbedChain {
+  readonly defunct: Industry;
+  readonly bonuses: readonly BonusLine[];
+  /** False while this chain is mid-disposal — the merger is still running. */
+  readonly resolved: boolean;
+}
+
 export interface MergerStory {
   readonly placedTile: string;
   readonly corporations: readonly Industry[];
   readonly survivor: Industry | null;
   readonly defunct: readonly Industry[];
+  /** Every absorption, in the order the engine resolved them. */
+  readonly chains: readonly AbsorbedChain[];
+  /** Every bonus line across every chain, flattened. Prefer `chains` where the
+   *  chain matters — this is for callers that only need a total. */
   readonly bonuses: readonly BonusLine[];
   readonly complete: boolean;
+}
+
+/**
+ * The bonus lines for **one** `bonus-paid` event.
+ *
+ * The dedupe is per event and deliberate: a tie splits a tier across several
+ * payouts of the same amount, which is one line naming both seats. Running that
+ * dedupe across the whole merger was the bug — it silently dropped a second
+ * chain that happened to pay the same.
+ */
+function linesFor(payouts: Extract<EngineEvent, { type: 'bonus-paid' }>['payouts']): BonusLine[] {
+  const byTier = new Map<BonusLine['tier'], Set<Seat>>();
+  for (const payout of payouts) {
+    if (payout.seat < 0) continue;
+    (byTier.get(payout.tier) ?? byTier.set(payout.tier, new Set()).get(payout.tier)!).add(payout.seat);
+  }
+  const lines: BonusLine[] = [];
+  for (const payout of payouts) {
+    if (payout.seat < 0) continue;
+    if (lines.some((line) => line.tier === payout.tier && line.amount === payout.amount)) continue;
+    lines.push({
+      tier: payout.tier,
+      amount: payout.amount,
+      seats: [...(byTier.get(payout.tier) ?? [])],
+    });
+  }
+  return lines;
 }
 
 /** Pull the most recent merger out of the event log, in progress or finished. Null when there is none. */
@@ -107,39 +156,39 @@ export function latestMerger(log: readonly EngineEvent[]): MergerStory | null {
   const span = log.slice(start);
   const started = span[0] as Extract<EngineEvent, { type: 'merger-started' }>;
   let survivor: Industry | null = null;
-  const defunct: Industry[] = [];
-  const bonuses: BonusLine[] = [];
+  const chains: AbsorbedChain[] = [];
   let complete = false;
 
   for (const event of span) {
     if (event.type === 'survivor-chosen') survivor = event.survivor;
-    else if (event.type === 'corporation-defunct') defunct.push(event.industry);
     else if (event.type === 'bonus-paid') {
-      const byTier = new Map<BonusLine['tier'], Set<Seat>>();
-      for (const payout of event.payouts) {
-        if (payout.seat < 0) continue;
-        (byTier.get(payout.tier) ?? byTier.set(payout.tier, new Set()).get(payout.tier)!).add(payout.seat);
-      }
-      for (const payout of event.payouts) {
-        if (payout.seat < 0) continue;
-        if (bonuses.some((line) => line.tier === payout.tier && line.amount === payout.amount)) continue;
-        bonuses.push({
-          tier: payout.tier,
-          amount: payout.amount,
-          seats: [...(byTier.get(payout.tier) ?? [])],
-        });
-      }
+      // The engine pays before it disposes, so this normally opens the chain.
+      // Match on the industry rather than assuming the order, though: a chain
+      // is one absorption whichever of its two events is seen first, and a
+      // reader that assumed the order counted a single absorption twice.
+      const existing = chains.findIndex((c) => c.defunct === event.defunct && c.bonuses.length === 0);
+      const line = { defunct: event.defunct, bonuses: linesFor(event.payouts) };
+      if (existing >= 0) chains[existing] = { ...chains[existing]!, ...line };
+      else chains.push({ ...line, resolved: false });
+    } else if (event.type === 'corporation-defunct') {
+      const open = chains.findIndex((c) => c.defunct === event.industry && !c.resolved);
+      if (open >= 0) chains[open] = { ...chains[open]!, resolved: true };
+      else chains.push({ defunct: event.industry, bonuses: [], resolved: true });
     } else if (event.type === 'merger-completed') {
       survivor = event.survivor;
       complete = true;
     }
   }
 
+  const defunct = chains.map((c) => c.defunct);
+  const bonuses = chains.flatMap((c) => c.bonuses);
+
   return {
     placedTile: started.placedTile,
     corporations: started.corporations,
     survivor,
     defunct,
+    chains,
     bonuses,
     complete,
   };
