@@ -46,18 +46,24 @@ export function Header() {
   // no longer does, but the volume still belongs with the brand — it is a
   // property of the app, not of the table.
   //
-  // The speaker opens a slider rather than toggling silence: one number now
-  // governs the effects and the music together, and zero is the mute that
-  // button used to be. Kept behind a click because the chrome is a strip, not
-  // a mixing desk — the slider is for setting a level, not for reading one.
-  const [volume, setVolumeState] = useState(() => soundManager.volume());
+  // The speaker opens a pair of sliders rather than toggling silence — effects
+  // and music set separately, each labelled by its own icon, and zero on either
+  // is the mute that button used to be. Kept behind a click because the chrome
+  // is a strip, not a mixing desk: the sliders are for setting a level, not for
+  // reading one.
+  const [effectsVolume, setEffectsVolume] = useState(() => soundManager.volume());
+  const [musicVolume, setMusicVolume] = useState(() => musicManager.volume());
   const [volumeOpen, setVolumeOpen] = useState(false);
-  const setVolume = (next: number) => {
+  const changeEffects = (next: number) => {
+    // Effects take the new level the next time one fires — they are half a
+    // second long, so there is nothing playing to correct.
     soundManager.setVolume(next);
-    setVolumeState(next);
-    // Effects take the new level the next time one fires; a track already
-    // playing has to be told.
-    musicManager.applyVolume();
+    setEffectsVolume(next);
+  };
+  const changeMusic = (next: number) => {
+    // A track is minutes long, so `setVolume` pushes the change onto it now.
+    musicManager.setVolume(next);
+    setMusicVolume(next);
   };
 
   // Music plays while a game is on screen and stops when the table is left —
@@ -118,19 +124,43 @@ export function Header() {
           aria-label="Volume"
           aria-expanded={volumeOpen}
         >
-          {volume === 0 ? <SpeakerXMarkIcon width={16} height={16} /> : <SpeakerWaveIcon width={16} height={16} />}
+          {effectsVolume === 0 ? (
+            <SpeakerXMarkIcon width={16} height={16} />
+          ) : (
+            <SpeakerWaveIcon width={16} height={16} />
+          )}
         </button>
         {volumeOpen && (
-          <input
-            type="range"
-            className={styles.volumeSlider}
-            min={0}
-            max={100}
-            step={5}
-            value={Math.round(volume * 100)}
-            aria-label="Master volume"
-            onChange={(e) => setVolume(Number(e.target.value) / 100)}
-          />
+          <span className={styles.volumeGroup}>
+            <span className={styles.volumeRow}>
+              {/* The icons are the labels: two bare sliders side by side would
+                  say nothing about which is which. */}
+              <SpeakerWaveIcon width={13} height={13} aria-hidden />
+              <input
+                type="range"
+                className={styles.volumeSlider}
+                min={0}
+                max={100}
+                step={5}
+                value={Math.round(effectsVolume * 100)}
+                aria-label="Sound effect volume"
+                onChange={(e) => changeEffects(Number(e.target.value) / 100)}
+              />
+            </span>
+            <span className={styles.volumeRow}>
+              <MusicalNoteIcon width={13} height={13} aria-hidden />
+              <input
+                type="range"
+                className={styles.volumeSlider}
+                min={0}
+                max={100}
+                step={5}
+                value={Math.round(musicVolume * 100)}
+                aria-label="Music volume"
+                onChange={(e) => changeMusic(Number(e.target.value) / 100)}
+              />
+            </span>
+          </span>
         )}
         <span className={styles.musicGroup}>
           <button

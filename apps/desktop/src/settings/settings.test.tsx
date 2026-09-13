@@ -46,8 +46,9 @@ describe('settings store', () => {
       localStorage.setItem('boomtown.settings', JSON.stringify(v1));
       expect(loadSettings().edition).toBe('boomtown');
       // and only the edition — every other stored preference survives, the
-      // v1 mute arriving as the volume it means (see the v2 → v3 migration)
-      expect(loadSettings().volume).toBe(0);
+      // v1 mute arriving as the volumes it means (see the later migrations)
+      expect(loadSettings().effectsVolume).toBe(0);
+      expect(loadSettings().musicVolume).toBe(0);
       expect(loadSettings().seatCount).toBe(3);
     });
 
@@ -62,13 +63,15 @@ describe('settings store', () => {
     });
   });
 
-  it('sound is on at full volume by default (R9)', () => {
-    expect(loadSettings().volume).toBe(1);
+  it('effects ship at full and music under them (R9)', () => {
+    expect(loadSettings().effectsVolume).toBe(1);
+    expect(loadSettings().musicVolume).toBe(0.5);
   });
 
-  it('round-trips a volume', () => {
-    saveSettings({ ...DEFAULT_SETTINGS, volume: 0.35 });
-    expect(loadSettings().volume).toBe(0.35);
+  it('round-trips the two volumes apart from each other', () => {
+    saveSettings({ ...DEFAULT_SETTINGS, effectsVolume: 0.35, musicVolume: 0.9 });
+    expect(loadSettings().effectsVolume).toBe(0.35);
+    expect(loadSettings().musicVolume).toBe(0.9);
   });
 
   describe('v2 → v3 migration', () => {
@@ -78,11 +81,12 @@ describe('settings store', () => {
         JSON.stringify({ ...DEFAULT_SETTINGS, version: 2, ...over }),
       );
 
-    it('reads an old mute as the volume it meant', () => {
+    it('reads an old mute as the volumes it meant', () => {
       v2({ muted: true });
-      expect(loadSettings().volume).toBe(0);
+      expect(loadSettings().effectsVolume).toBe(0);
+      expect(loadSettings().musicVolume).toBe(0);
       v2({ muted: false });
-      expect(loadSettings().volume).toBe(1);
+      expect(loadSettings().effectsVolume).toBe(1);
     });
 
     it('drops a track stored as a position, which reordering made meaningless', () => {
@@ -95,10 +99,22 @@ describe('settings store', () => {
       expect(loadSettings().musicTrack).toBe('azure');
     });
 
-    it('leaves a v3 blob alone', () => {
-      saveSettings({ ...DEFAULT_SETTINGS, volume: 0.5, musicTrack: 'green-salon' });
-      expect(loadSettings().volume).toBe(0.5);
+    it('leaves a current blob alone', () => {
+      saveSettings({ ...DEFAULT_SETTINGS, effectsVolume: 0.5, musicTrack: 'green-salon' });
+      expect(loadSettings().effectsVolume).toBe(0.5);
       expect(loadSettings().musicTrack).toBe('green-salon');
+    });
+  });
+
+  describe('v3 → v4 migration', () => {
+    it('splits one master volume into the two levels it was producing', () => {
+      localStorage.setItem(
+        'boomtown.settings',
+        JSON.stringify({ ...DEFAULT_SETTINGS, version: 3, volume: 0.6 }),
+      );
+      // the effects at face value, the music at the half share it used to take
+      expect(loadSettings().effectsVolume).toBe(0.6);
+      expect(loadSettings().musicVolume).toBeCloseTo(0.3);
     });
   });
 
@@ -117,7 +133,7 @@ describe('settings store', () => {
     });
     try {
       expect(loadSettings()).toEqual(DEFAULT_SETTINGS);
-      expect(() => saveSettings({ ...DEFAULT_SETTINGS, volume: 0 })).not.toThrow();
+      expect(() => saveSettings({ ...DEFAULT_SETTINGS, effectsVolume: 0 })).not.toThrow();
     } finally {
       Object.defineProperty(window, 'localStorage', original);
     }
@@ -168,39 +184,45 @@ describe('defaultConfig seeded from settings', () => {
   });
 });
 
-describe('SettingsDialog sound level', () => {
-  it('sets the level the app loads at, and says "off" at the bottom of the range', async () => {
+describe('SettingsDialog sound levels', () => {
+  it('sets the levels the app loads at, separately, saying "off" at the bottom', async () => {
     render(<SettingsDialog open onClose={() => {}} />);
 
-    const slider = screen.getByRole('slider', { name: 'Sound level' });
-    expect(slider).toHaveValue('100');
+    const effects = screen.getByRole('slider', { name: 'Sound effect volume' });
+    const music = screen.getByRole('slider', { name: 'Music volume' });
+    expect(effects).toHaveValue('100');
+    expect(music).toHaveValue('50');
 
-    fireEvent.change(slider, { target: { value: '0' } });
-    expect(screen.getByText(/Sound level: off/i)).toBeInTheDocument();
+    fireEvent.change(effects, { target: { value: '0' } });
+    expect(screen.getByText(/Sound effects: off/i)).toBeInTheDocument();
 
-    fireEvent.change(slider, { target: { value: '45' } });
-    expect(screen.getByText('Sound level: 45%')).toBeInTheDocument();
+    fireEvent.change(music, { target: { value: '45' } });
+    expect(screen.getByText('Music: 45%')).toBeInTheDocument();
 
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     });
-    expect(loadSettings().volume).toBeCloseTo(0.45);
+    expect(loadSettings().effectsVolume).toBe(0);
+    expect(loadSettings().musicVolume).toBeCloseTo(0.45);
   });
 
-  it('shows the level as it stands now, not as it stood when the app started', () => {
+  it('shows the levels as they stand now, not as they stood when the app started', () => {
     // The dialog is mounted for the whole session, so a draft seeded once would
-    // hand back a stale volume — and Save would undo whatever the header's
-    // slider did during a game.
+    // hand back stale levels — and Save would undo whatever the header's
+    // sliders did during a game.
     const { rerender } = render(<SettingsDialog open={false} onClose={() => {}} />);
-    saveSettings({ ...DEFAULT_SETTINGS, volume: 0.2 });
+    saveSettings({ ...DEFAULT_SETTINGS, effectsVolume: 0.2, musicVolume: 0.1 });
 
     rerender(<SettingsDialog open onClose={() => {}} />);
-    expect(screen.getByRole('slider', { name: 'Sound level' })).toHaveValue('20');
+    expect(screen.getByRole('slider', { name: 'Sound effect volume' })).toHaveValue('20');
+    expect(screen.getByRole('slider', { name: 'Music volume' })).toHaveValue('10');
   });
 
   it('a level set here is what a fresh load reads', () => {
     render(<SettingsDialog open onClose={() => {}} />);
-    fireEvent.change(screen.getByRole('slider', { name: 'Sound level' }), { target: { value: '15' } });
+    fireEvent.change(screen.getByRole('slider', { name: 'Sound effect volume' }), {
+      target: { value: '15' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(soundManager.volume()).toBeCloseTo(0.15);
   });

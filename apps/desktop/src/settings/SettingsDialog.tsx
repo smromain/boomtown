@@ -9,6 +9,11 @@ import { MUSIC_SOURCE, TRACKS, musicManager } from '../audio/musicManager.js';
 import decisionStyles from '../decisions/decisions.module.css';
 import styles from './settings.module.css';
 
+/** "Music: 40%", or "Music: off" at the bottom of the range — a slider sitting
+ *  at zero should say what that means rather than leave it to be inferred. */
+const level = (label: string, volume: number): string =>
+  `${label}: ${volume === 0 ? 'off' : `${Math.round(volume * 100)}%`}`;
+
 const DEBUG_BEATS: readonly { readonly kind: PreviewKind; readonly label: string }[] = [
   { kind: 'founding', label: 'Founding' },
   { kind: 'buy-stock', label: 'Buy stock' },
@@ -24,12 +29,12 @@ const DEBUG_BEATS: readonly { readonly kind: PreviewKind; readonly label: string
  * count, sound level, and the PartyKit host override (blank = the build-time
  * default). All renderer preferences, persisted to `localStorage`.
  *
- * Sound level is the same number the header's speaker slider writes, not a
- * second one: a table that turns the volume down mid-game has set their level,
+ * The two sound levels are the same numbers the header's sliders write, not a
+ * second pair: a table that turns the volume down mid-game has set their level,
  * and being handed it back at full the next time they load would make the
- * in-game control feel like it didn't take. Setting it here is for doing it
- * before a game rather than during one — a game the app opens quietly, or not
- * at all.
+ * in-game control feel like it didn't take. Setting them here is for doing it
+ * before a game rather than during one — a game the app opens quietly, or with
+ * the music off and the effects up.
  *
  * It also carries the music credits. They belong here rather than in the game
  * chrome — the header has room to name the track playing, not to name everyone
@@ -134,17 +139,28 @@ export function SettingsDialog({
           </div>
 
           <label className={styles.field}>
-            <span>
-              Sound level: {draft.volume === 0 ? 'off' : `${Math.round(draft.volume * 100)}%`}
-            </span>
+            <span>{level('Sound effects', draft.effectsVolume)}</span>
             <input
               type="range"
               min={0}
               max={100}
               step={5}
-              value={Math.round(draft.volume * 100)}
-              aria-label="Sound level"
-              onChange={(e) => patch({ volume: Number(e.target.value) / 100 })}
+              value={Math.round(draft.effectsVolume * 100)}
+              aria-label="Sound effect volume"
+              onChange={(e) => patch({ effectsVolume: Number(e.target.value) / 100 })}
+            />
+          </label>
+
+          <label className={styles.field}>
+            <span>{level('Music', draft.musicVolume)}</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={Math.round(draft.musicVolume * 100)}
+              aria-label="Music volume"
+              onChange={(e) => patch({ musicVolume: Number(e.target.value) / 100 })}
             />
           </label>
 

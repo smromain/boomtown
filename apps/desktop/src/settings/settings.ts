@@ -18,11 +18,17 @@ export interface Settings {
   /** Override for the PartyKit host; blank = use the build-time default. */
   readonly partykitHost: string;
   /**
-   * Master volume, 0–1, across effects and music alike (R9). The header's
-   * speaker button opens a slider onto this; 0 is silence, which is what a mute
-   * amounts to. Music sits at half this by design — see `MUSIC_MIX`.
+   * Sound effect volume, 0–1 (R9). The header's speaker button opens a slider
+   * onto this; 0 is silence, which is what a mute amounts to.
    */
-  readonly volume: number;
+  readonly effectsVolume: number;
+  /**
+   * Music volume, 0–1, set independently of the effects. It defaults lower
+   * because a soundtrack sits under the table talk while the effects mark the
+   * game's moments — but that is a starting balance, not a fixed ratio, and the
+   * two sliders part company the moment anyone moves one.
+   */
+  readonly musicVolume: number;
   /** Background music. Music ships on by default; the header's music button
    *  persists this. Separate from `muted` so a table can keep the effects that
    *  mark the game's moments while turning the soundtrack off, or the reverse. */
@@ -49,7 +55,7 @@ export interface Settings {
  * Bump this when a shipped default changes and the stored value should give
  * way to it — see `migrate` for what each bump does.
  */
-const SETTINGS_VERSION = 3;
+const SETTINGS_VERSION = 4;
 
 export const DEFAULT_SETTINGS: Settings = {
   visibility: 'open',
@@ -57,7 +63,8 @@ export const DEFAULT_SETTINGS: Settings = {
   edition: 'boomtown',
   seatCount: 3,
   partykitHost: '',
-  volume: 1,
+  effectsVolume: 1,
+  musicVolume: 0.5,
   musicMuted: false,
   musicTrack: 'pleasant-creek',
   playerName: '',
@@ -84,9 +91,16 @@ export const DEFAULT_SETTINGS: Settings = {
  * be a position in the track list, which stopped meaning anything the moment
  * the list was reordered — a stored number is dropped rather than pointed at
  * whichever track happens to sit there now.
+ *
+ * **v3 → v4: one volume becomes two.** Effects and music are set separately
+ * now. A stored master carries over as the level it was actually producing on
+ * each side — the effects at face value, the music at the half share it used to
+ * take — so nothing changes audibly for anyone who had set a level.
  */
-function migrate(stored: Partial<Settings> & { muted?: boolean }): Partial<Settings> {
-  let next: Partial<Settings> & { muted?: boolean } = stored;
+function migrate(
+  stored: Partial<Settings> & { muted?: boolean; volume?: number },
+): Partial<Settings> {
+  let next: Partial<Settings> & { muted?: boolean; volume?: number } = stored;
   if ((next.version ?? 1) < 2) {
     const { edition: _staleDefault, ...rest } = next;
     next = rest;
@@ -98,6 +112,13 @@ function migrate(stored: Partial<Settings> & { muted?: boolean }): Partial<Setti
       ...(muted !== undefined ? { volume: muted ? 0 : 1 } : {}),
       ...(typeof musicTrack === 'string' ? { musicTrack } : {}),
     };
+  }
+  if ((next.version ?? 1) < 4) {
+    const { volume, ...rest } = next;
+    next =
+      typeof volume === 'number'
+        ? { ...rest, effectsVolume: volume, musicVolume: volume * 0.5 }
+        : rest;
   }
   return next;
 }

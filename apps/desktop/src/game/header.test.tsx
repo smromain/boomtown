@@ -34,46 +34,56 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('Header volume control', () => {
-  it('opens a slider from the speaker and sets one volume for the whole app', async () => {
+describe('Header volume controls', () => {
+  it('opens a slider each for the effects and the music, set independently', async () => {
     const user = userEvent.setup();
     await renderPanel(<Header />);
 
     const speaker = screen.getByRole('button', { name: 'Volume' });
     expect(speaker).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('slider', { name: 'Master volume' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('slider', { name: 'Sound effect volume' })).not.toBeInTheDocument();
 
     await user.click(speaker);
-    const slider = screen.getByRole('slider', { name: 'Master volume' });
-    expect(slider).toHaveValue('100');
+    const effects = screen.getByRole('slider', { name: 'Sound effect volume' });
+    const music = screen.getByRole('slider', { name: 'Music volume' });
+    // music starts lower — a soundtrack sits under the effects, but only to start
+    expect(effects).toHaveValue('100');
+    expect(music).toHaveValue('50');
 
-    fireEvent.change(slider, { target: { value: '40' } });
-    expect(loadSettings().volume).toBeCloseTo(0.4);
-    // and the music, which is mid-track, is told rather than waiting to restart
-    expect(musicManager.current()).toBe(TRACKS[0]);
+    fireEvent.change(effects, { target: { value: '40' } });
+    expect(loadSettings().effectsVolume).toBeCloseTo(0.4);
+    expect(loadSettings().musicVolume).toBeCloseTo(0.5); // untouched
+
+    fireEvent.change(music, { target: { value: '90' } });
+    expect(loadSettings().musicVolume).toBeCloseTo(0.9);
+    expect(loadSettings().effectsVolume).toBeCloseTo(0.4); // still untouched
   });
 
-  it('shows the crossed speaker at zero — the slider bottoming out is the mute', async () => {
+  it('crosses out the speaker when the effects hit zero', async () => {
     const user = userEvent.setup();
     await renderPanel(<Header />);
 
     await user.click(screen.getByRole('button', { name: 'Volume' }));
-    fireEvent.change(screen.getByRole('slider', { name: 'Master volume' }), { target: { value: '0' } });
+    fireEvent.change(screen.getByRole('slider', { name: 'Sound effect volume' }), {
+      target: { value: '0' },
+    });
 
-    expect(loadSettings().volume).toBe(0);
     expect(soundManager.isMuted()).toBe(true);
+    // and the music, which has its own slider, plays on
+    expect(loadSettings().musicVolume).toBeGreaterThan(0);
   });
 
-  it('starts from the saved volume, and puts the slider away again on a second click', async () => {
-    saveSettings({ ...DEFAULT_SETTINGS, volume: 0.25 });
+  it('starts from the saved levels, and puts the sliders away again on a second click', async () => {
+    saveSettings({ ...DEFAULT_SETTINGS, effectsVolume: 0.25, musicVolume: 0.75 });
     const user = userEvent.setup();
     await renderPanel(<Header />);
 
     await user.click(screen.getByRole('button', { name: 'Volume' }));
-    expect(screen.getByRole('slider', { name: 'Master volume' })).toHaveValue('25');
+    expect(screen.getByRole('slider', { name: 'Sound effect volume' })).toHaveValue('25');
+    expect(screen.getByRole('slider', { name: 'Music volume' })).toHaveValue('75');
 
     await user.click(screen.getByRole('button', { name: 'Volume' }));
-    expect(screen.queryByRole('slider', { name: 'Master volume' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('slider', { name: 'Music volume' })).not.toBeInTheDocument();
   });
 });
 
@@ -131,13 +141,14 @@ describe('Header music controls', () => {
     expect(off.querySelector('svg')).toBeInTheDocument();
   });
 
-  it('is its own switch: turning the music off leaves the master volume where it was', async () => {
+  it('is its own switch: turning the music off leaves both volumes where they were', async () => {
     const user = userEvent.setup();
     await renderPanel(<Header />);
 
     await user.click(screen.getByRole('button', { name: /^Mute music/ }));
     expect(loadSettings().musicMuted).toBe(true);
-    expect(loadSettings().volume).toBe(1);
+    expect(loadSettings().musicVolume).toBe(DEFAULT_SETTINGS.musicVolume);
+    expect(loadSettings().effectsVolume).toBe(DEFAULT_SETTINGS.effectsVolume);
   });
 
   it('picks up the remembered track rather than starting over at the first', async () => {

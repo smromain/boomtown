@@ -36,14 +36,14 @@ class SoundManager {
     return howl;
   }
 
-  /** The master volume, 0–1. Music reads the same number — see `MUSIC_MIX`. */
+  /** The effect volume, 0–1. Music keeps its own — see `musicManager`. */
   volume(): number {
-    const stored = loadSettings().volume;
+    const stored = loadSettings().effectsVolume;
     return Number.isFinite(stored) ? Math.min(1, Math.max(0, stored)) : 1;
   }
 
   setVolume(volume: number): void {
-    saveSettings({ ...loadSettings(), volume: Math.min(1, Math.max(0, volume)) });
+    saveSettings({ ...loadSettings(), effectsVolume: Math.min(1, Math.max(0, volume)) });
   }
 
   isMuted(): boolean {
@@ -52,7 +52,7 @@ class SoundManager {
 
   /** No-op at zero volume — every call site can fire-and-forget. Effects are
    *  short, so the level is set as each one fires rather than pushed onto live
-   *  playback the way music needs. */
+   *  playback the way a minutes-long track needs. */
   play(id: SoundId): void {
     const volume = this.volume();
     if (volume === 0) return;

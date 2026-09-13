@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Howl } from 'howler';
-import { musicManager, MUSIC_MIX, TRACKS } from './musicManager.js';
+import { musicManager, TRACKS } from './musicManager.js';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '../settings/settings.js';
 
 interface FakeHowl {
@@ -41,35 +41,35 @@ afterEach(() => {
 });
 
 describe('musicManager', () => {
-  it('plays the first track — Pleasant Creek Loop — at half the master volume, looping', () => {
+  it('plays the first track — Pleasant Creek Loop — at its own volume, looping', () => {
     musicManager.play();
     expect(TRACKS[0]!.id).toBe('pleasant-creek');
     expect(Howl).toHaveBeenCalledOnce();
-    expect(vi.mocked(Howl).mock.calls[0]![0]).toMatchObject({ loop: true, volume: MUSIC_MIX });
+    expect(vi.mocked(Howl).mock.calls[0]![0]).toMatchObject({ loop: true, volume: 0.5 });
     expect(instances()[0]!.play).toHaveBeenCalledOnce();
   });
 
-  it('keeps its half-share as the master volume moves', () => {
-    saveSettings({ ...DEFAULT_SETTINGS, volume: 0.4 });
+  it('takes its level from its own setting, not the effects one', () => {
+    saveSettings({ ...DEFAULT_SETTINGS, musicVolume: 0.8, effectsVolume: 0.1 });
     musicManager.play();
-    expect(vi.mocked(Howl).mock.calls[0]![0]).toMatchObject({ volume: 0.4 * MUSIC_MIX });
+    expect(vi.mocked(Howl).mock.calls[0]![0]).toMatchObject({ volume: 0.8 });
   });
 
-  it('applyVolume pushes a new level onto a track already playing', () => {
+  it('setVolume pushes a new level onto a track already playing, and persists it', () => {
     musicManager.play();
-    saveSettings({ ...loadSettings(), volume: 0.2 });
-    musicManager.applyVolume();
-    expect(instances()[0]!.volume).toHaveBeenCalledWith(0.2 * MUSIC_MIX);
+    musicManager.setVolume(0.2);
+    expect(instances()[0]!.volume).toHaveBeenCalledWith(0.2);
+    expect(loadSettings().musicVolume).toBe(0.2);
+    // and the effects are left where they were
+    expect(loadSettings().effectsVolume).toBe(DEFAULT_SETTINGS.effectsVolume);
   });
 
-  it('applyVolume stops the music at zero rather than looping it inaudibly', () => {
+  it('stops at zero rather than looping inaudibly, and picks up on the way back', () => {
     musicManager.play();
-    saveSettings({ ...loadSettings(), volume: 0 });
-    musicManager.applyVolume();
+    musicManager.setVolume(0);
     expect(instances()[0]!.stop).toHaveBeenCalled();
 
-    saveSettings({ ...loadSettings(), volume: 1 });
-    musicManager.applyVolume();
+    musicManager.setVolume(1);
     expect(instances()[0]!.play).toHaveBeenCalledTimes(2);
   });
 
@@ -85,9 +85,10 @@ describe('musicManager', () => {
     expect(Howl).not.toHaveBeenCalled();
   });
 
-  it('has its own switch — turning the music off leaves the master volume alone', () => {
+  it('has its own switch — turning the music off leaves both volumes alone', () => {
     musicManager.setMuted(true);
-    expect(loadSettings().volume).toBe(DEFAULT_SETTINGS.volume);
+    expect(loadSettings().musicVolume).toBe(DEFAULT_SETTINGS.musicVolume);
+    expect(loadSettings().effectsVolume).toBe(DEFAULT_SETTINGS.effectsVolume);
     expect(loadSettings().musicMuted).toBe(true);
   });
 

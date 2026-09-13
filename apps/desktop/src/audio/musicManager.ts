@@ -1,6 +1,5 @@
 import { Howl } from 'howler';
 import { loadSettings, saveSettings } from '../settings/settings.js';
-import { soundManager } from './soundManager.js';
 
 import greenSalonUrl from '../assets/music/green-salon.ogg';
 import azureUrl from '../assets/music/azure.mp3';
@@ -33,13 +32,7 @@ export const TRACKS: readonly Track[] = [
   { id: '8bit-bossa', title: '8-Bit Bossa', src: bossaUrl, credit: 'Composed/Authored by Joth' },
 ];
 
-/**
- * Music plays at half the master volume, always. Under the table talk, not over
- * it: at parity it competes with the beats' own sounds, which carry the game's
- * moments and have to win. The slider moves the pair together and this keeps
- * the balance between them wherever it lands.
- */
-export const MUSIC_MIX = 0.5;
+
 
 /**
  * The background music (one track at a time, looping) as a counterpart to
@@ -68,18 +61,31 @@ class MusicManager {
     return TRACKS.find((track) => track.id === loadSettings().musicTrack) ?? TRACKS[0]!;
   }
 
-  /** What music actually plays at: its fixed share of the master volume. */
+  /** What music plays at — its own level, set apart from the effects'. It
+   *  starts lower (a soundtrack sits under the table talk while the effects
+   *  mark the game's moments) but the two sliders are independent from there. */
   private level(): number {
-    return soundManager.volume() * MUSIC_MIX;
+    const stored = loadSettings().musicVolume;
+    return Number.isFinite(stored) ? Math.min(1, Math.max(0, stored)) : 0.5;
+  }
+
+  volume(): number {
+    return this.level();
+  }
+
+  setVolume(volume: number): void {
+    saveSettings({ ...loadSettings(), musicVolume: Math.min(1, Math.max(0, volume)) });
+    this.applyVolume();
   }
 
   /** Push a volume change onto whatever is playing. A track runs for minutes,
-   *  so unlike an effect it cannot wait for the next time it starts. */
+   *  so unlike an effect it cannot wait for the next time it starts. Also the
+   *  hook the settings dialog uses after a save. */
   applyVolume(): void {
     const level = this.level();
     for (const howl of this.howls.values()) howl.volume(level);
-    // Dragging the master slider to zero is a mute in every sense; the music
-    // should stop rather than loop inaudibly, and pick up again above zero.
+    // A slider dragged to zero is a mute in every sense; the music should stop
+    // rather than loop inaudibly, and pick up again above zero.
     if (level === 0) this.stop();
     else this.play();
   }

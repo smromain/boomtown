@@ -96,9 +96,22 @@
 }
 
 
+.volumeGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 4px 0 6px;
+  color: var(--chrome-muted);
+}
+
+.volumeRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .volumeSlider {
-  width: 84px;
-  margin: 0 2px 0 4px;
+  width: 72px;
   accent-color: var(--accent);
   cursor: pointer;
 }
