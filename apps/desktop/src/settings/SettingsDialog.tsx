@@ -10,7 +10,8 @@ import styles from './settings.module.css';
 const DEBUG_BEATS: readonly { readonly kind: PreviewKind; readonly label: string }[] = [
   { kind: 'founding', label: 'Founding' },
   { kind: 'buy-stock', label: 'Buy stock' },
-  { kind: 'merger', label: 'Merger' },
+  { kind: 'merger', label: 'Merger (2-way)' },
+  { kind: 'merger-three-way', label: 'Merger (3-way)' },
   { kind: 'motion', label: 'Motion' },
   { kind: 'endgame', label: 'Endgame' },
   { kind: 'victory', label: 'Victory' },

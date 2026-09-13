@@ -1,8 +1,11 @@
 import { act } from 'react';
-import { screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BeatProvider } from './BeatContext.js';
+import { stagesFor } from './beats/MergerBeat.js';
 import { BeatOrchestrator } from './BeatOrchestrator.js';
+import { DebugBeatPreview } from './debug/DebugBeatPreview.js';
 import { DecisionModal } from '../decisions/DecisionModal.js';
 import { soundManager } from '../audio/soundManager.js';
 import type { GameState } from '@boomtown/engine';
@@ -31,6 +34,47 @@ const threeWay = {
     state.hands[0] = ['5F'];
   },
 };
+
+describe('the merger beat staging', () => {
+  const chains = (...counts: number[]) => counts.map((n) => ({ bonuses: Array(n).fill(0) }));
+
+  it('runs one collide/blend/bonus pass per absorption, then one shared tail', () => {
+    const stages = stagesFor(chains(2, 2)).map((s) => `${s.kind}${s.chain ?? ''}`);
+    expect(stages).toEqual([
+      'collide0', 'blend0', 'bonus0',
+      'collide1', 'blend1', 'bonus1',
+      'name', 'mass', 'settle',
+    ]);
+  });
+
+  it('skips a bonus stage for a chain that paid nobody', () => {
+    expect(stagesFor(chains(0)).map((s) => s.kind)).toEqual(['collide', 'blend', 'name', 'mass', 'settle']);
+  });
+
+  it('shows the whole absorbed mass, one block per company eaten', async () => {
+    const user = userEvent.setup();
+    render(<DebugBeatPreview kind="merger-three-way" onDismiss={() => {}} />);
+    const dialog = screen.getByRole('dialog');
+    // collide, blend, bonus for each of two chains, then the name — the mass
+    // stage is next. Clicking is what the player does to move the beat on.
+    for (let i = 0; i < 7; i++) await act(async () => { await user.click(dialog); });
+
+    // One per defunct chain, in resolution order: an absorption that was
+    // deduped away upstream would leave the survivor apparently eating one
+    // company while the caption claimed two.
+    const blocks = [...dialog.querySelectorAll('[data-mass-block]')].map((el) =>
+      el.getAttribute('data-mass-block'),
+    );
+    expect(blocks).toEqual(['energy', 'air']);
+    expect(dialog).toHaveTextContent(/2 companies eaten/i);
+  });
+
+  it('keeps a single-chain merger on its original timings, and fits three chains in the watchdog', () => {
+    const total = (n: number[]) => stagesFor(chains(...n)).reduce((sum, s) => sum + s.ms, 0);
+    expect(total([2])).toBe(16600); // unchanged from before the restructure
+    expect(total([2, 2, 2])).toBeLessThan(30_000); // BeatContext's WATCHDOG_MS
+  });
+});
 
 describe('a three-way merger', () => {
   beforeEach(() => vi.clearAllMocks());
