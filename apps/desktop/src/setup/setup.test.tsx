@@ -76,7 +76,7 @@ describe('NewGame screen', () => {
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Seats' }), '5');
     await userEvent.selectOptions(screen.getByLabelText('Seat 4 type'), 'bot');
     await userEvent.selectOptions(screen.getByLabelText('Seat 5 type'), 'bot');
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'edition-2015');
+    await userEvent.click(screen.getByRole('radio', { name: /Modern/ }));
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Cash and holdings' }), 'hidden');
 
     await act(async () => {
@@ -198,7 +198,7 @@ describe('the Boomtown preset in setup', () => {
 
     // and it is a preset rule, not a permanent one — the published editions
     // leave visibility to the table
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'classic');
+    await userEvent.click(screen.getByRole('radio', { name: /Classic/ }));
     expect(visibility).toBeEnabled();
     expect(screen.queryByText(/the ruleset fixes this/i)).not.toBeInTheDocument();
   });
@@ -220,12 +220,12 @@ describe('the Boomtown preset in setup', () => {
 
     // Drop to a preset that permits an open table, pick open, then switch back
     // — the stale choice must not survive.
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'classic');
+    await userEvent.click(screen.getByRole('radio', { name: /Classic/ }));
     await userEvent.selectOptions(
       screen.getByRole('combobox', { name: 'Cash and holdings' }),
       'open',
     );
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'boomtown');
+    await userEvent.click(screen.getByRole('radio', { name: /Boomtown/ }));
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: 'Start game' }));
       await flush();
@@ -235,5 +235,36 @@ describe('the Boomtown preset in setup', () => {
     const view = started!.client.store.getState().views[0]!;
     expect(view.ruleset).toBe(boomtown);
     expect(view.seats[1]?.cash).toBeNull(); // closed, as the ruleset requires
+  });
+});
+
+describe('the edition cards', () => {
+  it('takes every number from the ruleset presets, so the screen cannot drift from the engine', () => {
+    render(<NewGame onStart={() => {}} />);
+
+    const card = (name: RegExp) => screen.getByRole('radio', { name });
+    expect(card(/Classic/)).toHaveTextContent(`safe at ${classic.safeSize}`);
+    expect(card(/Classic/)).toHaveTextContent(`ends at ${classic.endChainSize}`);
+    expect(card(/Modern/)).toHaveTextContent(`safe at ${edition2015.safeSize}`);
+    expect(card(/Modern/)).toHaveTextContent(`${edition2015.bonusTiers} bonus tiers`);
+  });
+
+  it('says what Boomtown adds, because its numbers are Classic’s', () => {
+    render(<NewGame onStart={() => {}} />);
+    // Same safe size, same end size, same tiers: without the extras line the
+    // default would look like an arbitrary duplicate of the Classic card.
+    expect(boomtown.safeSize).toBe(classic.safeSize);
+    expect(screen.getByRole('radio', { name: /Boomtown/ })).toHaveTextContent(
+      /closed books · a vote can end it early/,
+    );
+    expect(screen.getByRole('radio', { name: /Classic/ })).not.toHaveTextContent(/closed books/);
+  });
+
+  it('starts on Boomtown and switches on a click', async () => {
+    render(<NewGame onStart={() => {}} />);
+    expect(screen.getByRole('radio', { name: /Boomtown/ })).toBeChecked();
+    await userEvent.click(screen.getByRole('radio', { name: /Modern/ }));
+    expect(screen.getByRole('radio', { name: /Modern/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /Boomtown/ })).not.toBeChecked();
   });
 });

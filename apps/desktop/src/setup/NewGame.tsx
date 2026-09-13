@@ -20,7 +20,9 @@ import {
   type GameConfig,
 } from './gameConfig.js';
 import { editionLabel } from './editionLabel.js';
-import styles from './setup.module.css';
+import { EditionChoice } from './EditionChoice.js';
+import { Button } from '../ui/Button.js';
+import form from './form.module.css';
 
 export interface StartedGame {
   readonly client: GameClient;
@@ -88,14 +90,24 @@ export function NewGame({
   };
 
   return (
-    <section className={styles.screen} aria-label="New game">
-      <h1>New game</h1>
+    <section className={form.screen} aria-label="New game">
+      <header className={form.head}>
+        <span className={`kicker ${form.eyebrow}`}>hot seat · one machine</span>
+        <h1 className={form.title}>New game</h1>
+        <p className={form.lede}>
+          Pick a rule set, fill the seats, and the town opens for business. Everything here can
+          only be set before the first tile goes down.
+        </p>
+      </header>
 
       <RulesSummary />
 
-      <label className={styles.field}>
+      <EditionChoice value={config.edition} onChange={(edition) => patch({ edition })} />
+
+      <label className={form.field}>
         <span>Seats</span>
         <select
+          className={`${form.select} ${form.short}`}
           value={config.seats.length}
           onChange={(event) => patch({ seats: resizeSeats(config.seats, Number(event.target.value)) })}
         >
@@ -109,26 +121,19 @@ export function NewGame({
         </select>
       </label>
 
-      <div className={styles.field}>
+      <div className={form.field}>
         <span>Players</span>
-        {config.seats.map((seat, index) => (
-          <SeatRow
-            key={index}
-            index={index}
-            seat={seat}
-            onChange={(next) => patch({ seats: config.seats.map((s, i) => (i === index ? next : s)) })}
-          />
-        ))}
+        <div className={form.roster}>
+          {config.seats.map((seat, index) => (
+            <SeatRow
+              key={index}
+              index={index}
+              seat={seat}
+              onChange={(next) => patch({ seats: config.seats.map((s, i) => (i === index ? next : s)) })}
+            />
+          ))}
+        </div>
       </div>
-
-      <label className={styles.field}>
-        <span>Edition</span>
-        <select value={config.edition} onChange={(event) => patch({ edition: event.target.value as GameConfig['edition'] })}>
-          <option value="boomtown">Boomtown</option>
-          <option value="classic">Classic</option>
-          <option value="edition-2015">Modern</option>
-        </select>
-      </label>
 
       {/*
         `aria-label` and `aria-describedby` rather than relying on the wrapping
@@ -139,9 +144,10 @@ export function NewGame({
         name. This only surfaced when Boomtown became the default, because
         until then the note appeared only after someone switched preset.
       */}
-      <label className={styles.field}>
+      <label className={form.field}>
         <span>Cash and holdings</span>
         <select
+          className={form.select}
           aria-label="Cash and holdings"
           aria-describedby={visibilityIsFixed(config) ? 'visibility-note' : undefined}
           value={effectiveVisibility(config)}
@@ -152,25 +158,26 @@ export function NewGame({
           <option value="hidden">Hidden — only your own</option>
         </select>
         {visibilityIsFixed(config) && (
-          <span id="visibility-note" className={styles.fieldNote}>
+          <span id="visibility-note" className={form.note}>
             {editionLabel(config.edition)} is played with the books closed — the ruleset fixes this.
           </span>
         )}
       </label>
 
-      <p className={styles.error} role="alert">
+      <p className={form.error} role="alert">
         {error ?? ''}
       </p>
 
-      <button type="button" className={styles.start} disabled={error != null} onClick={start}>
-        Start game
-      </button>
-
-      {onBack && (
-        <button type="button" className={styles.back} onClick={onBack}>
-          Back
-        </button>
-      )}
+      <div className={form.actions}>
+        <Button variant="primary" disabled={error != null} onClick={start}>
+          Start game
+        </Button>
+        {onBack && (
+          <Button variant="ghost" onClick={onBack}>
+            Back
+          </Button>
+        )}
+      </div>
     </section>
   );
 }

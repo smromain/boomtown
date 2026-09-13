@@ -97,7 +97,7 @@ describe('CreateJoin', () => {
     render(<CreateJoin onRoom={onRoom} onBack={vi.fn()} />);
 
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Seats' }), '4');
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'edition-2015');
+    await userEvent.click(screen.getByRole('radio', { name: /Modern/ }));
     await userEvent.selectOptions(
       screen.getByRole('combobox', { name: 'Cash and holdings' }),
       'hidden',
@@ -142,14 +142,14 @@ describe('CreateJoin', () => {
       // the row still says what the seat will be, and still sets its kind
       expect(screen.getByRole('combobox', { name: `Seat ${n} type` })).toBeInTheDocument();
     }
-    expect(screen.getByText(/Seat 1 — open/)).toBeInTheDocument();
+    expect(screen.getAllByText('Open — joins by code')).toHaveLength(3);
   });
 
   it('still round-trips the bot toggles, which are the part that does travel (#20)', async () => {
     vi.mocked(createRoom).mockResolvedValue({ roomCode: 'ABC123' } as OnlineGame);
     render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Seat 3 type' }), 'bot');
-    expect(screen.getByText(/Seat 3 — bot/)).toBeInTheDocument();
+    expect(screen.getByText('Bot seat')).toBeInTheDocument();
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: 'Create room' }));
     });

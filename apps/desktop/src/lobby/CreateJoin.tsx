@@ -12,6 +12,9 @@ import { createRoom, joinRoom, type OnlineGame } from '../online/onlineGame.js';
 import { makeRoomCode } from '../online/hostUrl.js';
 import { randomName } from '../online/randomName.js';
 import { loadSettings, saveSettings } from '../settings/settings.js';
+import { EditionChoice } from '../setup/EditionChoice.js';
+import { Button } from '../ui/Button.js';
+import form from '../setup/form.module.css';
 import styles from './lobby.module.css';
 
 /**
@@ -86,10 +89,17 @@ export function CreateJoin({
   };
 
   return (
-    <section className={styles.screen} aria-label="Online game">
-      <h1>Play online</h1>
+    <section className={form.screen} aria-label="Online game">
+      <header className={form.head}>
+        <span className={`kicker ${form.eyebrow}`}>online · one seat each</span>
+        <h1 className={form.title}>Play online</h1>
+        <p className={form.lede}>
+          Open a room and hand out the code, or take a seat in someone else's. Your hand and the
+          draw pile stay yours alone — the server deals each player their own view.
+        </p>
+      </header>
 
-      <div className={styles.choice}>
+      <div className={`${form.segment} ${form.segmentWide}`}>
         <button type="button" data-active={mode === 'create'} onClick={() => setMode('create')}>
           Create a room
         </button>
@@ -98,10 +108,11 @@ export function CreateJoin({
         </button>
       </div>
 
-      <label className={styles.field}>
+      <label className={form.field}>
         <span>Your name</span>
         <div className={styles.nameRow}>
           <input
+            className={form.input}
             value={name}
             maxLength={24}
             onChange={(e) => setName(e.target.value)}
@@ -114,20 +125,30 @@ export function CreateJoin({
       </label>
 
       {mode === 'join' ? (
-        <label className={styles.field}>
+        <label className={form.field}>
           <span>Room code</span>
           <input
+            className={`${form.input} ${styles.codeInput}`}
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value)}
             aria-label="Room code"
             placeholder="ABCD12"
           />
+          <span className={form.note}>
+            Six characters, from whoever opened the room. The rule set is theirs to choose.
+          </span>
         </label>
       ) : (
         <>
-          <label className={styles.field}>
+          <EditionChoice value={config.edition} onChange={(edition) => patch({ edition })} />
+
+          <label className={form.field}>
             <span>Seats</span>
-            <select value={seatCount} onChange={(e) => resize(Number(e.target.value))}>
+            <select
+              className={`${form.select} ${form.short}`}
+              value={seatCount}
+              onChange={(e) => resize(Number(e.target.value))}
+            >
               {Array.from(
                 { length: RULES.maxPlayers - RULES.minPlayers + 1 },
                 (_, i) => RULES.minPlayers + i,
@@ -139,36 +160,30 @@ export function CreateJoin({
             </select>
           </label>
 
-          <div className={styles.field}>
-            <span>Seats — humans join by code and bring their own names</span>
-            {config.seats.map((seat, index) => (
-              <SeatRow
-                key={index}
-                index={index}
-                seat={seat}
-                nameless
-                onChange={(next) =>
-                  patch({ seats: config.seats.map((s, i) => (i === index ? next : s)) })
-                }
-              />
-            ))}
+          <div className={form.field}>
+            <span>The table</span>
+            <span className={form.note}>
+              Humans join by code and bring their own names. Set a seat to a bot to fill it now.
+            </span>
+            <div className={form.roster}>
+              {config.seats.map((seat, index) => (
+                <SeatRow
+                  key={index}
+                  index={index}
+                  seat={seat}
+                  nameless
+                  onChange={(next) =>
+                    patch({ seats: config.seats.map((s, i) => (i === index ? next : s)) })
+                  }
+                />
+              ))}
+            </div>
           </div>
 
-          <label className={styles.field}>
-            <span>Edition</span>
-            <select
-              value={config.edition}
-              onChange={(e) => patch({ edition: e.target.value as GameConfig['edition'] })}
-            >
-              <option value="boomtown">Boomtown</option>
-              <option value="classic">Classic</option>
-              <option value="edition-2015">Modern</option>
-            </select>
-          </label>
-
-          <label className={styles.field}>
+          <label className={form.field}>
             <span>Cash and holdings</span>
             <select
+              className={form.select}
               aria-label="Cash and holdings"
               aria-describedby={visibilityIsFixed(config) ? 'visibility-note' : undefined}
               value={effectiveVisibility(config)}
@@ -179,7 +194,7 @@ export function CreateJoin({
               <option value="hidden">Hidden — only your own</option>
             </select>
             {visibilityIsFixed(config) && (
-              <span id="visibility-note" className={styles.fieldNote}>
+              <span id="visibility-note" className={form.note}>
                 {editionLabel(config.edition)} is played with the books closed — the ruleset fixes
                 this.
               </span>
@@ -188,17 +203,18 @@ export function CreateJoin({
         </>
       )}
 
-      <p className={styles.error} role="alert">
+      <p className={form.error} role="alert">
         {error ?? ''}
       </p>
 
-      <button type="button" className={styles.primary} disabled={busy} onClick={() => void go()}>
-        {busy ? 'Connecting…' : mode === 'create' ? 'Create room' : 'Join room'}
-      </button>
-
-      <button type="button" className={styles.back} onClick={onBack}>
-        Back
-      </button>
+      <div className={form.actions}>
+        <Button variant="primary" disabled={busy} onClick={() => void go()}>
+          {busy ? 'Connecting…' : mode === 'create' ? 'Create room' : 'Join room'}
+        </Button>
+        <Button variant="ghost" onClick={onBack}>
+          Back
+        </Button>
+      </div>
     </section>
   );
 }
