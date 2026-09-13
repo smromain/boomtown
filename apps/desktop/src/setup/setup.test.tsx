@@ -163,11 +163,17 @@ describe('NewGame screen', () => {
     started!.client.disconnect();
   });
 
-  it('shows a rules summary covering both rule sets, naming no outside game', async () => {
+  it('keeps the rules out of the screen until asked, then covers both rule sets', async () => {
     render(<NewGame onStart={() => {}} />);
 
-    const rules = screen.getByText('How to play').closest('details')!;
-    expect(rules).not.toHaveAttribute('open'); // collapsed on load
+    // Nothing of the prose is in the page until the button is pressed. It used
+    // to be an inline <details>, and expanded it was taller than the smallest
+    // window the app allows — a control on the screen could push the screen
+    // itself into a scroll.
+    expect(screen.queryByText(/A turn/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'How to play' }));
+    const rules = screen.getByRole('dialog');
     expect(rules).toHaveTextContent(/A turn/);
     expect(rules).toHaveTextContent(/Mergers/);
     // the "differs" table names both rule sets and their key numbers

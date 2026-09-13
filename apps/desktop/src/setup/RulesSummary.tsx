@@ -1,4 +1,6 @@
+import * as Dialog from '@radix-ui/react-dialog';
 import { RULES, boomtown, classic, edition2015, quotaFor } from '@boomtown/engine';
+import decisionStyles from '../decisions/decisions.module.css';
 import styles from './setup.module.css';
 
 /**
@@ -11,13 +13,29 @@ import styles from './setup.module.css';
  * only in numbers. Boomtown is this project's own variant — same game, plus a
  * second way to end it — and the table says so rather than presenting three
  * peers.
+ *
+ * A dialog rather than the inline `<details>` it used to be: expanded, that
+ * disclosure was taller than the window, so the one screen that is meant to be
+ * taken in at a glance could be pushed into a page scroll by a control on it.
+ * The prose is unchanged — it just no longer competes with the form for height.
  */
-export function RulesSummary() {
+export function RulesSummary({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <details className={styles.rules}>
-      <summary className={styles.rulesSummary}>How to play</summary>
+    <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
+      <Dialog.Portal>
+        <Dialog.Overlay className={decisionStyles.overlay} />
+        <Dialog.Content
+          className={`${decisionStyles.content} ${styles.rulesDialog}`}
+          aria-describedby={undefined}
+        >
+          <header className={styles.rulesHead}>
+            <Dialog.Title className={`serif ${styles.rulesTitle}`}>How to play</Dialog.Title>
+            <Dialog.Close className={styles.rulesClose} aria-label="Close">
+              ✕
+            </Dialog.Close>
+          </header>
 
-      <div className={styles.rulesBody}>
+          <div className={styles.rulesBody}>
         <p>
           Build seven rival companies across a shared grid and profit from the stock you hold in
           them. Everyone starts with ${RULES.startingCash.toLocaleString()} and a rack of{' '}
@@ -139,7 +157,9 @@ export function RulesSummary() {
           other two are reconstructions, there for a table that wants the published rules; cash and
           price both climb faster in the Modern set, and Classic runs a little longer.
         </p>
-      </div>
-    </details>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

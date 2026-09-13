@@ -10,20 +10,63 @@
  * did not, so the setup read as the settings page of a different application.
  */
 
+/*
+ * A game screen, not a page: the plate is sized by the window and never by its
+ * own content, so setting up a table is one glance rather than a scroll. The
+ * smallest window the app allows is 1024x700 (`electron/window.ts`), and
+ * everything here is laid out to fit inside that at six seats — the tallest
+ * the roster ever gets.
+ *
+ * `.body` is the only thing that may ever scroll, and only if someone drags
+ * the window below the supported minimum: the head and the actions stay put,
+ * so the primary action is never below the fold.
+ */
 .screen {
-  max-width: 44rem;
-  margin: 2.5rem auto;
-  padding: 2rem 2.25rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  width: min(58rem, 100%);
+  max-height: 100%;
+  margin: auto;
+  padding: 1.5rem 2rem 1.25rem;
   background: var(--surface);
   border-top: var(--frame-top-rule);
   border-radius: 4px;
   box-shadow: var(--elev-2);
 }
 
+/* The viewport shell. Owns the page's only height, and refuses it to anyone
+   else — a screen that overflows is a bug to fix in the layout, not something
+   to hand to a scrollbar. */
+.viewport {
+  height: 100%;
+  display: flex;
+  padding: 1.25rem;
+  overflow: hidden;
+}
+
+.body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The two columns the form sits in below the head: the roster on the left,
+   where it can use the width, and the table's settings on the right. */
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 15rem;
+  gap: 1.75rem;
+  align-items: start;
+}
+
 /* Title block: eyebrow, serif display name, and the one line that says what
    this screen decides. */
+/* Title on the left, the way out to the rules on the right. */
 .head {
-  margin-bottom: 1.75rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .eyebrow {
@@ -34,26 +77,30 @@
 .title {
   font-family: var(--serif);
   font-weight: 400;
-  font-size: 2.25rem;
+  font-size: 1.9rem;
   line-height: 1.05;
   letter-spacing: -0.015em;
   margin: 0;
 }
 
 .lede {
-  margin: 0.5rem 0 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
   color: var(--muted);
-  max-width: 34rem;
+  max-width: 32rem;
 }
 
 /* A labelled group. `.field > span` is the label; the control follows. */
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  margin-bottom: 1.5rem;
+  gap: 0.4rem;
+  margin-bottom: 1.1rem;
+}
+
+.field:last-child {
+  margin-bottom: 0;
 }
 
 .field > span:first-child {
@@ -148,7 +195,7 @@
 .segmentWide {
   display: flex;
   width: 100%;
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.1rem;
 }
 
 /* Edition cards. See EditionChoice.tsx for why this is not a select. */
@@ -161,9 +208,9 @@
 .edition {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.25rem;
   text-align: left;
-  padding: 0.75rem 0.85rem 0.85rem;
+  padding: 0.6rem 0.75rem 0.7rem;
   font: inherit;
   background: var(--input);
   border: 1px solid var(--rule);
@@ -227,10 +274,10 @@
 
 .seat {
   display: grid;
-  grid-template-columns: 1.6rem 1fr 6.5rem 9rem;
-  gap: 0.6rem;
+  grid-template-columns: 1.4rem 1fr 6.5rem 8.5rem;
+  gap: 0.5rem;
   align-items: center;
-  padding: 0.5rem 0;
+  padding: 0.35rem 0;
   border-bottom: 1px solid var(--rule);
 }
 
@@ -270,21 +317,82 @@
 .error {
   color: var(--error);
   min-height: 1.2em;
-  margin: 0.25rem 0 0.75rem;
+  margin: 0.5rem 0 0;
   font-size: 0.85rem;
 }
 
-/* The commit row. The primary action is full width; the way back is a quiet
-   ghost beneath it, in both screens — they used to disagree on its alignment. */
+/* The commit row, on one line so it costs one line: the way back sits quietly
+   at the left, the action that matters takes the rest. Both screens used to
+   stack these and disagree on the alignment of the second. */
 .actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 1.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
 }
 
-.actions > button {
-  width: 100%;
+.actions > button:last-child {
+  flex: 1;
   padding: 0.7rem;
   font-size: 0.95rem;
+}
+
+/*
+ * Short-window mode. The app's floor is 1024x700 (`electron/window.ts`), and a
+ * six-seat roster plus the edition cards does not fit that at the comfortable
+ * rhythm above — measured at +89px on New game and +108px on the online create
+ * form. Rather than let those two cases scroll, the screen tightens: smaller
+ * title, less air between fields and seat rows, and the lede — the one piece
+ * here that is atmosphere rather than a control — stands down.
+ *
+ * Keyed on height alone: a wide, short window is exactly the case that breaks.
+ */
+@media (max-height: 820px) {
+  .viewport {
+    padding: 0.75rem;
+  }
+
+  .screen {
+    padding: 1rem 1.5rem 0.85rem;
+  }
+
+  .head {
+    margin-bottom: 0.85rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .lede {
+    display: none;
+  }
+
+  .field {
+    margin-bottom: 0.8rem;
+  }
+
+  .edition {
+    padding: 0.5rem 0.7rem 0.55rem;
+  }
+
+  .editionName {
+    font-size: 1rem;
+  }
+
+  .seat {
+    padding: 0.2rem 0;
+  }
+
+  .input,
+  .select {
+    padding: 0.4rem 0.6rem;
+  }
+
+  .actions {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+  }
 }

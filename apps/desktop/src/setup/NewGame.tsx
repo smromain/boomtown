@@ -48,6 +48,7 @@ export function NewGame({
   onBack?: () => void;
 }) {
   const [config, setConfig] = useState<GameConfig>(defaultConfig);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const error = configError(config);
 
   const patch = (over: Partial<GameConfig>) => setConfig((current) => ({ ...current, ...over }));
@@ -90,94 +91,107 @@ export function NewGame({
   };
 
   return (
-    <section className={form.screen} aria-label="New game">
-      <header className={form.head}>
-        <span className={`kicker ${form.eyebrow}`}>hot seat · one machine</span>
-        <h1 className={form.title}>New game</h1>
-        <p className={form.lede}>
-          Pick a rule set, fill the seats, and the town opens for business. Everything here can
-          only be set before the first tile goes down.
-        </p>
-      </header>
-
-      <RulesSummary />
-
-      <EditionChoice value={config.edition} onChange={(edition) => patch({ edition })} />
-
-      <label className={form.field}>
-        <span>Seats</span>
-        <select
-          className={`${form.select} ${form.short}`}
-          value={config.seats.length}
-          onChange={(event) => patch({ seats: resizeSeats(config.seats, Number(event.target.value)) })}
-        >
-          {Array.from({ length: RULES.maxPlayers - RULES.minPlayers + 1 }, (_, i) => RULES.minPlayers + i).map(
-            (count) => (
-              <option key={count} value={count}>
-                {count}
-              </option>
-            ),
-          )}
-        </select>
-      </label>
-
-      <div className={form.field}>
-        <span>Players</span>
-        <div className={form.roster}>
-          {config.seats.map((seat, index) => (
-            <SeatRow
-              key={index}
-              index={index}
-              seat={seat}
-              onChange={(next) => patch({ seats: config.seats.map((s, i) => (i === index ? next : s)) })}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/*
-        `aria-label` and `aria-describedby` rather than relying on the wrapping
-        `<label>`: the explanatory note sits inside the label element, so
-        without them the control's accessible name becomes "Cash and holdings
-        Boomtown is played with the books closed — the ruleset fixes this."
-        The note describes *why* the control is fixed; it is not part of its
-        name. This only surfaced when Boomtown became the default, because
-        until then the note appeared only after someone switched preset.
-      */}
-      <label className={form.field}>
-        <span>Cash and holdings</span>
-        <select
-          className={form.select}
-          aria-label="Cash and holdings"
-          aria-describedby={visibilityIsFixed(config) ? 'visibility-note' : undefined}
-          value={effectiveVisibility(config)}
-          disabled={visibilityIsFixed(config)}
-          onChange={(event) => patch({ visibility: event.target.value as GameConfig['visibility'] })}
-        >
-          <option value="open">Open — everyone sees everything</option>
-          <option value="hidden">Hidden — only your own</option>
-        </select>
-        {visibilityIsFixed(config) && (
-          <span id="visibility-note" className={form.note}>
-            {editionLabel(config.edition)} is played with the books closed — the ruleset fixes this.
-          </span>
-        )}
-      </label>
-
-      <p className={form.error} role="alert">
-        {error ?? ''}
-      </p>
-
-      <div className={form.actions}>
-        <Button variant="primary" disabled={error != null} onClick={start}>
-          Start game
-        </Button>
-        {onBack && (
-          <Button variant="ghost" onClick={onBack}>
-            Back
+    <div className={form.viewport}>
+      <section className={form.screen} aria-label="New game">
+        <header className={form.head}>
+          <div>
+            <span className={`kicker ${form.eyebrow}`}>hot seat · one machine</span>
+            <h1 className={form.title}>New game</h1>
+            <p className={form.lede}>
+              Pick a rule set and fill the seats. None of it can be changed once the first tile
+              goes down.
+            </p>
+          </div>
+          <Button variant="secondary" onClick={() => setRulesOpen(true)}>
+            How to play
           </Button>
-        )}
-      </div>
-    </section>
+        </header>
+
+        <div className={form.body}>
+          <EditionChoice value={config.edition} onChange={(edition) => patch({ edition })} />
+
+          <div className={form.columns}>
+            <div className={form.field}>
+              <span>Players</span>
+              <div className={form.roster}>
+                {config.seats.map((seat, index) => (
+                  <SeatRow
+                    key={index}
+                    index={index}
+                    seat={seat}
+                    onChange={(next) => patch({ seats: config.seats.map((s, i) => (i === index ? next : s)) })}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className={form.field}>
+                <span>Seats</span>
+                <select
+                  className={`${form.select} ${form.short}`}
+                  value={config.seats.length}
+                  onChange={(event) => patch({ seats: resizeSeats(config.seats, Number(event.target.value)) })}
+                >
+                  {Array.from({ length: RULES.maxPlayers - RULES.minPlayers + 1 }, (_, i) => RULES.minPlayers + i).map(
+                    (count) => (
+                      <option key={count} value={count}>
+                        {count}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </label>
+
+              {/*
+                `aria-label` and `aria-describedby` rather than relying on the wrapping
+                `<label>`: the explanatory note sits inside the label element, so
+                without them the control's accessible name becomes "Cash and holdings
+                Boomtown is played with the books closed — the ruleset fixes this."
+                The note describes *why* the control is fixed; it is not part of its
+                name. This only surfaced when Boomtown became the default, because
+                until then the note appeared only after someone switched preset.
+              */}
+              <label className={form.field}>
+                <span>Cash and holdings</span>
+                <select
+                  className={form.select}
+                  aria-label="Cash and holdings"
+                  aria-describedby={visibilityIsFixed(config) ? 'visibility-note' : undefined}
+                  value={effectiveVisibility(config)}
+                  disabled={visibilityIsFixed(config)}
+                  onChange={(event) => patch({ visibility: event.target.value as GameConfig['visibility'] })}
+                >
+                  <option value="open">Open — everyone sees everything</option>
+                  <option value="hidden">Hidden — only your own</option>
+                </select>
+                {visibilityIsFixed(config) && (
+                  <span id="visibility-note" className={form.note}>
+                    {editionLabel(config.edition)} is played with the books closed — the ruleset fixes this.
+                  </span>
+                )}
+              </label>
+            </div>
+          </div>
+
+          <p className={form.error} role="alert">
+            {error ?? ''}
+          </p>
+        </div>
+
+        <div className={form.actions}>
+          {onBack && (
+            <Button variant="ghost" onClick={onBack}>
+              Back
+            </Button>
+          )}
+          <Button variant="primary" disabled={error != null} onClick={start}>
+            Start game
+          </Button>
+        </div>
+      </section>
+
+      <RulesSummary open={rulesOpen} onClose={() => setRulesOpen(false)} />
+    </div>
   );
 }
