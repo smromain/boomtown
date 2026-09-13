@@ -1,15 +1,9 @@
-.screen {
-  max-width: 40rem;
-  margin: 3rem auto;
-  padding: 1.5rem;
-  background: var(--surface);
-  border-radius: 8px;
-  box-shadow: var(--elev-2);
-}
-
-.screen h1 {
-  margin: 0 0 1.25rem;
-}
+/*
+ * Lobby-only styles. The form language these screens share with New game —
+ * the plate, the title block, fields, the segmented control, the seat roster,
+ * the commit row — lives in `setup/form.module.css`; what is left here is the
+ * launch beat and the room itself, which nothing else has.
+ */
 
 /* The launch beat (U9, F2): the first thing seen sets a tone rather than
    presenting a form — the wordmark, the skyline, atmosphere — on the same ink
@@ -60,169 +54,10 @@
 }
 
 /* The launch screen's Local/Online choice (U9) — <Button> components, styled
-   entirely by the Button primitive. Distinct from `.choice` below (CreateJoin's
-   raw-<button> Create/Join tab toggle) so the two never fight over background
-   and text colour on the same class name. */
+   entirely by the Button primitive. */
 .launchChoice {
   display: flex;
   gap: 0.75rem;
-}
-
-.choice {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-
-.choice button {
-  flex: 1;
-  padding: 0.75rem;
-  font: inherit;
-  background: var(--input);
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.choice button[data-active='true'] {
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 1.25rem;
-}
-
-.field > span {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-}
-
-.field input,
-.field select {
-  padding: 0.5rem;
-  background: var(--input);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  color: var(--ink);
-  font: inherit;
-}
-
-.code {
-  font-family: ui-monospace, monospace;
-  font-size: 1.5rem;
-  letter-spacing: 0.15em;
-  padding: 0.5rem 0.75rem;
-  background: var(--surface-2);
-  border-radius: 6px;
-  display: inline-block;
-}
-
-.roomHeader {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.roomHeader .hint {
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.seats {
-  list-style: none;
-  margin: 0 0 1.5rem;
-  padding: 0;
-}
-
-.seatRow {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem 0;
-  border-bottom: 1px solid var(--rule);
-}
-
-.seatRow:last-child {
-  border-bottom: none;
-}
-
-.dot {
-  width: 0.6rem;
-  height: 0.6rem;
-  border-radius: 50%;
-  background: var(--muted);
-  flex-shrink: 0;
-}
-
-.dot[data-connected='true'] {
-  background: #3a9d5a;
-}
-
-.seatRow .kind {
-  margin-left: auto;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-}
-
-.banner {
-  padding: 0.6rem 0.9rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  margin-bottom: 1rem;
-}
-
-.banner[data-status='connecting'] {
-  background: #fdf3d8;
-  color: #7a5c12;
-}
-
-.banner[data-status='closed'] {
-  background: #fbe4e0;
-  color: #8a2f22;
-}
-
-.error {
-  color: var(--error);
-  min-height: 1.2em;
-  margin: 0.5rem 0;
-  font-size: 0.85rem;
-}
-
-.primary {
-  width: 100%;
-  padding: 0.75rem;
-  font: inherit;
-  font-weight: 600;
-  background: var(--accent);
-  color: var(--on-accent);
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.primary:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.back {
-  background: none;
-  border: 0;
-  color: var(--muted);
-  font: inherit;
-  cursor: pointer;
-  padding: 0;
-  margin-top: 1rem;
 }
 
 /* Name field + its re-roll control. The input keeps the full width it had; the
@@ -242,10 +77,10 @@
   flex-shrink: 0;
   padding: 0 0.9rem;
   font: inherit;
-  font-size: 0.8rem;
-  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--ink);
+  color: var(--muted);
   background: var(--surface-2);
   border: 1px solid var(--rule);
   border-radius: 4px;
@@ -253,13 +88,93 @@
 }
 
 .nameRow button:hover {
-  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--cell-ring);
 }
 
-/* Why a control is fixed, said where the control is — a disabled select with no
-   explanation reads as a bug. */
-.fieldNote {
-  font-size: 0.75rem;
-  line-height: 1.4;
+/* Typing a room code is transcription, not prose: monospace and wide tracking
+   so a 0 and an O are told apart while reading it off someone's screen. */
+.codeInput {
+  font-family: ui-monospace, monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+/* The room's own code, the thing everyone else needs. Sized like a headline
+   because it is the screen's one piece of information. */
+.code {
+  font-family: ui-monospace, monospace;
+  font-size: 1.6rem;
+  letter-spacing: 0.22em;
+  padding: 0.4rem 0.8rem;
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.roomHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  margin-top: 0.9rem;
+}
+
+.hint {
+  font-size: 0.85rem;
   color: var(--muted);
+}
+
+.seats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.seatRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--cell-ring);
+  flex-shrink: 0;
+}
+
+.dot[data-connected='true'] {
+  background: #3a9d5a;
+}
+
+.seatRow .kind {
+  margin-left: auto;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+
+.banner {
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.banner[data-status='connecting'] {
+  background: #fdf3d8;
+  color: #7a5c12;
+}
+
+.banner[data-status='closed'] {
+  background: #fbe4e0;
+  color: #8a2f22;
 }

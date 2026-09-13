@@ -96,11 +96,12 @@ describe('CreateJoin', () => {
     vi.mocked(createRoom).mockResolvedValue({ roomCode: 'ABC123' } as OnlineGame);
     render(<CreateJoin onRoom={onRoom} onBack={vi.fn()} />);
 
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Seats' }), '4');
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'edition-2015');
-    await userEvent.selectOptions(
-      screen.getByRole('combobox', { name: 'Cash and holdings' }),
-      'hidden',
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Seats' })).getByRole('radio', { name: '4 seats' }),
+    );
+    await userEvent.click(screen.getByRole('radio', { name: /Modern/ }));
+await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Cash and holdings' })).getByRole('radio', { name: 'Closed — only your own' }),
     );
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: 'Create room' }));
@@ -140,16 +141,18 @@ describe('CreateJoin', () => {
     for (const n of [1, 2, 3]) {
       expect(screen.queryByRole('textbox', { name: `Seat ${n} name` })).not.toBeInTheDocument();
       // the row still says what the seat will be, and still sets its kind
-      expect(screen.getByRole('combobox', { name: `Seat ${n} type` })).toBeInTheDocument();
+      expect(screen.getByRole('radiogroup', { name: `Seat ${n} type` })).toBeInTheDocument();
     }
-    expect(screen.getByText(/Seat 1 — open/)).toBeInTheDocument();
+    expect(screen.getAllByText('Open — joins by code')).toHaveLength(3);
   });
 
   it('still round-trips the bot toggles, which are the part that does travel (#20)', async () => {
     vi.mocked(createRoom).mockResolvedValue({ roomCode: 'ABC123' } as OnlineGame);
     render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Seat 3 type' }), 'bot');
-    expect(screen.getByText(/Seat 3 — bot/)).toBeInTheDocument();
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Seat 3 type' })).getByRole('radio', { name: 'Bot' }),
+    );
+    expect(screen.getByText('Bot seat')).toBeInTheDocument();
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: 'Create room' }));
     });

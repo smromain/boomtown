@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import { RULES } from '@boomtown/engine';
-import {
-  defaultConfig,
-  effectiveVisibility,
-  visibilityIsFixed,
-  type GameConfig,
-} from '../setup/gameConfig.js';
-import { editionLabel } from '../setup/editionLabel.js';
+import { defaultConfig, type GameConfig } from '../setup/gameConfig.js';
+import { Choice } from '../setup/Choice.js';
+import { VisibilityChoice } from '../setup/VisibilityChoice.js';
 import { SeatRow } from '../setup/SeatConfig.js';
 import { createRoom, joinRoom, type OnlineGame } from '../online/onlineGame.js';
 import { makeRoomCode } from '../online/hostUrl.js';
 import { randomName } from '../online/randomName.js';
 import { loadSettings, saveSettings } from '../settings/settings.js';
+import { EditionChoice } from '../setup/EditionChoice.js';
+import { Button } from '../ui/Button.js';
+import form from '../setup/form.module.css';
 import styles from './lobby.module.css';
 
 /**
@@ -85,120 +84,126 @@ export function CreateJoin({
     }
   };
 
-  return (
-    <section className={styles.screen} aria-label="Online game">
-      <h1>Play online</h1>
-
-      <div className={styles.choice}>
-        <button type="button" data-active={mode === 'create'} onClick={() => setMode('create')}>
-          Create a room
-        </button>
-        <button type="button" data-active={mode === 'join'} onClick={() => setMode('join')}>
-          Join with a code
+  const nameField = (
+    <label className={form.field}>
+      <span>Your name</span>
+      <div className={styles.nameRow}>
+        <input
+          className={form.input}
+          value={name}
+          maxLength={24}
+          onChange={(e) => setName(e.target.value)}
+          aria-label="Your name"
+        />
+        <button type="button" onClick={() => setName(randomName())} aria-label="Roll a new name">
+          Roll
         </button>
       </div>
+    </label>
+  );
 
-      <label className={styles.field}>
-        <span>Your name</span>
-        <div className={styles.nameRow}>
-          <input
-            value={name}
-            maxLength={24}
-            onChange={(e) => setName(e.target.value)}
-            aria-label="Your name"
-          />
-          <button type="button" onClick={() => setName(randomName())} aria-label="Roll a new name">
-            Roll
-          </button>
-        </div>
-      </label>
-
-      {mode === 'join' ? (
-        <label className={styles.field}>
-          <span>Room code</span>
-          <input
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value)}
-            aria-label="Room code"
-            placeholder="ABCD12"
-          />
-        </label>
-      ) : (
-        <>
-          <label className={styles.field}>
-            <span>Seats</span>
-            <select value={seatCount} onChange={(e) => resize(Number(e.target.value))}>
-              {Array.from(
-                { length: RULES.maxPlayers - RULES.minPlayers + 1 },
-                (_, i) => RULES.minPlayers + i,
-              ).map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className={styles.field}>
-            <span>Seats — humans join by code and bring their own names</span>
-            {config.seats.map((seat, index) => (
-              <SeatRow
-                key={index}
-                index={index}
-                seat={seat}
-                nameless
-                onChange={(next) =>
-                  patch({ seats: config.seats.map((s, i) => (i === index ? next : s)) })
-                }
-              />
-            ))}
+  return (
+    <div className={form.viewport}>
+      <section className={form.screen} aria-label="Online game">
+        <header className={form.head}>
+          <div>
+            <span className={`kicker ${form.eyebrow}`}>online · one seat each</span>
+            <h1 className={form.title}>Play online</h1>
+            <p className={form.lede}>
+              Open a room and hand out the code, or take a seat in someone else&apos;s. Your hand
+              and the draw pile stay yours alone.
+            </p>
           </div>
+          <div className={form.segment}>
+            <button type="button" data-active={mode === 'create'} onClick={() => setMode('create')}>
+              Create a room
+            </button>
+            <button type="button" data-active={mode === 'join'} onClick={() => setMode('join')}>
+              Join with a code
+            </button>
+          </div>
+        </header>
 
-          <label className={styles.field}>
-            <span>Edition</span>
-            <select
-              value={config.edition}
-              onChange={(e) => patch({ edition: e.target.value as GameConfig['edition'] })}
-            >
-              <option value="boomtown">Boomtown</option>
-              <option value="classic">Classic</option>
-              <option value="edition-2015">Modern</option>
-            </select>
-          </label>
+        <div className={form.body}>
+          {mode === 'join' ? (
+            <div className={form.columns}>
+              <label className={form.field}>
+                <span>Room code</span>
+                <input
+                  className={`${form.input} ${styles.codeInput}`}
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value)}
+                  aria-label="Room code"
+                  placeholder="ABCD12"
+                />
+                <span className={form.note}>
+                  Six characters, from whoever opened the room. The rule set is theirs to choose.
+                </span>
+              </label>
+              {nameField}
+            </div>
+          ) : (
+            <>
+              <EditionChoice value={config.edition} onChange={(edition) => patch({ edition })} />
 
-          <label className={styles.field}>
-            <span>Cash and holdings</span>
-            <select
-              aria-label="Cash and holdings"
-              aria-describedby={visibilityIsFixed(config) ? 'visibility-note' : undefined}
-              value={effectiveVisibility(config)}
-              disabled={visibilityIsFixed(config)}
-              onChange={(e) => patch({ visibility: e.target.value as GameConfig['visibility'] })}
-            >
-              <option value="open">Open — everyone sees everything</option>
-              <option value="hidden">Hidden — only your own</option>
-            </select>
-            {visibilityIsFixed(config) && (
-              <span id="visibility-note" className={styles.fieldNote}>
-                {editionLabel(config.edition)} is played with the books closed — the ruleset fixes
-                this.
-              </span>
-            )}
-          </label>
-        </>
-      )}
+              <div className={form.columns}>
+                <div className={form.field}>
+                  <span>The table</span>
+                  <span className={form.note}>
+                    Humans join by code and bring their own names. Set a seat to a bot to fill it now.
+                  </span>
+                  <div className={form.roster}>
+                    {config.seats.map((seat, index) => (
+                      <SeatRow
+                        key={index}
+                        index={index}
+                        seat={seat}
+                        nameless
+                        onChange={(next) =>
+                          patch({ seats: config.seats.map((s, i) => (i === index ? next : s)) })
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
 
-      <p className={styles.error} role="alert">
-        {error ?? ''}
-      </p>
+                <div>
+                  {nameField}
 
-      <button type="button" className={styles.primary} disabled={busy} onClick={() => void go()}>
-        {busy ? 'Connecting…' : mode === 'create' ? 'Create room' : 'Join room'}
-      </button>
+                  <div className={form.field}>
+                    <span>Seats</span>
+                    <Choice
+                      label="Seats"
+                      numeric
+                      value={seatCount}
+                      options={Array.from(
+                        { length: RULES.maxPlayers - RULES.minPlayers + 1 },
+                        (_, i) => RULES.minPlayers + i,
+                      ).map((n) => ({ value: n, label: String(n), description: `${n} seats` }))}
+                      onChange={(n) => resize(n)}
+                    />
+                  </div>
 
-      <button type="button" className={styles.back} onClick={onBack}>
-        Back
-      </button>
-    </section>
+                  <VisibilityChoice config={config} onChange={(visibility) => patch({ visibility })} />
+                </div>
+              </div>
+            </>
+          )}
+
+          <p className={form.error} role="alert">
+            {error ?? ''}
+          </p>
+        </div>
+
+        <div className={form.actions}>
+          <Button variant="ghost" onClick={onBack}>
+            Back
+          </Button>
+          <Button variant="primary" disabled={busy} onClick={() => void go()}>
+            {busy ? 'Connecting…' : mode === 'create' ? 'Create room' : 'Join room'}
+          </Button>
+        </div>
+      </section>
+    </div>
   );
 }

@@ -3,6 +3,8 @@ import { netlog } from '@boomtown/client-core';
 import type { RoomState } from '@boomtown/protocol';
 import type { OnlineGame } from '../online/onlineGame.js';
 import { useConnectionStatus, useLobbyError } from './useConnectionStatus.js';
+import { Button } from '../ui/Button.js';
+import form from '../setup/form.module.css';
 import styles from './lobby.module.css';
 
 /**
@@ -59,60 +61,67 @@ export function SeatList({
   }, [game, status, seats.length, filled, mySeat, lobbyError]);
 
   return (
-    <section className={styles.screen} aria-label="Room lobby">
-      <div className={styles.roomHeader}>
-        <h1>Room</h1>
-        <span className={styles.code} aria-label="Room code">
-          {game.roomCode}
-        </span>
-        <span className={styles.hint}>Share this code with the other players.</span>
-      </div>
+    <div className={form.viewport}>
+      <section className={form.screen} aria-label="Room lobby">
+        <header className={form.head}>
+          <div>
+            <span className={`kicker ${form.eyebrow}`}>waiting room</span>
+            <h1 className={form.title}>Room</h1>
+            <p className={form.lede}>Share this code with the other players.</p>
+          </div>
+          <span className={styles.code} aria-label="Room code">
+            {game.roomCode}
+          </span>
+        </header>
 
-      {status !== 'open' && (
-        <div className={styles.banner} data-status={status} role="status">
-          {status === 'connecting' ? 'Connecting…' : 'Connection lost — retrying…'}
+        <div className={form.body}>
+          {status !== 'open' && (
+            <div className={styles.banner} data-status={status} role="status">
+              {status === 'connecting' ? 'Connecting…' : 'Connection lost — retrying…'}
+            </div>
+          )}
+
+          {lobbyError && (
+            <div className={styles.banner} data-status="closed" role="alert">
+              {lobbyError.message}
+            </div>
+          )}
+
+          <ol className={styles.seats}>
+            {seats.map((seat) => (
+              <li key={seat.index} className={styles.seatRow}>
+                <span className={styles.dot} data-connected={seat.connected} />
+                <span>
+                  {seat.name ?? 'Open seat'}
+                  {seat.index === mySeat ? ' (you)' : ''}
+                </span>
+                <span className={styles.kind}>{seat.kind}</span>
+              </li>
+            ))}
+            {seats.length === 0 && <li className={styles.seatRow}>Waiting for the room…</li>}
+          </ol>
         </div>
-      )}
 
-      {lobbyError && (
-        <div className={styles.banner} data-status="closed" role="alert">
-          {lobbyError.message}
+        <div className={form.actions}>
+          <Button variant="ghost" onClick={onLeave}>
+            Leave room
+          </Button>
+          {game.isHost ? (
+            <Button
+              variant="primary"
+              disabled={!filled || status !== 'open'}
+              onClick={() => {
+                netlog.log('lobby', 'note', 'start pressed', { roomCode: game.roomCode });
+                game.transport.start();
+              }}
+            >
+              {filled ? 'Start game' : 'Waiting for players…'}
+            </Button>
+          ) : (
+            <p className={styles.hint}>Waiting for the host to start.</p>
+          )}
         </div>
-      )}
-
-      <ol className={styles.seats}>
-        {seats.map((seat) => (
-          <li key={seat.index} className={styles.seatRow}>
-            <span className={styles.dot} data-connected={seat.connected} />
-            <span>
-              {seat.name ?? 'Open seat'}
-              {seat.index === mySeat ? ' (you)' : ''}
-            </span>
-            <span className={styles.kind}>{seat.kind}</span>
-          </li>
-        ))}
-        {seats.length === 0 && <li className={styles.seatRow}>Waiting for the room…</li>}
-      </ol>
-
-      {game.isHost ? (
-        <button
-          type="button"
-          className={styles.primary}
-          disabled={!filled || status !== 'open'}
-          onClick={() => {
-            netlog.log('lobby', 'note', 'start pressed', { roomCode: game.roomCode });
-            game.transport.start();
-          }}
-        >
-          {filled ? 'Start game' : 'Waiting for players…'}
-        </button>
-      ) : (
-        <p className={styles.hint}>Waiting for the host to start.</p>
-      )}
-
-      <button type="button" className={styles.back} onClick={onLeave}>
-        Leave room
-      </button>
-    </section>
+      </section>
+    </div>
   );
 }

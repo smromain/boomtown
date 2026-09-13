@@ -1,0 +1,484 @@
+/*
+ * The setup form language — shared by New game and Play online, which are the
+ * same screen wearing different questions and had drifted into two stylesheets
+ * with two copies of every rule (`.field`, `.error`, `.primary` vs `.start`,
+ * `.back`). One copy, imported by both.
+ *
+ * These screens sit between the launch beat and the board, both of which speak
+ * the crafted language (serif display, kicker eyebrows, the ink top rule, the
+ * elevation scale). A bare sans-serif `<h1>` over a stack of identical selects
+ * did not, so the setup read as the settings page of a different application.
+ */
+
+/*
+ * A game screen, not a page: the plate is sized by the window and never by its
+ * own content, so setting up a table is one glance rather than a scroll. The
+ * smallest window the app allows is 1024x700 (`electron/window.ts`), and
+ * everything here is laid out to fit inside that at six seats — the tallest
+ * the roster ever gets.
+ *
+ * `.body` is the only thing that may ever scroll, and only if someone drags
+ * the window below the supported minimum: the head and the actions stay put,
+ * so the primary action is never below the fold.
+ */
+.screen {
+  display: flex;
+  flex-direction: column;
+  width: min(58rem, 100%);
+  max-height: 100%;
+  margin: auto;
+  padding: 1.5rem 2rem 1.25rem;
+  background: var(--surface);
+  border-top: var(--frame-top-rule);
+  border-radius: 4px;
+  box-shadow: var(--elev-2);
+}
+
+/* The viewport shell. Owns the page's only height, and refuses it to anyone
+   else — a screen that overflows is a bug to fix in the layout, not something
+   to hand to a scrollbar. */
+.viewport {
+  height: 100%;
+  display: flex;
+  padding: 1.25rem;
+  overflow: hidden;
+}
+
+.body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The two columns the form sits in below the head: the roster on the left,
+   where it can use the width, and the table's settings on the right. */
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 15rem;
+  gap: 1.75rem;
+  align-items: start;
+}
+
+/* Title block: eyebrow, serif display name, and the one line that says what
+   this screen decides. */
+/* Title on the left, the way out to the rules on the right. */
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.title {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.9rem;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+.lede {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--muted);
+  max-width: 32rem;
+}
+
+/* A labelled group. `.field > span` is the label; the control follows. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1.1rem;
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.field > span:first-child {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+
+/* Why a control is fixed, said where the control is — a disabled select with no
+   explanation reads as a bug. Sentence case and sentence letterspacing: it is
+   prose, not a label, and it used to inherit the label's uppercase tracking. */
+.note {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.input,
+.select {
+  padding: 0.55rem 0.7rem;
+  background: var(--input);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  color: var(--ink);
+  font: inherit;
+}
+
+.select {
+  padding-right: 1.8rem;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23867a6d' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+}
+
+.select:disabled {
+  color: var(--muted);
+  background-color: var(--surface-2);
+  cursor: default;
+}
+
+.input:focus-visible,
+.select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* A short control has no business spanning the full width of the plate: a
+   seat count is one digit. */
+.short {
+  width: 7rem;
+}
+
+/* Segmented control — the Create/Join choice, and anywhere else a small set of
+   peers is picked. Two buttons sharing one outline rather than two separate
+   buttons with a gap, so it reads as one control with a current position. */
+.segment {
+  display: inline-flex;
+  padding: 3px;
+  gap: 3px;
+  background: var(--surface-2);
+  border-radius: 6px;
+}
+
+.segment button {
+  flex: 1;
+  padding: 0.5rem 1.1rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.segment button:hover:not([data-active='true']) {
+  color: var(--ink);
+}
+
+.segment button[data-active='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--elev-1);
+}
+
+.segmentWide {
+  display: flex;
+  width: 100%;
+  margin-bottom: 1.1rem;
+}
+
+/*
+ * Tiles — the app's only picker. See Choice.tsx for why nothing here is a
+ * `<select>`. Shaped like a board cell, and selected the way an edition card
+ * is: accent border on a raised surface, never a second selection idiom.
+ */
+.tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.tile {
+  padding: 0.45rem 0.8rem;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: var(--cell-empty);
+  border: 1px solid var(--cell-ring);
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* A single digit wants a square, not a word-shaped slab. */
+.tileNumeric {
+  width: 2.4rem;
+  padding: 0.45rem 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile:hover:not([aria-checked='true']) {
+  color: var(--ink);
+  border-color: var(--muted);
+}
+
+.tile[aria-checked='true'] {
+  color: var(--accent);
+  background: var(--surface);
+  border-color: var(--accent);
+  font-weight: 600;
+  box-shadow: var(--elev-1);
+}
+
+/*
+ * The quiet tone, for a picker that repeats down a list. Six accent-outlined
+ * pairs in a six-seat roster turn the screen red and drown the choices that
+ * are actually screen-level (edition, seat count, the books). Same shape, ink
+ * instead of accent: still one selection idiom, just not six shouts.
+ */
+.tileQuiet[aria-checked='true'] {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* A setting the ruleset has taken away. Dashed, so it reads as sealed rather
+   than as a control that failed to load. The lock is a Heroicon, the app's
+   icon set — an emoji would render as a different picture on every platform,
+   and in colour, next to a line of muted type. */
+.sealed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  align-self: flex-start;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px dashed var(--cell-ring);
+  border-radius: 4px;
+}
+
+/* Edition cards. See EditionChoice.tsx for why this is not a select. */
+.editions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+
+.edition {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-align: left;
+  padding: 0.6rem 0.75rem 0.7rem;
+  font: inherit;
+  background: var(--input);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.edition:hover {
+  border-color: var(--cell-ring);
+}
+
+.edition[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: var(--elev-1);
+}
+
+.edition:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.editionName {
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.edition[aria-checked='true'] .editionName {
+  color: var(--accent);
+}
+
+.editionNote {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* What a set adds beyond its numbers — only Boomtown has any, which is the
+   point: it and Classic are otherwise the same table. */
+.editionExtra {
+  margin-top: auto;
+  padding-top: 0.4rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+/* Accent only on the chosen card: red on an unchosen one reads as selection. */
+.edition[aria-checked='true'] .editionExtra {
+  color: var(--accent);
+}
+
+/* Seat roster. A fixed grid: numeral, who, kind, difficulty. The difficulty
+   column keeps its width whether or not the seat is a bot, so switching a seat
+   to a bot no longer shoves the row's other controls sideways. */
+.roster {
+  border-top: 1px solid var(--rule);
+}
+
+.seat {
+  display: grid;
+  grid-template-columns: 1.4rem 1fr 9.5rem 8.5rem;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.seatNo {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.seatLabel {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.difficulty {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.difficulty input[type='range'] {
+  width: 5rem;
+  accent-color: var(--accent);
+}
+
+.difficultyValue {
+  font-variant-numeric: tabular-nums;
+  min-width: 1.1rem;
+  text-align: right;
+  color: var(--ink);
+}
+
+.error {
+  color: var(--error);
+  min-height: 1.2em;
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+}
+
+/* The commit row, on one line so it costs one line: the way back sits quietly
+   at the left, the action that matters takes the rest. Both screens used to
+   stack these and disagree on the alignment of the second. */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+}
+
+.actions > button:last-child {
+  flex: 1;
+  padding: 0.7rem;
+  font-size: 0.95rem;
+}
+
+/*
+ * Short-window mode. The app's floor is 1024x700 (`electron/window.ts`), and a
+ * six-seat roster plus the edition cards does not fit that at the comfortable
+ * rhythm above — measured at +89px on New game and +108px on the online create
+ * form. Rather than let those two cases scroll, the screen tightens: smaller
+ * title, less air between fields and seat rows, and the lede — the one piece
+ * here that is atmosphere rather than a control — stands down.
+ *
+ * Keyed on height alone: a wide, short window is exactly the case that breaks.
+ */
+@media (max-height: 820px) {
+  .viewport {
+    padding: 0.75rem;
+  }
+
+  .screen {
+    padding: 1rem 1.5rem 0.85rem;
+  }
+
+  .head {
+    margin-bottom: 0.85rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .lede {
+    display: none;
+  }
+
+  .field {
+    margin-bottom: 0.8rem;
+  }
+
+  .edition {
+    padding: 0.5rem 0.7rem 0.55rem;
+  }
+
+  .editionName {
+    font-size: 1rem;
+  }
+
+  .seat {
+    padding: 0.2rem 0;
+  }
+
+  .input,
+  .select {
+    padding: 0.4rem 0.6rem;
+  }
+
+  .tile {
+    padding: 0.35rem 0.65rem;
+  }
+
+  .tileNumeric {
+    width: 2.1rem;
+    padding: 0.35rem 0;
+  }
+
+  .actions {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+  }
+}

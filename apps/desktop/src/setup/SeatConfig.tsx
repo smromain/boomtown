@@ -1,5 +1,6 @@
+import { Choice } from './Choice.js';
 import type { SeatConfig as Seat } from './gameConfig.js';
-import styles from './setup.module.css';
+import styles from './form.module.css';
 
 interface SeatRowProps {
   readonly index: number;
@@ -15,35 +16,48 @@ interface SeatRowProps {
   readonly nameless?: boolean;
 }
 
-/** One seat: name, human/bot, and — for a bot — a 1–10 difficulty dial (KTD7). */
+/**
+ * One seat: a numeral, who holds it, human/bot, and — for a bot — a 1–10
+ * difficulty dial (KTD7).
+ *
+ * The difficulty column is always in the grid, empty for a human seat. It used
+ * to appear out of nothing when a seat became a bot, which shoved the row's
+ * other controls sideways on every switch: the layout jumped at the exact
+ * moment someone was reading it.
+ */
 export function SeatRow({ index, seat, onChange, nameless = false }: SeatRowProps) {
   return (
     <div className={styles.seat} data-nameless={nameless || undefined}>
+      <span className={styles.seatNo} aria-hidden="true">
+        {index + 1}
+      </span>
+
       {nameless ? (
-        <span className={styles.seatLabel}>
-          Seat {index + 1} — {seat.kind === 'bot' ? 'bot' : 'open'}
-        </span>
+        <span className={styles.seatLabel}>{seat.kind === 'bot' ? 'Bot seat' : 'Open — joins by code'}</span>
       ) : (
         <input
           type="text"
+          className={styles.input}
           aria-label={`Seat ${index + 1} name`}
           value={seat.name}
           onChange={(event) => onChange({ ...seat, name: event.target.value })}
         />
       )}
 
-      <select
-        aria-label={`Seat ${index + 1} type`}
+      <Choice
+        quiet
+        label={`Seat ${index + 1} type`}
         value={seat.kind}
-        onChange={(event) => onChange({ ...seat, kind: event.target.value as Seat['kind'] })}
-      >
-        <option value="human">Human</option>
-        <option value="bot">Bot</option>
-      </select>
+        options={[
+          { value: 'human', label: 'Human' },
+          { value: 'bot', label: 'Bot' },
+        ]}
+        onChange={(kind) => onChange({ ...seat, kind })}
+      />
 
       {seat.kind === 'bot' ? (
         <label className={styles.difficulty}>
-          Lvl
+          Skill
           <input
             type="range"
             min={1}
@@ -52,7 +66,7 @@ export function SeatRow({ index, seat, onChange, nameless = false }: SeatRowProp
             value={seat.difficulty}
             onChange={(event) => onChange({ ...seat, difficulty: Number(event.target.value) })}
           />
-          {seat.difficulty}
+          <span className={styles.difficultyValue}>{seat.difficulty}</span>
         </label>
       ) : (
         <span />

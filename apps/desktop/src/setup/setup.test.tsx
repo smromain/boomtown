@@ -1,5 +1,5 @@
 import { act } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { boomtown, classic, edition2015 } from '@boomtown/engine';
 import { describe, expect, it } from 'vitest';
@@ -73,11 +73,19 @@ describe('NewGame screen', () => {
     let started: StartedGame | undefined;
     render(<NewGame onStart={(game) => (started = game)} />);
 
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Seats' }), '5');
-    await userEvent.selectOptions(screen.getByLabelText('Seat 4 type'), 'bot');
-    await userEvent.selectOptions(screen.getByLabelText('Seat 5 type'), 'bot');
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'edition-2015');
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Cash and holdings' }), 'hidden');
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Seats' })).getByRole('radio', { name: '5 seats' }),
+    );
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Seat 4 type' })).getByRole('radio', { name: 'Bot' }),
+    );
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Seat 5 type' })).getByRole('radio', { name: 'Bot' }),
+    );
+    await userEvent.click(screen.getByRole('radio', { name: /Modern/ }));
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Cash and holdings' })).getByRole('radio', { name: 'Closed — only your own' }),
+    );
 
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: 'Start game' }));
@@ -97,8 +105,12 @@ describe('NewGame screen', () => {
   it('starts an all-bot game and hands back a bot-driver teardown', async () => {
     let started: StartedGame | undefined;
     render(<NewGame onStart={(game) => (started = game)} />);
-    await userEvent.selectOptions(screen.getByLabelText('Seat 1 type'), 'bot');
-    await userEvent.selectOptions(screen.getByLabelText('Seat 2 type'), 'bot');
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Seat 1 type' })).getByRole('radio', { name: 'Bot' }),
+    );
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Seat 2 type' })).getByRole('radio', { name: 'Bot' }),
+    );
 
     expect(screen.getByRole('alert')).toHaveTextContent('');
     await act(async () => {
@@ -116,8 +128,12 @@ describe('NewGame screen', () => {
   it('the attached driver actually plays: an all-bot game advances on its own', async () => {
     let started: StartedGame | undefined;
     render(<NewGame onStart={(game) => (started = game)} />);
-    await userEvent.selectOptions(screen.getByLabelText('Seat 1 type'), 'bot');
-    await userEvent.selectOptions(screen.getByLabelText('Seat 2 type'), 'bot');
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Seat 1 type' })).getByRole('radio', { name: 'Bot' }),
+    );
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Seat 2 type' })).getByRole('radio', { name: 'Bot' }),
+    );
 
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: 'Start game' }));
@@ -138,7 +154,9 @@ describe('NewGame screen', () => {
   it('localSeats is the human seats only — a bot seat is not a local seat', async () => {
     let started: StartedGame | undefined;
     render(<NewGame onStart={(game) => (started = game)} />);
-    await userEvent.selectOptions(screen.getByLabelText('Seat 2 type'), 'bot');
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Seat 2 type' })).getByRole('radio', { name: 'Bot' }),
+    );
 
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: 'Start game' }));
@@ -163,11 +181,17 @@ describe('NewGame screen', () => {
     started!.client.disconnect();
   });
 
-  it('shows a rules summary covering both rule sets, naming no outside game', async () => {
+  it('keeps the rules out of the screen until asked, then covers both rule sets', async () => {
     render(<NewGame onStart={() => {}} />);
 
-    const rules = screen.getByText('How to play').closest('details')!;
-    expect(rules).not.toHaveAttribute('open'); // collapsed on load
+    // Nothing of the prose is in the page until the button is pressed. It used
+    // to be an inline <details>, and expanded it was taller than the smallest
+    // window the app allows — a control on the screen could push the screen
+    // itself into a scroll.
+    expect(screen.queryByText(/A turn/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'How to play' }));
+    const rules = screen.getByRole('dialog');
     expect(rules).toHaveTextContent(/A turn/);
     expect(rules).toHaveTextContent(/Mergers/);
     // the "differs" table names both rule sets and their key numbers
@@ -183,35 +207,35 @@ describe('NewGame screen', () => {
 describe('the Boomtown preset in setup', () => {
   const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-  it('fixes the visibility control and says why', async () => {
-    // Boomtown is the default preset, so the control starts fixed — the
+  it('seals the visibility control and says why', async () => {
+    // Boomtown is the default preset, so the setting starts sealed — the
     // direction of this test is reversed from when Classic was the default.
     render(<NewGame onStart={() => {}} />);
-    const visibility = screen.getByRole('combobox', { name: 'Cash and holdings' });
-    // Disabled *and* explained: a greyed-out control with no reason reads as a bug.
-    expect(visibility).toBeDisabled();
-    expect(visibility).toHaveValue('hidden');
+    // No picker at all, rather than a greyed-out one: a disabled control reads
+    // as something broken and invites a click that does nothing.
+    expect(screen.queryByRole('radiogroup', { name: 'Cash and holdings' })).not.toBeInTheDocument();
+    expect(screen.getByText('Closed books')).toBeInTheDocument();
     // Anchored on the field note, not on "books closed" alone: the how-to-play
-    // summary above now explains the same rule, and a bare text match would
-    // find that instead of the control's own explanation.
+    // summary explains the same rule, and a bare text match would find that
+    // instead of the setting's own explanation.
     expect(screen.getByText(/the ruleset fixes this/i)).toBeInTheDocument();
 
     // and it is a preset rule, not a permanent one — the published editions
     // leave visibility to the table
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'classic');
-    expect(visibility).toBeEnabled();
+    await userEvent.click(screen.getByRole('radio', { name: /Classic/ }));
+    expect(screen.getByRole('radiogroup', { name: 'Cash and holdings' })).toBeInTheDocument();
     expect(screen.queryByText(/the ruleset fixes this/i)).not.toBeInTheDocument();
   });
 
   it('names the visibility control without swallowing its explanation', async () => {
-    // The note lives inside the <label>, so the accessible name would absorb
-    // it without an explicit aria-label — leaving a control called "Cash and
-    // holdings Boomtown is played with the books closed — the ruleset fixes
-    // this."
+    // The note used to live inside the control's own <label>, so the
+    // accessible name absorbed it: "Cash and holdings Boomtown is played with
+    // the books closed — the ruleset fixes this." It is a sibling now, and the
+    // group carries its own name.
     render(<NewGame onStart={() => {}} />);
-    const visibility = screen.getByRole('combobox', { name: 'Cash and holdings' });
+    await userEvent.click(screen.getByRole('radio', { name: /Classic/ }));
+    const visibility = screen.getByRole('radiogroup', { name: 'Cash and holdings' });
     expect(visibility).toHaveAccessibleName('Cash and holdings');
-    expect(visibility).toHaveAccessibleDescription(/the ruleset fixes this/i);
   });
 
   it('deals a closed-book table even when open was picked before switching preset', async () => {
@@ -220,12 +244,13 @@ describe('the Boomtown preset in setup', () => {
 
     // Drop to a preset that permits an open table, pick open, then switch back
     // — the stale choice must not survive.
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'classic');
-    await userEvent.selectOptions(
-      screen.getByRole('combobox', { name: 'Cash and holdings' }),
-      'open',
+    await userEvent.click(screen.getByRole('radio', { name: /Classic/ }));
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Cash and holdings' })).getByRole('radio', {
+        name: 'Open — everyone sees everything',
+      }),
     );
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Edition' }), 'boomtown');
+    await userEvent.click(screen.getByRole('radio', { name: /Boomtown/ }));
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: 'Start game' }));
       await flush();
@@ -235,5 +260,36 @@ describe('the Boomtown preset in setup', () => {
     const view = started!.client.store.getState().views[0]!;
     expect(view.ruleset).toBe(boomtown);
     expect(view.seats[1]?.cash).toBeNull(); // closed, as the ruleset requires
+  });
+});
+
+describe('the edition cards', () => {
+  it('takes every number from the ruleset presets, so the screen cannot drift from the engine', () => {
+    render(<NewGame onStart={() => {}} />);
+
+    const card = (name: RegExp) => screen.getByRole('radio', { name });
+    expect(card(/Classic/)).toHaveTextContent(`safe at ${classic.safeSize}`);
+    expect(card(/Classic/)).toHaveTextContent(`ends at ${classic.endChainSize}`);
+    expect(card(/Modern/)).toHaveTextContent(`safe at ${edition2015.safeSize}`);
+    expect(card(/Modern/)).toHaveTextContent(`${edition2015.bonusTiers} bonus tiers`);
+  });
+
+  it('says what Boomtown adds, because its numbers are Classic’s', () => {
+    render(<NewGame onStart={() => {}} />);
+    // Same safe size, same end size, same tiers: without the extras line the
+    // default would look like an arbitrary duplicate of the Classic card.
+    expect(boomtown.safeSize).toBe(classic.safeSize);
+    expect(screen.getByRole('radio', { name: /Boomtown/ })).toHaveTextContent(
+      /closed books · a vote can end it early/,
+    );
+    expect(screen.getByRole('radio', { name: /Classic/ })).not.toHaveTextContent(/closed books/);
+  });
+
+  it('starts on Boomtown and switches on a click', async () => {
+    render(<NewGame onStart={() => {}} />);
+    expect(screen.getByRole('radio', { name: /Boomtown/ })).toBeChecked();
+    await userEvent.click(screen.getByRole('radio', { name: /Modern/ }));
+    expect(screen.getByRole('radio', { name: /Modern/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /Boomtown/ })).not.toBeChecked();
   });
 });
