@@ -15,7 +15,16 @@
    texture-ceiling diagonal wash, instead of a bare dashed box. */
 .bandEmpty {
   position: relative;
-  flex: 1;
+  /*
+   * `flex-shrink: 0`, never `flex: 1`. This is a direct child of `.body`,
+   * which is a flex *column* — so `flex: 1` made the empty band grow to fill
+   * the screen, and the whole top of the game shrank to a fifth the moment
+   * the first corporation was founded and the fixed-height `.band` replaced
+   * it. The empty state stands in for the band, so it is exactly the band's
+   * height.
+   */
+  flex-shrink: 0;
+  width: 100%;
   height: 204px;
   box-sizing: border-box;
   /* Not `hidden`: the band's height is fixed, and in a narrow window this

@@ -174,7 +174,8 @@
   padding: 10px 16px;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
+  align-content: center;
   justify-content: center;
   gap: 6px 14px;
   color: var(--muted);
@@ -656,11 +657,17 @@
  * takes the whole strip on someone else's turn.
  */
 .hand {
+  /*
+   * A fixed height, because the strip swaps contents every turn: your rack on
+   * your turn, the waiting card on everyone else's. Sized to the rack, they
+   * differed by 49px, and the board — which takes the height that is left —
+   * grew and shrank by that much on every single turn of a bot game.
+   */
   flex-shrink: 0;
+  height: 110px;
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   gap: 20px;
-  min-height: 0;
 }
 
 .hand > :last-child:not(:first-child) {
@@ -795,6 +802,7 @@
   }
 
   .hand {
+    height: 98px;
     gap: 14px;
   }
 }
