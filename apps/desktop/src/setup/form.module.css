@@ -259,7 +259,9 @@
 }
 
 /* A setting the ruleset has taken away. Dashed, so it reads as sealed rather
-   than as a control that failed to load. */
+   than as a control that failed to load. The lock is a Heroicon, the app's
+   icon set — an emoji would render as a different picture on every platform,
+   and in colour, next to a line of muted type. */
 .sealed {
   display: inline-flex;
   align-items: center;

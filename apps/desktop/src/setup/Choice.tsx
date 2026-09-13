@@ -1,3 +1,4 @@
+import { LockClosedIcon } from '@heroicons/react/24/solid';
 import styles from './form.module.css';
 
 export interface ChoiceOption<T extends string | number> {
@@ -75,7 +76,7 @@ export function Choice<T extends string | number>({
 export function Sealed({ children }: { children: React.ReactNode }) {
   return (
     <span className={styles.sealed}>
-      <span aria-hidden="true">🔒</span>
+      <LockClosedIcon width={13} height={13} aria-hidden="true" />
       {children}
     </span>
   );
