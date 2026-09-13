@@ -71,6 +71,7 @@
 }
 
 .launchPlate {
+  position: relative;
   width: 14.5rem;
   display: flex;
   flex-direction: column;
@@ -95,6 +96,39 @@
     border-color 90ms ease-out;
 }
 
+/*
+ * The board's own surface, at a whisper: a cell grid on the plate's face,
+ * masked so it is only really there in the corner the text leaves alone. It is
+ * the difference between a light rectangle and a piece cut from the same
+ * material as the board — visible when you look, invisible when you read.
+ */
+.launchPlate::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--cell-ring) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--cell-ring) 55%, transparent) 1px, transparent 1px);
+  background-size: 17px 17px;
+  background-position: right -1px top -1px;
+  opacity: 0.55;
+  /* strongest at the top right, gone by the time it reaches the name */
+  mask-image: radial-gradient(120% 120% at 100% 0%, #000 0%, transparent 62%);
+}
+
+/* The plate's own inset rule — the hairline a printed component has just
+   inside its edge, and the board plate has around the grid. */
+.launchPlate::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--rule) 45%, transparent);
+  pointer-events: none;
+}
+
 .launchPlate:hover {
   border-color: var(--accent);
 }
@@ -112,6 +146,12 @@
 .launchPlate:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
+}
+
+.launchPlateMark,
+.launchPlateName,
+.launchPlateNote {
+  position: relative;
 }
 
 .launchPlateMark {
