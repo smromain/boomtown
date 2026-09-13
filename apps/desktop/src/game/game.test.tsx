@@ -437,6 +437,23 @@ describe('TurnModal', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('stays closed once the game is over — the standings own the screen', async () => {
+    await renderPanel(<TurnModal />, {
+      craft: (state) => {
+        // `endGame` leaves the finished game sitting on the end-check step
+        seedCorp(state, 'video', Array.from({ length: 11 }, (_, i) => `${i + 1}A`));
+        state.step = 'end-check';
+        state.status = 'over';
+        state.result = {
+          rankings: [{ seat: 0, cash: 6000, equity: 0, total: 6000, holdings: [] }],
+          winners: [0],
+        };
+      },
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /End turn/ })).not.toBeInTheDocument();
+  });
+
   it('stays closed on a bot / remote seat buy step — the modal is not the human\'s', async () => {
     await renderPanel(<TurnModal />, {
       localSeats: [0], // seats 1 & 2 are not local
