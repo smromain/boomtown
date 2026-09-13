@@ -15,16 +15,28 @@
    texture-ceiling diagonal wash, instead of a bare dashed box. */
 .bandEmpty {
   position: relative;
-  flex: 1;
+  /*
+   * `flex-shrink: 0`, never `flex: 1`. This is a direct child of `.body`,
+   * which is a flex *column* — so `flex: 1` made the empty band grow to fill
+   * the screen, and the whole top of the game shrank to a fifth the moment
+   * the first corporation was founded and the fixed-height `.band` replaced
+   * it. The empty state stands in for the band, so it is exactly the band's
+   * height.
+   */
+  flex-shrink: 0;
+  width: 100%;
   height: 204px;
   box-sizing: border-box;
-  overflow: hidden;
+  /* Not `hidden`: the band's height is fixed, and in a narrow window this
+     copy wraps to a second line, which was then sliced in half. The gap
+     gives way before the sentence does. */
+  overflow: visible;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 12px;
+  gap: min(12px, 2vh);
   padding: 0 30px;
   border: 1.5px dashed var(--rule);
   border-radius: 4px;
@@ -234,4 +246,32 @@
   width: 100%;
   height: 100%;
   opacity: 0.12;
+}
+
+/*
+ * Short-window density (see game.module.css). The band is a fifth of a 700px
+ * window; at that height the flavour line is the part that can go — the name,
+ * the price, the size and your stake are all load-bearing, and a joke is not.
+ */
+@media (max-height: 900px) {
+  .band {
+    height: 158px;
+  }
+
+  .bandEmpty {
+    height: 158px;
+  }
+
+  .flavour {
+    display: none;
+  }
+
+  .cardBody {
+    padding: 9px 12px 11px;
+    gap: 7px;
+  }
+
+  .name {
+    font-size: 17px;
+  }
 }

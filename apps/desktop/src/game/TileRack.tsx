@@ -20,7 +20,9 @@ export function TileRack() {
 
   return (
     <section className={styles.rack} aria-label="Your tiles">
-      <div className={`serif ${styles.rackHeading}`}>Your tiles — seat {view.you}</div>
+      <div className={`serif ${styles.rackHeading}`}>
+        Your tiles — {view.seats[view.you]?.name ?? `seat ${view.you + 1}`}
+      </div>
       <div className={styles.rackTiles}>
         {view.handTiles.map(({ tile, effect, playable }) => (
           <button

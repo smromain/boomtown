@@ -40,9 +40,12 @@ const NUDGE_AFTER_MS = 8000;
  * online, a remote player). The public game state keeps updating behind the
  * story and corporation panels; only the actionable surface is withheld.
  *
- * If the same seat holds the clock for too long, a "nudge" control appears: it
- * writes a diagnostic snapshot and forces the bot to move. The driver has its
- * own watchdog for this, but the button is a guaranteed escape hatch.
+ * In a dev build only, if the same seat holds the clock for too long, a
+ * "nudge" control appears: it writes a diagnostic snapshot and forces the bot
+ * to move. It is a debugging tool — the snapshot it captures is only readable
+ * in dev anyway (`debug/dump.ts`) — and a player of a release build asked to
+ * prod their own opponents is being shown our bug, not offered a feature. The
+ * driver's own watchdog is what covers a stuck bot there.
  */
 export function WaitingForSeat({
   config,
@@ -73,10 +76,13 @@ export function WaitingForSeat({
 
   const [showNudge, setShowNudge] = useState(false);
   const dumpedFor = useRef<number | null>(null);
+  // Read per render rather than at module scope: the flag is what the test
+  // flips to prove a release build never arms this.
+  const dev = import.meta.env.DEV;
 
   useEffect(() => {
     setShowNudge(false);
-    if (activeSeat == null || kind !== 'bot') return;
+    if (!dev || activeSeat == null || kind !== 'bot') return;
     const timer = setTimeout(() => {
       setShowNudge(true);
       // auto-capture a snapshot the first time a given seat overstays
@@ -90,7 +96,7 @@ export function WaitingForSeat({
       }
     }, NUDGE_AFTER_MS);
     return () => clearTimeout(timer);
-  }, [activeSeat, kind, snapshot, client]);
+  }, [activeSeat, kind, snapshot, client, dev]);
 
   return (
     <div className={styles.waiting} role="status" aria-label="Waiting for another player">
@@ -99,7 +105,7 @@ export function WaitingForSeat({
       <p className={styles.waitingHint}>
         {name} is {doing}…
       </p>
-      {showNudge && nudge && (
+      {dev && showNudge && nudge && (
         <button
           type="button"
           className={styles.nudge}
