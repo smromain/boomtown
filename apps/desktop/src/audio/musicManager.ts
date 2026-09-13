@@ -4,7 +4,7 @@ import { loadSettings, saveSettings } from '../settings/settings.js';
 import greenSalonUrl from '../assets/music/green-salon.ogg';
 import azureUrl from '../assets/music/azure.mp3';
 import bossaUrl from '../assets/music/8bit-bossa.mp3';
-import pleasantCreekUrl from '../assets/music/pleasant-creek-loop.wav';
+import pleasantCreekUrl from '../assets/music/pleasant-creek-loop.ogg';
 
 export interface Track {
   readonly id: string;
@@ -94,8 +94,7 @@ class MusicManager {
     let howl = this.howls.get(track.id);
     if (!howl) {
       // `html5: true` streams rather than decoding the whole file into memory
-      // first — these are minutes-long tracks, not blips, and one of them is a
-      // 17MB wav.
+      // first — these are minutes-long tracks, not blips.
       howl = new Howl({ src: [track.src], loop: true, volume: this.level(), html5: true });
       this.howls.set(track.id, howl);
     }
@@ -130,9 +129,9 @@ class MusicManager {
 
   /**
    * Stop and let go of the audio entirely. Called when the game screen is left:
-   * a streamed track holds a buffer for as long as it exists, and one of these
-   * is a 17MB wav, so keeping four of them alive through a menu nobody is
-   * listening to is pure cost. The next game builds what it needs again.
+   * a streamed track holds a buffer for as long as it exists, so keeping four
+   * of them alive through a menu nobody is listening to is pure cost. The next
+   * game builds what it needs again.
    */
   release(): void {
     for (const howl of this.howls.values()) {
