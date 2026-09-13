@@ -53,11 +53,118 @@
   color: var(--chrome-muted);
 }
 
-/* The launch screen's Local/Online choice (U9) — <Button> components, styled
-   entirely by the Button primitive. */
+/*
+ * The launch screen's Local/Online choice (U9).
+ *
+ * These were the app's two most web-shaped controls: a filled pill and an
+ * outlined one, the calls to action of a landing page, sitting on the same ink
+ * chrome the game's own beats use. They are plates now — the hand tile's
+ * material, borrowed whole (`.rackTileId` in `game/game.module.css`): a light
+ * face on the dark table, a solid edge under it so the thing has thickness,
+ * and a press that actually travels. The first screen should look like the
+ * game it opens, not like the page you downloaded it from.
+ */
 .launchChoice {
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.launchPlate {
+  width: 14.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  padding: 1.1rem 1.2rem 1rem;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  cursor: pointer;
+  /* The edge is the whole trick: a component sitting on a table, not a
+     rectangle printed on one. Same recipe as a tile in the rack. */
+  box-shadow:
+    0 4px 0 var(--rule),
+    0 14px 24px -10px rgba(0, 0, 0, 0.55);
+  transition:
+    transform 90ms ease-out,
+    box-shadow 90ms ease-out,
+    border-color 90ms ease-out;
+}
+
+.launchPlate:hover {
+  border-color: var(--accent);
+}
+
+/* Pressed, it travels the height of its own edge and lands flat — the tile
+   meeting the board. Nothing about a hover colour says "this is a thing you
+   put down"; this does. */
+.launchPlate:active {
+  transform: translateY(4px);
+  box-shadow:
+    0 0 0 var(--rule),
+    0 6px 12px -8px rgba(0, 0, 0, 0.55);
+}
+
+.launchPlate:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.launchPlateMark {
+  color: var(--muted);
+}
+
+.launchPlate:hover .launchPlateMark {
+  color: var(--accent);
+}
+
+.launchPlateName {
+  font-size: 1.25rem;
+  line-height: 1.1;
+}
+
+.launchPlateNote {
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  /* One line each, so the pair reads as two of the same object rather than
+     two cards of different weight. */
+  white-space: nowrap;
+}
+
+/* Settings is not a way into the game, so it does not get a plate — it is a
+   chip on the chrome, the weight the tray strip gives a name nobody is
+   choosing right now. */
+.launchChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  font: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chrome-muted);
+  background: transparent;
+  border: 1px solid var(--chrome-rule);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.launchChip:hover {
+  color: var(--chrome-ink);
+  border-color: var(--chrome-ink);
+}
+
+.launchChip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Name field + its re-roll control. The input keeps the full width it had; the
