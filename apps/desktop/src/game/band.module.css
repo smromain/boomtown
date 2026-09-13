@@ -18,13 +18,16 @@
   flex: 1;
   height: 204px;
   box-sizing: border-box;
-  overflow: hidden;
+  /* Not `hidden`: the band's height is fixed, and in a narrow window this
+     copy wraps to a second line, which was then sliced in half. The gap
+     gives way before the sentence does. */
+  overflow: visible;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 12px;
+  gap: min(12px, 2vh);
   padding: 0 30px;
   border: 1.5px dashed var(--rule);
   border-radius: 4px;
