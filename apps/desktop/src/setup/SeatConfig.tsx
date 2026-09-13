@@ -1,3 +1,4 @@
+import { Choice } from './Choice.js';
 import type { SeatConfig as Seat } from './gameConfig.js';
 import styles from './form.module.css';
 
@@ -43,15 +44,16 @@ export function SeatRow({ index, seat, onChange, nameless = false }: SeatRowProp
         />
       )}
 
-      <select
-        className={styles.select}
-        aria-label={`Seat ${index + 1} type`}
+      <Choice
+        quiet
+        label={`Seat ${index + 1} type`}
         value={seat.kind}
-        onChange={(event) => onChange({ ...seat, kind: event.target.value as Seat['kind'] })}
-      >
-        <option value="human">Human</option>
-        <option value="bot">Bot</option>
-      </select>
+        options={[
+          { value: 'human', label: 'Human' },
+          { value: 'bot', label: 'Bot' },
+        ]}
+        onChange={(kind) => onChange({ ...seat, kind })}
+      />
 
       {seat.kind === 'bot' ? (
         <label className={styles.difficulty}>

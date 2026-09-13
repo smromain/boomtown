@@ -77,6 +77,13 @@
   box-sizing: border-box;
 }
 
+/* Range thumbs, checkboxes and radios ship system blue, which is the loudest
+   remaining piece of operating-system chrome anywhere in the app. One line
+   moves every one of them onto the palette. */
+input {
+  accent-color: var(--accent);
+}
+
 .serif {
   font-family: var(--serif);
   font-weight: 400;

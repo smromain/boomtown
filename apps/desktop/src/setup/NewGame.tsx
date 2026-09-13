@@ -10,17 +10,10 @@ import { RULES, type GameState, type Seat } from '@boomtown/engine';
 import { dumpBotStuck } from '../debug/dump.js';
 import { RulesSummary } from './RulesSummary.js';
 import { SeatRow } from './SeatConfig.js';
-import {
-  configError,
-  defaultConfig,
-  effectiveVisibility,
-  resizeSeats,
-  toSetupOptions,
-  visibilityIsFixed,
-  type GameConfig,
-} from './gameConfig.js';
-import { editionLabel } from './editionLabel.js';
+import { configError, defaultConfig, resizeSeats, toSetupOptions, type GameConfig } from './gameConfig.js';
 import { EditionChoice } from './EditionChoice.js';
+import { Choice } from './Choice.js';
+import { VisibilityChoice } from './VisibilityChoice.js';
 import { Button } from '../ui/Button.js';
 import form from './form.module.css';
 
@@ -126,51 +119,24 @@ export function NewGame({
             </div>
 
             <div>
-              <label className={form.field}>
+              <div className={form.field}>
                 <span>Seats</span>
-                <select
-                  className={`${form.select} ${form.short}`}
+                <Choice
+                  label="Seats"
+                  numeric
                   value={config.seats.length}
-                  onChange={(event) => patch({ seats: resizeSeats(config.seats, Number(event.target.value)) })}
-                >
-                  {Array.from({ length: RULES.maxPlayers - RULES.minPlayers + 1 }, (_, i) => RULES.minPlayers + i).map(
-                    (count) => (
-                      <option key={count} value={count}>
-                        {count}
-                      </option>
-                    ),
-                  )}
-                </select>
-              </label>
+                  options={Array.from(
+                    { length: RULES.maxPlayers - RULES.minPlayers + 1 },
+                    (_, i) => RULES.minPlayers + i,
+                  ).map((count) => ({ value: count, label: String(count), description: `${count} seats` }))}
+                  onChange={(count) => patch({ seats: resizeSeats(config.seats, count) })}
+                />
+              </div>
 
-              {/*
-                `aria-label` and `aria-describedby` rather than relying on the wrapping
-                `<label>`: the explanatory note sits inside the label element, so
-                without them the control's accessible name becomes "Cash and holdings
-                Boomtown is played with the books closed — the ruleset fixes this."
-                The note describes *why* the control is fixed; it is not part of its
-                name. This only surfaced when Boomtown became the default, because
-                until then the note appeared only after someone switched preset.
-              */}
-              <label className={form.field}>
-                <span>Cash and holdings</span>
-                <select
-                  className={form.select}
-                  aria-label="Cash and holdings"
-                  aria-describedby={visibilityIsFixed(config) ? 'visibility-note' : undefined}
-                  value={effectiveVisibility(config)}
-                  disabled={visibilityIsFixed(config)}
-                  onChange={(event) => patch({ visibility: event.target.value as GameConfig['visibility'] })}
-                >
-                  <option value="open">Open — everyone sees everything</option>
-                  <option value="hidden">Hidden — only your own</option>
-                </select>
-                {visibilityIsFixed(config) && (
-                  <span id="visibility-note" className={form.note}>
-                    {editionLabel(config.edition)} is played with the books closed — the ruleset fixes this.
-                  </span>
-                )}
-              </label>
+              <VisibilityChoice
+                config={config}
+                onChange={(visibility) => patch({ visibility })}
+              />
             </div>
           </div>
 

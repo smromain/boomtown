@@ -1,12 +1,8 @@
 import { useState } from 'react';
 import { RULES } from '@boomtown/engine';
-import {
-  defaultConfig,
-  effectiveVisibility,
-  visibilityIsFixed,
-  type GameConfig,
-} from '../setup/gameConfig.js';
-import { editionLabel } from '../setup/editionLabel.js';
+import { defaultConfig, type GameConfig } from '../setup/gameConfig.js';
+import { Choice } from '../setup/Choice.js';
+import { VisibilityChoice } from '../setup/VisibilityChoice.js';
 import { SeatRow } from '../setup/SeatConfig.js';
 import { createRoom, joinRoom, type OnlineGame } from '../online/onlineGame.js';
 import { makeRoomCode } from '../online/hostUrl.js';
@@ -174,44 +170,21 @@ export function CreateJoin({
                 <div>
                   {nameField}
 
-                  <label className={form.field}>
+                  <div className={form.field}>
                     <span>Seats</span>
-                    <select
-                      className={`${form.select} ${form.short}`}
+                    <Choice
+                      label="Seats"
+                      numeric
                       value={seatCount}
-                      onChange={(e) => resize(Number(e.target.value))}
-                    >
-                      {Array.from(
+                      options={Array.from(
                         { length: RULES.maxPlayers - RULES.minPlayers + 1 },
                         (_, i) => RULES.minPlayers + i,
-                      ).map((n) => (
-                        <option key={n} value={n}>
-                          {n}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                      ).map((n) => ({ value: n, label: String(n), description: `${n} seats` }))}
+                      onChange={(n) => resize(n)}
+                    />
+                  </div>
 
-                  <label className={form.field}>
-                    <span>Cash and holdings</span>
-                    <select
-                      className={form.select}
-                      aria-label="Cash and holdings"
-                      aria-describedby={visibilityIsFixed(config) ? 'visibility-note' : undefined}
-                      value={effectiveVisibility(config)}
-                      disabled={visibilityIsFixed(config)}
-                      onChange={(e) => patch({ visibility: e.target.value as GameConfig['visibility'] })}
-                    >
-                      <option value="open">Open — everyone sees everything</option>
-                      <option value="hidden">Hidden — only your own</option>
-                    </select>
-                    {visibilityIsFixed(config) && (
-                      <span id="visibility-note" className={form.note}>
-                        {editionLabel(config.edition)} is played with the books closed — the ruleset
-                        fixes this.
-                      </span>
-                    )}
-                  </label>
+                  <VisibilityChoice config={config} onChange={(visibility) => patch({ visibility })} />
                 </div>
               </div>
             </>

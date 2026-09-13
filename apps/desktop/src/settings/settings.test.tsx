@@ -1,5 +1,5 @@
 import { act } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings.js';
@@ -129,9 +129,8 @@ describe('SettingsDialog', () => {
     let closed = false;
     render(<SettingsDialog open onClose={() => (closed = true)} />);
 
-    await userEvent.selectOptions(
-      screen.getByRole('combobox', { name: /cash and holdings/i }),
-      'hidden',
+await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: /cash and holdings/i })).getByRole('radio', { name: 'Closed books' }),
     );
     await userEvent.type(screen.getByRole('textbox', { name: 'Online host' }), 'my.partykit.dev');
     await act(async () => {

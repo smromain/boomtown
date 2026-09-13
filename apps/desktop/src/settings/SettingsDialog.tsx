@@ -4,6 +4,7 @@ import { netlog } from '@boomtown/client-core';
 import { RULES, type RulesetId, type Visibility } from '@boomtown/engine';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './settings.js';
 import type { PreviewKind } from '../beats/debug/fixtures.js';
+import { Choice } from '../setup/Choice.js';
 import decisionStyles from '../decisions/decisions.module.css';
 import styles from './settings.module.css';
 
@@ -53,16 +54,18 @@ export function SettingsDialog({
         <Dialog.Content className={decisionStyles.content} aria-describedby={undefined}>
           <Dialog.Title>Settings</Dialog.Title>
 
-          <label className={styles.field}>
+          <div className={styles.field}>
             <span>Default cash and holdings</span>
-            <select
+            <Choice
+              label="Default cash and holdings"
               value={draft.visibility}
-              onChange={(e) => patch({ visibility: e.target.value as Visibility })}
-            >
-              <option value="open">Open</option>
-              <option value="hidden">Hidden</option>
-            </select>
-          </label>
+              options={[
+                { value: 'open' as Visibility, label: 'Open books' },
+                { value: 'hidden' as Visibility, label: 'Closed books' },
+              ]}
+              onChange={(visibility) => patch({ visibility })}
+            />
+          </div>
 
           <label className={styles.field}>
             <span>Default bot difficulty: {draft.botDifficulty}</span>
@@ -76,34 +79,33 @@ export function SettingsDialog({
             />
           </label>
 
-          <label className={styles.field}>
+          <div className={styles.field}>
             <span>Default edition</span>
-            <select
+            <Choice
+              label="Default edition"
               value={draft.edition}
-              onChange={(e) => patch({ edition: e.target.value as RulesetId })}
-            >
-              <option value="boomtown">Boomtown</option>
-              <option value="classic">Classic</option>
-              <option value="edition-2015">Modern</option>
-            </select>
-          </label>
+              options={[
+                { value: 'boomtown' as RulesetId, label: 'Boomtown' },
+                { value: 'classic' as RulesetId, label: 'Classic' },
+                { value: 'edition-2015' as RulesetId, label: 'Modern' },
+              ]}
+              onChange={(edition) => patch({ edition })}
+            />
+          </div>
 
-          <label className={styles.field}>
+          <div className={styles.field}>
             <span>Default seats</span>
-            <select
+            <Choice
+              label="Default seats"
+              numeric
               value={draft.seatCount}
-              onChange={(e) => patch({ seatCount: Number(e.target.value) })}
-            >
-              {Array.from(
+              options={Array.from(
                 { length: RULES.maxPlayers - RULES.minPlayers + 1 },
                 (_, i) => RULES.minPlayers + i,
-              ).map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
+              ).map((n) => ({ value: n, label: String(n), description: `${n} seats` }))}
+              onChange={(seatCount) => patch({ seatCount })}
+            />
+          </div>
 
           <label className={styles.field}>
             <span>Online host (blank = default)</span>
