@@ -24,6 +24,9 @@ import styles from '../decisions/decisions.module.css';
  * the very glitch this is meant to remove. The steps are consecutive and the
  * seat is the same, so the whole back half of the turn happens in one place.
  *
+ * Once the game is over it stays shut: the final standings are the only thing
+ * left to look at, and the turn behind them is no longer playable.
+ *
  * It keys off the ordinary turn step rather than a pending engine decision —
  * buying and ending are every turn, not exceptional prompts, which is what
  * separates this from `DecisionModal`.
@@ -41,10 +44,15 @@ export function TurnModal() {
   const local = useLocalSeats();
   const { needsHandoff } = useHotSeat();
   const activeSeat = useGameState((state) => state.activeSeat);
+  const over = useGameState((state) => state.status === 'over');
   const step = useGameState((state) => localActiveView(state, local)?.step);
   const atBuy = step === 'buy';
   const atEndCheck = step === 'end-check';
-  const open = (atBuy || atEndCheck) && !needsHandoff(activeSeat);
+  // A finished game still sits on `end-check` — that is the step the ending was
+  // announced from, and `endGame` leaves it there. Without this guard the
+  // end-of-turn prompt reopens on top of the final standings offering an "End
+  // turn" the engine can only reject, so the game over screen looks broken.
+  const open = (atBuy || atEndCheck) && !over && !needsHandoff(activeSeat);
 
   const [minimized, setMinimized] = useState(false);
   useEffect(() => {
