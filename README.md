@@ -43,6 +43,80 @@ Add/Remove Programs (Windows), or delete the AppImage (Linux).
 
 ---
 
+## Screenshots
+
+Seventeen frames from one real game, in the order a table meets them. Shown here as half‑size
+web copies — the whole gallery is under 600 KB. The full‑resolution 3200 × 2000 originals are in
+`docs/screenshots/`, which also records how they were taken and what to watch for if they are
+retaken.
+
+### Sitting down
+
+| | |
+|---|---|
+| ![Title screen](docs/screenshots/web/01-title-screen.webp) | ![New game](docs/screenshots/web/02-new-game.webp) |
+| Title screen — a local game, or a room to join | Setup: the three editions, the seats, closed books |
+
+![The hand-off card](docs/screenshots/web/03-hot-seat-handoff.webp)
+
+*Hot‑seat is private by construction: an opaque hand‑off card covers the screen between two human
+seats, so the next player never sees the last one's rack.*
+
+### A turn
+
+![Turn one](docs/screenshots/web/04-first-turn.webp)
+
+*Turn one — an empty board and six playable tiles.*
+
+| | |
+|---|---|
+| ![Founding prompt](docs/screenshots/web/05-founding-prompt.webp) | ![A corporation is founded](docs/screenshots/web/06-a-corporation-is-founded.webp) |
+| Choosing which name comes out of the tray | The founding beat: headquarters, price, founder's share |
+
+![Buying stock](docs/screenshots/web/07-buy-stock.webp)
+
+*Up to three shares a turn, with what the bank still holds shown alongside.*
+
+![The table mid-game](docs/screenshots/web/08-the-table-mid-game.webp)
+
+*The whole screen mid‑game — cards, board, the story of what just happened, and the register of
+shareholders.*
+
+### The merger
+
+Merger resolution is the only genuinely sequenced part of the game, and it gets the most screen.
+
+![Merger at 9G](docs/screenshots/web/09-merger-at-9g.webp)
+
+*The sequence opens on the tile that caused it.*
+
+| | |
+|---|---|
+| ![Choosing the survivor](docs/screenshots/web/10-choosing-the-survivor.webp) | ![The merged name](docs/screenshots/web/11-the-merged-name.webp) |
+| The mergemaker breaking a tie between equal corporations | The survivor's accreted display name |
+
+![Disposing of dead stock](docs/screenshots/web/12-disposing-of-dead-stock.webp)
+
+*Hold, sell, or trade two‑for‑one — in mergemaker‑clockwise order, with the bonuses already paid.*
+
+### Ending it
+
+| | |
+|---|---|
+| ![End of turn](docs/screenshots/web/13-end-of-turn.webp) | ![Motion to liquidate](docs/screenshots/web/14-motion-to-liquidate.webp) |
+| End of turn: end it, or move to liquidate | The vote, with the register tallying shares live |
+
+![The motion fails](docs/screenshots/web/15-the-motion-fails.webp)
+
+*A motion that fails costs its backer their privacy: they play on with open books.*
+
+| | |
+|---|---|
+| ![Tallying the score](docs/screenshots/web/16-tallying-the-score.webp) | ![Final standings](docs/screenshots/web/17-final-standings.webp) |
+| Final scoring, counted up from last place | Game over: cash, stock and total per seat |
+
+---
+
 ## Repository layout
 
 A pnpm‑style monorepo run with **npm workspaces** (`packages/*`, `apps/*`).
@@ -425,6 +499,7 @@ thin authority over an engine that was already trusted.
 | `docs/naming.md` | The 28‑company pool, the merged‑name rule, flavour accretion, card consolidation |
 | `docs/decisions.md` | What was decided and why, what is still open, and the traps already hit |
 | `docs/deploying.md` | Deploying the PartyKit room and building/signing the desktop installers; the app's icon and name |
+| `docs/screenshots/` | Seventeen frames from one real game, in play order — what each shows, and how to retake them |
 | `docs/plans/` | The architecture plan (20 units, KTD1–12, verification contract), the online‑multiplayer substrate plan, and the game‑feel plan |
 | `docs/handoffs/` | What each recent session diagnosed and landed — the running record of bugs and fixes |
 | `design/build.py` | Generates the design canvas **and** is the reference implementation of the naming rules — port it, don't reimplement it |
