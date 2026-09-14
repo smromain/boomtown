@@ -19,7 +19,7 @@
     "screenLabel": "Online game",
     "eyebrow": "online · one seat each",
     "title": "Play online",
-    "lede": "Open a room and hand out the code, or take a seat in someone else’s. Your hand and the draw pile stay yours alone.",
+    "lede": "Open a room and hand out the code, or take a seat in someone else’s.",
     "modeCreate": "Create a room",
     "modeJoin": "Join with a code",
     "yourName": "Your name",
@@ -27,13 +27,13 @@
     "roll": "Roll",
     "roomCode": "Room code",
     "roomCodePlaceholder": "ABCD12",
-    "roomCodeNote": "Six characters, from whoever opened the room. The rule set is theirs to choose.",
+    "roomCodeNote": "Six letters and numbers, case-insensitive.",
     "table": "The table",
     "tableNote": "Humans join by code and bring their own names. Set a seat to a bot to fill it now.",
     "seats": "Seats",
     "seatsDescription": "{n} seats",
     "back": "Back",
-    "connecting": "Connecting…",
+    "connecting": "Connecting...",
     "create": "Create room",
     "join": "Join room",
     "errors": {
@@ -119,7 +119,7 @@
       "intro": "The larger company survives and swallows the smaller; you break ties. The placed tile is set aside while sizes, prices and bonuses are worked out, then joins the survivor. For each dissolved company, largest first:",
       "bonus": "its shareholders are paid a bonus, scaled to the company’s size just before the merger — biggest holder gets the most;",
       "disposal": "then, starting with whoever caused the merger and going clockwise, each holder may keep their now-defunct shares, sell them to the bank, or trade two of them for one share of the survivor.",
-      "note": "A dissolved company’s headquarters returns to the tray. If that company is founded again later, shares you kept come back to life with it."
+      "note": "A dissolved company’s headquarters returns to the tray. If that company is founded again later, like a zombie rising from the dead, the shares you kept come back to life with it."
     },
     "goingPublic": {
       "heading": "Going public — the Boomtown set only",
@@ -158,7 +158,7 @@
   "settings": {
     "eyebrow": "preferences · this machine",
     "title": "Settings",
-    "lede": "What a new table starts with, and how loud it is. A game already dealt keeps the rules it was dealt under.",
+    "lede": "",
     "close": "Close",
     "newTable": "A new table",
     "thisMachine": "This machine",
@@ -191,7 +191,7 @@
       "founding": "Founding",
       "buyStock": "Buy stock",
       "mergerTwo": "Merger (2-way)",
-      "mergerThree": "Merger (3-way)",
+      "mergerThree": "Super Merger (3-way)",
       "motion": "Motion",
       "endgame": "Endgame",
       "victory": "Victory"
@@ -264,19 +264,19 @@
       "tiersThree": "primary, secondary and tertiary",
       "tiersTwo": "majority and minority",
       "disposal": "**Then everyone disposes of the dead stock**, starting with the player who placed the tile and going clockwise. Each of you splits your shares however you like between *holding* them, *selling* at the defunct price, and *trading* two of them for one share of the survivor.",
-      "headquarters": "**The headquarters goes back to the tray.** That name can be founded again later — and any shares you kept come back to life with it."
+      "headquarters": "**The headquarters goes back to the tray.** That name can be founded again later — and, like a zombie rising from the dead, any shares you kept come back to life with it."
     },
     "goingPublic": {
-      "title": "Going public",
-      "note": "The other way the game can end, and the reason the books are closed. Nobody has to wait for one enormous corporation: at any point the table can be asked to wind the game up, and it decides.",
-      "window": "**The window opens** once {quorum} corporations are safe. It closes again the moment the game could simply be ended the ordinary way — asking is pointless when you could just announce.",
-      "moving": "**Any player, at the end of their own turn, may move to liquidate** — {allowance}. Moving *is* voting for it; you cannot propose an ending and then vote it down.",
+      "title": "Going public: the alternate ending",
+      "note": "Nobody has to wait for one enormous corporation: a vote can be called to end the game early, and the table decides.",
+      "window": "**The window opens** once {quorum} corporations are safe. It closes again the moment the game could simply be ended the ordinary way — asking is pointless when one mega-corporation can simply announce the end.",
+      "moving": "**Any player, at the end of their own turn, may move to liquidate** — {allowance}. Motioning for a vote *is* voting for it; you cannot propose an ending and then vote it down.",
       "allowanceOne": "once each per game",
       "allowanceMany": "{n} times each per game",
-      "register": "**The register is published** the first time anyone moves, and stays public for the rest of the game. It is one vote per share held in a *safe* corporation — those are the only companies certain to still exist at settlement. Stock in a chain that can still be eaten carries no vote.",
-      "voting": "**Everyone votes in turn**, starting with the mover and going clockwise. It carries on {quota}% of the register with at least {backers} players behind it, and the game ends there and then.",
+      "register": "**The register is published** the first time anyone moves, and stays public for the rest of the game. It is one vote per share held in a *safe* corporation — those are the only companies certain to still exist at settlement. *Stock in a chain that can still be eaten carries no vote.*",
+      "voting": "**Everyone votes in turn**, starting with the mover and going clockwise. It carries on {quota}% of the register with at least {backers} players behind it, and the game ends there and then. Settling now pays everyone out at once.",
       "price": "**If it fails, everyone who backed it opens their books** — cash and holdings visible to the table for the rest of the game. That is the whole price of a yes: voting against costs nothing, so a speculative or spiteful motion is expensive and a sincere one is nearly free.",
-      "standing": "Which makes it a question about **standing**, not about money. Settling now pays everyone at once, so the only player it helps is whoever is already ahead — and the only way to know whether that is you is to have read the table right."
+      "standing": "Calling a vote to go public is a *high risk, high reward* move. Read the table shrewdly and it can be a game-changer, read it wrong and it can spell disaster."
     },
     "worthKnowing": {
       "title": "Worth knowing",
