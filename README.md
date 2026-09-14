@@ -16,10 +16,44 @@ engine drives local hot‑seat, AI opponents, and online play against an authori
 
 ---
 
+## Install
+
+Grab the current release from **[Releases](https://github.com/smromain/boomtown/releases/latest)**.
+No build step, no Node, nothing to configure — the app plays hot‑seat and against bots offline, and
+online against the room the release was built for.
+
+| Platform | File | Notes |
+|---|---|---|
+| **macOS** 11+ | `Boomtown-<version>-universal.dmg` | One universal build, native on both Apple Silicon and Intel |
+| **Windows** 10/11 | `Boomtown.Setup.<version>.exe` | x64 installer; pick the install location, or install per‑user without admin |
+| **Linux** | `Boomtown-<version>.AppImage` | x64. `chmod +x` it and run — no install, no root |
+
+**macOS: the first launch needs a nudge.** These builds are not code‑signed, so Gatekeeper will
+say the app "is damaged and can't be opened" — it is not damaged, it is unsigned, and macOS reports
+those the same way. Clear the quarantine flag once, after dragging it to Applications:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Boomtown.app
+```
+
+Then open it normally. (Signing removes this step entirely; the release workflow signs whenever
+signing secrets are present, so a future release may not need it.)
+
+**Windows** shows a SmartScreen warning for the same reason — *More info → Run anyway*.
+
+The app keeps its settings in the usual per‑user place for each OS and writes nothing else. There is
+no account and no telemetry; the only thing it ever sends anywhere is your own moves, to the room
+you joined, when you choose to play online. (It also looks for an update on launch, which currently
+does nothing — no feed is configured yet.) To uninstall, drag the app to the Bin (macOS), use
+Add/Remove Programs (Windows), or delete the AppImage (Linux).
+
+---
+
 ## Status
 
 All five build phases have shipped. The app plays end to end — hot‑seat, against bots, and online —
-and builds signed installers for macOS, Windows and Linux from a tagged release.
+and builds installers for macOS, Windows and Linux from a tagged release (signed when signing
+secrets are configured).
 
 | Phase | Scope | State |
 |---|---|---|
@@ -30,10 +64,13 @@ and builds signed installers for macOS, Windows and Linux from a tagged release.
 | **E — Packaging** | electron‑builder targets, app icon and name, settings, signing, release workflow | **Done** — tagged releases build all three OSes and deploy the room |
 
 Since then: a presentation pass (**beats** — founding, buy, merger, endgame and victory moments,
-with sound), a stock **reference chart**, hot‑seat privacy fixes, and an online‑play diagnostic log.
+with sound), a stock **reference chart**, a paged **rules** carousel, a four‑track soundtrack with
+its own volume, hot‑seat privacy fixes, and an online‑play diagnostic log. Every string the
+interface says now lives in one file (`apps/desktop/src/copy/constants.json`), so the writing can be
+revised in one pass.
 Auto‑update is wired in code but has no feed yet — that needs a hosting decision.
 
-**556 tests** pass (`npm test`), plus 11 integration tests against a real room (`npm run
+**748 tests** pass (`npm test`), plus 11 integration tests against a real room (`npm run
 test:server`); typecheck and lint are clean.
 
 Plans: `docs/plans/` holds the architecture plan, the online‑multiplayer substrate plan, and the
@@ -78,7 +115,7 @@ same engine and the same bot policy the desktop app does.
   a local room.
 - **Python 3** only if you regenerate the design canvas or the app icon (`design/*.py`, stdlib only).
 
-### Install
+### Install the workspace
 
 ```bash
 npm install     # or npm ci
@@ -100,8 +137,19 @@ npm run dev
 This runs `electron-vite dev` for `@boomtown/desktop`: main, preload, and the React renderer with
 HMR. The window opens filling the screen.
 
+**Without the Electron shell.** The game surface never touches the Electron bridge, so the renderer
+also runs in an ordinary browser — useful on a machine with no display for the GUI, and the only way
+to drive the app from a script:
+
+```bash
+cd apps/desktop && npm run web     # the renderer alone, on :5173
+```
+
+That uses `vite.browser.config.mts`, which reuses `electron.vite.config.ts`'s own renderer options so
+the two ways of running the same code cannot drift. `.claude/skills/run-app/` drives it end to end.
+
 **Local game.** Pick 2–6 seats, mark each one human or bot (with a 1–10 difficulty), choose the
-edition (classic default) and the cash/holdings visibility, then play. Click a highlighted tile in
+edition (Boomtown by default) and the cash/holdings visibility, then play. Click a highlighted tile in
 the rack or on the board to place it; merger decisions surface as a modal. With more than one human
 seat, an opaque hand‑off card covers the screen between turns so nobody sees the next player's
 tiles.
@@ -172,14 +220,14 @@ Tests run under a **Vitest workspace** with two projects:
 
 | Project | Environment | Covers |
 |---|---|---|
-| `engine` | node | `packages/*/test/**` — engine, protocol, ai, client‑core, and the room's own logic (334 tests) |
-| `desktop` | jsdom | `apps/desktop/**/*.test.{ts,tsx}` — components via `@testing-library/react`, plus the Electron main‑process modules (221 tests) |
+| `engine` | node | `packages/*/test/**` — engine, protocol, ai, client‑core, and the room's own logic (396 tests) |
+| `desktop` | jsdom | `apps/desktop/**/*.test.{ts,tsx}` — components via `@testing-library/react`, plus the Electron main‑process modules (352 tests) |
 
 Integration tests live outside both, because they boot a real `partykit dev` room (workerd) and are
 too slow for the default suite.
 
 ```bash
-npm test                # both projects, once (555 tests)
+npm test                # both projects, once (748 tests)
 npm run test:watch      # watch mode
 npm run test:engine     # just the node project
 npm run test:desktop    # just the jsdom project
