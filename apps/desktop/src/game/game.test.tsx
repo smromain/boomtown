@@ -192,6 +192,62 @@ describe('StoryCard', () => {
     expect(within(story).queryByText(NAMES.video, { exact: true })).not.toBeInTheDocument();
   });
 
+  it('names a survivor that has already merged by what it trades as now', async () => {
+    const { client } = await renderPanel(<StoryCard />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']); // larger -> survives
+        seedCorp(state, 'books', ['6E', '7E']);
+        // video ate air in an earlier merger, so it is no longer trading under
+        // its own base name when this one starts
+        state.corporations.video.eaten = [
+          { industry: 'air', displayName: NAMES.air, flavours: [] },
+        ];
+        state.hands[0] = ['5E'];
+      },
+    });
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+      await flush();
+    });
+
+    const story = screen.getByRole('region', { name: 'Story' });
+    const heading = within(story).getByText(/merge at 5E/);
+    // the survivor is named as it stood going in — stem + air — and never by the
+    // base name it stopped trading under a merger ago
+    expect(heading).toHaveTextContent(mergedName('video', 'air'));
+    expect(heading).not.toHaveTextContent(new RegExp(`(^|\\s)${NAMES.video}(\\s|$)`));
+  });
+
+  it('names both sides by their trading names while the merger is unresolved', async () => {
+    const { client } = await renderPanel(<StoryCard />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']); // 3 -> survives
+        seedCorp(state, 'books', ['6E', '7E']); // 2 -> defunct
+        // both sides come in having already eaten something, so neither is
+        // trading under the name on its headquarters marker
+        state.corporations.video.eaten = [
+          { industry: 'air', displayName: NAMES.air, flavours: [] },
+        ];
+        state.corporations.books.eaten = [
+          { industry: 'toys', displayName: NAMES.toys, flavours: [] },
+        ];
+        state.seats[0]!.holdings.books = 1; // a holder, so it pauses for disposal
+        state.hands[0] = ['5E'];
+      },
+    });
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+      await flush();
+    });
+
+    const story = screen.getByRole('region', { name: 'Story' });
+    const heading = within(story).getByText(/merge at 5E/);
+    expect(heading).toHaveTextContent(mergedName('video', 'air'));
+    expect(heading).toHaveTextContent(mergedName('books', 'toys'));
+    // and the sentence underneath names them the same way
+    expect(within(story).getByText(/folds/)).toHaveTextContent(mergedName('books', 'toys'));
+  });
+
   it('spells out the merger sentence while it is unresolved', async () => {
     const { client } = await renderPanel(<StoryCard />, {
       craft: (state) => {

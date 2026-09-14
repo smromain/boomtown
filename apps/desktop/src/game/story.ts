@@ -1,3 +1,4 @@
+import { displayName, type EatenRecord } from '@boomtown/engine';
 import type { EngineEvent, Industry, PlayerView, Seat } from '@boomtown/engine';
 import { copy, fill } from '../copy/copy.js';
 
@@ -46,6 +47,67 @@ export function beingAbsorbed(merger: MergerStory): readonly Industry[] {
 }
 
 /**
+ * What a corporation in this merger is **called**, as against what its
+ * headquarters marker is called.
+ *
+ * A corporation is identified everywhere a player reads about it by the name it
+ * trades under — the accreted `displayName`, not the `baseName` it was founded
+ * with. The two only agree until its first merger, which is why naming from
+ * `baseName` looked right for a game and then started narrating a twice-merged
+ * survivor under a name nobody at the table had seen since.
+ *
+ * Two cases need care, and both are about *when* the name is read:
+ *
+ * - **The survivor** is named as it stood going into this merger. Its live
+ *   `displayName` is exactly that while the merger runs, but at completion the
+ *   engine appends this merger's fragments to it — so once complete the name is
+ *   rebuilt from the absorptions that came *before* these ones.
+ * - **A defunct corporation** keeps its live `displayName` while the merger
+ *   runs, and loses it at completion, when its entry resets so the headquarters
+ *   can be refounded under its own name. From then on the only record of what
+ *   it was called is the one the survivor kept, which is what we read.
+ */
+export function tradingNameIn(merger: MergerStory, view: PlayerView, industry: Industry): string {
+  if (industry === merger.survivor) return survivorNameBefore(merger, view, 0);
+  const corp = view.corporations[industry];
+  // Absorbed and reset: the record the survivor kept is the only name left.
+  if (!corp.founded) return nameAtAbsorption(merger, view, industry) ?? corp.baseName;
+  return corp.displayName || corp.baseName;
+}
+
+/**
+ * The name the survivor was trading under before absorption `k` of this merger
+ * — `k = 0` being the name it brought into the merger.
+ *
+ * Which absorptions are already on the survivor's `eaten` list depends on where
+ * the merger is: nothing of this merger is there until it completes, and then
+ * all of it is, in resolution order. So the entries for absorptions this merger
+ * has not recorded yet are read from the doomed corporations themselves, which
+ * are still standing while it runs.
+ */
+export function survivorNameBefore(merger: MergerStory, view: PlayerView, k: number): string {
+  if (!merger.survivor) return '';
+  const corp = view.corporations[merger.survivor];
+  const recorded = merger.complete ? merger.chains.length : 0;
+  const before = corp.eaten.length - recorded;
+  const record = (name: string): EatenRecord => ({ displayName: name, flavours: [] });
+  const prior = corp.eaten.slice(0, before).map((entry) => record(entry.displayName));
+  const here = merger.chains.slice(0, k).map((chain, i) => {
+    const kept = corp.eaten[before + i];
+    const live = view.corporations[chain.defunct];
+    return record(kept?.displayName ?? live.displayName ?? live.baseName);
+  });
+  return displayName(corp.baseName, [...prior, ...here], view.ruleset.mergeNaming);
+}
+
+/** What this merger recorded a defunct corporation as being called, once it has resolved it. */
+function nameAtAbsorption(merger: MergerStory, view: PlayerView, industry: Industry): string | null {
+  if (!merger.survivor) return null;
+  const kept = view.corporations[merger.survivor].eaten.find((entry) => entry.industry === industry);
+  return kept?.displayName ?? null;
+}
+
+/**
  * The design's merger sentence: what the placed tile does, then the size
  * comparison that decides the survivor. Returns the two halves so the tile id
  * can be emphasised in the middle.
@@ -62,15 +124,18 @@ export function mergerProse(
   const survivor = view.corporations[merger.survivor];
   const defunct = defunctIndustries.map((industry) => view.corporations[industry]);
   const smallest = defunct.reduce((a, b) => (b.size < a.size ? b : a));
-  const eaten = defunct.map((corp) => corp.baseName);
+  const eaten = defunctIndustries.map((industry) => tradingNameIn(merger, view, industry));
+  const smallestIndustry = defunctIndustries[defunct.indexOf(smallest)]!;
+  const survivorName = tradingNameIn(merger, view, merger.survivor);
+  const smallestName = tradingNameIn(merger, view, smallestIndustry);
   return {
     lead: copy.story.proseLead,
     tile: merger.placedTile,
     rest: fill(copy.story.proseRest, {
       eaten: listOf(eaten),
-      survivor: survivor.baseName,
+      survivor: survivorName,
       survivorSize: survivor.size,
-      smallest: smallest.baseName,
+      smallest: smallestName,
       smallestSize: smallest.size,
     }),
   };

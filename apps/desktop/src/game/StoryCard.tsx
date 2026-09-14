@@ -12,6 +12,7 @@ import {
   latestMerger,
   listOf,
   mergerProse,
+  tradingNameIn,
   tierWord,
   type BonusLine,
 } from './story.js';
@@ -64,13 +65,16 @@ export function StoryCard() {
 
   const survivorName = merger.survivor ? view.corporations[merger.survivor].displayName : '…';
   const survivorColor = merger.survivor ? INDUSTRY_INFO[merger.survivor].color : 'var(--ink)';
-  const names = merger.corporations.map((industry) => view.corporations[industry].baseName);
+  const names = merger.corporations.map((industry) => tradingNameIn(merger, view, industry));
   const eaten = beingAbsorbed(merger);
-  const eatenNames = eaten.map((industry) => view.corporations[industry].baseName);
+  const eatenNames = eaten.map((industry) => tradingNameIn(merger, view, industry));
   // One doomed corporation is named in its own colour, the way the log tints a
   // headline; several have no single colour between them, so they read as ink.
   const eatenColor = eaten.length === 1 ? INDUSTRY_INFO[eaten[0]!].color : 'var(--ink)';
   const prose = mergerProse(merger, view);
+  // The name it is trading under going in, which is not the joint name it takes
+  // when the merger completes.
+  const consumerName = merger.survivor ? tradingNameIn(merger, view, merger.survivor) : '';
   const nameOf = (seat: number) => view.seats[seat]?.name ?? fill(copy.common.seatFallback, { n: seat });
 
   return (
@@ -108,7 +112,7 @@ export function StoryCard() {
         ) : (
           <div className={styles.rename}>
             <span className={styles.renameLabel}>
-              {fill(copy.story.consuming, { survivor: view.corporations[merger.survivor].baseName })}
+              {fill(copy.story.consuming, { survivor: consumerName })}
             </span>
             <Marquee className={`serif ${styles.renameName}`} style={{ color: eatenColor }}>
               {listOf(eatenNames)}

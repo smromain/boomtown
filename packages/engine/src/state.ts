@@ -250,8 +250,26 @@ export interface CorpView {
   readonly displayName: string;
   /** Flavour line — verbatim while unmerged, spliced nonsense once it has eaten (R6). */
   readonly flavour: string;
-  /** Industries this corporation has absorbed, in order — one lineage mark per entry. */
-  readonly eaten: readonly Industry[];
+  /** Corporations this corporation has absorbed, in order — one lineage mark per entry. */
+  readonly eaten: readonly AbsorbedView[];
+}
+
+/**
+ * One absorption, as a client sees it: which corporation was swallowed and the
+ * name it was trading under at that moment.
+ *
+ * The name has to travel with the industry. A defunct corporation's entry in
+ * `corporations` resets at completion — that is what refounding under its own
+ * name requires — so the only surviving record of what it was *called* going in
+ * is the one the survivor keeps. Without it a client can only fall back to base
+ * names, which misnames every corporation that had already merged once: the
+ * survivor of two mergers gets narrated under the name it stopped trading under
+ * a merger ago.
+ */
+export interface AbsorbedView {
+  readonly industry: Industry;
+  /** Its display name at the moment it was absorbed, nested history included. */
+  readonly displayName: string;
 }
 
 export interface PlayerView {
@@ -318,7 +336,10 @@ export function viewFor(state: GameState, you: Seat): PlayerView {
         baseName: state.companies[industry].baseName,
         displayName: displayNameOf(state, industry),
         flavour: flavourOf(state, industry),
-        eaten: corp.eaten.map((record) => record.industry),
+        eaten: corp.eaten.map((record) => ({
+          industry: record.industry,
+          displayName: record.displayName,
+        })),
       };
       return [industry, view];
     }),

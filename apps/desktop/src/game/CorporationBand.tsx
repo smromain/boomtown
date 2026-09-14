@@ -118,7 +118,7 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
           <span className={`tabnum ${styles.size}`}>{fill(copy.game.sizeTiles, { n: corp.size })}</span>
           {corp.eaten.length > 0 && (
             <span className={styles.lineage}>
-              {corp.eaten.map((eatenIndustry, index) => (
+              {corp.eaten.map(({ industry: eatenIndustry }, index) => (
                 <IndustryMark
                   key={`${eatenIndustry}-${index}`}
                   industry={eatenIndustry}

@@ -78,6 +78,7 @@ export {
   type PlayerView,
   type SeatView,
   type CorpView,
+  type AbsorbedView,
   activeSeat,
   corpSize,
   isFounded,
