@@ -38,7 +38,7 @@ describe('fixtures (debug menu)', () => {
   it("the merger fixture's view already carries the accreted survivor name", () => {
     const { view } = BEAT_PREVIEWS.merger();
     expect(view.corporations.books.displayName).not.toBe('Chapter Eleven');
-    expect(view.corporations.books.eaten).toContain('energy');
+    expect(view.corporations.books.eaten.map((entry) => entry.industry)).toContain('energy');
     expect(view.corporations.energy.founded).toBe(false);
   });
 });

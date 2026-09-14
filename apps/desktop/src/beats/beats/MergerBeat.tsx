@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Industry, PlayerView } from '@boomtown/engine';
-import { INDUSTRY_INFO, displayName } from '@boomtown/engine';
-import { tierWord, type MergerStory } from '../../game/story.js';
+import { INDUSTRY_INFO } from '@boomtown/engine';
+import { survivorNameBefore, tierWord, tradingNameIn, type MergerStory } from '../../game/story.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
@@ -82,7 +82,6 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
 
   const survivor = merger.survivor ? view.corporations[merger.survivor] : null;
   const survivorColor = merger.survivor ? INDUSTRY_INFO[merger.survivor].color : '#faf6f0';
-  const survivorBase = survivor?.baseName ?? '';
 
   const chain = at.chain ?? merger.chains.length - 1;
   const defunctOf = (k: number): Industry | null => merger.chains[k]?.defunct ?? null;
@@ -90,21 +89,19 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
   const defunctColor = activeDefunct ? INDUSTRY_INFO[activeDefunct].color : survivorColor;
 
   /**
-   * The survivor's name as it stood *before* absorption `k` — base name plus
-   * everything eaten up to that point. Rebuilt from base names, so a defunct
-   * chain that had itself already eaten something contributes its base rather
-   * than its own accreted name; the final name at the `name` stage comes from
-   * the view and is always exact.
+   * The survivor's name as it stood *before* absorption `k`, and the name each
+   * doomed corporation was trading under when it was swallowed.
+   *
+   * Both come from `story.ts` so the beat and the story panel cannot disagree
+   * about what a corporation is called, and both are exact where the older
+   * reconstruction was not: it rebuilt intermediate names from base names, so a
+   * corporation that had already eaten something appeared on the beat under a
+   * name it had stopped trading under — and the engine, which composes the real
+   * name from the *display* name of what it swallows, then produced a final
+   * name the stages leading up to it did not add up to.
    */
-  const nameBefore = (k: number): string =>
-    displayName(
-      survivorBase,
-      merger.chains.slice(0, k).map((c) => ({
-        displayName: view.corporations[c.defunct].baseName,
-        flavours: [],
-      })),
-      view.ruleset.mergeNaming,
-    );
+  const nameBefore = (k: number): string => survivorNameBefore(merger, view, k);
+  const nameOfDefunct = (industry: Industry): string => tradingNameIn(merger, view, industry);
 
   useEffect(() => {
     soundManager.play('merger');
@@ -171,7 +168,7 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
           </span>
           <span style={{ fontSize: 22, color: survivorColor }}>+</span>
           <span className="serif" style={{ fontSize: 30, color: '#9c9086' }}>
-            {activeDefunct ? view.corporations[activeDefunct].baseName : ''}
+            {activeDefunct ? nameOfDefunct(activeDefunct) : ''}
           </span>
         </div>
 
@@ -229,7 +226,7 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
                 className={at.kind === 'bonus' && !reduced ? styles.rise : undefined}
               >
                 <span className={styles.kicker}>
-                  {activeDefunct && multi ? `${view.corporations[activeDefunct].baseName} · ` : ''}
+                  {activeDefunct && multi ? `${nameOfDefunct(activeDefunct)} · ` : ''}
                   {tierWord(bonus.tier, view.ruleset.bonusTiers)}
                 </span>
                 <span className="serif tabnum" style={{ display: 'block', fontSize: 56, lineHeight: 1.05, marginTop: 6, letterSpacing: '-0.03em' }}>
