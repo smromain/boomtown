@@ -4,15 +4,9 @@
 <img width="2304" height="1728" alt="Boomtown (Poster (US))" src="https://github.com/user-attachments/assets/00b1e6b6-1b9a-48e9-ae12-90a775b3ff2d" />
 
 
-A desktop implementation of the board game **Acquire** — the mechanics only, renamed and
-re‑themed. Two published editions ship as data alongside **Boomtown**, our own variant with closed
+A desktop game reminiscent of the board game **Acquire**. Two published editions ship as data alongside **Boomtown**, our own variant with closed
 books and an ending put to a vote; the sequenced merger is modelled exactly, and the same headless
 engine drives local hot‑seat, AI opponents, and online play against an authoritative server.
-
-> The rules and mechanics of a board game are not protectable. **ACQUIRE** and the original
-> corporation names are live Hasbro / Avalon Hill trademarks and are not used here — every name in
-> this project is original or a parody of a defunct brand. Nothing has been trademark‑searched; see
-> `docs/decisions.md`.
 
 ---
 
