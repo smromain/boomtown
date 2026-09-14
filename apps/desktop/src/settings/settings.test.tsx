@@ -7,6 +7,7 @@ import { SettingsDialog } from './SettingsDialog.js';
 import { partykitHost } from '../online/hostUrl.js';
 import { defaultConfig } from '../setup/gameConfig.js';
 import { MUSIC_SOURCE, TRACKS } from '../audio/musicManager.js';
+import { copy } from '../copy/copy.js';
 import { soundManager } from '../audio/soundManager.js';
 
 vi.mock('howler', () => ({
@@ -271,7 +272,7 @@ await userEvent.click(
 
   it('has no debug section when onDebugTrigger is not given (e.g. a release build with the prop omitted)', () => {
     render(<SettingsDialog open onClose={() => {}} />);
-    expect(screen.queryByText('Debug — preview a beat')).not.toBeInTheDocument();
+    expect(screen.queryByText(copy.settings.debug.heading)).not.toBeInTheDocument();
   });
 
   it('offers one button per beat and calls onDebugTrigger, closing itself', async () => {
@@ -279,13 +280,23 @@ await userEvent.click(
     const onClose = vi.fn();
     render(<SettingsDialog open onClose={onClose} onDebugTrigger={onDebugTrigger} />);
 
-    for (const label of ['Founding', 'Buy stock', 'Merger (2-way)', 'Merger (3-way)', 'Endgame', 'Victory']) {
+    // Names from the copy file: what these previews are called is a copy
+    // decision, while *one button per beat* is the behaviour under test.
+    const debug = copy.settings.debug;
+    for (const label of [
+      debug.founding,
+      debug.buyStock,
+      debug.mergerTwo,
+      debug.mergerThree,
+      debug.endgame,
+      debug.victory,
+    ]) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
     }
 
     // The merger beat has two scenarios, because a single-chain fixture cannot
     // exercise a multi-chain absorption — the shape that was broken.
-    await userEvent.click(screen.getByRole('button', { name: 'Merger (3-way)' }));
+    await userEvent.click(screen.getByRole('button', { name: copy.settings.debug.mergerThree }));
     expect(onDebugTrigger).toHaveBeenCalledWith('merger-three-way');
     expect(onClose).toHaveBeenCalledOnce();
   });

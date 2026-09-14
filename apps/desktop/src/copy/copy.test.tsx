@@ -57,12 +57,16 @@ describe('constants.json', () => {
     }
   };
 
-  it('holds only non-empty strings', () => {
-    const empty: string[] = [];
+  it('holds no string that is only whitespace', () => {
+    // An empty string is a fair authoring choice — "say nothing here", as the
+    // settings dialog does with its lede — and a screen that renders nothing
+    // shows it. A string of spaces is never a choice: it reads as absent in the
+    // file and occupies a line on screen.
+    const blank: string[] = [];
     walk(copy, '', (path, value) => {
-      if (value.trim() === '') empty.push(path);
+      if (value !== '' && value.trim() === '') blank.push(path);
     });
-    expect(empty).toEqual([]);
+    expect(blank).toEqual([]);
   });
 
   it('has no placeholder left half-written', () => {

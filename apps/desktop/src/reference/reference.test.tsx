@@ -10,6 +10,22 @@ import { CorpReference } from './CorpReference.js';
 import { RulesReference } from './RulesReference.js';
 import { ReferenceProvider, useReference } from './ReferenceContext.js';
 import { NAMES, renderPanel, seedCorp } from '../testing/harness.js';
+import { copy, fill } from '../copy/copy.js';
+
+/**
+ * Section titles as *locators* — which card to turn to — read from the copy
+ * file, because renaming a section is a copy decision and should not fail a
+ * test about paging. What the sections *say* is asserted literally below: that
+ * is the part a revision should have to look at.
+ */
+const SECTION = {
+  turn: copy.rules.turn.title,
+  merger: copy.rules.merger.title,
+  goingPublic: copy.rules.goingPublic.title,
+  worthKnowing: copy.rules.worthKnowing.title,
+  table: copy.rules.table.title,
+  edition: (edition: string) => fill(copy.rules.edition.title, { edition }),
+};
 
 describe('priceReference helpers', () => {
   it('fullChart marks a founded corporation on the row it sits', () => {
@@ -177,14 +193,14 @@ describe('RulesReference modal', () => {
     expect(dialog()).toHaveTextContent('Classic');
     expect(dialog()).toHaveTextContent('safe at 11 tiles');
 
-    await goTo('What Classic sets');
+    await goTo(SECTION.edition('Classic'));
     expect(dialog()).toHaveTextContent('11+ tiles — cannot be dissolved');
     expect(dialog()).toHaveTextContent('41+ tiles in one corporation');
     expect(dialog()).toHaveTextContent('majority · minority');
     expect(dialog()).toHaveTextContent('both bonuses');
 
     // the classic board geometry, straight off the ruleset
-    await goTo('The table');
+    await goTo(SECTION.table);
     expect(dialog()).toHaveTextContent('12 × 9');
   });
 
@@ -193,7 +209,7 @@ describe('RulesReference modal', () => {
     expect(dialog()).toHaveTextContent('Modern');
     expect(dialog()).toHaveTextContent('safe at 10 tiles');
 
-    await goTo('What Modern sets');
+    await goTo(SECTION.edition('Modern'));
     expect(dialog()).toHaveTextContent('10+ tiles — cannot be dissolved');
     expect(dialog()).toHaveTextContent('38+ tiles in one corporation');
     expect(dialog()).toHaveTextContent('primary · secondary · tertiary');
@@ -208,20 +224,20 @@ describe('RulesReference modal', () => {
 
     // the window, the register, the quota and the price of a yes — the four
     // things a player cannot work out from the board
-    await goTo('Going public');
+    await goTo(SECTION.goingPublic);
     expect(dialog()).toHaveTextContent(/2 corporations are safe/);
     expect(dialog()).toHaveTextContent(/one vote per share held in a/i);
     expect(dialog()).toHaveTextContent(/67% of the register/);
     expect(dialog()).toHaveTextContent(/opens? their books/i);
 
     // and the rule that makes the whole thing a bluffing game
-    await goTo('Worth knowing');
+    await goTo(SECTION.worthKnowing);
     expect(dialog()).toHaveTextContent(/The books are closed/);
   });
 
   it('says nothing about a vote under a rule set that has none — not even a section for it', async () => {
     await renderPanel(open, { edition: 'classic' });
-    expect(screen.queryByRole('button', { name: 'Going public' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: SECTION.goingPublic })).not.toBeInTheDocument();
 
     // every section, walked end to end: the vote is nowhere in the whole modal
     for (let i = 0; i < 10; i++) {
@@ -249,7 +265,7 @@ describe('RulesReference modal', () => {
 
   it('names the merger sequencing rule that everything else depends on', async () => {
     await renderPanel(open);
-    await goTo('When corporations merge');
+    await goTo(SECTION.merger);
     expect(dialog()).toHaveTextContent(/never counts/i);
     expect(dialog()).toHaveTextContent(/largest first/i);
   });
@@ -263,17 +279,17 @@ describe('RulesReference carousel', () => {
     await renderPanel(open, { edition: 'boomtown' });
 
     // the turn is first, and the merger it can cause is not also on screen
-    expect(dialog()).toHaveTextContent('Your turn, in order');
+    expect(dialog()).toHaveTextContent(SECTION.turn);
     expect(dialog()).not.toHaveTextContent(/never counts/i);
-    expect(screen.getByText('Section 1 of 6')).toBeInTheDocument();
+    expect(screen.getByText(fill(copy.rules.counter, { n: 1, total: 6 }))).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Next section' }));
-    expect(dialog()).toHaveTextContent('When corporations merge');
+    expect(dialog()).toHaveTextContent(SECTION.merger);
     expect(dialog()).not.toHaveTextContent('Place a tile');
-    expect(screen.getByText('Section 2 of 6')).toBeInTheDocument();
+    expect(screen.getByText(fill(copy.rules.counter, { n: 2, total: 6 }))).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Previous section' }));
-    expect(dialog()).toHaveTextContent('Your turn, in order');
+    expect(dialog()).toHaveTextContent(SECTION.turn);
   });
 
   it('stops at both ends rather than wrapping — it is a read-through, not a loop', async () => {
@@ -281,35 +297,38 @@ describe('RulesReference carousel', () => {
     expect(screen.getByRole('button', { name: 'Previous section' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Next section' })).toBeEnabled();
 
-    await userEvent.click(screen.getByRole('button', { name: 'What Boomtown sets' }));
-    expect(screen.getByText('Section 6 of 6')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: SECTION.edition('Boomtown') }));
+    expect(screen.getByText(fill(copy.rules.counter, { n: 6, total: 6 }))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next section' })).toBeDisabled();
   });
 
   it('jumps straight to a section from its dot, and marks where you are', async () => {
     await renderPanel(open, { edition: 'boomtown' });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Going public' }));
-    expect(dialog()).toHaveTextContent(/wind the game up/i);
-    expect(screen.getByRole('button', { name: 'Going public' })).toHaveAttribute('aria-current', 'step');
-    expect(screen.getByRole('button', { name: 'The table' })).not.toHaveAttribute('aria-current');
+    await userEvent.click(screen.getByRole('button', { name: SECTION.goingPublic }));
+    // The card's own heading, not a phrase out of its prose: this test is about
+    // the dot turning to the right section. What that section says is asserted
+    // literally in the modal tests above, where a reworded rule should show up.
+    expect(screen.getByRole('heading', { name: SECTION.goingPublic })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: SECTION.goingPublic })).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByRole('button', { name: SECTION.table })).not.toHaveAttribute('aria-current');
   });
 
   it('pages on the arrow keys, so the whole thing works without a mouse', async () => {
     await renderPanel(open, { edition: 'boomtown' });
 
     await userEvent.keyboard('{ArrowRight}');
-    expect(dialog()).toHaveTextContent('When corporations merge');
+    expect(dialog()).toHaveTextContent(SECTION.merger);
     await userEvent.keyboard('{ArrowLeft}');
-    expect(dialog()).toHaveTextContent('Your turn, in order');
+    expect(dialog()).toHaveTextContent(SECTION.turn);
     // and it holds at the first section rather than wrapping to the last
     await userEvent.keyboard('{ArrowLeft}');
-    expect(dialog()).toHaveTextContent('Your turn, in order');
+    expect(dialog()).toHaveTextContent(SECTION.turn);
   });
 
   it('drops the sections a rule set has no rules for, and counts what is left', async () => {
     await renderPanel(open, { edition: 'classic' });
-    expect(screen.getByText('Section 1 of 5')).toBeInTheDocument();
+    expect(screen.getByText(fill(copy.rules.counter, { n: 1, total: 5 }))).toBeInTheDocument();
   });
 
   it('opens at the first section every time — a second look is a second question', async () => {
@@ -328,13 +347,13 @@ describe('RulesReference carousel', () => {
     }
     await renderPanel(<Reopenable />, { edition: 'boomtown' });
 
-    await userEvent.click(screen.getByRole('button', { name: 'The table' }));
+    await userEvent.click(screen.getByRole('button', { name: SECTION.table }));
     expect(dialog()).toHaveTextContent('Starting cash');
 
     // closed from the modal's own ✕ — everything outside it is aria-hidden
     // while it is open, which is the modal doing its job
     await userEvent.click(screen.getByRole('button', { name: 'Close' }));
     await userEvent.click(screen.getByRole('button', { name: 'toggle rules' }));
-    expect(dialog()).toHaveTextContent('Your turn, in order');
+    expect(dialog()).toHaveTextContent(SECTION.turn);
   });
 });
