@@ -43,6 +43,79 @@ Add/Remove Programs (Windows), or delete the AppImage (Linux).
 
 ---
 
+## Screenshots
+
+Seventeen frames from one real game, in the order a table meets them. All of them live in
+`docs/screenshots/`, which also records how they were taken and what to watch for if they are
+retaken.
+
+### Sitting down
+
+| | |
+|---|---|
+| ![Title screen](docs/screenshots/01-title-screen.png) | ![New game](docs/screenshots/02-new-game.png) |
+| Title screen — a local game, or a room to join | Setup: the three editions, the seats, closed books |
+
+![The hand-off card](docs/screenshots/03-hot-seat-handoff.png)
+
+*Hot‑seat is private by construction: an opaque hand‑off card covers the screen between two human
+seats, so the next player never sees the last one's rack.*
+
+### A turn
+
+![Turn one](docs/screenshots/04-first-turn.png)
+
+*Turn one — an empty board and six playable tiles.*
+
+| | |
+|---|---|
+| ![Founding prompt](docs/screenshots/05-founding-prompt.png) | ![A corporation is founded](docs/screenshots/06-a-corporation-is-founded.png) |
+| Choosing which name comes out of the tray | The founding beat: headquarters, price, founder's share |
+
+![Buying stock](docs/screenshots/07-buy-stock.png)
+
+*Up to three shares a turn, with what the bank still holds shown alongside.*
+
+![The table mid-game](docs/screenshots/08-the-table-mid-game.png)
+
+*The whole screen mid‑game — cards, board, the story of what just happened, and the register of
+shareholders.*
+
+### The merger
+
+Merger resolution is the only genuinely sequenced part of the game, and it gets the most screen.
+
+![Merger at 9G](docs/screenshots/09-merger-at-9g.png)
+
+*The sequence opens on the tile that caused it.*
+
+| | |
+|---|---|
+| ![Choosing the survivor](docs/screenshots/10-choosing-the-survivor.png) | ![The merged name](docs/screenshots/11-the-merged-name.png) |
+| The mergemaker breaking a tie between equal corporations | The survivor's accreted display name |
+
+![Disposing of dead stock](docs/screenshots/12-disposing-of-dead-stock.png)
+
+*Hold, sell, or trade two‑for‑one — in mergemaker‑clockwise order, with the bonuses already paid.*
+
+### Ending it
+
+| | |
+|---|---|
+| ![End of turn](docs/screenshots/13-end-of-turn.png) | ![Motion to liquidate](docs/screenshots/14-motion-to-liquidate.png) |
+| End of turn: end it, or move to liquidate | The vote, with the register tallying shares live |
+
+![The motion fails](docs/screenshots/15-the-motion-fails.png)
+
+*A motion that fails costs its backer their privacy: they play on with open books.*
+
+| | |
+|---|---|
+| ![Tallying the score](docs/screenshots/16-tallying-the-score.png) | ![Final standings](docs/screenshots/17-final-standings.png) |
+| Final scoring, counted up from last place | Game over: cash, stock and total per seat |
+
+---
+
 ## Repository layout
 
 A pnpm‑style monorepo run with **npm workspaces** (`packages/*`, `apps/*`).
@@ -425,6 +498,7 @@ thin authority over an engine that was already trusted.
 | `docs/naming.md` | The 28‑company pool, the merged‑name rule, flavour accretion, card consolidation |
 | `docs/decisions.md` | What was decided and why, what is still open, and the traps already hit |
 | `docs/deploying.md` | Deploying the PartyKit room and building/signing the desktop installers; the app's icon and name |
+| `docs/screenshots/` | Seventeen frames from one real game, in play order — what each shows, and how to retake them |
 | `docs/plans/` | The architecture plan (20 units, KTD1–12, verification contract), the online‑multiplayer substrate plan, and the game‑feel plan |
 | `docs/handoffs/` | What each recent session diagnosed and landed — the running record of bugs and fixes |
 | `design/build.py` | Generates the design canvas **and** is the reference implementation of the naming rules — port it, don't reimplement it |
