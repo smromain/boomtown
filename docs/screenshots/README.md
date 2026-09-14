@@ -24,6 +24,18 @@ than described.
 | `16-tallying-the-score.png` | Final scoring, counted up from last place |
 | `17-final-standings.png` | Game over: cash, stock and total per seat |
 
+## Web copies
+
+The README embeds half-size WebP copies from `web/` rather than these PNGs --
+1600 x 1000 at quality 88, about 600 KB for all seventeen against 8.3 MB of
+originals. Regenerate them after retaking anything:
+
+```bash
+python3 docs/screenshots/make_web_copies.py   # needs Pillow
+```
+
+The PNGs here stay the masters: link those anywhere the full resolution matters.
+
 ## How they were taken
 
 The renderer served to a browser (`cd apps/desktop && npm run web`) and driven

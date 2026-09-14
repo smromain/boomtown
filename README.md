@@ -45,7 +45,8 @@ Add/Remove Programs (Windows), or delete the AppImage (Linux).
 
 ## Screenshots
 
-Seventeen frames from one real game, in the order a table meets them. All of them live in
+Seventeen frames from one real game, in the order a table meets them. Shown here as half‑size
+web copies — the whole gallery is under 600 KB. The full‑resolution 3200 × 2000 originals are in
 `docs/screenshots/`, which also records how they were taken and what to watch for if they are
 retaken.
 
@@ -53,30 +54,30 @@ retaken.
 
 | | |
 |---|---|
-| ![Title screen](docs/screenshots/01-title-screen.png) | ![New game](docs/screenshots/02-new-game.png) |
+| ![Title screen](docs/screenshots/web/01-title-screen.webp) | ![New game](docs/screenshots/web/02-new-game.webp) |
 | Title screen — a local game, or a room to join | Setup: the three editions, the seats, closed books |
 
-![The hand-off card](docs/screenshots/03-hot-seat-handoff.png)
+![The hand-off card](docs/screenshots/web/03-hot-seat-handoff.webp)
 
 *Hot‑seat is private by construction: an opaque hand‑off card covers the screen between two human
 seats, so the next player never sees the last one's rack.*
 
 ### A turn
 
-![Turn one](docs/screenshots/04-first-turn.png)
+![Turn one](docs/screenshots/web/04-first-turn.webp)
 
 *Turn one — an empty board and six playable tiles.*
 
 | | |
 |---|---|
-| ![Founding prompt](docs/screenshots/05-founding-prompt.png) | ![A corporation is founded](docs/screenshots/06-a-corporation-is-founded.png) |
+| ![Founding prompt](docs/screenshots/web/05-founding-prompt.webp) | ![A corporation is founded](docs/screenshots/web/06-a-corporation-is-founded.webp) |
 | Choosing which name comes out of the tray | The founding beat: headquarters, price, founder's share |
 
-![Buying stock](docs/screenshots/07-buy-stock.png)
+![Buying stock](docs/screenshots/web/07-buy-stock.webp)
 
 *Up to three shares a turn, with what the bank still holds shown alongside.*
 
-![The table mid-game](docs/screenshots/08-the-table-mid-game.png)
+![The table mid-game](docs/screenshots/web/08-the-table-mid-game.webp)
 
 *The whole screen mid‑game — cards, board, the story of what just happened, and the register of
 shareholders.*
@@ -85,16 +86,16 @@ shareholders.*
 
 Merger resolution is the only genuinely sequenced part of the game, and it gets the most screen.
 
-![Merger at 9G](docs/screenshots/09-merger-at-9g.png)
+![Merger at 9G](docs/screenshots/web/09-merger-at-9g.webp)
 
 *The sequence opens on the tile that caused it.*
 
 | | |
 |---|---|
-| ![Choosing the survivor](docs/screenshots/10-choosing-the-survivor.png) | ![The merged name](docs/screenshots/11-the-merged-name.png) |
+| ![Choosing the survivor](docs/screenshots/web/10-choosing-the-survivor.webp) | ![The merged name](docs/screenshots/web/11-the-merged-name.webp) |
 | The mergemaker breaking a tie between equal corporations | The survivor's accreted display name |
 
-![Disposing of dead stock](docs/screenshots/12-disposing-of-dead-stock.png)
+![Disposing of dead stock](docs/screenshots/web/12-disposing-of-dead-stock.webp)
 
 *Hold, sell, or trade two‑for‑one — in mergemaker‑clockwise order, with the bonuses already paid.*
 
@@ -102,16 +103,16 @@ Merger resolution is the only genuinely sequenced part of the game, and it gets 
 
 | | |
 |---|---|
-| ![End of turn](docs/screenshots/13-end-of-turn.png) | ![Motion to liquidate](docs/screenshots/14-motion-to-liquidate.png) |
+| ![End of turn](docs/screenshots/web/13-end-of-turn.webp) | ![Motion to liquidate](docs/screenshots/web/14-motion-to-liquidate.webp) |
 | End of turn: end it, or move to liquidate | The vote, with the register tallying shares live |
 
-![The motion fails](docs/screenshots/15-the-motion-fails.png)
+![The motion fails](docs/screenshots/web/15-the-motion-fails.webp)
 
 *A motion that fails costs its backer their privacy: they play on with open books.*
 
 | | |
 |---|---|
-| ![Tallying the score](docs/screenshots/16-tallying-the-score.png) | ![Final standings](docs/screenshots/17-final-standings.png) |
+| ![Tallying the score](docs/screenshots/web/16-tallying-the-score.webp) | ![Final standings](docs/screenshots/web/17-final-standings.webp) |
 | Final scoring, counted up from last place | Game over: cash, stock and total per seat |
 
 ---
