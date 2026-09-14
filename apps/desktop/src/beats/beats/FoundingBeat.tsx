@@ -5,6 +5,7 @@ import { IndustryMark } from '../../game/marks.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
+import { copy } from '../../copy/copy.js';
 
 const HOLD_MS = 6000;
 
@@ -30,7 +31,7 @@ export function FoundingBeat({
   }, [reduced]);
 
   return (
-    <div className={styles.curtain} role="dialog" aria-label="A corporation is founded" onClick={dismiss}>
+    <div className={styles.curtain} role="dialog" aria-label={copy.beats.founding.label} onClick={dismiss}>
       <div
         className={styles.curtainGlow}
         style={{ background: `radial-gradient(50% 50% at 50% 50%, color-mix(in srgb, ${color} 30%, transparent) 0%, transparent 72%)` }}
@@ -52,7 +53,7 @@ export function FoundingBeat({
           <IndustryMark industry={industry} color={ink} size={54} />
         </div>
         <div className={reduced ? undefined : styles.rise} style={{ width: 470 }}>
-          <div className={styles.kicker}>a corporation is founded</div>
+          <div className={styles.kicker}>{copy.beats.founding.kicker}</div>
           <div className={styles.rule} />
           <div className="serif" style={{ fontSize: 60, lineHeight: 1.1, marginTop: 12 }}>
             {corp.baseName}
@@ -65,7 +66,7 @@ export function FoundingBeat({
           </div>
         </div>
       </div>
-      <span className={styles.hint}>click or press space</span>
+      <span className={styles.hint}>{copy.beats.hint}</span>
     </div>
   );
 }

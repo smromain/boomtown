@@ -10,6 +10,7 @@ import { randomName } from '../online/randomName.js';
 import { loadSettings, saveSettings } from '../settings/settings.js';
 import { EditionChoice } from '../setup/EditionChoice.js';
 import { Button } from '../ui/Button.js';
+import { copy, fill } from '../copy/copy.js';
 import form from '../setup/form.module.css';
 import styles from './lobby.module.css';
 
@@ -57,7 +58,7 @@ export function CreateJoin({
   const go = async () => {
     const chosen = name.trim();
     if (chosen === '') {
-      setError('Enter a name, or roll one.');
+      setError(copy.online.errors.noName);
       return;
     }
 
@@ -72,31 +73,35 @@ export function CreateJoin({
       } else {
         const code = joinCode.trim().toUpperCase();
         if (code.length < 4) {
-          setError('Enter a room code.');
+          setError(copy.online.errors.noCode);
           setBusy(false);
           return;
         }
         onRoom(await joinRoom(config, code, chosen));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not connect.');
+      setError(e instanceof Error ? e.message : copy.online.errors.failed);
       setBusy(false);
     }
   };
 
   const nameField = (
     <label className={form.field}>
-      <span>Your name</span>
+      <span>{copy.online.yourName}</span>
       <div className={styles.nameRow}>
         <input
           className={form.input}
           value={name}
           maxLength={24}
           onChange={(e) => setName(e.target.value)}
-          aria-label="Your name"
+          aria-label={copy.online.yourName}
         />
-        <button type="button" onClick={() => setName(randomName())} aria-label="Roll a new name">
-          Roll
+        <button
+          type="button"
+          onClick={() => setName(randomName())}
+          aria-label={copy.online.rollName}
+        >
+          {copy.online.roll}
         </button>
       </div>
     </label>
@@ -104,22 +109,19 @@ export function CreateJoin({
 
   return (
     <div className={form.viewport}>
-      <section className={form.screen} aria-label="Online game">
+      <section className={form.screen} aria-label={copy.online.screenLabel}>
         <header className={form.head}>
           <div>
-            <span className={`kicker ${form.eyebrow}`}>online · one seat each</span>
-            <h1 className={form.title}>Play online</h1>
-            <p className={form.lede}>
-              Open a room and hand out the code, or take a seat in someone else&apos;s. Your hand
-              and the draw pile stay yours alone.
-            </p>
+            <span className={`kicker ${form.eyebrow}`}>{copy.online.eyebrow}</span>
+            <h1 className={form.title}>{copy.online.title}</h1>
+            <p className={form.lede}>{copy.online.lede}</p>
           </div>
           <div className={form.segment}>
             <button type="button" data-active={mode === 'create'} onClick={() => setMode('create')}>
-              Create a room
+              {copy.online.modeCreate}
             </button>
             <button type="button" data-active={mode === 'join'} onClick={() => setMode('join')}>
-              Join with a code
+              {copy.online.modeJoin}
             </button>
           </div>
         </header>
@@ -128,17 +130,15 @@ export function CreateJoin({
           {mode === 'join' ? (
             <div className={form.columns}>
               <label className={form.field}>
-                <span>Room code</span>
+                <span>{copy.online.roomCode}</span>
                 <input
                   className={`${form.input} ${styles.codeInput}`}
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value)}
-                  aria-label="Room code"
-                  placeholder="ABCD12"
+                  aria-label={copy.online.roomCode}
+                  placeholder={copy.online.roomCodePlaceholder}
                 />
-                <span className={form.note}>
-                  Six characters, from whoever opened the room. The rule set is theirs to choose.
-                </span>
+                <span className={form.note}>{copy.online.roomCodeNote}</span>
               </label>
               {nameField}
             </div>
@@ -148,10 +148,8 @@ export function CreateJoin({
 
               <div className={form.columns}>
                 <div className={form.field}>
-                  <span>The table</span>
-                  <span className={form.note}>
-                    Humans join by code and bring their own names. Set a seat to a bot to fill it now.
-                  </span>
+                  <span>{copy.online.table}</span>
+                  <span className={form.note}>{copy.online.tableNote}</span>
                   <div className={form.roster}>
                     {config.seats.map((seat, index) => (
                       <SeatRow
@@ -171,15 +169,19 @@ export function CreateJoin({
                   {nameField}
 
                   <div className={form.field}>
-                    <span>Seats</span>
+                    <span>{copy.online.seats}</span>
                     <Choice
-                      label="Seats"
+                      label={copy.online.seats}
                       numeric
                       value={seatCount}
                       options={Array.from(
                         { length: RULES.maxPlayers - RULES.minPlayers + 1 },
                         (_, i) => RULES.minPlayers + i,
-                      ).map((n) => ({ value: n, label: String(n), description: `${n} seats` }))}
+                      ).map((n) => ({
+                        value: n,
+                        label: String(n),
+                        description: fill(copy.online.seatsDescription, { n }),
+                      }))}
                       onChange={(n) => resize(n)}
                     />
                   </div>
@@ -197,10 +199,14 @@ export function CreateJoin({
 
         <div className={form.actions}>
           <Button variant="ghost" onClick={onBack}>
-            Back
+            {copy.online.back}
           </Button>
           <Button variant="primary" disabled={busy} onClick={() => void go()}>
-            {busy ? 'Connecting…' : mode === 'create' ? 'Create room' : 'Join room'}
+            {busy
+              ? copy.online.connecting
+              : mode === 'create'
+                ? copy.online.create
+                : copy.online.join}
           </Button>
         </div>
       </section>

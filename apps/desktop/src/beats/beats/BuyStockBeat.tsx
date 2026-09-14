@@ -4,6 +4,7 @@ import { IndustryMark } from '../../game/marks.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
+import { copy, fill } from '../../copy/copy.js';
 
 const HOLD_MS = 1100;
 
@@ -31,7 +32,7 @@ export function BuyStockBeat({
   dismiss: () => void;
 }) {
   const reduced = useReducedMotion();
-  const name = view.seats[seat]?.name ?? `Player ${seat + 1}`;
+  const name = view.seats[seat]?.name ?? fill(copy.common.playerFallback, { n: seat + 1 });
 
   useEffect(() => {
     soundManager.play('buy');
@@ -47,13 +48,13 @@ export function BuyStockBeat({
       className={reduced ? undefined : styles.flourish}
       style={{ marginTop: '18vh', pointerEvents: 'none' }}
       role="status"
-      aria-label={`${name} bought stock`}
+      aria-label={fill(copy.beats.buyStock.label, { name })}
     >
       <button
         type="button"
         className={styles.flourishPill}
         onClick={dismiss}
-        aria-label={`Dismiss — ${name} bought stock`}
+        aria-label={fill(copy.beats.buyStock.dismiss, { name })}
       >
         {INDUSTRIES.filter((industry) => (picks[industry] ?? 0) > 0).map((industry) => (
           <IndustryMark key={industry} industry={industry} color={INDUSTRY_INFO[industry].color} size={16} />

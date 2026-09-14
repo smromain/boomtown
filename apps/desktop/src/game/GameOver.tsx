@@ -3,6 +3,7 @@ import { useGameState } from '../client/GameClientProvider.js';
 import { Skyline } from '../art/Skyline.js';
 import { Button } from '../ui/Button.js';
 import styles from './game.module.css';
+import { copy, fill } from '../copy/copy.js';
 
 /**
  * The end screen: final standings and a way out. Shown whenever the game is
@@ -19,19 +20,23 @@ export function GameOver({ onLeave }: { onLeave: (() => void) | undefined }) {
   if (!result) return null;
 
   const top = result.rankings[0]?.total ?? 0;
+  const nameOf = (seat: number) =>
+    names[seat] ?? fill(copy.common.playerFallback, { n: seat + 1 });
 
   return (
-    <div className={styles.gameOver} role="dialog" aria-label="Game over">
+    <div className={styles.gameOver} role="dialog" aria-label={copy.game.gameOver.label}>
       <Skyline tone="ink" className={styles.gameOverArt} />
-      <p className={styles.waitingKicker}>Game over</p>
+      <p className={styles.waitingKicker}>{copy.game.gameOver.kicker}</p>
       <h2 className="serif">
         {result.winners.length > 1
-          ? `${result.winners.map((s) => names[s] ?? `Player ${s + 1}`).join(' & ')} tie`
-          : `${names[result.winners[0]!] ?? `Player ${result.winners[0]! + 1}`} wins`}
+          ? fill(copy.game.gameOver.tie, {
+              names: result.winners.map((s) => nameOf(s)).join(' & '),
+            })
+          : fill(copy.game.gameOver.wins, { name: nameOf(result.winners[0]!) })}
       </h2>
       {announcedBy != null && (
         <p className={styles.waitingHint}>
-          {names[announcedBy] ?? `Player ${announcedBy + 1}`} called the end.
+          {fill(copy.game.gameOver.calledTheEnd, { name: nameOf(announcedBy) })}
         </p>
       )}
 
@@ -39,17 +44,17 @@ export function GameOver({ onLeave }: { onLeave: (() => void) | undefined }) {
         <thead>
           <tr>
             <th>#</th>
-            <th>Player</th>
-            <th>Cash</th>
-            <th>Stock</th>
-            <th>Total</th>
+            <th>{copy.game.gameOver.player}</th>
+            <th>{copy.game.gameOver.cash}</th>
+            <th>{copy.game.gameOver.stock}</th>
+            <th>{copy.game.gameOver.total}</th>
           </tr>
         </thead>
         <tbody>
           {result.rankings.map((row, i) => (
             <tr key={row.seat} data-winner={row.total === top}>
               <td>{i + 1}</td>
-              <td>{names[row.seat] ?? `Player ${row.seat + 1}`}</td>
+              <td>{nameOf(row.seat)}</td>
               <td className="tabnum">${row.cash.toLocaleString()}</td>
               <td className="tabnum">${row.equity.toLocaleString()}</td>
               <td className="tabnum">${row.total.toLocaleString()}</td>
@@ -60,7 +65,7 @@ export function GameOver({ onLeave }: { onLeave: (() => void) | undefined }) {
 
       {onLeave && (
         <Button variant="primary" onClick={onLeave}>
-          New game
+          {copy.game.gameOver.newGame}
         </Button>
       )}
     </div>

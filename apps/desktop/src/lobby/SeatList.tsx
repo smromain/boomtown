@@ -4,6 +4,7 @@ import type { RoomState } from '@boomtown/protocol';
 import type { OnlineGame } from '../online/onlineGame.js';
 import { useConnectionStatus, useLobbyError } from './useConnectionStatus.js';
 import { Button } from '../ui/Button.js';
+import { copy } from '../copy/copy.js';
 import form from '../setup/form.module.css';
 import styles from './lobby.module.css';
 
@@ -62,14 +63,14 @@ export function SeatList({
 
   return (
     <div className={form.viewport}>
-      <section className={form.screen} aria-label="Room lobby">
+      <section className={form.screen} aria-label={copy.lobby.screenLabel}>
         <header className={form.head}>
           <div>
-            <span className={`kicker ${form.eyebrow}`}>waiting room</span>
-            <h1 className={form.title}>Room</h1>
-            <p className={form.lede}>Share this code with the other players.</p>
+            <span className={`kicker ${form.eyebrow}`}>{copy.lobby.eyebrow}</span>
+            <h1 className={form.title}>{copy.lobby.title}</h1>
+            <p className={form.lede}>{copy.lobby.lede}</p>
           </div>
-          <span className={styles.code} aria-label="Room code">
+          <span className={styles.code} aria-label={copy.lobby.roomCode}>
             {game.roomCode}
           </span>
         </header>
@@ -77,7 +78,7 @@ export function SeatList({
         <div className={form.body}>
           {status !== 'open' && (
             <div className={styles.banner} data-status={status} role="status">
-              {status === 'connecting' ? 'Connecting…' : 'Connection lost — retrying…'}
+              {status === 'connecting' ? copy.lobby.connecting : copy.lobby.reconnecting}
             </div>
           )}
 
@@ -92,19 +93,19 @@ export function SeatList({
               <li key={seat.index} className={styles.seatRow}>
                 <span className={styles.dot} data-connected={seat.connected} />
                 <span>
-                  {seat.name ?? 'Open seat'}
-                  {seat.index === mySeat ? ' (you)' : ''}
+                  {seat.name ?? copy.lobby.openSeat}
+                  {seat.index === mySeat ? copy.lobby.youSuffix : ''}
                 </span>
                 <span className={styles.kind}>{seat.kind}</span>
               </li>
             ))}
-            {seats.length === 0 && <li className={styles.seatRow}>Waiting for the room…</li>}
+            {seats.length === 0 && <li className={styles.seatRow}>{copy.lobby.waitingForRoom}</li>}
           </ol>
         </div>
 
         <div className={form.actions}>
           <Button variant="ghost" onClick={onLeave}>
-            Leave room
+            {copy.lobby.leave}
           </Button>
           {game.isHost ? (
             <Button
@@ -115,10 +116,10 @@ export function SeatList({
                 game.transport.start();
               }}
             >
-              {filled ? 'Start game' : 'Waiting for players…'}
+              {filled ? copy.lobby.start : copy.lobby.waitingForPlayers}
             </Button>
           ) : (
-            <p className={styles.hint}>Waiting for the host to start.</p>
+            <p className={styles.hint}>{copy.lobby.waitingForHost}</p>
           )}
         </div>
       </section>

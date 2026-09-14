@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { app, BrowserWindow, ipcMain, screen, session, shell } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain, screen, session, shell } from 'electron';
 import { buildCsp } from './csp.js';
+import { menuTemplate } from './menu.js';
 import { checkForUpdates } from './updater.js';
 import { iconPath, openMaximized, openingBounds, windowOptions } from './window.js';
 
@@ -104,7 +105,14 @@ function runSmokeChecks(win: BrowserWindow): void {
 
   win.webContents.on('did-finish-load', async () => {
     try {
-      await waitFor(`(document.querySelector('#root')?.textContent ?? '').includes('Boomtown')`, 'main menu');
+      // Wait for a control the menu screen actually renders as text. This used
+      // to look for "Boomtown", which the screen shows as a logo image — alt
+      // text is not textContent, so the check could never pass once the
+      // wordmark became an image.
+      await waitFor(
+        `[...document.querySelectorAll('button')].some((b) => b.textContent === 'Local game')`,
+        'main menu',
+      );
 
       const nodeGlobals = await evalJs<string[]>(
         `['require','process','module','global','Buffer'].filter((g) => g in globalThis)`,
@@ -172,16 +180,20 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   applyCsp();
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate(menuTemplate({ platform: process.platform, dev: isDev, appName: app.name })),
+  );
   createWindow();
   if (!smoke) void checkForUpdates();
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
+// Closing the window closes the app, macOS included. The platform convention
+// there is to stay alive in the dock, but that is for apps you return to —
+// documents, mail, a browser. A game holds its table in the renderer, so a
+// window-less Boomtown has nothing left to return to: it would sit in the dock
+// as an empty process, and reopening it would deal a new game anyway. Quitting
+// is what closing the window already meant.
+app.on('window-all-closed', () => app.quit());
 
 // refuse any navigation away from the app's own content
 app.on('web-contents-created', (_event, contents) => {

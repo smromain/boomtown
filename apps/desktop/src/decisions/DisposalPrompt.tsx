@@ -2,6 +2,7 @@ import type { PendingDecision } from '@boomtown/engine';
 import { useGameClient, useAnyView } from '../client/GameClientProvider.js';
 import { checkDisposal } from './disposal.js';
 import styles from './decisions.module.css';
+import { copy, fill } from '../copy/copy.js';
 
 type Decision = Extract<PendingDecision, { type: 'dispose-shares' }>;
 
@@ -47,28 +48,37 @@ export function DisposalPrompt({
 
   return (
     <div>
-      <h2>Dispose of {view?.corporations[decision.defunct].displayName ?? decision.defunct} stock</h2>
+      <h2>
+        {fill(copy.decisions.disposal.title, {
+          name: view?.corporations[decision.defunct].displayName ?? decision.defunct,
+        })}
+      </h2>
       <p className={styles.seat}>
-        {view?.seats[decision.seat]?.name ?? `Seat ${decision.seat}`} holds {decision.shares} · sells at $
-        {price.toLocaleString()} a share · trade is 2-for-1 into{' '}
-        {view?.corporations[decision.survivor].displayName ?? decision.survivor} ({survivorBank} in bank)
+        {fill(copy.decisions.disposal.seat, {
+          name:
+            view?.seats[decision.seat]?.name ?? fill(copy.common.seatFallback, { n: decision.seat }),
+          shares: decision.shares,
+          price: price.toLocaleString(),
+          survivor: view?.corporations[decision.survivor].displayName ?? decision.survivor,
+          bank: survivorBank,
+        })}
       </p>
 
       <div className={styles.split}>
-        <span>Hold</span>
+        <span>{copy.decisions.disposal.hold}</span>
         <span />
         <span />
-        <output aria-label="hold">{hold}</output>
+        <output aria-label={copy.decisions.disposal.holdOutput}>{hold}</output>
         <span />
 
-        <span>Sell</span>
-        <button type="button" aria-label="sell fewer" onClick={() => onSellChange(clamp(sell - 1))} disabled={sell === 0}>
+        <span>{copy.decisions.disposal.sell}</span>
+        <button type="button" aria-label={copy.decisions.disposal.sellFewer} onClick={() => onSellChange(clamp(sell - 1))} disabled={sell === 0}>
           −
         </button>
-        <output aria-label="sell">{sell}</output>
+        <output aria-label={copy.decisions.disposal.sellOutput}>{sell}</output>
         <button
           type="button"
-          aria-label="sell more"
+          aria-label={copy.decisions.disposal.sellMore}
           onClick={() => onSellChange(clamp(sell + 1))}
           disabled={sell + trade >= decision.shares}
         >
@@ -78,14 +88,14 @@ export function DisposalPrompt({
             The trade row's "→ N shares" is the same idea one column over. */}
         <span className="tabnum">→ ${(sell * price).toLocaleString()}</span>
 
-        <span>Trade</span>
-        <button type="button" aria-label="trade fewer" onClick={() => onTradeChange(clamp(trade - 2))} disabled={trade === 0}>
+        <span>{copy.decisions.disposal.trade}</span>
+        <button type="button" aria-label={copy.decisions.disposal.tradeFewer} onClick={() => onTradeChange(clamp(trade - 2))} disabled={trade === 0}>
           −
         </button>
-        <output aria-label="trade">{trade}</output>
+        <output aria-label={copy.decisions.disposal.tradeOutput}>{trade}</output>
         <button
           type="button"
-          aria-label="trade more"
+          aria-label={copy.decisions.disposal.tradeMore}
           onClick={() => onTradeChange(clamp(trade + 2))}
           disabled={trade + 2 > decision.shares - sell || trade / 2 + 1 > survivorBank}
         >
@@ -102,7 +112,7 @@ export function DisposalPrompt({
         disabled={!check.valid}
         onClick={() => client.dispatch({ type: 'dispose-shares', seat: decision.seat, hold, sell, trade })}
       >
-        Confirm
+        {copy.decisions.disposal.confirm}
       </button>
     </div>
   );

@@ -1,3 +1,5 @@
+import { copy, fill } from '../copy/copy.js';
+
 export interface DisposalSplit {
   readonly hold: number;
   readonly sell: number;
@@ -18,13 +20,13 @@ export interface DisposalCheck {
  */
 export function checkDisposal(shares: number, survivorBank: number, split: DisposalSplit): DisposalCheck {
   const { hold, sell, trade } = split;
-  if (hold < 0 || sell < 0 || trade < 0) return { valid: false, reason: 'No negative amounts', received: 0 };
+  if (hold < 0 || sell < 0 || trade < 0) return { valid: false, reason: copy.disposalErrors.negative, received: 0 };
   if (hold + sell + trade !== shares) {
-    return { valid: false, reason: `Must account for all ${shares} shares`, received: 0 };
+    return { valid: false, reason: fill(copy.disposalErrors.accountForAll, { n: shares }), received: 0 };
   }
-  if (trade % 2 !== 0) return { valid: false, reason: 'Trades are two-for-one', received: 0 };
+  if (trade % 2 !== 0) return { valid: false, reason: copy.disposalErrors.twoForOne, received: 0 };
   if (trade / 2 > survivorBank) {
-    return { valid: false, reason: `Only ${survivorBank} survivor shares left`, received: 0 };
+    return { valid: false, reason: fill(copy.disposalErrors.bankShort, { n: survivorBank }), received: 0 };
   }
   return { valid: true, received: trade / 2 };
 }

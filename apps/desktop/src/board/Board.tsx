@@ -6,6 +6,7 @@ import { IndustryMark } from '../game/marks.js';
 import { latestMerger } from '../game/story.js';
 import { cellTargets, placementFor, type CellTarget } from './pick.js';
 import styles from './board.module.css';
+import { copy, fill } from '../copy/copy.js';
 
 const ROW_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
@@ -116,7 +117,7 @@ export function Board({ spectating = false }: { spectating?: boolean }) {
       <div
         className={styles.board}
         role="grid"
-        aria-label="Board"
+        aria-label={copy.board.label}
         aria-readonly={spectating || undefined}
         style={{
           gridTemplateColumns: `var(--hdr) repeat(${cols}, 1fr)`,
@@ -219,7 +220,7 @@ function BoardCell({
 
   const label =
     cell.kind === 'playable'
-      ? `Place at ${cell.tile}`
+      ? fill(copy.board.placeAt, { tile: cell.tile })
       : cell.kind === 'corp' && industry
         ? `${cell.tile} — ${view.corporations[industry].displayName}`
         : cell.tile;

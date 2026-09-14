@@ -147,14 +147,28 @@
   text-transform: uppercase;
 }
 
+/* The text half of the status block, aligned on the baseline the two labels
+   and the numeral share. */
+.statusText {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+}
+
 .turnReadout {
   display: flex;
   align-items: baseline;
   gap: 7px;
 }
 
-.turnReadout .serif {
-  font-size: 19px;
+/* The serif numeral is larger than the uppercase labels around it, so its
+   default line box is taller than theirs — enough that the whole readout stood
+   3px proud of its neighbours and pushed the row around it. Pinning the line
+   height to the glyphs lets the baseline alignment above do the work, and the
+   readout stops being the tallest thing in a row of small caps. */
+.turnNumber {
+  font-size: 13px;
+  line-height: 1;
   color: var(--chrome-ink);
 }
 

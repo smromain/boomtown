@@ -1,6 +1,7 @@
 import { useGameClient, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import { Button } from '../ui/Button.js';
 import styles from './game.module.css';
+import { copy } from '../copy/copy.js';
 
 /**
  * The contextual action beside the tile rack. Only one case is left: a turn
@@ -21,8 +22,8 @@ export function ActionBar() {
 
   if (view.step === 'place' && !view.handTiles.some((tile) => tile.playable)) {
     return (
-      <div className={styles.actionCard} aria-label="No playable tile">
-        <p className={styles.actionPrompt}>No tile in hand can be placed this turn.</p>
+      <div className={styles.actionCard} aria-label={copy.game.noPlayableTile}>
+        <p className={styles.actionPrompt}>{copy.game.noPlayableTileNote}</p>
         <Button variant="primary" disabled={busy} onClick={() => client.dispatch({ type: 'end-turn', seat: view.you })}>
           Skip placement
         </Button>

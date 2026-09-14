@@ -4,6 +4,9 @@ import { useOwnView } from '../client/ownView.js';
 import { IndustryMark } from '../game/marks.js';
 import { corpReference } from './priceReference.js';
 import styles from './reference.module.css';
+import { copy, fill } from '../copy/copy.js';
+
+const c = copy.reference;
 
 const TIER_WORD = { primary: 'primary', secondary: 'secondary', tertiary: 'tertiary' } as const;
 
@@ -49,26 +52,26 @@ export function CorpReference({
                     ◇ safe
                   </span>
                 )}
-                <Dialog.Close className={styles.close} aria-label="Close">
+                <Dialog.Close className={styles.close} aria-label={c.close}>
                   ✕
                 </Dialog.Close>
               </header>
 
               <div className={styles.stats}>
                 <div>
-                  <span className={styles.statLabel}>Size</span>
+                  <span className={styles.statLabel}>{c.corp.size}</span>
                   <span className={`serif tabnum ${styles.statValue}`}>
                     {data.founded ? `${data.size} tiles` : 'in the tray'}
                   </span>
                 </div>
                 <div>
-                  <span className={styles.statLabel}>Share price</span>
+                  <span className={styles.statLabel}>{c.corp.sharePrice}</span>
                   <span className={`serif tabnum ${styles.statValue}`}>
                     {data.sharePrice != null ? `$${data.sharePrice.toLocaleString()}` : '—'}
                   </span>
                 </div>
                 <div>
-                  <span className={styles.statLabel}>You hold</span>
+                  <span className={styles.statLabel}>{c.corp.youHold}</span>
                   <span className={`serif tabnum ${styles.statValue}`} style={{ color: data.color }}>
                     {data.you.shares}
                     {data.you.shares > 0 && ` — $${data.you.value.toLocaleString()}`}
@@ -77,10 +80,14 @@ export function CorpReference({
               </div>
 
               <div className={styles.ladderHead}>
-                <span className={styles.tierLabel}>Tier {data.tier} ladder</span>
+                <span className={styles.tierLabel}>{fill(c.corp.ladder, { n: data.tier })}</span>
                 {data.nextStep && (
                   <span className={styles.nextStep}>
-                    next step at <span className="tabnum">{data.nextStep.atSize} tiles</span> →{' '}
+                    {c.corp.nextStep}{' '}
+                    <span className="tabnum">
+                      {fill(c.corp.tilesCell, { label: data.nextStep.atSize })}
+                    </span>{' '}
+                    →{' '}
                     <span className="tabnum" style={{ color: data.color }}>
                       ${data.nextStep.price.toLocaleString()}
                     </span>
@@ -92,7 +99,7 @@ export function CorpReference({
                 <tbody>
                   {data.ladder.map((rung) => (
                     <tr key={rung.band} data-current={rung.current}>
-                      <td className="tabnum">{rung.label} tiles</td>
+                      <td className="tabnum">{fill(c.corp.tilesCell, { label: rung.label })}</td>
                       <td className={`tabnum ${styles.money}`}>${rung.price.toLocaleString()}</td>
                       <td className={`tabnum ${styles.money} ${styles.dim}`}>
                         ${rung.bonus.primary.toLocaleString()}
@@ -111,9 +118,9 @@ export function CorpReference({
               </table>
 
               <footer className={styles.corpFoot}>
-                <div className={styles.statLabel}>If it paid out today</div>
+                <div className={styles.statLabel}>{c.corp.payoutHeading}</div>
                 {data.payouts.length === 0 ? (
-                  <p className={styles.corpFlavour}>Nobody holds {data.name} yet.</p>
+                  <p className={styles.corpFlavour}>{fill(c.corp.nobodyHolds, { name: data.name })}</p>
                 ) : (
                   data.payouts.map((p) => (
                     <div key={p.seat} className={styles.payoutRow}>
@@ -122,13 +129,18 @@ export function CorpReference({
                         {p.tier && <span className={styles.dim}> · {TIER_WORD[p.tier]}</span>}
                       </span>
                       <span className="tabnum">
-                        {p.shares} sh{p.amount > 0 && ` — $${p.amount.toLocaleString()}`}
+                        {p.amount > 0
+                          ? fill(c.corp.sharesWithCash, {
+                              n: p.shares,
+                              amount: p.amount.toLocaleString(),
+                            })
+                          : fill(c.corp.shares, { n: p.shares })}
                       </span>
                     </div>
                   ))
                 )}
                 <button type="button" className={styles.chartLink} onClick={onOpenChart}>
-                  See the full chart
+                  {c.corp.fullChart}
                 </button>
               </footer>
             </>

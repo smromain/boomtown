@@ -1,5 +1,8 @@
 import type { EngineEvent, Industry } from '@boomtown/engine';
 import type { ClientView } from '@boomtown/client-core';
+import { copy, fill } from '../copy/copy.js';
+
+const L = copy.log;
 
 /** A corporation's name for the log — its derived display name, never the
  *  industry key. `baseName` is the fallback for a defunct chain whose display
@@ -25,60 +28,81 @@ export function describeEvent(event: EngineEvent, view?: ClientView | null): str
 
   switch (event.type) {
     case 'tile-placed':
-      return `${p(event.seat)} placed ${event.tile} (${event.outcome})`;
+      return fill(L.tilePlaced, { name: p(event.seat), tile: event.tile, outcome: event.outcome });
     case 'corporation-founded':
-      return `${co(event.industry)} founded at ${event.hqTile}${event.founderBonusPaid ? ' (+1 founder share)' : ''}`;
+      return fill(event.founderBonusPaid ? L.foundedWithBonus : L.founded, {
+        corp: co(event.industry),
+        tile: event.hqTile,
+      });
     case 'corporation-grew':
-      return `${co(event.industry)} grew to ${event.newSize}`;
+      return fill(L.grew, { corp: co(event.industry), size: event.newSize });
     case 'shares-bought': {
-      const parts = Object.entries(event.picks).map(([industry, qty]) => `${qty} ${co(industry as Industry)}`);
+      const parts = Object.entries(event.picks).map(([industry, qty]) =>
+        fill(L.pick, { n: qty, corp: co(industry as Industry) }),
+      );
       return parts.length
-        ? `${p(event.seat)} bought ${parts.join(', ')} for $${event.cost}`
-        : `${p(event.seat)} bought nothing`;
+        ? fill(L.bought, { name: p(event.seat), picks: parts.join(', '), cost: event.cost })
+        : fill(L.boughtNothing, { name: p(event.seat) });
     }
     case 'tiles-drawn':
-      return `${p(event.seat)} drew ${event.count} tile${event.count === 1 ? '' : 's'}`;
+      return fill(event.count === 1 ? L.drewOne : L.drewMany, {
+        name: p(event.seat),
+        n: event.count,
+      });
     case 'dead-tiles-swept':
-      return `${p(event.seat)} swept ${event.tiles.join(', ')}`;
+      return fill(L.swept, { name: p(event.seat), tiles: event.tiles.join(', ') });
     case 'merger-started':
-      return `Merger at ${event.placedTile}: ${event.corporations.map(co).join(' + ')}`;
+      return fill(L.mergerStarted, {
+        tile: event.placedTile,
+        corps: event.corporations.map(co).join(' + '),
+      });
     case 'survivor-chosen':
-      return `${co(event.survivor)} survives the merger`;
+      return fill(L.survivorChosen, { corp: co(event.survivor) });
     case 'defunct-order-set':
-      return `Defunct order: ${event.order.map(co).join(' then ')}`;
+      return fill(L.defunctOrder, { corps: event.order.map(co).join(L.defunctOrderJoin) });
     case 'bonus-paid': {
-      const paid = event.payouts.map((x) => `${p(x.seat)} ${x.tier} $${x.amount}`).join(', ');
-      return `${co(event.defunct)} bonuses — ${paid || 'none'}`;
+      const paid = event.payouts
+        .map((x) => fill(L.bonusLine, { name: p(x.seat), tier: x.tier, amount: x.amount }))
+        .join(', ');
+      return fill(L.bonuses, { corp: co(event.defunct), paid: paid || L.bonusesNone });
     }
     case 'shares-disposed':
-      return `${p(event.seat)} disposed ${co(event.defunct)}: hold ${event.hold}, sell ${event.sell}, trade ${event.trade}`;
+      return fill(L.disposed, {
+        name: p(event.seat),
+        corp: co(event.defunct),
+        hold: event.hold,
+        sell: event.sell,
+        trade: event.trade,
+      });
     case 'corporation-defunct':
-      return `${co(event.industry)} folded into ${co(event.absorbedInto)}`;
+      return fill(L.folded, { corp: co(event.industry), survivor: co(event.absorbedInto) });
     case 'merger-completed':
-      return `Merger complete — ${co(event.survivor)} carries on`;
+      return fill(L.mergerComplete, { corp: co(event.survivor) });
     case 'turn-advanced':
-      return `— ${p(event.seat)}'s turn —`;
+      return fill(L.turn, { name: p(event.seat) });
     case 'end-announced':
-      return `${p(event.seat)} announced the end`;
+      return fill(L.endAnnounced, { name: p(event.seat) });
     case 'motion-raised':
-      return `${p(event.seat)} moved to liquidate`;
+      return fill(L.motionRaised, { name: p(event.seat) });
     case 'register-published':
-      return 'The share register is now public';
+      return L.registerPublished;
     case 'vote-cast':
-      return `${p(event.seat)} voted ${event.inFavour ? 'for' : 'against'} (${event.weight} ${
-        event.weight === 1 ? 'share' : 'shares'
-      })`;
+      return fill(event.weight === 1 ? L.voteOne : L.voteMany, {
+        name: p(event.seat),
+        side: event.inFavour ? L.voteFor : L.voteAgainst,
+        n: event.weight,
+      });
     case 'motion-carried':
-      return `The motion carried, ${event.yes} of ${event.total}`;
+      return fill(L.motionCarried, { yes: event.yes, total: event.total });
     case 'motion-failed':
-      return `The motion failed, ${event.yes} of ${event.total}`;
+      return fill(L.motionFailed, { yes: event.yes, total: event.total });
     case 'books-opened':
-      return `${event.seats.map((s) => who(view, s)).join(' and ')} ${
-        event.seats.length > 1 ? 'open their books' : 'opens their books'
-      }`;
+      return fill(event.seats.length > 1 ? L.booksOpenedMany : L.booksOpenedOne, {
+        names: event.seats.map((s) => who(view, s)).join(' and '),
+      });
     case 'game-over':
-      return `Game over — winner${event.result.winners.length > 1 ? 's' : ''} ${event.result.winners
-        .map((s) => who(view, s))
-        .join(', ')}`;
+      return fill(event.result.winners.length > 1 ? L.gameOverMany : L.gameOverOne, {
+        names: event.result.winners.map((s) => who(view, s)).join(', '),
+      });
   }
 }

@@ -6,6 +6,7 @@ import { Skyline } from '../../art/Skyline.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
+import { copy, fill } from '../../copy/copy.js';
 
 type Line =
   | { readonly kind: 'cash'; readonly amount: number }
@@ -106,7 +107,7 @@ export function VictoryBeat({ view, dismiss }: { view: PlayerView; dismiss: () =
 
   if (!result) return null;
 
-  const nameOf = (seat: number) => view.seats[seat]?.name ?? `Player ${seat + 1}`;
+  const nameOf = (seat: number) => view.seats[seat]?.name ?? fill(copy.common.playerFallback, { n: seat + 1 });
   const headline =
     result.winners.length > 1
       ? `${result.winners.map(nameOf).join(' & ')} tie`
@@ -125,7 +126,7 @@ export function VictoryBeat({ view, dismiss }: { view: PlayerView; dismiss: () =
   };
 
   return (
-    <div className={styles.curtain} role="dialog" aria-label="Victory" onClick={advance}>
+    <div className={styles.curtain} role="dialog" aria-label={copy.beats.victory.label} onClick={advance}>
       <Skyline
         tone="chrome"
         style={{
@@ -273,9 +274,13 @@ function SeatCard({
 function renderLine(line: Line, corpName: (industry: CorpSettlement['industry']) => string) {
   switch (line.kind) {
     case 'cash':
-      return <span>cash on hand: ${line.amount.toLocaleString()}</span>;
+      return <span>{fill(copy.beats.victory.cashOnHand, { amount: line.amount.toLocaleString() })}</span>;
     case 'total':
-      return <span className="tabnum">total: ${line.amount.toLocaleString()}</span>;
+      return (
+        <span className="tabnum">
+          {fill(copy.beats.victory.total, { amount: line.amount.toLocaleString() })}
+        </span>
+      );
     case 'holding': {
       const shareWord = line.shares === 1 ? 'share' : 'shares';
       return (

@@ -6,6 +6,7 @@ import { useActiveBeat } from '../beats/BeatContext.js';
 import { coversTheScreen } from '../beats/beatTriggers.js';
 import type { GameConfig } from '../setup/gameConfig.js';
 import styles from './turnHandoff.module.css';
+import { copy, fill } from '../copy/copy.js';
 
 /**
  * Hot‑seat needs an unmistakable turn boundary — otherwise the rack quietly
@@ -53,12 +54,12 @@ export function TurnHandoff({ config }: { config: GameConfig }) {
   if (over || promptOpen || beatOwnsTheScreen || actor === null || !needsHandoff(actor)) return null;
   if (config.seats[actor]?.kind !== 'human') return null; // bots don't pass the machine
 
-  const name = view?.seats[actor]?.name ?? `Player ${actor + 1}`;
+  const name = view?.seats[actor]?.name ?? fill(copy.common.playerFallback, { n: actor + 1 });
 
   return (
-    <div className={styles.overlay} role="dialog" aria-label="Turn handoff">
+    <div className={styles.overlay} role="dialog" aria-label={copy.game.handoff.label}>
       <div className={styles.card}>
-        <p className={styles.kicker}>Hand the machine to</p>
+        <p className={styles.kicker}>{copy.game.handoff.kicker}</p>
         <h2 className="serif">{name}</h2>
         <p className={styles.hint}>Only {name} should see the next screen.</p>
         <button type="button" className={styles.ready} onClick={() => claim(actor)}>

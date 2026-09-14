@@ -1,4 +1,5 @@
 import type { EngineEvent, Industry, PlayerView, Seat } from '@boomtown/engine';
+import { copy, fill } from '../copy/copy.js';
 
 /** The corporation a log line is "about", so headline events can be tinted its colour. */
 export function eventIndustry(event: EngineEvent): Industry | null {
@@ -50,15 +51,16 @@ export function mergerProse(
   const defunct = defunctIndustries.map((industry) => view.corporations[industry]);
   const smallest = defunct.reduce((a, b) => (b.size < a.size ? b : a));
   const eaten = defunct.map((corp) => corp.baseName);
-  const eatenList =
-    eaten.length === 1 ? eaten[0] : `${eaten.slice(0, -1).join(', ')} and ${eaten.at(-1)}`;
   return {
-    lead: `Placing `,
+    lead: copy.story.proseLead,
     tile: merger.placedTile,
-    rest:
-      ` folds ${eatenList} into ${survivor.baseName}. ` +
-      `${survivor.baseName} is larger at ${survivor.size} tiles, ` +
-      `so ${smallest.baseName} is dissolved at ${smallest.size}.`,
+    rest: fill(copy.story.proseRest, {
+      eaten: listOf(eaten),
+      survivor: survivor.baseName,
+      survivorSize: survivor.size,
+      smallest: smallest.baseName,
+      smallestSize: smallest.size,
+    }),
   };
 }
 
@@ -80,8 +82,15 @@ export interface BonusLine {
  * beat display the same payouts and must agree on what to call them.
  */
 export function tierWord(tier: BonusLine['tier'], bonusTiers: 2 | 3): string {
-  if (bonusTiers === 3) return tier;
-  return tier === 'primary' ? 'majority' : 'minority';
+  if (bonusTiers === 3) return copy.story.tiers[tier];
+  return tier === 'primary' ? copy.story.tiers.majority : copy.story.tiers.minority;
+}
+
+/** "A", "A and B", "A, B and C" — the one place the app joins a list of names,
+ *  so the comma and the "and" are copy like everything else. */
+export function listOf(items: readonly string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  return items.slice(0, -1).join(copy.story.listJoin) + copy.story.listAnd + items.at(-1);
 }
 
 /**

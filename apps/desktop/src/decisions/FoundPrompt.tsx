@@ -2,6 +2,7 @@ import { INDUSTRY_INFO, type TileId } from '@boomtown/engine';
 import { useGameClient, useLocalActiveView } from '../client/GameClientProvider.js';
 import { foundingOptions } from '../reference/priceReference.js';
 import styles from './decisions.module.css';
+import { copy, fill } from '../copy/copy.js';
 
 /**
  * After a founding placement: the founder picks which corporation to raise on
@@ -24,9 +25,12 @@ export function FoundPrompt({ group }: { group: readonly TileId[] }) {
 
   return (
     <div>
-      <h2>Found a corporation</h2>
+      <h2>{copy.decisions.found.title}</h2>
       <p className={styles.seat}>
-        {view.seats[view.you]?.name ?? `Seat ${view.you}`} · new group of {group.length} tiles
+        {fill(copy.decisions.found.seat, {
+          name: view.seats[view.you]?.name ?? fill(copy.common.seatFallback, { n: view.you }),
+          n: group.length,
+        })}
       </p>
 
       <div className={styles.options}>

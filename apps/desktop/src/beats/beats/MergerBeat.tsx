@@ -5,6 +5,7 @@ import { tierWord, type MergerStory } from '../../game/story.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
+import { copy, fill } from '../../copy/copy.js';
 
 /**
  * The staged sequence (F1): each stage gets room to read before the next lands,
@@ -139,7 +140,7 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
   const bonusLines = reduced ? merger.bonuses : (merger.chains[chain]?.bonuses ?? []);
 
   return (
-    <div className={styles.curtain} role="dialog" aria-label="Merger" onClick={advance}>
+    <div className={styles.curtain} role="dialog" aria-label={copy.beats.merger.label} onClick={advance}>
       <div
         className={styles.curtainGlow}
         style={{ background: `radial-gradient(50% 50% at 50% 50%, color-mix(in srgb, ${survivorColor} 30%, transparent) 0%, transparent 72%)` }}
@@ -233,13 +234,22 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
                 </span>
                 <span className="serif tabnum" style={{ display: 'block', fontSize: 56, lineHeight: 1.05, marginTop: 6, letterSpacing: '-0.03em' }}>
                   ${bonus.amount.toLocaleString()}
-                  {bonus.seats.length > 1 ? <span style={{ fontSize: 22, marginLeft: 8, opacity: 0.7 }}>each</span> : null}
+                  {bonus.seats.length > 1 ? (
+                    <span style={{ fontSize: 22, marginLeft: 8, opacity: 0.7 }}>
+                      {copy.beats.merger.each}
+                    </span>
+                  ) : null}
                 </span>
                 {/* Who was actually paid. A seat count told you a bonus landed
                     somewhere; the point of watching a merger is knowing who it
                     landed on. */}
                 <span style={{ display: 'block', marginTop: 8, fontSize: 15, color: '#c9bfb2', maxWidth: 260 }}>
-                  {bonus.seats.map((seat) => view.seats[seat]?.name ?? `Seat ${seat + 1}`).join(', ')}
+                  {bonus.seats
+                    .map(
+                      (seat) =>
+                        view.seats[seat]?.name ?? fill(copy.common.seatFallback, { n: seat + 1 }),
+                    )
+                    .join(', ')}
                 </span>
               </div>
             ))}
@@ -273,9 +283,11 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
             transition: 'opacity 420ms ease 400ms, margin-top 400ms ease',
           }}
         >
-          <p>The name grows with every company it consumes.</p>
-          <p>Your shares in it stay yours but remember:</p>
-          <p><b>the belly of capitalism is never full.</b></p>
+          <p>{copy.beats.merger.nameNote}</p>
+          <p>{copy.beats.merger.sharesNote}</p>
+          <p>
+            <b>{copy.beats.merger.bellyNote}</b>
+          </p>
         </div>
 
         {/* mass: the blocks consolidate into one wider block. */}
@@ -343,7 +355,7 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
           {multi ? ` · ${merger.chains.length} companies eaten` : ''}
         </div>
       </div>
-      <span className={styles.hint}>click or press space to advance · esc to skip the rest</span>
+      <span className={styles.hint}>{copy.beats.hintAdvance}</span>
     </div>
   );
 }

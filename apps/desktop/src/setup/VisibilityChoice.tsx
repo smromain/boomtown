@@ -1,6 +1,7 @@
 import type { Visibility } from '@boomtown/engine';
 import { Choice, Sealed } from './Choice.js';
 import { editionLabel } from './editionLabel.js';
+import { copy, fill } from '../copy/copy.js';
 import { effectiveVisibility, visibilityIsFixed, type GameConfig } from './gameConfig.js';
 import styles from './form.module.css';
 
@@ -23,29 +24,37 @@ export function VisibilityChoice({
   const fixed = visibilityIsFixed(config);
   return (
     <div className={styles.field}>
-      <span>Cash and holdings</span>
+      <span>{copy.setup.visibility.label}</span>
       {fixed ? (
         <>
-          <Sealed>Closed books</Sealed>
+          <Sealed>{copy.setup.visibility.closed}</Sealed>
           <span className={styles.note}>
-            {editionLabel(config.edition)} is played with the books closed — the ruleset fixes this.
+            {fill(copy.setup.visibility.sealedNote, { edition: editionLabel(config.edition) })}
           </span>
         </>
       ) : (
         <>
           <Choice
-            label="Cash and holdings"
+            label={copy.setup.visibility.label}
             value={effectiveVisibility(config)}
             options={[
-              { value: 'open', label: 'Open books', description: 'Open — everyone sees everything' },
-              { value: 'hidden', label: 'Closed books', description: 'Closed — only your own' },
+              {
+                value: 'open',
+                label: copy.setup.visibility.open,
+                description: copy.setup.visibility.openDescription,
+              },
+              {
+                value: 'hidden',
+                label: copy.setup.visibility.closed,
+                description: copy.setup.visibility.closedDescription,
+              },
             ]}
             onChange={onChange}
           />
           <span className={styles.note}>
             {effectiveVisibility(config) === 'open'
-              ? 'Every player’s cash and holdings are on show.'
-              : 'Only your own cash and holdings are yours to see.'}
+              ? copy.setup.visibility.openNote
+              : copy.setup.visibility.closedNote}
           </span>
         </>
       )}

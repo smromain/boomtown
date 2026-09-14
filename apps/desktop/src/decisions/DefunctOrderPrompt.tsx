@@ -1,6 +1,7 @@
 import type { PendingDecision } from '@boomtown/engine';
 import { useGameClient, useAnyView } from '../client/GameClientProvider.js';
 import styles from './decisions.module.css';
+import { copy, fill } from '../copy/copy.js';
 
 type Decision = Extract<PendingDecision, { type: 'choose-defunct-order' }>;
 
@@ -11,8 +12,14 @@ export function DefunctOrderPrompt({ decision }: { decision: Decision }) {
 
   return (
     <div>
-      <h2>Which corporation folds next?</h2>
-      <p className={styles.seat}>{view?.seats[decision.seat]?.name ?? `Seat ${decision.seat}`} — the mergemaker</p>
+      <h2>{copy.decisions.defunctOrder.title}</h2>
+      <p className={styles.seat}>
+        {fill(copy.decisions.mergemaker, {
+          name:
+            view?.seats[decision.seat]?.name ??
+            fill(copy.common.seatFallback, { n: decision.seat }),
+        })}
+      </p>
       <div className={styles.options}>
         {decision.options.map((industry) => (
           <button

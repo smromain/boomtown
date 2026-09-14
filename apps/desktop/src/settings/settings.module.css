@@ -1,47 +1,135 @@
-.field {
+/*
+ * The settings plate, built like the setup screens rather than like a dialog
+ * with its own dialect — same ink top rule, same head, same fields, same
+ * tiles. Only what a dialog needs beyond that lives here; the field, input,
+ * note and tile rules come from `setup/form.module.css`, so a change to the
+ * setup language reaches this screen too instead of leaving it behind.
+ */
+.settings {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(46rem, 94vw);
+  max-height: 92vh;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  margin: 1rem 0;
+  background: var(--surface);
+  border-top: var(--frame-top-rule);
+  border-radius: 4px;
+  box-shadow: var(--elev-3);
 }
 
-.field > span {
-  font-size: 0.75rem;
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.4rem 1.75rem 1.1rem;
+}
+
+.close {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.close:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+/* The only thing that may scroll, so the head and the actions — and with them
+   Save — are never below the fold. */
+.body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 1.75rem 0.5rem;
+}
+
+/*
+ * Two columns, because the choices split cleanly in two: what a game is dealt
+ * with, and what this machine does. One stack of ten fields is a scroll where
+ * a glance would do. Narrow windows fold it back to one — the app's minimum is
+ * 1024 wide, but the dialog is capped at 94vw and can be met at less.
+ */
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.75rem;
+  align-items: start;
+}
+
+@media (max-width: 46rem) {
+  .columns {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The eyebrow over each column and each section below them — the same role the
+   kicker plays on the setup screens, one level down. */
+.columnLabel {
+  margin-bottom: 0.9rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.16em;
   color: var(--muted);
 }
 
-.field input {
-  padding: 0.5rem;
-  background: var(--input);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  color: var(--ink);
-  font: inherit;
+.slider {
+  width: 100%;
+  margin: 0.15rem 0 0;
 }
 
-.field input:focus-visible,
-{
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+.credits,
+.debug {
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
 }
 
 /* Dev-only: preview a beat's real animation on fixture data (see
-   DebugBeatPreview) without simulating a game. */
+   DebugBeatPreview) without simulating a game. Dashed, because it is the one
+   thing on this screen that is not shipping. */
 .debug {
-  margin-top: 1.25rem;
-  padding-top: 1rem;
-  border-top: 1px dashed var(--rule);
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  border-top-style: dashed;
 }
 
-.debugLabel {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.creditList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.creditTitle {
+  color: var(--ink);
+}
+
+.creditSource {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -67,59 +155,13 @@
   border-style: solid;
 }
 
-.credits {
-  margin-top: 1.25rem;
-  padding-top: 1rem;
-  border-top: 1px dashed var(--rule);
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.creditList {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.creditTitle {
-  color: var(--ink);
-}
-
-.creditSource {
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
+/* Sits below the scroll with a rule of its own, the way the setup screens keep
+   their primary action on the plate rather than at the end of the content. */
 .actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 0.6rem;
-  margin-top: 1.5rem;
-}
-
-.primary,
-.secondary {
-  padding: 0.55rem 1rem;
-  font: inherit;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.primary {
-  font-weight: 600;
-  background: var(--accent);
-  color: var(--on-accent);
-  border: 0;
-}
-
-.secondary {
-  background: var(--input);
-  color: var(--ink);
-  border: 1px solid var(--rule);
+  padding: 1rem 1.75rem 1.25rem;
+  border-top: 1px solid var(--rule);
 }

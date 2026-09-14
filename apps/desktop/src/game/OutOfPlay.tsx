@@ -2,6 +2,7 @@ import type { TileId } from '@boomtown/engine';
 import { activeView } from '@boomtown/client-core';
 import { useGameState } from '../client/GameClientProvider.js';
 import styles from './game.module.css';
+import { copy } from '../copy/copy.js';
 
 /**
  * A single stable empty array. `useGameState` runs on `useSyncExternalStore`,
@@ -24,8 +25,8 @@ export function OutOfPlay() {
   if (removed.length === 0) return null;
 
   return (
-    <section className={styles.outOfPlay} aria-label="Out of play">
-      <span className={styles.outOfPlayLabel}>Out of play</span>
+    <section className={styles.outOfPlay} aria-label={copy.game.outOfPlay}>
+      <span className={styles.outOfPlayLabel}>{copy.game.outOfPlay}</span>
       <div className={styles.outOfPlayTiles}>
         {removed.map((tile) => (
           <span key={tile} className={`tabnum ${styles.deadTile}`}>

@@ -15,6 +15,7 @@ import { EditionChoice } from './EditionChoice.js';
 import { Choice } from './Choice.js';
 import { VisibilityChoice } from './VisibilityChoice.js';
 import { Button } from '../ui/Button.js';
+import { copy, fill } from '../copy/copy.js';
 import form from './form.module.css';
 
 export interface StartedGame {
@@ -90,18 +91,15 @@ export function NewGame({
 
   return (
     <div className={form.viewport}>
-      <section className={form.screen} aria-label="New game">
+      <section className={form.screen} aria-label={copy.setup.screenLabel}>
         <header className={form.head}>
           <div>
-            <span className={`kicker ${form.eyebrow}`}>hot seat · one machine</span>
-            <h1 className={form.title}>New game</h1>
-            <p className={form.lede}>
-              Pick a rule set and fill the seats. None of it can be changed once the first tile
-              goes down.
-            </p>
+            <span className={`kicker ${form.eyebrow}`}>{copy.setup.eyebrow}</span>
+            <h1 className={form.title}>{copy.setup.title}</h1>
+            <p className={form.lede}>{copy.setup.lede}</p>
           </div>
           <Button variant="secondary" onClick={() => setRulesOpen(true)}>
-            How to play
+            {copy.setup.howToPlay}
           </Button>
         </header>
 
@@ -110,7 +108,7 @@ export function NewGame({
 
           <div className={form.columns}>
             <div className={form.field}>
-              <span>Players</span>
+              <span>{copy.setup.players}</span>
               <div className={form.roster}>
                 {config.seats.map((seat, index) => (
                   <SeatRow
@@ -125,15 +123,19 @@ export function NewGame({
 
             <div>
               <div className={form.field}>
-                <span>Seats</span>
+                <span>{copy.setup.seats}</span>
                 <Choice
-                  label="Seats"
+                  label={copy.setup.seats}
                   numeric
                   value={config.seats.length}
                   options={Array.from(
                     { length: RULES.maxPlayers - RULES.minPlayers + 1 },
                     (_, i) => RULES.minPlayers + i,
-                  ).map((count) => ({ value: count, label: String(count), description: `${count} seats` }))}
+                  ).map((count) => ({
+                    value: count,
+                    label: String(count),
+                    description: fill(copy.setup.seatsDescription, { n: count }),
+                  }))}
                   onChange={(count) => patch({ seats: resizeSeats(config.seats, count) })}
                 />
               </div>

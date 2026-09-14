@@ -13,17 +13,18 @@ import { useReference } from '../reference/ReferenceContext.js';
 import { editionLabel } from '../setup/editionLabel.js';
 import { soundManager } from '../audio/soundManager.js';
 import { musicManager } from '../audio/musicManager.js';
+import { copy, fill } from '../copy/copy.js';
 import { Button } from '../ui/Button.js';
 import logoUrl from '../assets/boomtown-logo.png';
 import styles from './game.module.css';
 
 const PHASE: Record<TurnStep, string> = {
-  place: 'Place a tile',
-  found: 'Found a corporation',
-  merge: 'Resolve the merger',
-  buy: 'Buy stock',
-  'end-check': 'End the game?',
-  vote: 'A motion is on the table',
+  place: copy.header.phase.place,
+  found: copy.header.phase.found,
+  merge: copy.header.phase.merge,
+  buy: copy.header.phase.buy,
+  'end-check': copy.header.phase.endCheck,
+  vote: copy.header.phase.vote,
 };
 
 export function Header() {
@@ -114,14 +115,14 @@ export function Header() {
   return (
     <header className={styles.header}>
       <div className={styles.brand}>
-        <img src={logoUrl} alt="Boomtown" className={styles.brandLogo} />
+        <img src={logoUrl} alt={copy.app.name} className={styles.brandLogo} />
         <span className={styles.brandDivider} aria-hidden />
-        <span className={styles.tagline}>seven start-ups, one skyline</span>
+        <span className={styles.tagline}>{copy.app.tagline}</span>
         <button
           type="button"
           className={styles.muteButton}
           onClick={() => setVolumeOpen((open) => !open)}
-          aria-label="Volume"
+          aria-label={copy.header.volume}
           aria-expanded={volumeOpen}
         >
           {effectsVolume === 0 ? (
@@ -143,7 +144,7 @@ export function Header() {
                 max={100}
                 step={5}
                 value={Math.round(effectsVolume * 100)}
-                aria-label="Sound effect volume"
+                aria-label={copy.header.effectsVolume}
                 onChange={(e) => changeEffects(Number(e.target.value) / 100)}
               />
             </span>
@@ -156,7 +157,7 @@ export function Header() {
                 max={100}
                 step={5}
                 value={Math.round(musicVolume * 100)}
-                aria-label="Music volume"
+                aria-label={copy.header.musicVolume}
                 onChange={(e) => changeMusic(Number(e.target.value) / 100)}
               />
             </span>
@@ -167,7 +168,7 @@ export function Header() {
             type="button"
             className={`${styles.muteButton} ${styles.skipButton}`}
             onClick={skip('previous')}
-            aria-label="Previous track"
+            aria-label={copy.header.previousTrack}
           >
             <BackwardIcon width={14} height={14} />
           </button>
@@ -175,7 +176,9 @@ export function Header() {
             type="button"
             className={styles.muteButton}
             onClick={toggleMusic}
-            aria-label={musicMuted ? `Unmute music — ${track.title}` : `Mute music — ${track.title}`}
+            aria-label={fill(musicMuted ? copy.header.unmuteMusic : copy.header.muteMusic, {
+              track: track.title,
+            })}
             aria-pressed={musicMuted}
             title={track.title}
           >
@@ -185,7 +188,7 @@ export function Header() {
             type="button"
             className={`${styles.muteButton} ${styles.skipButton}`}
             onClick={skip('next')}
-            aria-label="Next track"
+            aria-label={copy.header.nextTrack}
           >
             <ForwardIcon width={14} height={14} />
           </button>
@@ -198,16 +201,23 @@ export function Header() {
       </div>
       {view && (
         <div className={styles.status}>
-          <span className={styles.statusLabel}>{editionLabel(view.ruleset.id)}</span>
-          <span className={styles.turnReadout}>
-            <span className={styles.statusLabel}>Turn</span> <span className="serif tabnum">{turn}</span>
+          {/* The edition and the turn count are one line of type read across,
+              so they share a baseline. Grouping them is what makes that
+              possible: the row itself has to centre, because the reference
+              buttons beside them are twice the height of any text in it. */}
+          <span className={styles.statusText}>
+            <span className={styles.statusLabel}>{editionLabel(view.ruleset.id)}</span>
+            <span className={styles.turnReadout}>
+              <span className={styles.statusLabel}>{copy.header.turn}</span>{' '}
+              <span className={`serif tabnum ${styles.turnNumber}`}>{turn}</span>
+            </span>
           </span>
           <div className={styles.referenceGroup}>
             <Button variant="onChrome" className={styles.reference} onClick={openChart}>
-              Reference
+              {copy.header.reference}
             </Button>
             <Button variant="onChrome" className={styles.reference} onClick={openRules}>
-              Rules
+              {copy.header.rules}
             </Button>
           </div>
           {/* The one genuinely turn-bound readout: it describes what the seat
