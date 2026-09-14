@@ -500,7 +500,7 @@ thin authority over an engine that was already trusted.
 | `docs/decisions.md` | What was decided and why, what is still open, and the traps already hit |
 | `docs/deploying.md` | Deploying the PartyKit room and building/signing the desktop installers; the app's icon and name |
 | `docs/screenshots/` | Seventeen frames from one real game, in play order — what each shows, and how to retake them |
-| `docs/plans/` | The architecture plan (20 units, KTD1–12, verification contract), the online‑multiplayer substrate plan, and the game‑feel plan |
+| `docs/plans/` | The architecture plan (20 units, KTD1–12, verification contract), the online‑multiplayer substrate plan, the game‑feel plan, and the web‑deployment plan (the public‑internet threat model and what changes for a hosted build) |
 | `docs/handoffs/` | What each recent session diagnosed and landed — the running record of bugs and fixes |
 | `design/build.py` | Generates the design canvas **and** is the reference implementation of the naming rules — port it, don't reimplement it |
 | `design/make_icon.py` | Generates the app icon from the logo — stdlib only; re‑run it after changing the logo |
