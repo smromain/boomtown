@@ -33,8 +33,3 @@ export function fill(template: string, values: Record<string, string | number>):
     key in values ? String(values[key]) : whole,
   );
 }
-
-/** Pick the singular or the plural, and fill `{n}` with the count. */
-export function plural(forms: { readonly one: string; readonly many: string }, n: number): string {
-  return fill(n === 1 ? forms.one : forms.many, { n });
-}

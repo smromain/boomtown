@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { copy, fill, plural } from './copy.js';
+import { copy, fill } from './copy.js';
 import { Rich } from './Rich.js';
 
 describe('fill', () => {
@@ -22,15 +22,6 @@ describe('fill', () => {
 
   it('does not treat a value as a template of its own', () => {
     expect(fill('{a}', { a: '{b}' })).toBe('{b}');
-  });
-});
-
-describe('plural', () => {
-  it('picks the form that matches the count', () => {
-    const shares = { one: '{n} share', many: '{n} shares' };
-    expect(plural(shares, 1)).toBe('1 share');
-    expect(plural(shares, 4)).toBe('4 shares');
-    expect(plural(shares, 0)).toBe('0 shares');
   });
 });
 
