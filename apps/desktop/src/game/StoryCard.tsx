@@ -6,6 +6,7 @@ import { Marquee } from './Marquee.js';
 import { Panel } from '../ui/Panel.js';
 import { Skyline } from '../art/Skyline.js';
 import {
+  beingAbsorbed,
   eventIndustry,
   isHeadline,
   latestMerger,
@@ -64,6 +65,11 @@ export function StoryCard() {
   const survivorName = merger.survivor ? view.corporations[merger.survivor].displayName : '…';
   const survivorColor = merger.survivor ? INDUSTRY_INFO[merger.survivor].color : 'var(--ink)';
   const names = merger.corporations.map((industry) => view.corporations[industry].baseName);
+  const eaten = beingAbsorbed(merger);
+  const eatenNames = eaten.map((industry) => view.corporations[industry].baseName);
+  // One doomed corporation is named in its own colour, the way the log tints a
+  // headline; several have no single colour between them, so they read as ink.
+  const eatenColor = eaten.length === 1 ? INDUSTRY_INFO[eaten[0]!].color : 'var(--ink)';
   const prose = mergerProse(merger, view);
   const nameOf = (seat: number) => view.seats[seat]?.name ?? fill(copy.common.seatFallback, { n: seat });
 
@@ -84,17 +90,32 @@ export function StoryCard() {
         </p>
       )}
 
-      {merger.survivor && (
-        <div className={styles.rename}>
-          <span className={styles.renameLabel}>
-            {merger.complete ? copy.story.nowTradingAs : copy.story.willTradeAs}
-          </span>
-          <Marquee className={`serif ${styles.renameName}`} style={{ color: survivorColor }}>
-            {survivorName}
-          </Marquee>
-          <span className={styles.renameNote}>{copy.story.renameNote}</span>
-        </div>
-      )}
+      {/* Before the merger resolves there is no joint name to show: the engine
+          appends the defunct chains to the survivor's `eaten` at completion, so
+          `displayName` is still the survivor's own name — and labelling that
+          "will trade as" told the player the merger had changed nothing. Until
+          then the panel says what is actually happening, and the new name stays
+          the merger beat's to reveal. */}
+      {merger.survivor &&
+        (merger.complete ? (
+          <div className={styles.rename}>
+            <span className={styles.renameLabel}>{copy.story.nowTradingAs}</span>
+            <Marquee className={`serif ${styles.renameName}`} style={{ color: survivorColor }}>
+              {survivorName}
+            </Marquee>
+            <span className={styles.renameNote}>{copy.story.renameNote}</span>
+          </div>
+        ) : (
+          <div className={styles.rename}>
+            <span className={styles.renameLabel}>
+              {fill(copy.story.consuming, { survivor: view.corporations[merger.survivor].baseName })}
+            </span>
+            <Marquee className={`serif ${styles.renameName}`} style={{ color: eatenColor }}>
+              {listOf(eatenNames)}
+            </Marquee>
+            <span className={styles.renameNote}>{copy.story.consumingNote}</span>
+          </div>
+        ))}
 
       {merger.bonuses.length > 0 && (
         <div className={styles.bonusSplit}>
