@@ -107,7 +107,7 @@ export function StoryCard() {
       <p className={styles.quiet}>
         {bonusFootnote(merger.bonuses) ??
           (merger.complete
-            ? fill(copy.story.carriesOn, { name: survivorName })
+            ? null
             : copy.story.resolveInPrompt)}
       </p>
     </Panel>

@@ -236,7 +236,7 @@
   },
   "rules": {
     "title": "How to play",
-    "sub": "{edition} rule set · seven start-ups, one skyline · build chains, own the biggest slice when they get eaten",
+    "sub": "{edition} Rule Set",
     "sections": "Rules sections",
     "previous": "Previous section",
     "next": "Next section",
@@ -253,7 +253,7 @@
       "deadTileDiscard": "is turned face up, set out of play, and replaced.",
       "deadTileKeep": "stays in your hand.",
       "end": "**Call the end, or don't.** Once a corporation reaches {endSize} tiles you *may* end the game. Never forced.",
-      "endVote": " Before that point you may instead *move to liquidate* and put the ending to a vote — see Going public."
+      "endVote": " Before that point you may instead *move to liquidate* and put the ending to a vote — see **Going Public**."
     },
     "merger": {
       "title": "When corporations merge",
@@ -459,10 +459,9 @@
     "proseRest": " folds {eaten} into {survivor}. {survivor} is larger at {survivorSize} tiles, so {smallest} is dissolved at {smallestSize}.",
     "listJoin": ", ",
     "listAnd": " and ",
-    "nowTradingAs": "Now trading as",
+    "nowTradingAs": "Now trading under the joint name",
     "willTradeAs": "Will trade as",
-    "renameNote": "Its name grows with a piece of every company it takes over. Your shares in it stay yours.",
-    "carriesOn": "{name} carries on, larger than before.",
+    "renameNote": "Rolls off the tongue, doesn't it?",
     "resolveInPrompt": "Resolve the merger in the prompt.",
     "tiedFootnote": "Tied for a tier, so those bonuses are combined and split evenly.",
     "tiedWho": "{names}, tied at their shares",
