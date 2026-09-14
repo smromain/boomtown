@@ -119,11 +119,14 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: installers-${{ matrix.os }}
+          # No `*.blockmap`: those exist so an auto‑updater can download only
+          # the changed chunks of an installer, and this app has no update feed
+          # yet (see the `publish:` note in electron-builder.yml). Until it does,
+          # they are two more files on the release page that nobody can use.
           path: |
             apps/desktop/dist/*.dmg
             apps/desktop/dist/*.exe
             apps/desktop/dist/*.AppImage
-            apps/desktop/dist/*.blockmap
           if-no-files-found: warn
 
   release:
