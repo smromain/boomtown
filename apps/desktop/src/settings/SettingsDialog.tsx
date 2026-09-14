@@ -104,7 +104,9 @@ export function SettingsDialog({
             <div>
               <span className={`kicker ${form.eyebrow}`}>{c.eyebrow}</span>
               <Dialog.Title className={form.title}>{c.title}</Dialog.Title>
-              <p className={form.lede}>{c.lede}</p>
+              {/* Empty is a fair thing for the copy to say: no lede rather
+                  than an empty paragraph holding its own margins open. */}
+              {c.lede && <p className={form.lede}>{c.lede}</p>}
             </div>
             <Dialog.Close className={styles.close} aria-label={c.close}>
               ✕
