@@ -217,6 +217,32 @@ describe('StoryCard', () => {
     ).toBeInTheDocument();
   });
 
+  it('names the consumed corporation while unresolved, not a joint name that does not exist yet', async () => {
+    // The engine appends the defunct chains to the survivor's `eaten` at
+    // completion, so mid-merger `displayName` is still the survivor's own name.
+    // The panel used to print it under "Will trade as", which read as the
+    // merger having renamed the survivor to what it was already called.
+    const { client } = await renderPanel(<StoryCard />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']); // 3 -> survives
+        seedCorp(state, 'books', ['6E', '7E']); // 2 -> defunct
+        state.seats[0]!.holdings.books = 1; // a holder, so the merger pauses for disposal
+        state.hands[0] = ['5E'];
+      },
+    });
+    await act(async () => {
+      client.dispatch({ type: 'place-tile', seat: 0, tile: '5E' });
+      await flush();
+    });
+
+    const story = screen.getByRole('region', { name: 'Story' });
+    expect(within(story).getByText(`${NAMES.video} is consuming`)).toBeInTheDocument();
+    expect(within(story).getByText('Chapter Eleven', { exact: true })).toBeInTheDocument();
+    expect(within(story).queryByText(/trad(e|ing)/i)).not.toBeInTheDocument();
+    // and the merged name is still the beat's to reveal
+    expect(within(story).queryByText(new RegExp(mergedName('video', 'books')))).not.toBeInTheDocument();
+  });
+
   it('labels bonus tiers majority/minority under the classic ruleset, never tertiary', async () => {
     const { client } = await renderPanel(<StoryCard />, {
       craft: (state) => {

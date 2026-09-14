@@ -32,6 +32,20 @@ export function isHeadline(event: EngineEvent): boolean {
 }
 
 /**
+ * The corporations this merger is swallowing, while it is still running.
+ *
+ * `corporation-defunct` events only land at completion, so mid-merger the
+ * defunct chains are every corporation in the merger except the chosen
+ * survivor. Empty once complete — by then the survivor has absorbed them and
+ * `view.corporations` no longer holds the pre-merger sizes — and empty while
+ * the survivor is still undecided.
+ */
+export function beingAbsorbed(merger: MergerStory): readonly Industry[] {
+  if (merger.complete || !merger.survivor) return [];
+  return merger.corporations.filter((industry) => industry !== merger.survivor);
+}
+
+/**
  * The design's merger sentence: what the placed tile does, then the size
  * comparison that decides the survivor. Returns the two halves so the tile id
  * can be emphasised in the middle.
@@ -43,9 +57,7 @@ export function mergerProse(
   // Only while unresolved: once complete, the survivor has already absorbed the
   // defunct chains and view.corporations no longer holds the pre-merger sizes.
   if (merger.complete || !merger.survivor) return null;
-  // corporation-defunct events only land at completion; mid-merger the defunct
-  // chains are every corporation in the merger except the chosen survivor.
-  const defunctIndustries = merger.corporations.filter((industry) => industry !== merger.survivor);
+  const defunctIndustries = beingAbsorbed(merger);
   if (defunctIndustries.length === 0) return null;
   const survivor = view.corporations[merger.survivor];
   const defunct = defunctIndustries.map((industry) => view.corporations[industry]);
