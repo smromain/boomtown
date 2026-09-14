@@ -49,35 +49,6 @@ Add/Remove Programs (Windows), or delete the AppImage (Linux).
 
 ---
 
-## Status
-
-All five build phases have shipped. The app plays end to end — hot‑seat, against bots, and online —
-and builds installers for macOS, Windows and Linux from a tagged release (signed when signing
-secrets are configured).
-
-| Phase | Scope | State |
-|---|---|---|
-| **A — Engine** | Rules, ruleset config, price/bonus tables, board, seeded RNG, turn reducer, merger state machine, end‑game & scoring, merge‑naming, legal‑move enumeration + evaluator | **Done** — `packages/engine`, full `docs/rules.md` and `docs/naming.md` parity |
-| **B — Desktop** | Hardened Electron shell, `client-core` (transport + store), 2D board, panels, merger‑decision UI, local game setup | **Done** — offline hot‑seat fully playable |
-| **C — AI** | Non‑LLM bot policy with a 1–10 difficulty dial, auto‑play loop off the main thread | **Done** — `packages/ai` |
-| **D — Online** | `protocol` package, authoritative PartyKit room, command‑log persistence + reconnection, socket transport + lobby | **Done** — `packages/server`, deployed at `boomtown.smromain.partykit.dev` |
-| **E — Packaging** | electron‑builder targets, app icon and name, settings, signing, release workflow | **Done** — tagged releases build all three OSes and deploy the room |
-
-Since then: a presentation pass (**beats** — founding, buy, merger, endgame and victory moments,
-with sound), a stock **reference chart**, a paged **rules** carousel, a four‑track soundtrack with
-its own volume, hot‑seat privacy fixes, and an online‑play diagnostic log. Every string the
-interface says now lives in one file (`apps/desktop/src/copy/constants.json`), so the writing can be
-revised in one pass.
-Auto‑update is wired in code but has no feed yet — that needs a hosting decision.
-
-**748 tests** pass (`npm test`), plus 11 integration tests against a real room (`npm run
-test:server`); typecheck and lint are clean.
-
-Plans: `docs/plans/` holds the architecture plan, the online‑multiplayer substrate plan, and the
-game‑feel plan. `docs/handoffs/` records what each recent session diagnosed and landed.
-
----
-
 ## Repository layout
 
 A pnpm‑style monorepo run with **npm workspaces** (`packages/*`, `apps/*`).
