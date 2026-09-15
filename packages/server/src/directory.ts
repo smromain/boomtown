@@ -35,11 +35,29 @@ interface TicketEntry {
 }
 
 /**
+ * Resolving a ticket is a cross-origin read: the game is served from one origin
+ * (the app, or a static web build) and the room lives on another, so without
+ * this header a browser refuses to let the client read the answer at all. Node
+ * does not enforce CORS, which is why the integration tests were green while
+ * the real client could not join a room.
+ *
+ * `*` costs nothing here. A GET carries no cookies and no credentials, and it
+ * tells the caller only what they had to know already — the ticket they asked
+ * about. It is applied to hits and misses alike, both so a miss is readable and
+ * so the two stay indistinguishable.
+ *
+ * Deliberately GET only. Claiming and retiring a ticket are the room's business,
+ * called object-to-object inside PartyKit; a browser has no reason to reach them
+ * and is not given a header that would let it.
+ */
+const READ_CORS = { 'access-control-allow-origin': '*' } as const;
+
+/**
  * Every refusal looks the same from outside: same status, same empty body.
  * An unissued ticket, an expired one and a retired one are indistinguishable,
  * so a sweep learns nothing from the shape of a miss.
  */
-const miss = () => new Response(null, { status: 404 });
+const miss = () => new Response(null, { status: 404, headers: READ_CORS });
 
 export default class TicketDirectory implements Party.Server {
   readonly options = { hibernate: true };
@@ -66,7 +84,7 @@ export default class TicketDirectory implements Party.Server {
       await this.room.storage.delete(ENTRY_KEY);
       return miss();
     }
-    return Response.json({ address: entry.address });
+    return Response.json({ address: entry.address }, { headers: READ_CORS });
   }
 
   /**

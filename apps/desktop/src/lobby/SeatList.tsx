@@ -182,7 +182,9 @@ export function SeatList({
               {filled ? copy.lobby.start : copy.lobby.waitingForPlayers}
             </Button>
           ) : (
-            <p className={styles.hint}>{waiting ? copy.lobby.waitingAtDoor : copy.lobby.waitingForHost}</p>
+            // While waiting at the door the banner above already says so; a
+            // second copy of the same sentence in the action bar is noise.
+            !waiting && <p className={styles.hint}>{copy.lobby.waitingForHost}</p>
           )}
         </div>
       </section>
