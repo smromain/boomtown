@@ -84,6 +84,8 @@ export interface SocketExtras {
   decline(knockId: string): void;
   /** Host only: stop accepting knocks, or start again. */
   setLocked(locked: boolean): void;
+  /** Host only: hand a seated player's seat to a bot. */
+  eject(seat: number): void;
 }
 
 /**
@@ -382,6 +384,7 @@ export function socketTransport(
     admit: (knockId: string) => send({ type: 'admit', knockId }),
     decline: (knockId: string) => send({ type: 'decline', knockId }),
     setLocked: (locked: boolean) => send({ type: 'set-locked', locked }),
+    eject: (seat: number) => send({ type: 'eject', seat }),
   };
 }
 

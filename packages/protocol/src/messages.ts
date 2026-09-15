@@ -12,7 +12,16 @@ import type { WireError } from './errors.js';
  * `set-locked`, `start`, `command`.
  * Room -> client: `welcome`, `waiting`, `room-state`, `update`, `error`.
  */
-export type ClientMessage = Hello | CreateRoom | Knock | Admit | Decline | SetLocked | StartGame | SendCommand;
+export type ClientMessage =
+  | Hello
+  | CreateRoom
+  | Knock
+  | Admit
+  | Decline
+  | SetLocked
+  | Eject
+  | StartGame
+  | SendCommand;
 export type RoomMessage = Welcome | Waiting | RoomStateMessage | Update | ErrorMessage;
 export type WireMessage = ClientMessage | RoomMessage;
 
@@ -57,6 +66,18 @@ export interface Admit {
 export interface Decline {
   readonly type: 'decline';
   readonly knockId: string;
+}
+
+/**
+ * Host only: take a seat back from the player in it and hand it to a bot.
+ *
+ * The seat does not reopen — a seat that returned to `open` mid-game could be
+ * claimed by whoever knocked next, handing a stranger someone else's holdings.
+ * A bot is the only exit, and the game carries on from exactly where it was.
+ */
+export interface Eject {
+  readonly type: 'eject';
+  readonly seat: number;
 }
 
 /** Host only: stop accepting knocks, or start again. */

@@ -94,3 +94,74 @@ describe('a knocker that goes away', () => {
     expect(door.list(0).map((k) => k.name)).toEqual(['Ben']);
   });
 });
+
+describe('handing a seat to a bot', () => {
+  const config = {
+    seatCount: 3,
+    edition: 'boomtown' as const,
+    visibility: 'hidden' as const,
+    bots: {},
+    seed: 1,
+  };
+
+  it('takes the seat from the human and never reopens it', async () => {
+    // The property that matters. A seat that went back to `open` mid-game could
+    // be claimed by whoever knocked next, handing a stranger another player's
+    // cash and holdings — so the only exit from `seated` is a bot.
+    const { SeatTable } = await import('../src/seats.js');
+    const seats = new SeatTable(config);
+    seats.join('Ana', 'tok-a', 'conn-a');
+    seats.join('Ben', 'tok-b', 'conn-b');
+    seats.join('Cal', 'tok-c', 'conn-c');
+
+    expect(seats.eject(1)).toBe(true);
+
+    const slots = seats.snapshot(null, 'playing', { hostSeat: 0, knocks: [], locked: false }).seats;
+    expect(slots[1]!.kind).toBe('bot');
+    expect(slots.some((s) => s.kind === 'open')).toBe(false);
+    expect(seats.isBot(1)).toBe(true);
+    // And the token that held it is dead, so the ejected player cannot resume.
+    expect(seats.seatForToken('tok-b')).toBeNull();
+    expect(seats.reconnect('tok-b', 'conn-b2')).toBeNull();
+  });
+
+  it('leaves the other seats alone', async () => {
+    const { SeatTable } = await import('../src/seats.js');
+    const seats = new SeatTable(config);
+    seats.join('Ana', 'tok-a', 'conn-a');
+    seats.join('Ben', 'tok-b', 'conn-b');
+    seats.eject(1);
+    expect(seats.seatForToken('tok-a')).toBe(0);
+    expect(seats.isBot(0)).toBe(false);
+  });
+
+  it('says so when nobody is sitting there', async () => {
+    const { SeatTable } = await import('../src/seats.js');
+    const seats = new SeatTable(config);
+    expect(seats.eject(2)).toBe(false);
+  });
+
+  it('survives a hibernation wake, or the seat would be handed back', async () => {
+    const { SeatTable } = await import('../src/seats.js');
+    const before = new SeatTable(config);
+    before.join('Ana', 'tok-a', 'conn-a');
+    before.join('Ben', 'tok-b', 'conn-b');
+    before.eject(1);
+
+    const after = new SeatTable(config);
+    after.restoreEjected(before.ejectedSeats());
+    expect(after.isBot(1)).toBe(true);
+    expect(after.ejectedSeats()).toEqual([1]);
+  });
+
+  it('keeps the room full, so the game does not wait for a replacement', async () => {
+    const { SeatTable } = await import('../src/seats.js');
+    const seats = new SeatTable(config);
+    seats.join('Ana', 'tok-a', 'conn-a');
+    seats.join('Ben', 'tok-b', 'conn-b');
+    seats.join('Cal', 'tok-c', 'conn-c');
+    expect(seats.allSeatsFilled()).toBe(true);
+    seats.eject(2);
+    expect(seats.allSeatsFilled()).toBe(true);
+  });
+});

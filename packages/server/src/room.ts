@@ -279,6 +279,44 @@ export default class BoomtownRoom implements Party.Server {
         return;
       }
 
+      case 'eject': {
+        if (!this.requireHost(sender)) return;
+        if (message.seat === this.game!.hostSeat) {
+          // A host ejecting themselves would leave the room with nobody able to
+          // admit, unlock or eject, and no way to appoint anyone.
+          this.sendTo(sender, {
+            type: 'error',
+            error: protocolError('not-host', 'the host cannot remove their own seat'),
+          });
+          return;
+        }
+        const updates = await this.game!.ejectSeat(message.seat);
+        if (updates === null) {
+          this.sendTo(sender, {
+            type: 'error',
+            error: protocolError('unknown-knock', 'nobody is sitting there'),
+          });
+          return;
+        }
+        // Close the ejected player's socket: their token is gone with the seat,
+        // so leaving it open would only produce refusals they cannot act on.
+        for (const [connId, seat] of this.seatByConnection) {
+          if (seat !== message.seat) continue;
+          const conn = this.room.getConnection(connId);
+          this.seatByConnection.delete(connId);
+          if (conn) {
+            this.sendTo(conn, {
+              type: 'error',
+              error: protocolError('knock-declined', 'the host removed you from the table'),
+            });
+            conn.close();
+          }
+        }
+        this.dispatch(updates);
+        this.broadcastRoomState();
+        return;
+      }
+
       case 'set-locked': {
         if (!this.requireHost(sender)) return;
         this.game!.door.locked = message.locked;

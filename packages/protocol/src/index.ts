@@ -49,6 +49,7 @@ export type {
   Admit,
   Decline,
   SetLocked,
+  Eject,
   StartGame,
   SendCommand,
   Welcome,

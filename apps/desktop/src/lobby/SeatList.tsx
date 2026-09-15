@@ -114,6 +114,17 @@ export function SeatList({
                   {seat.index === mySeat ? copy.lobby.youSuffix : ''}
                 </span>
                 <span className={styles.kind}>{seat.kind}</span>
+                {/* The host can hand a seat to a bot — never reopen it, which
+                    would let whoever knocks next inherit those holdings. */}
+                {isHost && seat.kind === 'human' && seat.index !== mySeat && (
+                  <Button
+                    variant="ghost"
+                    disabled={status !== 'open'}
+                    onClick={() => game.transport.eject(seat.index)}
+                  >
+                    {copy.lobby.eject}
+                  </Button>
+                )}
               </li>
             ))}
             {seats.length === 0 && <li className={styles.seatRow}>{copy.lobby.waitingForRoom}</li>}

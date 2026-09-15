@@ -328,6 +328,83 @@ describe('PartyKit room — end to end', () => {
     late.close();
   });
 
+  it('hands an ejected seat to a bot and plays on, without reopening it', async () => {
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 2: 6 }, seed: 21 },
+    });
+    await host.next('welcome');
+    const guest = client(room);
+    await guest.open;
+    await admit(host, guest);
+    host.send({ type: 'start' });
+    // Keep the opening view: ejecting emits no `update` of its own (correctly —
+    // the host is on the clock, so nothing moves), so waiting for one here
+    // would hang on a room that is behaving.
+    let view = (await host.next('update')) as Extract<RoomMessage, { type: 'update' }>;
+
+    host.send({ type: 'eject', seat: 1 });
+
+    // The ejected player is told and dropped: their token went with the seat,
+    // so an open socket would only produce refusals they cannot act on.
+    const told = (await guest.next('error')) as Extract<RoomMessage, { type: 'error' }>;
+    expect(told.error.kind).toBe('protocol');
+
+    // The seat is a bot now — not open. An open seat mid-game could be claimed
+    // by whoever knocked next, inheriting another player's holdings.
+    let sawBotSeat = false;
+    for (let attempt = 0; attempt < 6 && !sawBotSeat; attempt += 1) {
+      const state = (await host.next('room-state')) as Extract<RoomMessage, { type: 'room-state' }>;
+      const seat = state.state.seats[1]!;
+      if (seat.kind === 'bot') sawBotSeat = true;
+      expect(seat.kind).not.toBe('open');
+    }
+    expect(sawBotSeat).toBe(true);
+
+    // And the seat is actually *played*. Ejecting alone proves nothing here:
+    // the host is on the clock right after `start`, so nothing should move yet.
+    // The test is whether the clock can pass through the ejected seat and come
+    // back — if a bot had not taken it over, the room would wait forever on
+    // somebody who is gone.
+    // A command and the bot moves it triggers are dispatched together, so the
+    // first update after a move is not the settled one — read on until the
+    // clock comes back, or until it plainly is not going to.
+    let guardCount = 0;
+    while (guardCount++ < 40) {
+      if (view.view.status !== 'playing') break;
+      if (view.view.activeSeat === 0 && !view.view.pendingDecision) {
+        host.send({ type: 'command', command: pickHumanMove(view.view) });
+      }
+      view = (await host.next('update', 8000)) as Extract<RoomMessage, { type: 'update' }>;
+      if (view.view.activeSeat === 0 && !view.view.pendingDecision && guardCount > 2) break;
+    }
+    // Back on the host's clock, having passed through the ejected seat and the
+    // configured bot. If a bot had not taken the ejected seat over, the clock
+    // would have stopped there on somebody who is gone.
+    expect(view.view.status).toBe('playing');
+    expect(view.view.activeSeat).toBe(0);
+    guest.close();
+  });
+
+  it('refuses a host trying to eject their own seat', async () => {
+    // It would leave the room with nobody able to admit, unlock or eject, and
+    // no way to appoint anyone.
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 1: 6, 2: 6 }, seed: 22 },
+    });
+    const welcome = (await host.next('welcome')) as Extract<RoomMessage, { type: 'welcome' }>;
+    host.send({ type: 'eject', seat: welcome.seat });
+    const refusal = (await host.next('error')) as Extract<RoomMessage, { type: 'error' }>;
+    expect(refusal.error.kind === 'protocol' && refusal.error.code).toBe('not-host');
+  });
+
   it('a dropped client reconnects with its token and resumes the same seat (AE2)', async () => {
     const room = uniqueRoom();
     const host = client(room);

@@ -105,6 +105,12 @@ export class GameRoom {
     if (lobby) {
       room.hostSeat = lobby.hostSeat;
       room.door.locked = lobby.locked;
+      room.seats.restoreEjected(lobby.ejected ?? []);
+      for (const seat of lobby.ejected ?? []) {
+        if (!room.policies.has(seat)) {
+          room.policies.set(seat, heuristicPolicy({ level: room.seats.botDifficulty(seat) }));
+        }
+      }
     }
     const commands = await log.loadAll();
     if (commands.length > 0) {
@@ -159,9 +165,33 @@ export class GameRoom {
    */
   hostSeat = 0;
 
-  /** Write the host seat and lock state so a hibernation wake does not lose them. */
+  /** Write the lobby facts a wake must not lose: host, lock, and ejected seats. */
   async persistLobby(): Promise<void> {
-    await this.log.saveLobby({ hostSeat: this.hostSeat, locked: this.door.locked });
+    await this.log.saveLobby({
+      hostSeat: this.hostSeat,
+      locked: this.door.locked,
+      ejected: this.seats.ejectedSeats(),
+    });
+  }
+
+  /**
+   * Hand a seat from the human holding it to a bot, and carry on.
+   *
+   * The seat never reopens (see `SeatTable.eject`). If the ejected seat was the
+   * one on the clock, the game would otherwise sit waiting on somebody who is
+   * gone, so the bot loop is kicked here and its moves go out like any other.
+   */
+  async ejectSeat(seat: Seat): Promise<Outbound[] | null> {
+    if (!this.seats.eject(seat)) return null;
+    if (!this.policies.has(seat)) {
+      this.policies.set(seat, heuristicPolicy({ level: this.seats.botDifficulty(seat) }));
+    }
+    await this.persistLobby();
+    roomLog(this.code, 'a seat was ejected and is now played by a bot', { seat });
+    return [
+      { kind: 'broadcast', message: { type: 'room-state', state: this.roomState() } },
+      ...(await this.runBots()),
+    ];
   }
 
   /**

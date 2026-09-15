@@ -126,6 +126,13 @@ export function parseClientMessage(raw: string | ArrayBuffer | ArrayBufferView):
       }
       return { ok: true, message: { type, knockId } as ClientMessage };
     }
+    case 'eject': {
+      const seat = parsed['seat'];
+      if (!Number.isInteger(seat) || (seat as number) < 0 || (seat as number) > 63) {
+        return fail('eject: seat must be a small non-negative integer');
+      }
+      return { ok: true, message: { type, seat } as ClientMessage };
+    }
     case 'set-locked': {
       if (typeof parsed['locked'] !== 'boolean') return fail('set-locked: locked must be a boolean');
       return { ok: true, message: { type, locked: parsed['locked'] } as ClientMessage };

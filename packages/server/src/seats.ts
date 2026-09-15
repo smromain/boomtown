@@ -44,12 +44,19 @@ export function cleanName(raw: string): string {
 
 export class SeatTable {
   private readonly humans = new Map<number, SeatOccupant>();
+  /**
+   * Seats a human held and no longer does. Kept separate from `config.bots`
+   * because the config is what the deal was built from: mutating it would make
+   * the room's own setup disagree with the one the command log replays against,
+   * and the seat would deal differently on the next wake.
+   */
+  private readonly ejected = new Set<number>();
 
   constructor(private readonly config: RoomConfig) {}
 
-  /** Seat indices that are bots, from the config. */
+  /** Seat indices played by a bot: configured at creation, or ejected since. */
   private botSeats(): Set<number> {
-    return new Set(Object.keys(this.config.bots).map(Number));
+    return new Set([...Object.keys(this.config.bots).map(Number), ...this.ejected]);
   }
 
   /** Every seat index 0..seatCount-1. */
@@ -133,6 +140,34 @@ export class SeatTable {
       connectionId,
     });
     return { seat: found.seat, token: rotated };
+  }
+
+  /**
+   * Take a seat away from the human holding it and hand it to a bot.
+   *
+   * The seat does not reopen. A seat that went back to `open` mid-game could be
+   * taken by whoever knocked next, which would hand a stranger somebody else's
+   * holdings — so the only exit from `seated` is to a bot. The engine is not
+   * told: it has no concept of who is driving a seat, and the name it dealt
+   * with stays put, so the story and the register still read as they did.
+   *
+   * Returns false when there was no human there to remove.
+   */
+  eject(seat: number): boolean {
+    if (!this.humans.has(seat)) return false;
+    this.humans.delete(seat);
+    this.ejected.add(seat);
+    return true;
+  }
+
+  /** Seats ejected so far — persisted, so a hibernation wake does not hand them back. */
+  ejectedSeats(): number[] {
+    return [...this.ejected].sort((a, b) => a - b);
+  }
+
+  /** Restore ejections after a wake. */
+  restoreEjected(seats: readonly number[]): void {
+    for (const seat of seats) this.ejected.add(seat);
   }
 
   /** Mark a human's seat disconnected (keeps the seat reserved by token). */

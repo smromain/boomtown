@@ -66,7 +66,8 @@
     "decline": "Turn away",
     "lock": "Close the door",
     "unlock": "Open the door",
-    "waitingAtDoor": "Waiting for the host to let you in…"
+    "waitingAtDoor": "Waiting for the host to let you in…",
+    "eject": "Hand to a bot"
   },
   "setup": {
     "screenLabel": "New game",

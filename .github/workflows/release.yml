@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (blank = next CalVer, e.g. 2026.9.3)'
+        description: 'Release version (blank = next CalVer; or e.g. 2026.9.3 / 2026.9.3-rc1)'
         required: false
         type: string
   # Or push a tag: git tag v2026.9.3 && git push origin v2026.9.3
@@ -52,8 +52,14 @@ jobs:
           # The shape guard. Leading zeros are rejected on purpose: electron-builder
           # and electron-updater parse this as semver, and "2026.09.1" is not valid
           # semver, so it would fail at packaging time instead of here.
-          echo "$V" | grep -Eq '^[0-9]{4}\.(1[0-2]|[1-9])\.[1-9][0-9]*$' || {
-            echo "::error::version '$V' is not CalVer YYYY.M.N (no leading zeros, N starts at 1)"; exit 1;
+          #
+          # An optional -rcN suffix rides along for a rehearsal release. It is
+          # still valid semver, and semver orders a prerelease *below* its
+          # release, so 2026.9.1-rc1 < 2026.9.1 — an rc and the real thing share
+          # an N on purpose. The auto-increment above ignores rc tags for the
+          # same reason: cutting rc1 must not burn the number its release wants.
+          echo "$V" | grep -Eq '^[0-9]{4}\.(1[0-2]|[1-9])\.[1-9][0-9]*(-rc[1-9][0-9]*)?$' || {
+            echo "::error::version '$V' is not CalVer YYYY.M.N or YYYY.M.N-rcN (no leading zeros)"; exit 1;
           }
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "tag=v$V" >> "$GITHUB_OUTPUT"

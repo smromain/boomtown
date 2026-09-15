@@ -51,12 +51,12 @@ export class CommandLog {
    * whether the door is locked. They live in their own key because they change
    * after creation, where the config never does.
    */
-  async saveLobby(lobby: { hostSeat: number; locked: boolean }): Promise<void> {
+  async saveLobby(lobby: { hostSeat: number; locked: boolean; ejected: number[] }): Promise<void> {
     await this.store.put(LOBBY_KEY, lobby);
   }
 
-  async loadLobby(): Promise<{ hostSeat: number; locked: boolean } | undefined> {
-    return this.store.get<{ hostSeat: number; locked: boolean }>(LOBBY_KEY);
+  async loadLobby(): Promise<{ hostSeat: number; locked: boolean; ejected?: number[] } | undefined> {
+    return this.store.get<{ hostSeat: number; locked: boolean; ejected?: number[] }>(LOBBY_KEY);
   }
 
   /** The `cmd:` keys, sorted (application order). */
