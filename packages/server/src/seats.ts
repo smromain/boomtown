@@ -1,5 +1,5 @@
 import { PRESETS, RULES, type SetupOptions } from '@boomtown/engine';
-import type { RoomConfig, SeatSlot } from '@boomtown/protocol';
+import type { Knocker, RoomConfig, SeatSlot } from '@boomtown/protocol';
 import { mintToken, tokensMatch } from './tokens.js';
 
 /**
@@ -194,11 +194,18 @@ export class SeatTable {
     }));
   }
 
-  snapshot(ticket: string | null, phase: 'lobby' | 'playing' | 'over'): {
+  snapshot(
+    ticket: string | null,
+    phase: 'lobby' | 'playing' | 'over',
+    door: { hostSeat: number; knocks: readonly Knocker[]; locked: boolean },
+  ): {
     ticket: string | null;
     phase: 'lobby' | 'playing' | 'over';
     config: RoomConfig;
     seats: SeatSlot[];
+    hostSeat: number;
+    knocks: readonly Knocker[];
+    locked: boolean;
   } {
     const bots = this.botSeats();
     const seats: SeatSlot[] = this.allSeats().map((index) => {
@@ -214,7 +221,7 @@ export class SeatTable {
         connected: occupant.connectionId !== null,
       };
     });
-    return { ticket, phase, config: this.config, seats };
+    return { ticket, phase, config: this.config, seats, ...door };
   }
 }
 

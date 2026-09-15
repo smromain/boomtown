@@ -162,7 +162,11 @@ describe('socketTransport — GameTransport parity against a real room', () => {
     expect(restored.views[0]!.yourHand).toHaveLength(6);
   }, 25_000);
 
-  it('connect() rejects when the room is full — a failed join is not a silent hang', async () => {
+  it('connect() resolves a joiner into a waiting state rather than a seat', async () => {
+    // The contract changed with host admission: connecting no longer takes a
+    // seat, so `connect()` cannot mean "you are in". It means the socket is up
+    // and the room has your knock. Blocking until a *person* clicked would have
+    // meant the connect timeout firing on a perfectly healthy room.
     const room = uniqueRoom();
     const small: RoomConfig = { ...config, seatCount: 2, bots: {} };
     const host = createGameClient(
@@ -171,15 +175,12 @@ describe('socketTransport — GameTransport parity against a real room', () => {
     teardowns.push(() => host.disconnect());
     await host.connect();
 
-    const p2 = createGameClient(
-      socketTransport({ host: HOST, room, name: 'P2', intent: { kind: 'join' } }),
-    );
-    teardowns.push(() => p2.disconnect());
-    await p2.connect();
+    const knocker = socketTransport({ host: HOST, room, name: 'P2', intent: { kind: 'join' } });
+    teardowns.push(() => knocker.disconnect());
+    await createGameClient(knocker).connect();
 
-    // the 3rd joiner: room is full -> connect() rejects with the room's reason
-    const t3 = socketTransport({ host: HOST, room, name: 'P3', intent: { kind: 'join' } });
-    teardowns.push(() => t3.disconnect());
-    await expect(createGameClient(t3).connect()).rejects.toThrow(/room-full/);
+    expect(knocker.waitingAtDoor()).toBe(true);
+    expect(knocker.seat()).toBeNull();
+    expect(knocker.token()).toBeNull();
   }, 20_000);
 });

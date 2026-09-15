@@ -64,6 +64,9 @@ describe('configFromRoom', () => {
 
   const room: RoomState = {
     ticket: 'ABC123',
+    hostSeat: 0,
+    knocks: [],
+    locked: false,
     phase: 'playing',
     config: { seatCount: 3, edition: 'edition-2015', visibility: 'hidden', bots: { 2: 7 } },
     seats: [
@@ -319,6 +322,9 @@ describe('SeatList', () => {
 
   const lobbyState = (over: Partial<RoomState> = {}): RoomState => ({
     ticket: 'ROOM01',
+    hostSeat: 0,
+    knocks: [],
+    locked: false,
     phase: 'lobby',
     config: toRoomConfig(defaultConfig()),
     seats: [

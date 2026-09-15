@@ -13,7 +13,11 @@ export type ProtocolErrorCode =
   | 'malformed-message'
   | 'message-too-large'
   | 'rate-limited'
-  | 'room-exhausted';
+  | 'room-exhausted'
+  | 'room-locked'
+  | 'knock-declined'
+  | 'not-host'
+  | 'unknown-knock';
 
 export interface ProtocolError {
   readonly kind: 'protocol';

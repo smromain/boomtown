@@ -87,6 +87,26 @@ function client(room: string, params?: Record<string, string>): TestClient {
 
 // Rooms are addressed by 160 bits, not by a name anyone can pick — the room
 // refuses `create-room` at any other id, so a test has to mint a real one.
+/**
+ * The new join flow: knock, wait, and be let in by the host. A knock no longer
+ * seats anybody, so every test that used to `join` has to go through a person.
+ */
+async function admit(host: TestClient, joiner: TestClient): Promise<void> {
+  joiner.send({ type: 'knock' });
+  await joiner.next('waiting');
+  // The host's room-state carries the queue; other seats' copies never do.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const state = (await host.next('room-state')) as Extract<RoomMessage, { type: 'room-state' }>;
+    const knock = state.state.knocks[0];
+    if (knock) {
+      host.send({ type: 'admit', knockId: knock.id });
+      await joiner.next('welcome');
+      return;
+    }
+  }
+  throw new Error('the host never saw the knock');
+}
+
 const uniqueRoom = () => mintRoomAddress();
 
 describe('PartyKit room — end to end', () => {
@@ -103,13 +123,11 @@ describe('PartyKit room — end to end', () => {
 
     const p2 = client(room);
     await p2.open;
-    p2.send({ type: 'join' });
-    expect((await p2.next('welcome')).type).toBe('welcome');
+    await admit(host, p2);
 
     const p3 = client(room);
     await p3.open;
-    p3.send({ type: 'join' });
-    await p3.next('welcome');
+    await admit(host, p3);
 
     host.send({ type: 'start' });
     const update = await host.next('update');
@@ -130,12 +148,21 @@ describe('PartyKit room — end to end', () => {
     await host.next('welcome');
     const p2 = client(room);
     await p2.open;
-    p2.send({ type: 'join' });
-    await p2.next('welcome');
+    await admit(host, p2);
 
+    // A third knocker the host tries to admit anyway: the seats are gone.
     const p3 = client(room);
     await p3.open;
-    p3.send({ type: 'join' });
+    p3.send({ type: 'knock' });
+    await p3.next('waiting');
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const state = (await host.next('room-state')) as Extract<RoomMessage, { type: 'room-state' }>;
+      const knock = state.state.knocks[0];
+      if (knock) {
+        host.send({ type: 'admit', knockId: knock.id });
+        break;
+      }
+    }
     const err = await p3.next('error');
     expect(err.type === 'error' && err.error.kind === 'protocol' && err.error.code).toBe('room-full');
   });
@@ -202,8 +229,7 @@ describe('PartyKit room — end to end', () => {
     // which fills the room and retires the ticket.
     const joiner = client(room);
     await joiner.open;
-    joiner.send({ type: 'join' });
-    await joiner.next('welcome');
+    await admit(host, joiner);
     await new Promise((r) => setTimeout(r, 200));
 
     const retired = await fetch(`http://${HOST}/parties/directory/${ticket}`);
@@ -234,6 +260,72 @@ describe('PartyKit room — end to end', () => {
     const refusal = (await guessable.next('error')) as Extract<RoomMessage, { type: 'error' }>;
     expect(refusal.error).toMatchObject({ kind: 'protocol' });
     guessable.close();
+  });
+
+  it('gives a knocker no seat until the host admits them (AE5)', async () => {
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'hidden', bots: { 2: 6 }, seed: 5 },
+    });
+    await host.next('welcome');
+
+    // A stranger with the address knocks and is told to wait — no welcome, no
+    // token, no seat. This is the property the whole unit exists for.
+    const stranger = client(room);
+    await stranger.open;
+    stranger.send({ type: 'knock' });
+    expect((await stranger.next('waiting')).type).toBe('waiting');
+    await expect(stranger.next('welcome', 600)).rejects.toThrow(/timeout/);
+
+    // And the room agrees: the seat they wanted is still open.
+    const state = (await host.next('room-state')) as Extract<RoomMessage, { type: 'room-state' }>;
+    expect(state.state.seats.some((seat) => seat.kind === 'open')).toBe(true);
+    stranger.close();
+  });
+
+  it('refuses admit, decline and lock from anyone but the host', async () => {
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 2: 6 }, seed: 6 },
+    });
+    await host.next('welcome');
+
+    const guest = client(room);
+    await guest.open;
+    await admit(host, guest);
+
+    // Seated, but not the host: the room says so rather than quietly ignoring
+    // it, because a client that thinks it hosts is a bug worth seeing.
+    guest.send({ type: 'set-locked', locked: true });
+    const refusal = (await guest.next('error')) as Extract<RoomMessage, { type: 'error' }>;
+    expect(refusal.error.kind === 'protocol' && refusal.error.code).toBe('not-host');
+    guest.close();
+  });
+
+  it('turns knocks away outright once the host locks the door', async () => {
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 2: 6 }, seed: 8 },
+    });
+    await host.next('welcome');
+    host.send({ type: 'set-locked', locked: true });
+    await new Promise((r) => setTimeout(r, 150));
+
+    const late = client(room);
+    await late.open;
+    late.send({ type: 'knock' });
+    const refusal = (await late.next('error')) as Extract<RoomMessage, { type: 'error' }>;
+    expect(refusal.error.kind === 'protocol' && refusal.error.code).toBe('room-locked');
+    late.close();
   });
 
   it('a dropped client reconnects with its token and resumes the same seat (AE2)', async () => {
@@ -276,12 +368,10 @@ describe('PartyKit room — end to end', () => {
     await host.next('welcome');
     const p2 = client(room);
     await p2.open;
-    p2.send({ type: 'join' });
-    await p2.next('welcome');
+    await admit(host, p2);
     const p3 = client(room);
     await p3.open;
-    p3.send({ type: 'join' });
-    await p3.next('welcome');
+    await admit(host, p3);
 
     host.send({ type: 'start' });
     const seatBView = (await p2.next('update')) as Extract<RoomMessage, { type: 'update' }>;

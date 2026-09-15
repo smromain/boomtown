@@ -193,7 +193,7 @@ the rack or on the board to place it; merger decisions surface as a modal. With 
 seat, an opaque hand‑off card covers the screen between turns so nobody sees the next player's
 tiles.
 
-**Online.** "Play online" creates a room and shows an eight‑character code to share, or joins one by code. Seats
+**Online.** "Play online" creates a room and shows an eight‑character code to share, or knocks at one by code. Seats
 fill as people arrive; bot seats are filled by the room itself. The room is authoritative — it deals,
 validates every command, plays the bots, and sends each client only its own filtered view.
 
@@ -530,6 +530,24 @@ string and the room re‑binds that seat. No password, no email, no persistence 
 game. A seat stays reserved by its token while its player is away, so a dropped connection is a
 pause, not a forfeit. The token is compared in constant time and **rotates on every resume**, so a
 captured one is worth a single reconnect rather than the rest of the game.
+
+### Having the way in gets you a knock, not a seat
+
+A joiner does not take a seat by connecting. They **knock**, and the room's host
+sees them waiting and lets them in or turns them away. Possession of the address
+or a live code moves you to *knocking* and no further; there is no path from
+there to *seated* that a joiner can drive alone.
+
+That is why a leaked link degrades to a nuisance rather than a disaster: the
+cost is a knock the host declines, not a hijacked seat in a game already under
+way. It is also the one control here that needs no identity at all — the person
+who knows who they invited decides, and nobody has to have an account for that
+to work. A decline sticks, so "turn away" does not mean "wait a second and try
+again", and the host can close the door entirely once everyone has arrived.
+
+The room is the authority on who hosts: it knows which seat created the game and
+refuses `admit`, `decline` and `set-locked` from any other. The client's own
+sense of being the host only decides what to draw.
 
 ### A room's address is not the code you read out
 

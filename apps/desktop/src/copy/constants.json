@@ -59,7 +59,14 @@
     "start": "Start game",
     "waitingForPlayers": "Waiting for players…",
     "waitingForHost": "Waiting for the host to start.",
-    "ticketExpired": "code expired"
+    "ticketExpired": "code expired",
+    "knocksLabel": "Waiting to join",
+    "knocksTitle": "Knocking",
+    "admit": "Let in",
+    "decline": "Turn away",
+    "lock": "Close the door",
+    "unlock": "Open the door",
+    "waitingAtDoor": "Waiting for the host to let you in…"
   },
   "setup": {
     "screenLabel": "New game",

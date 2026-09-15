@@ -115,9 +115,21 @@ export function parseClientMessage(raw: string | ArrayBuffer | ArrayBufferView):
       if (!parseConfig(parsed['config'])) return fail('create-room: malformed config');
       return { ok: true, message: parsed as unknown as ClientMessage };
     }
-    case 'join':
+    case 'knock':
     case 'start':
       return { ok: true, message: { type } as ClientMessage };
+    case 'admit':
+    case 'decline': {
+      const knockId = parsed['knockId'];
+      if (typeof knockId !== 'string' || knockId.length === 0 || knockId.length > 64) {
+        return fail(`${type}: knockId must be a short string`);
+      }
+      return { ok: true, message: { type, knockId } as ClientMessage };
+    }
+    case 'set-locked': {
+      if (typeof parsed['locked'] !== 'boolean') return fail('set-locked: locked must be a boolean');
+      return { ok: true, message: { type, locked: parsed['locked'] } as ClientMessage };
+    }
     case 'command': {
       const command = parsed['command'];
       if (!isRecord(command)) return fail('command: must be an object');

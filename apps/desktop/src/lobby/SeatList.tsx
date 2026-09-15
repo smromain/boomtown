@@ -49,6 +49,18 @@ export function SeatList({
   // list reads as "full" and offers Start for a room we know nothing about.
   const filled = seats.length > 0 && seats.every((s) => s.kind !== 'open');
   const mySeat = game.transport.seat();
+  const knocks = roomState?.knocks ?? [];
+  const locked = roomState?.locked ?? false;
+  /**
+   * What to *draw*. Authority is the room's: it knows which seat hosts and
+   * refuses `admit`, `decline` and `set-locked` from anyone else, so a client
+   * that lies here achieves nothing. Deriving the layout from the server's
+   * `hostSeat` instead would leave the host looking at an empty action bar
+   * until the first room-state landed, which is a flicker bought for no safety.
+   */
+  const isHost = game.isHost;
+  // Connected, no seat, and the room has not refused us: we are at the door.
+  const waiting = mySeat === null && !lobbyError;
 
   useEffect(() => {
     netlog.log('lobby', 'note', 'lobby render', {
@@ -106,25 +118,71 @@ export function SeatList({
             ))}
             {seats.length === 0 && <li className={styles.seatRow}>{copy.lobby.waitingForRoom}</li>}
           </ol>
+
+          {/* Only the host is sent the knock queue, so this renders for nobody
+              else even if the component is reused. */}
+          {knocks.length > 0 && (
+            <section className={styles.door} aria-label={copy.lobby.knocksLabel}>
+              <h2 className={styles.doorTitle}>{copy.lobby.knocksTitle}</h2>
+              <ol className={styles.seats}>
+                {knocks.map((knock) => (
+                  <li key={knock.id} className={styles.seatRow}>
+                    <span>{knock.name}</span>
+                    <span className={styles.doorActions}>
+                      <Button
+                        variant="primary"
+                        disabled={status !== 'open'}
+                        onClick={() => game.transport.admit(knock.id)}
+                      >
+                        {copy.lobby.admit}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        disabled={status !== 'open'}
+                        onClick={() => game.transport.decline(knock.id)}
+                      >
+                        {copy.lobby.decline}
+                      </Button>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          {waiting && (
+            <div className={styles.banner} data-status="connecting" role="status">
+              {copy.lobby.waitingAtDoor}
+            </div>
+          )}
         </div>
 
         <div className={form.actions}>
           <Button variant="ghost" onClick={onLeave}>
             {copy.lobby.leave}
           </Button>
-          {game.isHost ? (
+          {isHost && (
+            <Button
+              variant="ghost"
+              disabled={status !== 'open'}
+              onClick={() => game.transport.setLocked(!locked)}
+            >
+              {locked ? copy.lobby.unlock : copy.lobby.lock}
+            </Button>
+          )}
+          {isHost ? (
             <Button
               variant="primary"
               disabled={!filled || status !== 'open'}
               onClick={() => {
-                netlog.log('lobby', 'note', 'start pressed', { roomCode: game.roomCode });
+                netlog.log('lobby', 'note', 'start pressed', { ticket: roomState?.ticket ?? null });
                 game.transport.start();
               }}
             >
               {filled ? copy.lobby.start : copy.lobby.waitingForPlayers}
             </Button>
           ) : (
-            <p className={styles.hint}>{copy.lobby.waitingForHost}</p>
+            <p className={styles.hint}>{waiting ? copy.lobby.waitingAtDoor : copy.lobby.waitingForHost}</p>
           )}
         </div>
       </section>

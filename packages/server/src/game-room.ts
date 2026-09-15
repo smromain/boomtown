@@ -11,6 +11,7 @@ import {
 } from '@boomtown/engine';
 import { clientView } from '@boomtown/client-core';
 import { heuristicPolicy, botRng, type Policy } from '@boomtown/ai';
+import type { Knocker } from '@boomtown/protocol';
 import {
   PROTOCOL_VERSION,
   protocolError,
@@ -24,6 +25,7 @@ import { roomLog, roomWarn } from './log.js';
 import { CommandLog, type KeyValueStore } from './storage.js';
 import { SeatTable, configError, setupOptionsFor } from './seats.js';
 import { LIFECYCLE, atCommandCeiling } from './lifecycle.js';
+import { Door } from './admission.js';
 
 /**
  * One non-deterministic seed at room creation. This is the single point where
@@ -99,6 +101,11 @@ export class GameRoom {
     const config = await log.loadConfig<RoomConfig>();
     if (!config) return null;
     const room = new GameRoom(code, config, store);
+    const lobby = await log.loadLobby();
+    if (lobby) {
+      room.hostSeat = lobby.hostSeat;
+      room.door.locked = lobby.locked;
+    }
     const commands = await log.loadAll();
     if (commands.length > 0) {
       // Bot names are known deterministically here; human names arrive later as
@@ -142,8 +149,32 @@ export class GameRoom {
    */
   ticket: string | null = null;
 
-  roomState(): RoomState {
-    return this.seats.snapshot(this.ticket, this.phase);
+  /** Who is waiting at the door, and whether it is open at all. */
+  readonly door = new Door();
+
+  /**
+   * The seat allowed to admit, decline and lock — the one the creator took.
+   * Persisted, because it has to survive a hibernation wake: a room that forgot
+   * who its host was would either have no one able to admit, or everyone.
+   */
+  hostSeat = 0;
+
+  /** Write the host seat and lock state so a hibernation wake does not lose them. */
+  async persistLobby(): Promise<void> {
+    await this.log.saveLobby({ hostSeat: this.hostSeat, locked: this.door.locked });
+  }
+
+  /**
+   * `knocks` is filled in per-recipient by the adapter: only the host is told
+   * who is waiting. Everyone else gets the same room state with an empty queue,
+   * so the lobby cannot be used to watch who is trying to get in.
+   */
+  roomState(knocks: readonly Knocker[] = []): RoomState {
+    return this.seats.snapshot(this.ticket, this.phase, {
+      hostSeat: this.hostSeat,
+      knocks,
+      locked: this.door.locked,
+    });
   }
 
   isPlaying(): boolean {
@@ -219,7 +250,7 @@ export class GameRoom {
     }
     if (!this.seats.allSeatsFilled()) {
       roomWarn(this.code, 'start refused — seats are not all filled', {
-        seats: this.seats.snapshot(this.ticket, this.phase).seats.map((s) => `${s.index}:${s.kind}`),
+        seats: this.roomState().seats.map((s) => `${s.index}:${s.kind}`),
       });
       return { error: protocolError('game-not-started', 'seats are not all filled') };
     }

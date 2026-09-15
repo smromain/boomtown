@@ -17,7 +17,10 @@ describe('what gets through', () => {
       { type: 'hello', protocolVersion: '1', displayName: 'Ana' },
       { type: 'hello', protocolVersion: '1', displayName: 'Ana', token: 'tok' },
       { type: 'create-room', config: goodConfig },
-      { type: 'join' },
+      { type: 'knock' },
+      { type: 'admit', knockId: 'a1b2c3d4' },
+      { type: 'decline', knockId: 'a1b2c3d4' },
+      { type: 'set-locked', locked: true },
       { type: 'start' },
       { type: 'command', command: { type: 'place-tile', tile: '1A' } },
     ];
@@ -113,7 +116,7 @@ describe('prototype pollution', () => {
 
 describe('binary frames', () => {
   it('reads a valid message out of an ArrayBuffer', () => {
-    const bytes = new TextEncoder().encode(frame({ type: 'join' }));
+    const bytes = new TextEncoder().encode(frame({ type: 'knock' }));
     expect(parseClientMessage(bytes.buffer as ArrayBuffer).ok).toBe(true);
   });
 

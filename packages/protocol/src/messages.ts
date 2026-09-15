@@ -8,11 +8,12 @@ import type { WireError } from './errors.js';
  * payload contract (KTD6). Every message is `{ type, ... }` so a receiver can
  * switch on `type`.
  *
- * Client -> room: `hello`, `create-room`, `join`, `command`, `start`.
- * Room -> client: `welcome`, `room-state`, `update`, `error`.
+ * Client -> room: `hello`, `create-room`, `knock`, `admit`, `decline`,
+ * `set-locked`, `start`, `command`.
+ * Room -> client: `welcome`, `waiting`, `room-state`, `update`, `error`.
  */
-export type ClientMessage = Hello | CreateRoom | JoinRoom | StartGame | SendCommand;
-export type RoomMessage = Welcome | RoomStateMessage | Update | ErrorMessage;
+export type ClientMessage = Hello | CreateRoom | Knock | Admit | Decline | SetLocked | StartGame | SendCommand;
+export type RoomMessage = Welcome | Waiting | RoomStateMessage | Update | ErrorMessage;
 export type WireMessage = ClientMessage | RoomMessage;
 
 // --- client -> room -------------------------------------------------------
@@ -33,9 +34,35 @@ export interface CreateRoom {
   readonly config: RoomConfig;
 }
 
-/** Sent by a joiner after `hello` to take an open seat. */
-export interface JoinRoom {
-  readonly type: 'join';
+/**
+ * Sent by a joiner to ask for a seat. It does not take one.
+ *
+ * This is the difference between holding a way in and being in. Possession of
+ * a room's address or a live ticket gets you a knock; only the host admitting
+ * you binds a seat. A link that leaks therefore costs an unwanted knock rather
+ * than a hijacked seat in a game already under way — and unlike every other
+ * control here, it needs no identity to work.
+ */
+export interface Knock {
+  readonly type: 'knock';
+}
+
+/** Host only: let a waiting knocker in, binding them to a seat. */
+export interface Admit {
+  readonly type: 'admit';
+  readonly knockId: string;
+}
+
+/** Host only: turn a waiting knocker away. Their connection is closed. */
+export interface Decline {
+  readonly type: 'decline';
+  readonly knockId: string;
+}
+
+/** Host only: stop accepting knocks, or start again. */
+export interface SetLocked {
+  readonly type: 'set-locked';
+  readonly locked: boolean;
 }
 
 /** The creator starts the game once seats are filled. */
@@ -55,6 +82,18 @@ export interface Welcome {
   readonly type: 'welcome';
   readonly seat: Seat;
   readonly token: string;
+}
+
+/** Acknowledges a `knock`: registered, and waiting on the host. */
+export interface Waiting {
+  readonly type: 'waiting';
+}
+
+/** Someone waiting at the door, as the host sees them. */
+export interface Knocker {
+  /** Opaque id for this knock — what `admit` and `decline` name. */
+  readonly id: string;
+  readonly name: string;
 }
 
 /** Lobby state, broadcast on every join/leave/config change before the game
@@ -110,4 +149,10 @@ export interface RoomState {
   readonly phase: 'lobby' | 'playing' | 'over';
   readonly config: RoomConfig;
   readonly seats: readonly SeatSlot[];
+  /** The seat that may admit, decline and lock. */
+  readonly hostSeat: number;
+  /** Knocks waiting on the host. Only ever populated for the host's own view. */
+  readonly knocks: readonly Knocker[];
+  /** While locked, knocks are refused outright. */
+  readonly locked: boolean;
 }

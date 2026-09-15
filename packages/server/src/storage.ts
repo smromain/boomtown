@@ -14,6 +14,7 @@ export interface KeyValueStore {
 }
 
 const CONFIG_KEY = 'config';
+const LOBBY_KEY = 'lobby';
 const CMD_PREFIX = 'cmd:';
 
 /** Zero-pad so `list({ prefix })` returns keys in application order. */
@@ -43,6 +44,19 @@ export class CommandLog {
 
   async loadConfig<T>(): Promise<T | undefined> {
     return this.store.get<T>(CONFIG_KEY);
+  }
+
+  /**
+   * Lobby facts that are not commands and not config: which seat hosts, and
+   * whether the door is locked. They live in their own key because they change
+   * after creation, where the config never does.
+   */
+  async saveLobby(lobby: { hostSeat: number; locked: boolean }): Promise<void> {
+    await this.store.put(LOBBY_KEY, lobby);
+  }
+
+  async loadLobby(): Promise<{ hostSeat: number; locked: boolean } | undefined> {
+    return this.store.get<{ hostSeat: number; locked: boolean }>(LOBBY_KEY);
   }
 
   /** The `cmd:` keys, sorted (application order). */
