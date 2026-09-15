@@ -120,10 +120,38 @@ jobs:
       # below travel as a zip that does not preserve the executable bit, and a
       # macOS .app or an AppImage that has lost it will not launch. Pushing
       # from the runner that produced the build keeps the permissions butler
-      # then uploads. Skipped when no BUTLER_API_KEY is set, the same way
-      # signing is — and the check is inside the script because a step's own
-      # `env:` block is not readable from its `if:`.
+      # then uploads.
+      #
+      # The push is skipped without a BUTLER_API_KEY, the same way signing is —
+      # and via an env var written here, because a step's own `env:` block is
+      # not readable from its own `if:`.
+      - name: Configure itch.io publishing
+        shell: bash
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          if [ -n "${BUTLER_API_KEY:-}" ]; then
+            echo "ITCH_PUBLISH=true" >> "$GITHUB_ENV"
+          else
+            echo "no BUTLER_API_KEY secret — skipping the itch.io push"
+          fi
+
+      # Pinned by commit SHA (v3.0.2, 2026-08-06) rather than the moving @v3
+      # tag: this action supplies the binary that is about to be handed our
+      # itch API key, so the version that runs should be one we chose. Bump it
+      # deliberately. It is deliberately not given BUTLER_API_KEY — it does not
+      # need one to install a CLI.
+      #
+      # Known sharp edge: the action maps an arm64 macOS runner straight to
+      # butler's `darwin-arm64` channel with no fallback, so if that channel
+      # ever goes missing the mac leg fails outright rather than degrading to
+      # the amd64 build. There is no arch input to override it.
+      - name: Set up butler
+        if: env.ITCH_PUBLISH == 'true'
+        uses: remarkablegames/setup-butler@f9feeb5d4334294e96686b81150fca5ebbff8255
+
       - name: Publish to itch.io
+        if: env.ITCH_PUBLISH == 'true'
         shell: bash
         working-directory: apps/desktop
         env:
@@ -132,43 +160,17 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -euo pipefail
-          if [ -z "${BUTLER_API_KEY:-}" ]; then
-            echo "no BUTLER_API_KEY secret — skipping the itch.io push"
-            exit 0
-          fi
-
-          # butler's own arm64 macOS channel is preferred; the amd64 build is
-          # the fallback for runner images without it (and for Rosetta).
           case "${{ matrix.os }}" in
-            macos-latest)   ARCHES="darwin-arm64 darwin-amd64"; PLATFORM=mac;   BUTLER=butler ;;
-            windows-latest) ARCHES="windows-amd64";             PLATFORM=win;   BUTLER=butler.exe ;;
-            *)              ARCHES="linux-amd64";               PLATFORM=linux; BUTLER=butler ;;
+            macos-latest)   PLATFORM=mac ;;
+            windows-latest) PLATFORM=win ;;
+            *)              PLATFORM=linux ;;
           esac
-
-          for ARCH in $ARCHES; do
-            if curl -fsSL -o butler.zip "https://broth.itch.zone/butler/$ARCH/LATEST/archive/default"; then
-              echo "fetched butler for $ARCH"
-              break
-            fi
-            echo "no butler build for $ARCH"
-          done
-          [ -f butler.zip ] || { echo "::error::could not download butler"; exit 1; }
-
-          # `unzip` is not on the Windows runner; 7z is. bsdtar cannot be the
-          # one code path either — GNU tar on Linux does not read zips.
-          if [ "$PLATFORM" = "win" ]; then
-            7z x -obutler-bin -y butler.zip >/dev/null
-          else
-            unzip -o -q butler.zip -d butler-bin
-          fi
-          chmod +x "butler-bin/$BUTLER"
-
           # Stages the .itch.toml manifest and prints what to push: the unpacked
           # build directory on macOS and Windows, the AppImage on Linux.
           PUSH_PATH="$(node electron/itch.mjs "$PLATFORM")"
           CHANNEL="$(node -e "import('./electron/itch.mjs').then((m) => process.stdout.write(m.CHANNELS['$PLATFORM']))")"
           echo "pushing $PUSH_PATH to $ITCH_TARGET:$CHANNEL as $VERSION"
-          "butler-bin/$BUTLER" push "$PUSH_PATH" "$ITCH_TARGET:$CHANNEL" --userversion "$VERSION"
+          butler push "$PUSH_PATH" "$ITCH_TARGET:$CHANNEL" --userversion "$VERSION"
 
       - uses: actions/upload-artifact@v4
         with:

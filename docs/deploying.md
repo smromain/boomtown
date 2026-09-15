@@ -92,13 +92,32 @@ your semver on the page instead of a build number.
 
 ### CI
 
-The `Publish to itch.io` step runs inside the **build** job, on each platform's
-own runner, rather than as a later job. That is deliberate: `upload-artifact`
-does not preserve the executable bit, so a `.app` or an AppImage that travelled
-through an artifact would not launch. The step no-ops unless `BUTLER_API_KEY` is
-set (itch.io → settings → API keys), the same way signing does; the itch target
-defaults to `smromain/boomtown` and is overridable with an `ITCH_TARGET` repo
-variable.
+The itch push runs inside the **build** job, on each platform's own runner,
+rather than as a later job. That is deliberate: `upload-artifact` does not
+preserve the executable bit, so a `.app` or an AppImage that travelled through
+an artifact would not launch.
+
+Three steps: `Configure itch.io publishing` sets `ITCH_PUBLISH` when a
+`BUTLER_API_KEY` secret exists (itch.io → settings → API keys) and skips the
+rest when it does not — via an env var, because a step's own `env:` block is not
+readable from its own `if:`. `Set up butler` installs the CLI. `Publish to
+itch.io` stages the manifest and pushes. The itch target defaults to
+`smromain/boomtown` and is overridable with an `ITCH_TARGET` repo variable.
+
+butler comes from **`remarkablegames/setup-butler`, pinned by commit SHA**
+(v3.0.2) rather than its moving `@v3` tag. It uses `@actions/tool-cache`, which
+downloads, extracts, caches and puts butler on `PATH` — and in particular
+extracts a zip correctly on all three runners, where a hand-rolled step needs
+`7z` on Windows (no `unzip`) and `unzip` elsewhere (GNU tar cannot read zips).
+The pin is the point: the action supplies the binary that is handed the itch API
+key moments later, so the version that runs should be one that was chosen rather
+than whatever the tag moved to. Bump it deliberately. The setup step is not
+given the key — it does not need one to install a CLI.
+
+One sharp edge to know: the action maps an arm64 macOS runner straight to
+butler's `darwin-arm64` channel with no fallback, and offers no arch input. If
+that channel is ever missing the mac leg fails outright rather than degrading to
+the amd64 build.
 
 ### Auto-update is off for itch builds
 
