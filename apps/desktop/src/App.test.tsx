@@ -9,8 +9,8 @@ describe('App shell', () => {
     expect(screen.getByRole('img', { name: 'Boomtown' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Local game' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Play online' })).toBeInTheDocument();
-    // the launch beat (U9): the menu carries the skyline illustration, not just a form
-    expect(container.querySelector('svg[role="presentation"]')).toBeTruthy();
+    // the launch beat (U9): the menu carries the town at night, not just a form
+    expect(container.querySelector('[class*="frame"][aria-hidden="true"]')).toBeTruthy();
   });
 
   it('goes to local setup on "Local game" and back to the menu on "Back"', async () => {
