@@ -5,6 +5,7 @@ import type { Seat } from '@boomtown/engine';
 import { GameRoom, type Outbound } from './game-room.js';
 import { roomLog, roomWarn } from './log.js';
 import { LIMITS, RoomGuards } from './limits.js';
+import { mintToken } from './tokens.js';
 import { LIFECYCLE, isIdle, lastActivity, purge, touch, type AlarmStore } from './lifecycle.js';
 import type { KeyValueStore } from './storage.js';
 
@@ -110,8 +111,11 @@ export default class BoomtownRoom implements Party.Server {
         const name = url.searchParams.get('name') ?? '';
         roomLog(this.room.id, 'reconnected a seat by token', { seat: bound.seat, connection: connection.id });
         this.seatByConnection.set(connection.id, bound.seat);
-        connection.setState({ seat: bound.seat, token, name });
-        this.sendTo(connection, { type: 'welcome', seat: bound.seat, token });
+        // The token rotated on use: persist and return the new one, never the
+        // one that was presented. Sending back the old token would keep a
+        // captured credential alive for the rest of the game.
+        connection.setState({ seat: bound.seat, token: bound.token, name });
+        this.sendTo(connection, { type: 'welcome', seat: bound.seat, token: bound.token });
         const view = this.game.currentUpdateFor(bound.seat);
         if (view) this.sendTo(connection, view);
         this.broadcastRoomState();
@@ -280,7 +284,7 @@ export default class BoomtownRoom implements Party.Server {
     // Blank rather than an invented default: `SeatTable` owns what a nameless
     // seat is called, so there is one rule instead of three edges guessing.
     const name = new URL(sender.uri).searchParams.get('name') ?? '';
-    const token = crypto.randomUUID();
+    const token = mintToken();
     const bound = this.game.join(name, token, sender.id);
     if (!bound) {
       roomWarn(this.room.id, 'join refused — room full', { connection: sender.id, name });

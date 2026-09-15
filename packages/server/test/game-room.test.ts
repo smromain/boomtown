@@ -77,7 +77,11 @@ describe('SeatTable', () => {
     const { seat } = table.join('Ana', 'tok-a', 'conn-1')!;
     table.disconnect('conn-1');
     expect(table.seatForConnection('conn-1')).toBeNull();
-    expect(table.reconnect('tok-a', 'conn-2')).toEqual({ seat });
+    // The reconnect also rotates the token (see `tokens.ts`), so the seat comes
+    // back with a fresh one rather than the one that was presented.
+    const back = table.reconnect('tok-a', 'conn-2');
+    expect(back?.seat).toBe(seat);
+    expect(back?.token).not.toBe('tok-a');
     expect(table.seatForConnection('conn-2')).toBe(seat);
   });
 

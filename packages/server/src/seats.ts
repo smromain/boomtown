@@ -1,5 +1,6 @@
 import { PRESETS, RULES, type SetupOptions } from '@boomtown/engine';
 import type { RoomConfig, SeatSlot } from '@boomtown/protocol';
+import { mintToken, tokensMatch } from './tokens.js';
 
 /**
  * Lobby seat bookkeeping for one room. Pure and synchronous — the PartyKit
@@ -111,17 +112,27 @@ export class SeatTable {
   }
 
   /**
-   * Re-bind a reconnecting human by token. Returns the seat, or `null` when
-   * the token matches no seat in this room.
+   * Re-bind a reconnecting human by token, rotating the token as it goes.
+   * Returns the seat and the *new* token to hand back, or `null` when the
+   * token matches no seat in this room.
+   *
+   * Every occupant is compared even after a match, so the time this takes does
+   * not depend on which seat the token belongs to — a loop that returned early
+   * would leak seat order to anyone who could time it.
    */
-  reconnect(token: string, connectionId: string): { seat: number } | null {
+  reconnect(token: string, connectionId: string): { seat: number; token: string } | null {
+    let found: { seat: number; occupant: SeatOccupant } | null = null;
     for (const [seat, occupant] of this.humans) {
-      if (occupant.token === token) {
-        occupant.connectionId = connectionId;
-        return { seat };
-      }
+      if (tokensMatch(occupant.token, token)) found = { seat, occupant };
     }
-    return null;
+    if (!found) return null;
+    const rotated = mintToken();
+    this.humans.set(found.seat, {
+      token: rotated,
+      name: found.occupant.name,
+      connectionId,
+    });
+    return { seat: found.seat, token: rotated };
   }
 
   /** Mark a human's seat disconnected (keeps the seat reserved by token). */
@@ -139,10 +150,11 @@ export class SeatTable {
   }
 
   seatForToken(token: string): number | null {
+    let found: number | null = null;
     for (const [seat, occupant] of this.humans) {
-      if (occupant.token === token) return seat;
+      if (tokensMatch(occupant.token, token)) found = seat;
     }
-    return null;
+    return found;
   }
 
   isBot(seat: number): boolean {

@@ -163,8 +163,13 @@ export class GameRoom {
     return this.seats.join(name, token, connectionId);
   }
 
-  /** A reconnecting client re-binds its seat by token, or `null` if unknown. */
-  reconnect(token: string, connectionId: string): { seat: Seat } | null {
+  /**
+   * A reconnecting client re-binds its seat by token, or `null` if unknown.
+   * The returned token is a *fresh* one: the presented token is invalidated by
+   * the act of using it, so a captured token buys one reconnect and no more.
+   * The caller must send it back and persist it in place of the old one.
+   */
+  reconnect(token: string, connectionId: string): { seat: Seat; token: string } | null {
     return this.seats.reconnect(token, connectionId);
   }
 
