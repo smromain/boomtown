@@ -12,7 +12,7 @@ import type { PreviewKind } from './beats/debug/fixtures.js';
 import { configFromRoom, type OnlineGame } from './online/onlineGame.js';
 import { Cog6ToothIcon, GlobeAltIcon, UsersIcon } from '@heroicons/react/24/solid';
 import { copy } from './copy/copy.js';
-import { Skyline } from './art/Skyline.js';
+import { DriftingSkyline } from './art/DriftingSkyline.js';
 import logoUrl from './assets/boomtown-logo.png';
 import styles from './lobby/lobby.module.css';
 
@@ -79,7 +79,7 @@ export function App() {
       case 'menu':
         return (
           <section className={styles.launch} aria-label={copy.menu.label}>
-            <Skyline tone="chrome" className={styles.launchArt} />
+            <DriftingSkyline tone="chrome" className={styles.launchArt} />
             <div className={styles.launchContent}>
               <img src={logoUrl} alt={copy.app.name} className={styles.logo} />
               <p className={styles.launchTagline}>{copy.app.tagline}</p>
