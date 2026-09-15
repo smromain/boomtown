@@ -213,5 +213,6 @@ Both are deliberate, and both are worth revisiting rather than forgetting:
   to be true first live in *Alternative Approaches Considered* in
   `docs/plans/2026-09-14-feat-web-deployment-plan.md`. Short version: it only
   reaches players launching through the itch app, it retires almost none of that
-  plan's controls, and while the game is free "owns a copy" collapses into "has
-  a free account".
+  plan's controls, and under pay-what-you-want "owns a copy" collapses into "has
+  a free account" — while checking for an actual payment would shut out the
+  players pay-what-you-want exists to welcome.
