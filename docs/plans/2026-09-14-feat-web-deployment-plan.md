@@ -169,6 +169,7 @@ So the work is not "port the game to the web". It is three other things.
 - Spectating, replays from the command log, and a shareable end-of-game summary.
 - Offline installability (a service worker / PWA). Attractive, and deliberately after the security posture is settled, because a service worker is persistent executable code on the origin.
 - Any form of matchmaking, lobby browser, or public room list.
+- **itch.io account identity as a trust signal on host admission** — deferred with a named revisit trigger; see *Alternative Approaches Considered* for the shape it would take and what would have to be true first.
 
 #### Outside this product's identity
 
@@ -591,4 +592,17 @@ New: `apps/desktop/src/web/` (entry, router, small-screen gate), `apps/desktop/b
 - **Accounts, even lightweight ones.** Would give durable identity, stable reconnection and a basis for blocking. Rejected: it introduces credential storage, recovery flows, and personal data retention into a project whose entire privacy claim is that it holds none of those. Rotating per-tab capabilities give the reconnection benefit with none of the obligation.
 - **A small API server in front of the room** for brokering, admission and limits. Familiar shape, easy to reason about. Rejected: it is a service to run, patch and pay for, and it duplicates authority that the room already holds — the room is the only component that can enforce these rules atomically with the game state.
 - **A service worker for offline play from day one.** Very attractive for a game that works offline anyway. Deferred deliberately: a service worker is long-lived executable code on the origin with its own update semantics, and it should be added after the security posture is settled, not alongside it.
+- **itch.io account identity, as a gate on online play.** The itch app can pass a game an `ITCHIO_API_KEY` when a manifest action requests `profile:me` scope, and the room could verify it against itch's API to learn which itch.io account is playing and whether it owns a copy. itch names this project's exact problem as the use case: restricting online play to legitimate owners. **Deferred, with a revisit trigger** (below) rather than rejected, because it is the one identity mechanism available that costs the player nothing and asks this project to store nothing.
+
+  Deferred now for four reasons, in order of weight:
+
+  1. **It retires almost none of this plan.** Authentication is not input validation (R16), not a rate limit (R17), not a room ceiling or an expiry (R18), not a seat-resume token (R14, R15), and not an unguessable room address (R10). It touches one row of the threat model — who may take a seat — and even there it supplies accountability rather than authorisation: knowing who is knocking is not deciding whether they sit down. Host admission (R12) is still the control.
+  2. **Its coverage is one distribution channel.** The key reaches only a build launched *through the itch app*. It does not reach the web build, a direct download from the itch page, the GitHub Releases installers, or a dev build. A room that required it would lock out every path but one — and gating the room on it would mean the web build could not play with the desktop build, forking the player base by distribution channel. That inverts the point of shipping a web build at all.
+  3. **It works against the privacy posture.** Verifying an identity means handling an itch.io account identifier, which is personal data this project currently holds none of (R20, R22, R23), and the README's standing no-account, no-telemetry claim gets meaningfully harder to keep literally true.
+  4. **While the game is free, the check is weak.** "Owns a copy" is only as strong as the purchase behind it. For a free game it collapses into "has an itch.io account", which is free and instant, so it buys near-zero resistance to someone minting identities. Any price at all changes this sharply — every abusive identity then costs money. This is a pricing decision quietly determining a security property, and it should be recognised as one.
+
+  **The shape it would take if revisited:** an optional signal *on* host admission, never a gate in front of it. The host sees a knock and decides, as they do now; the knock simply carries more when it can — "itch.io user `steve`, owns this game" instead of "someone calling themselves Steve" — and reads as unverified for web and direct-download players. That degrades cleanly, breaks nothing, and leaves every other control in this plan exactly as it is.
+
+  **Revisit when:** the game has enough players that anonymous abuse is actually observed rather than anticipated, *and* either it is paid or an unverified knock has become a nuisance the host would like help judging. Absent both, this is cost without a problem.
+
 - **Analytics "just to see if anyone plays".** Rejected: it would falsify the README's standing claim, and the question it answers is not worth what it costs. If reach ever needs measuring, the platform's own aggregate request counts are already there and need no code.
