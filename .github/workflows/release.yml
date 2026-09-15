@@ -153,15 +153,23 @@ jobs:
       # The push is skipped without a BUTLER_API_KEY, the same way signing is —
       # and via an env var written here, because a step's own `env:` block is
       # not readable from its own `if:`.
+      # ITCH_TARGET has no default on purpose. A publish step that guesses an
+      # account name is one that can aim at the wrong project, and the guess
+      # stays invisible until it fails — or until it doesn't. Set the repo
+      # variable, or the push simply does not happen.
       - name: Configure itch.io publishing
         shell: bash
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          ITCH_TARGET: ${{ vars.ITCH_TARGET }}
         run: |
-          if [ -n "${BUTLER_API_KEY:-}" ]; then
-            echo "ITCH_PUBLISH=true" >> "$GITHUB_ENV"
-          else
+          if [ -z "${BUTLER_API_KEY:-}" ]; then
             echo "no BUTLER_API_KEY secret — skipping the itch.io push"
+          elif [ -z "${ITCH_TARGET:-}" ]; then
+            echo "::warning::BUTLER_API_KEY is set but ITCH_TARGET is not — skipping the itch.io push"
+            echo "Set the ITCH_TARGET repo variable to your itch user and project, e.g. yourname/boomtown"
+          else
+            echo "ITCH_PUBLISH=true" >> "$GITHUB_ENV"
           fi
 
       # Pinned by commit SHA (v3.0.2, 2026-08-06) rather than the moving @v3
@@ -184,7 +192,7 @@ jobs:
         working-directory: apps/desktop
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-          ITCH_TARGET: ${{ vars.ITCH_TARGET || 'smromain/boomtown' }}
+          ITCH_TARGET: ${{ vars.ITCH_TARGET }}
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -euo pipefail

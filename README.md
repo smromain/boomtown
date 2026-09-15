@@ -382,7 +382,7 @@ out:
 | `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD` | Windows build is unsigned — SmartScreen warns |
 | `BUTLER_API_KEY` | itch.io push is skipped; the GitHub Release is still published |
 | `PARTYKIT_LOGIN` **and** `PARTYKIT_TOKEN` | `deploy-party` goes red and the room keeps running its previous code; the installers still publish. Both are needed — with only one, the CLI silently falls back to an interactive login and hangs until the job times out |
-| `ITCH_TARGET` (variable) | Defaults to `smromain/boomtown` |
+| `ITCH_TARGET` (variable) | itch.io push is skipped — there is no default, because a publish step must never guess an account name. Set it to `<your itch user>/<project>` |
 
 Set them at **Settings → Secrets and variables → Actions**.
 

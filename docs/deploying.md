@@ -162,7 +162,7 @@ cd apps/desktop
 npm run package
 npm run itch:stage -- mac        # stages the manifest, prints the path to push
 butler validate  "$(npm run --silent itch:stage -- mac)"
-butler push      "$(npm run --silent itch:stage -- mac)" smromain/boomtown:osx --userversion 1.0.0
+butler push      "$(npm run --silent itch:stage -- mac)" <your-itch-user>/boomtown:osx --userversion 2026.9.1
 ```
 
 Channel names carry the platform tag, so they are the plain keywords — `osx`,
@@ -187,8 +187,14 @@ Three steps: `Configure itch.io publishing` sets `ITCH_PUBLISH` when a
 `BUTLER_API_KEY` secret exists (itch.io → settings → API keys) and skips the
 rest when it does not — via an env var, because a step's own `env:` block is not
 readable from its own `if:`. `Set up butler` installs the CLI. `Publish to
-itch.io` stages the manifest, validates, and pushes. The itch target defaults to
-`smromain/boomtown` and is overridable with an `ITCH_TARGET` repo variable.
+itch.io` stages the manifest, validates, and pushes.
+
+**The itch target has no default.** It comes from an `ITCH_TARGET` repo variable
+holding `<your itch user>/<project>`, and without it the push is skipped with a
+warning rather than attempted. A publish step that guesses an account name can
+aim at the wrong project, and the guess stays invisible until it fails — the
+itch username is not necessarily the GitHub one, which is exactly the assumption
+that made this a default in the first place.
 
 butler comes from **`remarkablegames/setup-butler`, pinned by commit SHA**
 (v3.0.2) rather than its moving `@v3` tag. It uses `@actions/tool-cache`, which
