@@ -112,8 +112,14 @@ function PlayArea({
 }) {
   const over = useGameState((state) => state.status === 'over');
   const localTurn = useIsLocalTurn();
+  // The end screen names the winner, so it waits for the victory beat to have
+  // announced them — `over` alone put the standings on screen a second before
+  // the curtain dropped. Until then the board stays up, finished but unspoiled;
+  // the hand goes either way, because the game really has ended.
+  const { resultHeld } = useActiveBeat();
 
-  const centre = over ? <GameOver onLeave={onExit} /> : <Board spectating={!localTurn} />;
+  const centre =
+    over && !resultHeld ? <GameOver onLeave={onExit} /> : <Board spectating={!localTurn} />;
 
   return (
     <div className={styles.screen}>
