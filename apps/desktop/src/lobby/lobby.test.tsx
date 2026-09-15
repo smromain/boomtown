@@ -16,6 +16,11 @@ vi.mock('../online/hostUrl.js', async (importActual) => {
   return { ...actual, resolveTicket: vi.fn() };
 });
 
+vi.mock('../ui/clipboard.js', async (importActual) => {
+  const actual = await importActual<typeof import('../ui/clipboard.js')>();
+  return { ...actual, copyText: vi.fn(actual.copyText) };
+});
+
 vi.mock('../online/onlineGame.js', async (importActual) => {
   const actual = await importActual<typeof import('../online/onlineGame.js')>();
   return {
@@ -465,6 +470,22 @@ describe('SeatList', () => {
     // sees in the chat window, and `normaliseTicket` takes the dash back out.
     expect(await navigator.clipboard.readText()).toBe('ABCD-1234');
     expect(screen.getByRole('button', { name: 'Copy the code' })).toHaveTextContent('Copied');
+  });
+
+  it('does not claim a copy the shell refused', async () => {
+    const user = userEvent.setup();
+    const { copyText } = await import('../ui/clipboard.js');
+    vi.mocked(copyText).mockResolvedValueOnce(false);
+    const { game, emitRoomState } = fakeGame();
+    render(<SeatList game={game} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+    emitRoomState(lobbyState({ ticket: 'ABCD1234' }));
+
+    await user.click(screen.getByRole('button', { name: 'Copy the code' }));
+    // The code is still on screen and still selectable, so there is nothing to
+    // announce — but saying "Copied" when nothing was copied is a lie the
+    // player only finds out about in the paste.
+    expect(screen.getByRole('button', { name: 'Copy the code' })).toHaveTextContent('Copy');
+    expect(screen.getByRole('button', { name: 'Copy the code' })).not.toHaveTextContent('Copied');
   });
 
   it('offers nothing to copy once the code has expired', () => {

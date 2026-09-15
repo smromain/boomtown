@@ -5,6 +5,7 @@ import type { RoomState } from '@boomtown/protocol';
 import type { OnlineGame } from '../online/onlineGame.js';
 import { useConnectionStatus, useLobbyError } from './useConnectionStatus.js';
 import { Button } from '../ui/Button.js';
+import { copyText } from '../ui/clipboard.js';
 import { copy } from '../copy/copy.js';
 import form from '../setup/form.module.css';
 import styles from './lobby.module.css';
@@ -51,14 +52,14 @@ export function SeatList({
   // back out anyway.
   const [copied, setCopied] = useState(false);
   const copyCode = async (ticket: string) => {
-    try {
-      await navigator.clipboard.writeText(formatTicket(ticket));
+    if (await copyText(formatTicket(ticket))) {
       setCopied(true);
-    } catch (error) {
-      // A clipboard the browser or the packaged shell refuses is not worth an
-      // error banner: the code is on screen, and selecting it still works.
-      netlog.log('lobby', 'warn', 'could not copy the room code', { error: String(error) });
+      return;
     }
+    // A clipboard the shell refuses is not worth an error banner: the code is
+    // on screen, and selecting it and pressing Cmd/Ctrl+C still works — the
+    // app menu carries the edit roles so that those keys do something.
+    netlog.log('lobby', 'warn', 'could not copy the room code');
   };
   // The confirmation is a label change, so it has to go back on its own.
   useEffect(() => {
