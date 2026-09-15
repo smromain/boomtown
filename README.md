@@ -336,7 +336,10 @@ cd apps/desktop && npm run package    # electron-vite build + electron-builder
 generated from the logo by `python3 design/make_icon.py`). An `afterPack` hook flips the Electron
 **fuses** on the packed binary — no `run-as-node`, ASAR integrity on, load only from ASAR.
 
-Releases are cut by pushing a `vX.Y.Z` tag (or running the **Release** workflow with a version).
+Releases are cut by running the **Release** workflow (leave the version blank and the next one
+is worked out for you), or by pushing a `v<version>` tag. Versions are CalVer — `YYYY.M.N`,
+where `N` counts releases within that month — because the game ships when it ships rather than
+in stable/breaking increments. See `docs/deploying.md`.
 That builds installers on all three OSes, publishes a GitHub Release, and deploys the PartyKit room
 from the same commit. Signing credentials come from repository secrets; without them the workflow
 still produces unsigned artifacts. Full detail — including the deployed room and the baked online

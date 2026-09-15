@@ -1,14 +1,15 @@
 name: Release
 
 on:
-  # Manual: Actions tab -> Release -> Run workflow, enter a version like 1.0.0.
+  # Manual: Actions tab -> Release -> Run workflow. Leave the version blank and
+  # the next one is worked out for you; fill it in only to force a value.
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version, no leading v (e.g. 1.0.0)'
-        required: true
+        description: 'Release version (blank = next CalVer, e.g. 2026.9.3)'
+        required: false
         type: string
-  # Or push a tag: git tag v1.0.0 && git push origin v1.0.0
+  # Or push a tag: git tag v2026.9.3 && git push origin v2026.9.3
   push:
     tags:
       - 'v*'
@@ -22,31 +23,51 @@ jobs:
       version: ${{ steps.resolve.outputs.version }}
       tag: ${{ steps.resolve.outputs.tag }}
     steps:
+      # Full history with tags: resolving the next CalVer means knowing which
+      # releases this month already exist.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Versions are CalVer, YYYY.M.N — see docs/deploying.md for why. N counts
+      # releases within that month, not the day of the month, so two releases
+      # on one day need no special case.
       - id: resolve
+        env:
+          REQUESTED: ${{ inputs.version }}
         run: |
-          if [ -n "${{ inputs.version }}" ]; then
-            V="${{ inputs.version }}"
-          else
+          set -euo pipefail
+          if [ -n "${REQUESTED:-}" ]; then
+            V="$REQUESTED"
+          elif [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
             V="${GITHUB_REF_NAME#v}"
+          else
+            Y="$(date -u +%Y)"
+            M="$(date -u +%-m)"   # no leading zero: 2026.09.1 is not valid semver
+            LAST="$(git tag -l "v$Y.$M.*" | sed "s|^v$Y\.$M\.||" | grep -E '^[0-9]+$' | sort -n | tail -1 || true)"
+            V="$Y.$M.$(( ${LAST:-0} + 1 ))"
+            echo "no version given — next release this month is $V"
           fi
-          # semver guard: X.Y.Z with an optional -prerelease suffix
-          echo "$V" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$' || {
-            echo "::error::version '$V' is not semver (X.Y.Z)"; exit 1;
+
+          # The shape guard. Leading zeros are rejected on purpose: electron-builder
+          # and electron-updater parse this as semver, and "2026.09.1" is not valid
+          # semver, so it would fail at packaging time instead of here.
+          echo "$V" | grep -Eq '^[0-9]{4}\.(1[0-2]|[1-9])\.[1-9][0-9]*$' || {
+            echo "::error::version '$V' is not CalVer YYYY.M.N (no leading zeros, N starts at 1)"; exit 1;
           }
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "tag=v$V" >> "$GITHUB_OUTPUT"
 
       # A manual dispatch has no tag yet — create one at this commit so the
       # release and PartyKit deploy hang off a real ref. A tag-push run skips this.
-      - if: inputs.version != ''
-        uses: actions/checkout@v4
-      - if: inputs.version != ''
+      - if: ${{ github.ref_type != 'tag' }}
         run: |
-          if git ls-remote --exit-code --tags origin "refs/tags/v${{ inputs.version }}" >/dev/null 2>&1; then
-            echo "::error::tag v${{ inputs.version }} already exists"; exit 1
+          TAG="${{ steps.resolve.outputs.tag }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::tag $TAG already exists"; exit 1
           fi
-          git tag "v${{ inputs.version }}"
-          git push origin "v${{ inputs.version }}"
+          git tag "$TAG"
+          git push origin "$TAG"
 
   build:
     needs: prepare
@@ -69,8 +90,9 @@ jobs:
       - run: npm test
 
       # Stamp the release version into the app manifest for this build only —
-      # drives the installer filename and app.getVersion(). Not committed; the
-      # repo's package.json is bumped by hand between releases.
+      # drives the installer filename and app.getVersion(). Not committed: with
+      # CalVer resolved at release time there is nothing to bump by hand, so the
+      # repo's package.json stays at its placeholder 0.0.0 for good.
       - name: Set app version to ${{ needs.prepare.outputs.version }}
         run: npm version --no-git-tag-version "${{ needs.prepare.outputs.version }}"
         working-directory: apps/desktop

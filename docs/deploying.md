@@ -50,6 +50,58 @@ to reading `~/.config/partykit`, which doesn't exist in CI, and dies with
 
 Set both at GitHub → repo Settings → Secrets and variables → Actions.
 
+## Versioning
+
+Two version numbers exist here and they are not the same thing. Conflating them
+is the mistake this section exists to prevent.
+
+### The app: CalVer, `YYYY.M.N`
+
+`2026.9.1` is the first release in September 2026, `2026.9.2` the second, and
+`2026.10.1` the first in October. **`N` counts releases within the month, not
+the day of the month** — so two releases on one day need no special case, and a
+quiet month simply has fewer numbers.
+
+Semver was the wrong shape for this project. Semver's whole job is to promise
+something about compatibility — patch is safe, minor adds, major breaks — and
+those promises are addressed to somebody integrating against a published API.
+Boomtown has no API consumers. It has players, who get a rolling stream of
+releases on a storefront, and for them the only useful question a version
+answers is "how fresh is mine?". A date answers that. `1.4.2` does not, and
+pretending otherwise means an argument about whether a bug fix plus a new sound
+effect is a minor or a patch — an argument with no correct answer and no
+audience.
+
+**Leading zeros are forbidden, which is why the month is `9` and not `09`.**
+electron-builder and electron-updater parse this string as semver, and
+`2026.09.1` is not valid semver — a numeric identifier may not have a leading
+zero. `2026.9.1` is both a valid semver and a date, which is what makes this
+work at all rather than being a fight with the packaging tools. Ordering behaves
+too: `2026.9.2` < `2026.10.1` < `2027.1.1`, because those are ordinary numeric
+comparisons on major/minor/patch.
+
+The `prepare` job resolves the version. Leave the workflow's version input blank
+and it finds the highest `vYYYY.M.*` tag for the current month and adds one;
+fill it in to force a value; a tag push uses the tag. A shape guard rejects
+anything that is not `YYYY.M.N`, so a leading zero fails in `prepare` in seconds
+rather than at packaging time twenty minutes later.
+
+`apps/desktop/package.json` stays at its placeholder `0.0.0` permanently. The
+release version is stamped into the manifest for the build only and never
+committed, so there is no version to bump by hand and no chance of the repo and
+the release disagreeing.
+
+### The protocol: a plain integer
+
+`PROTOCOL_VERSION` in `packages/protocol/src/version.ts` is a compatibility
+contract between a client and a room, and it moves **only** when the wire
+contract breaks — not on a release. Most releases leave it exactly where it is.
+
+Tying it to the app version would force a protocol break on every release, which
+would mean every desktop build older than an hour could no longer reach a room.
+The two answer different questions: the app version tells a player how fresh
+their build is, and the protocol version tells a room whether it can talk to it.
+
 ## itch.io
 
 The same `npm run package` output, pushed with butler. What differs from the
