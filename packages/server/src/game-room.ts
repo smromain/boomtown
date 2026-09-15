@@ -135,8 +135,15 @@ export class GameRoom {
   /** Bot updates produced during a wake, handed to the adapter to dispatch once. */
   pendingWakeUpdates: Outbound[] = [];
 
+  /**
+   * The ticket this room is currently shareable by, or null once it expired or
+   * was retired. Set by the adapter after the directory accepts a claim; not
+   * persisted, because a ticket outlives neither its TTL nor the lobby.
+   */
+  ticket: string | null = null;
+
   roomState(): RoomState {
-    return this.seats.snapshot(this.code, this.phase);
+    return this.seats.snapshot(this.ticket, this.phase);
   }
 
   isPlaying(): boolean {
@@ -212,7 +219,7 @@ export class GameRoom {
     }
     if (!this.seats.allSeatsFilled()) {
       roomWarn(this.code, 'start refused — seats are not all filled', {
-        seats: this.seats.snapshot(this.code, this.phase).seats.map((s) => `${s.index}:${s.kind}`),
+        seats: this.seats.snapshot(this.ticket, this.phase).seats.map((s) => `${s.index}:${s.kind}`),
       });
       return { error: protocolError('game-not-started', 'seats are not all filled') };
     }

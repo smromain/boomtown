@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatTicket } from '@boomtown/protocol';
 import { netlog } from '@boomtown/client-core';
 import type { RoomState } from '@boomtown/protocol';
 import type { OnlineGame } from '../online/onlineGame.js';
@@ -51,7 +52,7 @@ export function SeatList({
 
   useEffect(() => {
     netlog.log('lobby', 'note', 'lobby render', {
-      roomCode: game.roomCode,
+      ticket: roomState?.ticket ?? null,
       isHost: game.isHost,
       status,
       seatCount: seats.length,
@@ -59,7 +60,7 @@ export function SeatList({
       mySeat,
       lobbyError: lobbyError?.code ?? null,
     });
-  }, [game, status, seats.length, filled, mySeat, lobbyError]);
+  }, [game, status, seats.length, filled, mySeat, lobbyError, roomState?.ticket]);
 
   return (
     <div className={form.viewport}>
@@ -70,8 +71,12 @@ export function SeatList({
             <h1 className={form.title}>{copy.lobby.title}</h1>
             <p className={form.lede}>{copy.lobby.lede}</p>
           </div>
+          {/* The shareable ticket, not the room's address — the address is 32
+              characters of entropy nobody reads out, and it is already in the
+              URL this client connected to. A retired or expired ticket shows
+              as nothing rather than as a code that no longer works. */}
           <span className={styles.code} aria-label={copy.lobby.roomCode}>
-            {game.roomCode}
+            {roomState?.ticket ? formatTicket(roomState.ticket) : copy.lobby.ticketExpired}
           </span>
         </header>
 

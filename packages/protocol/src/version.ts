@@ -11,4 +11,4 @@
  * or room could not parse. The client sends it in `hello`; the room rejects a
  * mismatch with a `wrong-version` error (KTD6, R12).
  */
-export const PROTOCOL_VERSION = '1';
+export const PROTOCOL_VERSION = '2';

@@ -1,6 +1,6 @@
 import type * as Party from 'partykit/server';
 import type { RoomMessage } from '@boomtown/protocol';
-import { PROTOCOL_VERSION, parseClientMessage, protocolError } from '@boomtown/protocol';
+import { PROTOCOL_VERSION, isRoomAddress, mintTicket, parseClientMessage, protocolError } from '@boomtown/protocol';
 import type { Seat } from '@boomtown/engine';
 import { GameRoom, type Outbound } from './game-room.js';
 import { roomLog, roomWarn } from './log.js';
@@ -192,8 +192,21 @@ export default class BoomtownRoom implements Party.Server {
           this.sendTo(sender, { type: 'error', error: protocolError('game-not-started', 'room already exists') });
           return;
         }
+        // A room is addressed by 160 bits of entropy the creator minted, not by
+        // anything a person typed. Refusing anything else is what stops a room
+        // being created at a guessable id and then waited at.
+        if (!isRoomAddress(this.room.id)) {
+          roomWarn(this.room.id, 'create-room refused — not a room address');
+          this.sendTo(sender, {
+            type: 'error',
+            error: protocolError('not-in-room', 'rooms are addressed by a generated id'),
+          });
+          sender.close();
+          return;
+        }
         this.game = new GameRoom(this.room.id, message.config, this.room.storage as unknown as KeyValueStore);
         await this.game.persistConfig();
+        this.game.ticket = await this.claimTicket();
         this.joinSender(sender);
         return;
       }
@@ -296,6 +309,9 @@ export default class BoomtownRoom implements Party.Server {
     sender.setState({ seat: bound.seat, token, name });
     roomLog(this.room.id, 'seated a player', { seat: bound.seat, name, connection: sender.id });
     this.sendTo(sender, { type: 'welcome', seat: bound.seat, token });
+    // A ticket that has done its job stops being a way in at all, rather than
+    // idling until its TTL. Nobody else can be seated here anyway.
+    if (this.game.seats.allSeatsFilled()) void this.retireTicket();
     this.broadcastRoomState();
   }
 
@@ -342,6 +358,47 @@ export default class BoomtownRoom implements Party.Server {
 
   private async touchRoom(): Promise<void> {
     await touch(this.room.storage as unknown as KeyValueStore, this.alarms(), Date.now());
+  }
+
+  /**
+   * Ask the directory for a ticket pointing at this room. Retries on the
+   * vanishingly unlikely collision with a live ticket; gives up quietly rather
+   * than failing room creation, because a room with no ticket is still
+   * perfectly playable by anyone holding its address.
+   */
+  private async claimTicket(): Promise<string | null> {
+    const directory = this.room.context.parties['directory'];
+    if (!directory) return null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const ticket = mintTicket();
+      try {
+        const response = await directory.get(ticket).fetch({
+          method: 'POST',
+          body: JSON.stringify({ address: this.room.id }),
+        });
+        if (response.ok) {
+          roomLog(this.room.id, 'claimed a ticket', { attempt: attempt + 1 });
+          return ticket;
+        }
+      } catch (error) {
+        roomWarn(this.room.id, 'ticket claim failed', { error: String(error) });
+        return null;
+      }
+    }
+    roomWarn(this.room.id, 'could not claim a ticket in three attempts');
+    return null;
+  }
+
+  private async retireTicket(): Promise<void> {
+    const ticket = this.game?.ticket;
+    if (!ticket) return;
+    if (this.game) this.game.ticket = null;
+    try {
+      await this.room.context.parties['directory']?.get(ticket).fetch({ method: 'DELETE' });
+      roomLog(this.room.id, 'retired the ticket — every seat is taken');
+    } catch (error) {
+      roomWarn(this.room.id, 'ticket retire failed', { error: String(error) });
+    }
   }
 
   private sendTo(connection: Party.Connection, message: RoomMessage): void {

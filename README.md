@@ -193,7 +193,7 @@ the rack or on the board to place it; merger decisions surface as a modal. With 
 seat, an opaque hand‑off card covers the screen between turns so nobody sees the next player's
 tiles.
 
-**Online.** "Play online" creates a room (a six‑character code to share) or joins one by code. Seats
+**Online.** "Play online" creates a room and shows an eight‑character code to share, or joins one by code. Seats
 fill as people arrive; bot seats are filled by the room itself. The room is authoritative — it deals,
 validates every command, plays the bots, and sends each client only its own filtered view.
 
@@ -525,10 +525,26 @@ refused at the door, so a stale client can't half‑parse a newer room.
 
 ### Online identity is a per‑seat token, not an account
 
-Creating or joining a room mints a session token; reconnection presents it in the query string and
-the room re‑binds that seat. No password, no email, no persistence beyond the active game. A seat
-stays reserved by its token while its player is away, so a dropped connection is a pause, not a
-forfeit.
+Creating or joining a room mints a 256‑bit session token; reconnection presents it in the query
+string and the room re‑binds that seat. No password, no email, no persistence beyond the active
+game. A seat stays reserved by its token while its player is away, so a dropped connection is a
+pause, not a forfeit. The token is compared in constant time and **rotates on every resume**, so a
+captured one is worth a single reconnect rather than the rest of the game.
+
+### A room's address is not the code you read out
+
+These are two things, and they used to be one. A room is addressed by **160 bits** the creator
+mints — never spoken, never shown — and that is what the socket connects to. The **eight‑character
+code** a player shares is a separate, *expiring* ticket: the room claims it from a directory party,
+it resolves to the address for about fifteen minutes, and it is retired the moment the last seat
+fills.
+
+Collapsing the two is what made the old scheme weak. When the room *was* its code, the address space
+was however large a code a person can say out loud — around a billion, which is unguessable among
+friends and enumerable from a public endpoint. Splitting them means the thing that must be
+unguessable is 160 bits, and the thing a person says is short because it only has to survive a few
+minutes. An unissued, expired and retired ticket all answer identically, so sweeping the space
+learns nothing from the shape of a miss.
 
 ### Build order: engine first, offline before any server
 

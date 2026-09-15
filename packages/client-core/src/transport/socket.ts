@@ -380,7 +380,7 @@ function summariseRoom(message: RoomMessage): Record<string, unknown> {
     case 'room-state':
       return {
         phase: message.state.phase,
-        code: message.state.code,
+        ticket: message.state.ticket,
         seats: message.state.seats.map((s) => `${s.index}:${s.kind}${s.connected ? '' : ' (off)'}`),
       };
     case 'update':

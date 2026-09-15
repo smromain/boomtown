@@ -1,4 +1,5 @@
 import { loadSettings } from '../settings/settings.js';
+import { isRoomAddress } from '@boomtown/protocol';
 import { copy } from '../copy/copy.js';
 
 /**
@@ -26,12 +27,25 @@ export function partykitHost(): string {
   return 'localhost:1999';
 }
 
-/** A short, shareable room code. */
-export function makeRoomCode(): string {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous 0/O, 1/I
-  let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += alphabet[Math.floor(Math.random() * alphabet.length)];
+/**
+ * Resolve a shared ticket to the room address it stands for.
+ *
+ * Tickets are minted by the room and live in the directory party for a few
+ * minutes (`packages/server/src/directory.ts`); an unissued, expired and
+ * retired ticket are all the same 404, so this returns null for all three
+ * rather than reporting which — there is nothing useful to tell a player apart
+ * from "that code is not working", and anything more precise is a hint to
+ * somebody sweeping the space.
+ */
+export async function resolveTicket(ticket: string): Promise<string | null> {
+  const host = partykitHost();
+  const scheme = host.startsWith('localhost') || host.startsWith('127.') ? 'http' : 'https';
+  try {
+    const response = await fetch(`${scheme}://${host}/parties/directory/${ticket}`);
+    if (!response.ok) return null;
+    const body = (await response.json()) as { address?: unknown };
+    return typeof body.address === 'string' && isRoomAddress(body.address) ? body.address : null;
+  } catch {
+    return null;
   }
-  return code;
 }

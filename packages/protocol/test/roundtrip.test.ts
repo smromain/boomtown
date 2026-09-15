@@ -52,7 +52,7 @@ describe('message round-trips', () => {
     {
       type: 'room-state',
       state: {
-        code: 'ABCD12',
+        ticket: 'ABCD12',
         phase: 'lobby',
         config: { seatCount: 3, edition: 'edition-2015', visibility: 'hidden', bots: {} },
         seats: [

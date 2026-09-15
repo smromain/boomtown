@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ClientMessage, RoomMessage } from '@boomtown/protocol';
 import { PROTOCOL_VERSION } from '@boomtown/protocol';
+import { TICKET_LENGTH, isTicket, mintRoomAddress, mintTicket } from '@boomtown/protocol';
 
 const HOST = '127.0.0.1:1999';
 
@@ -84,7 +85,9 @@ function client(room: string, params?: Record<string, string>): TestClient {
   return c;
 }
 
-const uniqueRoom = () => `it-${Math.random().toString(36).slice(2, 8)}`;
+// Rooms are addressed by 160 bits, not by a name anyone can pick — the room
+// refuses `create-room` at any other id, so a test has to mint a real one.
+const uniqueRoom = () => mintRoomAddress();
 
 describe('PartyKit room — end to end', () => {
   it('creates a room, joins two more seats, starts, and each client gets its own view', async () => {
@@ -171,6 +174,67 @@ describe('PartyKit room — end to end', () => {
     expect(view.view.status).toBe('over');
     expect(view.view.result?.rankings).toHaveLength(3);
   }, 25_000);
+
+  it('mints a ticket that resolves to the room address, and retires it when the room fills', async () => {
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    // One open human seat, so the room does not fill the instant it is created.
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 2: 6 }, seed: 11 },
+    });
+    await host.next('welcome');
+    const lobby = (await host.next('room-state')) as Extract<RoomMessage, { type: 'room-state' }>;
+
+    const ticket = lobby.state.ticket;
+    expect(ticket).not.toBeNull();
+    expect(isTicket(ticket!)).toBe(true);
+    // The ticket is not the address, and it is short enough to read out.
+    expect(ticket).not.toBe(room);
+    expect(ticket).toHaveLength(TICKET_LENGTH);
+
+    const resolved = await fetch(`http://${HOST}/parties/directory/${ticket}`);
+    expect(resolved.status).toBe(200);
+    expect(await resolved.json()).toEqual({ address: room });
+
+    // A joiner arriving by the resolved address takes the last human seat,
+    // which fills the room and retires the ticket.
+    const joiner = client(room);
+    await joiner.open;
+    joiner.send({ type: 'join' });
+    await joiner.next('welcome');
+    await new Promise((r) => setTimeout(r, 200));
+
+    const retired = await fetch(`http://${HOST}/parties/directory/${ticket}`);
+    expect(retired.status).toBe(404);
+    joiner.close();
+  });
+
+  it('answers an unissued ticket exactly as it answers an expired one', async () => {
+    // Expired, retired and never-issued have to be indistinguishable, or the
+    // shape of a miss tells someone sweeping the space which guesses were warm.
+    const unissued = await fetch(`http://${HOST}/parties/directory/${mintTicket()}`);
+    const malformed = await fetch(`http://${HOST}/parties/directory/nope`);
+    expect(unissued.status).toBe(404);
+    expect(malformed.status).toBe(404);
+    expect(await unissued.text()).toBe('');
+    expect(await malformed.text()).toBe('');
+  });
+
+  it('refuses to create a room at an id that is not an address', async () => {
+    // The whole point of 160-bit addressing: a room cannot be created at a
+    // guessable id and then waited at.
+    const guessable = client('lobby');
+    await guessable.open;
+    guessable.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 1: 6, 2: 6 }, seed: 1 },
+    });
+    const refusal = (await guessable.next('error')) as Extract<RoomMessage, { type: 'error' }>;
+    expect(refusal.error).toMatchObject({ kind: 'protocol' });
+    guessable.close();
+  });
 
   it('a dropped client reconnects with its token and resumes the same seat (AE2)', async () => {
     const room = uniqueRoom();

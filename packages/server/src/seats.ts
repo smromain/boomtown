@@ -194,8 +194,8 @@ export class SeatTable {
     }));
   }
 
-  snapshot(code: string, phase: 'lobby' | 'playing' | 'over'): {
-    code: string;
+  snapshot(ticket: string | null, phase: 'lobby' | 'playing' | 'over'): {
+    ticket: string | null;
     phase: 'lobby' | 'playing' | 'over';
     config: RoomConfig;
     seats: SeatSlot[];
@@ -214,7 +214,7 @@ export class SeatTable {
         connected: occupant.connectionId !== null,
       };
     });
-    return { code, phase, config: this.config, seats };
+    return { ticket, phase, config: this.config, seats };
   }
 }
 

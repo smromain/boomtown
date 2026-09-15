@@ -4,8 +4,9 @@ import { defaultConfig, type GameConfig } from '../setup/gameConfig.js';
 import { Choice } from '../setup/Choice.js';
 import { VisibilityChoice } from '../setup/VisibilityChoice.js';
 import { SeatRow } from '../setup/SeatConfig.js';
+import { mintRoomAddress, normaliseTicket, TICKET_LENGTH } from '@boomtown/protocol';
 import { createRoom, joinRoom, type OnlineGame } from '../online/onlineGame.js';
-import { makeRoomCode } from '../online/hostUrl.js';
+import { resolveTicket } from '../online/hostUrl.js';
 import { randomName } from '../online/randomName.js';
 import { loadSettings, saveSettings } from '../settings/settings.js';
 import { EditionChoice } from '../setup/EditionChoice.js';
@@ -68,16 +69,24 @@ export function CreateJoin({
     saveSettings({ ...loadSettings(), playerName: chosen });
     try {
       if (mode === 'create') {
-        const code = makeRoomCode();
-        onRoom(await createRoom(config, code, chosen));
+        // The client mints the address it will connect to — 160 bits, never
+        // shown. The room mints the short ticket people actually share, once
+        // the directory has accepted it.
+        onRoom(await createRoom(config, mintRoomAddress(), chosen));
       } else {
-        const code = joinCode.trim().toUpperCase();
-        if (code.length < 4) {
+        const ticket = normaliseTicket(joinCode);
+        if (ticket.length !== TICKET_LENGTH) {
           setError(copy.online.errors.noCode);
           setBusy(false);
           return;
         }
-        onRoom(await joinRoom(config, code, chosen));
+        const address = await resolveTicket(ticket);
+        if (address === null) {
+          setError(copy.online.errors.badCode);
+          setBusy(false);
+          return;
+        }
+        onRoom(await joinRoom(config, address, chosen));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : copy.online.errors.failed);

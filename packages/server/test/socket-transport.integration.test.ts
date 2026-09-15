@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createGameClient, socketTransport } from '@boomtown/client-core';
 import type { RoomConfig, RoomState } from '@boomtown/protocol';
+import { mintRoomAddress } from '@boomtown/protocol';
 
 const HOST = '127.0.0.1:1999';
-const uniqueRoom = () => `st-${Math.random().toString(36).slice(2, 8)}`;
+// Rooms are addressed by 160 bits, not by a name anyone can pick — the room
+// refuses `create-room` at any other id, so a test has to mint a real one.
+const uniqueRoom = () => mintRoomAddress();
 
 const config: RoomConfig = {
   seatCount: 3,

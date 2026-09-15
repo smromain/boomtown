@@ -100,7 +100,13 @@ export interface SeatSlot {
 }
 
 export interface RoomState {
-  readonly code: string;
+  /**
+   * The short code a player shares to get someone else in, or null once it has
+   * expired or been retired. **Not** the room's address — that is the 160-bit
+   * id the socket connected to, which the client already holds and which is
+   * never shown or spoken (`addresses.ts`).
+   */
+  readonly ticket: string | null;
   readonly phase: 'lobby' | 'playing' | 'over';
   readonly config: RoomConfig;
   readonly seats: readonly SeatSlot[];

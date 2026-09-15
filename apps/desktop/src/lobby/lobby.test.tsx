@@ -3,12 +3,18 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RoomState } from '@boomtown/protocol';
+import { isRoomAddress, mintRoomAddress } from '@boomtown/protocol';
 import { CreateJoin } from './CreateJoin.js';
 import { SeatList } from './SeatList.js';
 import type { OnlineGame } from '../online/onlineGame.js';
 import { configFromRoom, toRoomConfig } from '../online/onlineGame.js';
 import { defaultConfig } from '../setup/gameConfig.js';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '../settings/settings.js';
+
+vi.mock('../online/hostUrl.js', async (importActual) => {
+  const actual = await importActual<typeof import('../online/hostUrl.js')>();
+  return { ...actual, resolveTicket: vi.fn() };
+});
 
 vi.mock('../online/onlineGame.js', async (importActual) => {
   const actual = await importActual<typeof import('../online/onlineGame.js')>();
@@ -20,6 +26,7 @@ vi.mock('../online/onlineGame.js', async (importActual) => {
 });
 
 const { createRoom, joinRoom } = await import('../online/onlineGame.js');
+const { resolveTicket } = await import('../online/hostUrl.js');
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -56,7 +63,7 @@ describe('configFromRoom', () => {
   };
 
   const room: RoomState = {
-    code: 'ABC123',
+    ticket: 'ABC123',
     phase: 'playing',
     config: { seatCount: 3, edition: 'edition-2015', visibility: 'hidden', bots: { 2: 7 } },
     seats: [
@@ -112,25 +119,52 @@ await userEvent.click(
     expect(config.seats).toHaveLength(4);
     expect(config.edition).toBe('edition-2015');
     expect(config.visibility).toBe('hidden');
-    expect(code).toMatch(/^[A-Z2-9]{6}$/);
+    // The creator mints the room's *address* — 160 bits, never spoken. The
+    // short code people share is minted by the room and arrives in room-state.
+    expect(isRoomAddress(code)).toBe(true);
     // The field no longer ships pre-filled with a placeholder everyone shared.
     expect(name).not.toBe('Player 1');
     expect(name).toMatch(GENERATED);
     expect(onRoom).toHaveBeenCalled();
   });
 
-  it('joins by code, upper-casing what the player typed', async () => {
+  it('resolves the typed code to a room address, tidying what the player typed', async () => {
     const onRoom = vi.fn();
+    const address = mintRoomAddress();
     vi.mocked(joinRoom).mockResolvedValue({} as OnlineGame);
+    vi.mocked(resolveTicket).mockResolvedValue(address);
     render(<CreateJoin onRoom={onRoom} onBack={vi.fn()} />);
 
     await userEvent.click(screen.getByRole('button', { name: 'Join with a code' }));
-    await userEvent.type(screen.getByRole('textbox', { name: 'Room code' }), 'abcd12');
+    // Lower case, a dash, and the letters people type for 0 and 1 — the
+    // alphabet excludes O and I precisely so these have one right answer.
+    await userEvent.type(screen.getByRole('textbox', { name: 'Room code' }), 'abcd-i2o4');
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: 'Join room' }));
     });
 
-    expect(joinRoom).toHaveBeenCalledWith(expect.anything(), 'ABCD12', expect.stringMatching(GENERATED));
+    expect(resolveTicket).toHaveBeenCalledWith('ABCD1204');
+    // The room is joined at its address, never at the code that was typed.
+    expect(joinRoom).toHaveBeenCalledWith(expect.anything(), address, expect.stringMatching(GENERATED));
+  });
+
+  it('refuses a code the directory does not know, without saying why', async () => {
+    const onRoom = vi.fn();
+    vi.mocked(resolveTicket).mockResolvedValue(null);
+    render(<CreateJoin onRoom={onRoom} onBack={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Join with a code' }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Room code' }), 'ABCD1234');
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Join room' }));
+    });
+
+    // Expired, retired and never-issued are one message on purpose: there is
+    // nothing useful to tell a player apart, and anything more precise is a
+    // hint to somebody sweeping the ticket space.
+    expect(joinRoom).not.toHaveBeenCalled();
+    expect(onRoom).not.toHaveBeenCalled();
+    expect(screen.getByText(/not working/i)).toBeInTheDocument();
   });
 
   it('offers no seat-name inputs online — those names are discarded (#20)', async () => {
@@ -284,7 +318,7 @@ describe('SeatList', () => {
   }
 
   const lobbyState = (over: Partial<RoomState> = {}): RoomState => ({
-    code: 'ROOM01',
+    ticket: 'ROOM01',
     phase: 'lobby',
     config: toRoomConfig(defaultConfig()),
     seats: [

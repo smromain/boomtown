@@ -14,6 +14,17 @@ export {
 } from './errors.js';
 
 export {
+  ADDRESS_LENGTH,
+  TICKET_LENGTH,
+  mintRoomAddress,
+  mintTicket,
+  isRoomAddress,
+  isTicket,
+  normaliseTicket,
+  formatTicket,
+} from './addresses.js';
+
+export {
   MAX_MESSAGE_BYTES,
   MAX_NAME_BYTES,
   type ParseResult,

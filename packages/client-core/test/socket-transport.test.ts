@@ -53,7 +53,7 @@ const config: RoomConfig = {
 };
 
 const roomState = (over: Partial<RoomState> = {}): RoomState => ({
-  code: 'ROOM01',
+  ticket: 'ROOM01',
   phase: 'lobby',
   config,
   seats: [
@@ -102,7 +102,7 @@ describe('socketTransport', () => {
     transport.onRoomState((state) => seen.push(state));
     expect(seen).toHaveLength(1);
     expect(seen[0]!.seats.map((s) => s.kind)).toEqual(['human', 'bot', 'bot']);
-    expect(transport.roomState()?.code).toBe('ROOM01');
+    expect(transport.roomState()?.ticket).toBe('ROOM01');
   });
 
   it('replays the current connection status to a late subscriber', async () => {
