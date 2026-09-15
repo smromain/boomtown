@@ -12,7 +12,8 @@ export type ProtocolErrorCode =
   | 'game-not-started'
   | 'malformed-message'
   | 'message-too-large'
-  | 'rate-limited';
+  | 'rate-limited'
+  | 'room-exhausted';
 
 export interface ProtocolError {
   readonly kind: 'protocol';

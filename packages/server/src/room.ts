@@ -5,6 +5,7 @@ import type { Seat } from '@boomtown/engine';
 import { GameRoom, type Outbound } from './game-room.js';
 import { roomLog, roomWarn } from './log.js';
 import { LIMITS, RoomGuards } from './limits.js';
+import { LIFECYCLE, isIdle, lastActivity, purge, touch, type AlarmStore } from './lifecycle.js';
 import type { KeyValueStore } from './storage.js';
 
 /**
@@ -118,6 +119,30 @@ export default class BoomtownRoom implements Party.Server {
       }
     }
     // Otherwise wait for an explicit hello / create-room / join in onMessage.
+    await this.touchRoom();
+  }
+
+  /**
+   * The idle alarm fired. If nothing has happened since it was armed, delete
+   * everything this room holds; otherwise re-arm for the remaining time — a
+   * message that arrived after the alarm was set has already moved the
+   * deadline, and `setAlarm` only holds one.
+   */
+  async onAlarm(): Promise<void> {
+    const store = this.room.storage as unknown as KeyValueStore;
+    const now = Date.now();
+    const last = await lastActivity(store);
+    if (!isIdle(last, now)) {
+      await this.alarms()?.setAlarm((last ?? now) + LIFECYCLE.idleExpiryMs);
+      return;
+    }
+    const deleted = await purge(store);
+    this.game = null;
+    this.seatByConnection.clear();
+    roomLog(this.room.id, 'expired an idle room and deleted its storage', {
+      keys: deleted,
+      idleMs: last === null ? null : now - last,
+    });
   }
 
   async onMessage(raw: string | ArrayBuffer | ArrayBufferView, sender: Party.Connection): Promise<void> {
@@ -146,6 +171,9 @@ export default class BoomtownRoom implements Party.Server {
       return;
     }
     const message = parsed.message;
+    // Every accepted frame pushes the expiry deadline out (`lifecycle.ts`), so
+    // a room in play never ages out and an abandoned one always does.
+    await this.touchRoom();
 
     switch (message.type) {
       case 'hello':
@@ -300,6 +328,16 @@ export default class BoomtownRoom implements Party.Server {
         });
       }
     }
+  }
+
+  /** PartyKit's alarm handle, when the runtime provides one. */
+  private alarms(): AlarmStore | null {
+    const storage = this.room.storage as unknown as Partial<AlarmStore>;
+    return typeof storage.setAlarm === 'function' ? (storage as AlarmStore) : null;
+  }
+
+  private async touchRoom(): Promise<void> {
+    await touch(this.room.storage as unknown as KeyValueStore, this.alarms(), Date.now());
   }
 
   private sendTo(connection: Party.Connection, message: RoomMessage): void {

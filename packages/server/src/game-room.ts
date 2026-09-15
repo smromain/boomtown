@@ -23,6 +23,7 @@ import {
 import { roomLog, roomWarn } from './log.js';
 import { CommandLog, type KeyValueStore } from './storage.js';
 import { SeatTable, configError, setupOptionsFor } from './seats.js';
+import { LIFECYCLE, atCommandCeiling } from './lifecycle.js';
 
 /**
  * One non-deterministic seed at room creation. This is the single point where
@@ -246,6 +247,21 @@ export class GameRoom {
         onClock: seatOnClock(this.state),
       });
       return [this.rejection(fromSeat, command, wireEngineError({ code: 'not-your-turn', message: 'not your turn' }))];
+    }
+
+    // The room's total command ceiling. Checked before `reduce` so an exhausted
+    // room costs a counter read rather than an engine pass, and refused with a
+    // terminal error rather than by growing — the log stays consistent and the
+    // game stays replayable at whatever point it stopped.
+    if (atCommandCeiling(await this.log.count())) {
+      roomWarn(this.code, 'room hit its command ceiling', { limit: LIFECYCLE.maxCommands });
+      return [
+        this.rejection(
+          fromSeat,
+          command,
+          protocolError('room-exhausted', 'this room has run for too long to continue'),
+        ),
+      ];
     }
 
     const result = reduce(this.state, command);
