@@ -11,6 +11,7 @@ import {
 } from '@boomtown/engine';
 import { clientView } from '@boomtown/client-core';
 import { heuristicPolicy, botRng, type Policy } from '@boomtown/ai';
+import type { Knocker } from '@boomtown/protocol';
 import {
   PROTOCOL_VERSION,
   protocolError,
@@ -23,6 +24,8 @@ import {
 import { roomLog, roomWarn } from './log.js';
 import { CommandLog, type KeyValueStore } from './storage.js';
 import { SeatTable, configError, setupOptionsFor } from './seats.js';
+import { LIFECYCLE, atCommandCeiling } from './lifecycle.js';
+import { Door } from './admission.js';
 
 /**
  * One non-deterministic seed at room creation. This is the single point where
@@ -98,6 +101,17 @@ export class GameRoom {
     const config = await log.loadConfig<RoomConfig>();
     if (!config) return null;
     const room = new GameRoom(code, config, store);
+    const lobby = await log.loadLobby();
+    if (lobby) {
+      room.hostSeat = lobby.hostSeat;
+      room.door.locked = lobby.locked;
+      room.seats.restoreEjected(lobby.ejected ?? []);
+      for (const seat of lobby.ejected ?? []) {
+        if (!room.policies.has(seat)) {
+          room.policies.set(seat, heuristicPolicy({ level: room.seats.botDifficulty(seat) }));
+        }
+      }
+    }
     const commands = await log.loadAll();
     if (commands.length > 0) {
       // Bot names are known deterministically here; human names arrive later as
@@ -134,8 +148,63 @@ export class GameRoom {
   /** Bot updates produced during a wake, handed to the adapter to dispatch once. */
   pendingWakeUpdates: Outbound[] = [];
 
-  roomState(): RoomState {
-    return this.seats.snapshot(this.code, this.phase);
+  /**
+   * The ticket this room is currently shareable by, or null once it expired or
+   * was retired. Set by the adapter after the directory accepts a claim; not
+   * persisted, because a ticket outlives neither its TTL nor the lobby.
+   */
+  ticket: string | null = null;
+
+  /** Who is waiting at the door, and whether it is open at all. */
+  readonly door = new Door();
+
+  /**
+   * The seat allowed to admit, decline and lock — the one the creator took.
+   * Persisted, because it has to survive a hibernation wake: a room that forgot
+   * who its host was would either have no one able to admit, or everyone.
+   */
+  hostSeat = 0;
+
+  /** Write the lobby facts a wake must not lose: host, lock, and ejected seats. */
+  async persistLobby(): Promise<void> {
+    await this.log.saveLobby({
+      hostSeat: this.hostSeat,
+      locked: this.door.locked,
+      ejected: this.seats.ejectedSeats(),
+    });
+  }
+
+  /**
+   * Hand a seat from the human holding it to a bot, and carry on.
+   *
+   * The seat never reopens (see `SeatTable.eject`). If the ejected seat was the
+   * one on the clock, the game would otherwise sit waiting on somebody who is
+   * gone, so the bot loop is kicked here and its moves go out like any other.
+   */
+  async ejectSeat(seat: Seat): Promise<Outbound[] | null> {
+    if (!this.seats.eject(seat)) return null;
+    if (!this.policies.has(seat)) {
+      this.policies.set(seat, heuristicPolicy({ level: this.seats.botDifficulty(seat) }));
+    }
+    await this.persistLobby();
+    roomLog(this.code, 'a seat was ejected and is now played by a bot', { seat });
+    return [
+      { kind: 'broadcast', message: { type: 'room-state', state: this.roomState() } },
+      ...(await this.runBots()),
+    ];
+  }
+
+  /**
+   * `knocks` is filled in per-recipient by the adapter: only the host is told
+   * who is waiting. Everyone else gets the same room state with an empty queue,
+   * so the lobby cannot be used to watch who is trying to get in.
+   */
+  roomState(knocks: readonly Knocker[] = []): RoomState {
+    return this.seats.snapshot(this.ticket, this.phase, {
+      hostSeat: this.hostSeat,
+      knocks,
+      locked: this.door.locked,
+    });
   }
 
   isPlaying(): boolean {
@@ -162,8 +231,13 @@ export class GameRoom {
     return this.seats.join(name, token, connectionId);
   }
 
-  /** A reconnecting client re-binds its seat by token, or `null` if unknown. */
-  reconnect(token: string, connectionId: string): { seat: Seat } | null {
+  /**
+   * A reconnecting client re-binds its seat by token, or `null` if unknown.
+   * The returned token is a *fresh* one: the presented token is invalidated by
+   * the act of using it, so a captured token buys one reconnect and no more.
+   * The caller must send it back and persist it in place of the old one.
+   */
+  reconnect(token: string, connectionId: string): { seat: Seat; token: string } | null {
     return this.seats.reconnect(token, connectionId);
   }
 
@@ -206,7 +280,7 @@ export class GameRoom {
     }
     if (!this.seats.allSeatsFilled()) {
       roomWarn(this.code, 'start refused — seats are not all filled', {
-        seats: this.seats.snapshot(this.code, this.phase).seats.map((s) => `${s.index}:${s.kind}`),
+        seats: this.roomState().seats.map((s) => `${s.index}:${s.kind}`),
       });
       return { error: protocolError('game-not-started', 'seats are not all filled') };
     }
@@ -246,6 +320,21 @@ export class GameRoom {
         onClock: seatOnClock(this.state),
       });
       return [this.rejection(fromSeat, command, wireEngineError({ code: 'not-your-turn', message: 'not your turn' }))];
+    }
+
+    // The room's total command ceiling. Checked before `reduce` so an exhausted
+    // room costs a counter read rather than an engine pass, and refused with a
+    // terminal error rather than by growing — the log stays consistent and the
+    // game stays replayable at whatever point it stopped.
+    if (atCommandCeiling(await this.log.count())) {
+      roomWarn(this.code, 'room hit its command ceiling', { limit: LIFECYCLE.maxCommands });
+      return [
+        this.rejection(
+          fromSeat,
+          command,
+          protocolError('room-exhausted', 'this room has run for too long to continue'),
+        ),
+      ];
     }
 
     const result = reduce(this.state, command);

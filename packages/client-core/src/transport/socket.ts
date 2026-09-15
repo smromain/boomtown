@@ -71,7 +71,21 @@ export interface SocketExtras {
   seat(): Seat | null;
   /** The session token, once `welcome` arrives — persist it for reconnects. */
   token(): string | null;
+  /**
+   * True while this client has knocked and the host has not answered:
+   * connected to the room, but holding no seat. Distinct from a failed join —
+   * nothing is wrong, a person simply has not clicked yet.
+   */
+  waitingAtDoor(): boolean;
   start(): void;
+  /** Host only: let a waiting knocker in. */
+  admit(knockId: string): void;
+  /** Host only: turn a waiting knocker away. */
+  decline(knockId: string): void;
+  /** Host only: stop accepting knocks, or start again. */
+  setLocked(locked: boolean): void;
+  /** Host only: hand a seated player's seat to a bot. */
+  eject(seat: number): void;
 }
 
 /**
@@ -103,6 +117,8 @@ export function socketTransport(
   let socket: PartySocket | null = null;
   let mySeat: Seat | null = null;
   let myToken: string | null = options.token ?? null;
+  /** True between knocking and being admitted — connected, seatless, waiting. */
+  let waitingAtDoor = false;
   /** The last room state seen, replayed to late subscribers. */
   let lastRoomState: RoomState | null = null;
   /** The last lobby error seen, replayed to late subscribers. */
@@ -176,6 +192,15 @@ export function socketTransport(
         mySeat = message.seat;
         myToken = message.token;
         joined = true;
+        waitingAtDoor = false;
+        settle('resolve');
+        return;
+      case 'waiting':
+        // Knocked, and now waiting on the host. `connect()` resolves here: the
+        // caller has a live connection and a room to watch, it just has no
+        // seat yet. Blocking until admission would mean the connect timeout
+        // fired while a perfectly healthy room waited for a person to click.
+        waitingAtDoor = true;
         settle('resolve');
         return;
       case 'room-state':
@@ -276,7 +301,7 @@ export function socketTransport(
             if (options.intent.kind === 'create') {
               send({ type: 'create-room', config: options.intent.config });
             } else if (options.intent.kind === 'join') {
-              send({ type: 'join' });
+              send({ type: 'knock' });
             }
           }
           // Resume: the room re-binds silently on the token, so 'open' is the
@@ -354,7 +379,12 @@ export function socketTransport(
     connectionStatus: () => status,
     seat: () => mySeat,
     token: () => myToken,
+    waitingAtDoor: () => waitingAtDoor,
     start: () => send({ type: 'start' }),
+    admit: (knockId: string) => send({ type: 'admit', knockId }),
+    decline: (knockId: string) => send({ type: 'decline', knockId }),
+    setLocked: (locked: boolean) => send({ type: 'set-locked', locked }),
+    eject: (seat: number) => send({ type: 'eject', seat }),
   };
 }
 
@@ -377,10 +407,12 @@ function summariseRoom(message: RoomMessage): Record<string, unknown> {
   switch (message.type) {
     case 'welcome':
       return { seat: message.seat };
+    case 'waiting':
+      return {};
     case 'room-state':
       return {
         phase: message.state.phase,
-        code: message.state.code,
+        ticket: message.state.ticket,
         seats: message.state.seats.map((s) => `${s.index}:${s.kind}${s.connected ? '' : ' (off)'}`),
       };
     case 'update':

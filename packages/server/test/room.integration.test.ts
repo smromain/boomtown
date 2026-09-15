@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ClientMessage, RoomMessage } from '@boomtown/protocol';
 import { PROTOCOL_VERSION } from '@boomtown/protocol';
+import { TICKET_LENGTH, isTicket, mintRoomAddress, mintTicket } from '@boomtown/protocol';
 
 const HOST = '127.0.0.1:1999';
 
@@ -84,7 +85,29 @@ function client(room: string, params?: Record<string, string>): TestClient {
   return c;
 }
 
-const uniqueRoom = () => `it-${Math.random().toString(36).slice(2, 8)}`;
+// Rooms are addressed by 160 bits, not by a name anyone can pick — the room
+// refuses `create-room` at any other id, so a test has to mint a real one.
+/**
+ * The new join flow: knock, wait, and be let in by the host. A knock no longer
+ * seats anybody, so every test that used to `join` has to go through a person.
+ */
+async function admit(host: TestClient, joiner: TestClient): Promise<void> {
+  joiner.send({ type: 'knock' });
+  await joiner.next('waiting');
+  // The host's room-state carries the queue; other seats' copies never do.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const state = (await host.next('room-state')) as Extract<RoomMessage, { type: 'room-state' }>;
+    const knock = state.state.knocks[0];
+    if (knock) {
+      host.send({ type: 'admit', knockId: knock.id });
+      await joiner.next('welcome');
+      return;
+    }
+  }
+  throw new Error('the host never saw the knock');
+}
+
+const uniqueRoom = () => mintRoomAddress();
 
 describe('PartyKit room — end to end', () => {
   it('creates a room, joins two more seats, starts, and each client gets its own view', async () => {
@@ -100,13 +123,11 @@ describe('PartyKit room — end to end', () => {
 
     const p2 = client(room);
     await p2.open;
-    p2.send({ type: 'join' });
-    expect((await p2.next('welcome')).type).toBe('welcome');
+    await admit(host, p2);
 
     const p3 = client(room);
     await p3.open;
-    p3.send({ type: 'join' });
-    await p3.next('welcome');
+    await admit(host, p3);
 
     host.send({ type: 'start' });
     const update = await host.next('update');
@@ -127,12 +148,21 @@ describe('PartyKit room — end to end', () => {
     await host.next('welcome');
     const p2 = client(room);
     await p2.open;
-    p2.send({ type: 'join' });
-    await p2.next('welcome');
+    await admit(host, p2);
 
+    // A third knocker the host tries to admit anyway: the seats are gone.
     const p3 = client(room);
     await p3.open;
-    p3.send({ type: 'join' });
+    p3.send({ type: 'knock' });
+    await p3.next('waiting');
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const state = (await host.next('room-state')) as Extract<RoomMessage, { type: 'room-state' }>;
+      const knock = state.state.knocks[0];
+      if (knock) {
+        host.send({ type: 'admit', knockId: knock.id });
+        break;
+      }
+    }
     const err = await p3.next('error');
     expect(err.type === 'error' && err.error.kind === 'protocol' && err.error.code).toBe('room-full');
   });
@@ -143,6 +173,23 @@ describe('PartyKit room — end to end', () => {
     await stale.open;
     const err = await stale.next('error');
     expect(err.type === 'error' && err.error.kind === 'protocol' && err.error.code).toBe('wrong-version');
+  });
+
+  it('refuses to create a room with no seat left for a person', async () => {
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    // Every seat a bot: the creator would knock at their own door and be told
+    // the room is full, so the room is never made.
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 0: 5, 1: 5, 2: 5 }, seed: 3 },
+    });
+    const err = await host.next('error');
+    expect(err.type === 'error' && err.error.kind === 'protocol' && err.error.code).toBe('malformed-message');
+    expect(err.type === 'error' && err.error.kind === 'protocol' && err.error.message).toMatch(
+      /at least one seat/,
+    );
   });
 
   it('plays a full game with 1 human + 2 bots to a ranked result', async () => {
@@ -171,6 +218,209 @@ describe('PartyKit room — end to end', () => {
     expect(view.view.status).toBe('over');
     expect(view.view.result?.rankings).toHaveLength(3);
   }, 25_000);
+
+  it('mints a ticket that resolves to the room address, and retires it when the room fills', async () => {
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    // One open human seat, so the room does not fill the instant it is created.
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 2: 6 }, seed: 11 },
+    });
+    await host.next('welcome');
+    const lobby = (await host.next('room-state')) as Extract<RoomMessage, { type: 'room-state' }>;
+
+    const ticket = lobby.state.ticket;
+    expect(ticket).not.toBeNull();
+    expect(isTicket(ticket!)).toBe(true);
+    // The ticket is not the address, and it is short enough to read out.
+    expect(ticket).not.toBe(room);
+    expect(ticket).toHaveLength(TICKET_LENGTH);
+
+    const resolved = await fetch(`http://${HOST}/parties/directory/${ticket}`);
+    expect(resolved.status).toBe(200);
+    expect(await resolved.json()).toEqual({ address: room });
+
+    // A joiner arriving by the resolved address takes the last human seat,
+    // which fills the room and retires the ticket.
+    const joiner = client(room);
+    await joiner.open;
+    await admit(host, joiner);
+    await new Promise((r) => setTimeout(r, 200));
+
+    const retired = await fetch(`http://${HOST}/parties/directory/${ticket}`);
+    expect(retired.status).toBe(404);
+    joiner.close();
+  });
+
+  it('answers an unissued ticket exactly as it answers an expired one', async () => {
+    // Expired, retired and never-issued have to be indistinguishable, or the
+    // shape of a miss tells someone sweeping the space which guesses were warm.
+    const unissued = await fetch(`http://${HOST}/parties/directory/${mintTicket()}`);
+    const malformed = await fetch(`http://${HOST}/parties/directory/nope`);
+    expect(unissued.status).toBe(404);
+    expect(malformed.status).toBe(404);
+    expect(await unissued.text()).toBe('');
+    expect(await malformed.text()).toBe('');
+  });
+
+  it('refuses to create a room at an id that is not an address', async () => {
+    // The whole point of 160-bit addressing: a room cannot be created at a
+    // guessable id and then waited at.
+    const guessable = client('lobby');
+    await guessable.open;
+    guessable.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 1: 6, 2: 6 }, seed: 1 },
+    });
+    const refusal = (await guessable.next('error')) as Extract<RoomMessage, { type: 'error' }>;
+    expect(refusal.error).toMatchObject({ kind: 'protocol' });
+    guessable.close();
+  });
+
+  it('gives a knocker no seat until the host admits them (AE5)', async () => {
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'hidden', bots: { 2: 6 }, seed: 5 },
+    });
+    await host.next('welcome');
+
+    // A stranger with the address knocks and is told to wait — no welcome, no
+    // token, no seat. This is the property the whole unit exists for.
+    const stranger = client(room);
+    await stranger.open;
+    stranger.send({ type: 'knock' });
+    expect((await stranger.next('waiting')).type).toBe('waiting');
+    await expect(stranger.next('welcome', 600)).rejects.toThrow(/timeout/);
+
+    // And the room agrees: the seat they wanted is still open.
+    const state = (await host.next('room-state')) as Extract<RoomMessage, { type: 'room-state' }>;
+    expect(state.state.seats.some((seat) => seat.kind === 'open')).toBe(true);
+    stranger.close();
+  });
+
+  it('refuses admit, decline and lock from anyone but the host', async () => {
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 2: 6 }, seed: 6 },
+    });
+    await host.next('welcome');
+
+    const guest = client(room);
+    await guest.open;
+    await admit(host, guest);
+
+    // Seated, but not the host: the room says so rather than quietly ignoring
+    // it, because a client that thinks it hosts is a bug worth seeing.
+    guest.send({ type: 'set-locked', locked: true });
+    const refusal = (await guest.next('error')) as Extract<RoomMessage, { type: 'error' }>;
+    expect(refusal.error.kind === 'protocol' && refusal.error.code).toBe('not-host');
+    guest.close();
+  });
+
+  it('turns knocks away outright once the host locks the door', async () => {
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 2: 6 }, seed: 8 },
+    });
+    await host.next('welcome');
+    host.send({ type: 'set-locked', locked: true });
+    await new Promise((r) => setTimeout(r, 150));
+
+    const late = client(room);
+    await late.open;
+    late.send({ type: 'knock' });
+    const refusal = (await late.next('error')) as Extract<RoomMessage, { type: 'error' }>;
+    expect(refusal.error.kind === 'protocol' && refusal.error.code).toBe('room-locked');
+    late.close();
+  });
+
+  it('hands an ejected seat to a bot and plays on, without reopening it', async () => {
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 2: 6 }, seed: 21 },
+    });
+    await host.next('welcome');
+    const guest = client(room);
+    await guest.open;
+    await admit(host, guest);
+    host.send({ type: 'start' });
+    // Keep the opening view: ejecting emits no `update` of its own (correctly —
+    // the host is on the clock, so nothing moves), so waiting for one here
+    // would hang on a room that is behaving.
+    let view = (await host.next('update')) as Extract<RoomMessage, { type: 'update' }>;
+
+    host.send({ type: 'eject', seat: 1 });
+
+    // The ejected player is told and dropped: their token went with the seat,
+    // so an open socket would only produce refusals they cannot act on.
+    const told = (await guest.next('error')) as Extract<RoomMessage, { type: 'error' }>;
+    expect(told.error.kind).toBe('protocol');
+
+    // The seat is a bot now — not open. An open seat mid-game could be claimed
+    // by whoever knocked next, inheriting another player's holdings.
+    let sawBotSeat = false;
+    for (let attempt = 0; attempt < 6 && !sawBotSeat; attempt += 1) {
+      const state = (await host.next('room-state')) as Extract<RoomMessage, { type: 'room-state' }>;
+      const seat = state.state.seats[1]!;
+      if (seat.kind === 'bot') sawBotSeat = true;
+      expect(seat.kind).not.toBe('open');
+    }
+    expect(sawBotSeat).toBe(true);
+
+    // And the seat is actually *played*. Ejecting alone proves nothing here:
+    // the host is on the clock right after `start`, so nothing should move yet.
+    // The test is whether the clock can pass through the ejected seat and come
+    // back — if a bot had not taken it over, the room would wait forever on
+    // somebody who is gone.
+    // A command and the bot moves it triggers are dispatched together, so the
+    // first update after a move is not the settled one — read on until the
+    // clock comes back, or until it plainly is not going to.
+    let guardCount = 0;
+    while (guardCount++ < 40) {
+      if (view.view.status !== 'playing') break;
+      if (view.view.activeSeat === 0 && !view.view.pendingDecision) {
+        host.send({ type: 'command', command: pickHumanMove(view.view) });
+      }
+      view = (await host.next('update', 8000)) as Extract<RoomMessage, { type: 'update' }>;
+      if (view.view.activeSeat === 0 && !view.view.pendingDecision && guardCount > 2) break;
+    }
+    // Back on the host's clock, having passed through the ejected seat and the
+    // configured bot. If a bot had not taken the ejected seat over, the clock
+    // would have stopped there on somebody who is gone.
+    expect(view.view.status).toBe('playing');
+    expect(view.view.activeSeat).toBe(0);
+    guest.close();
+  });
+
+  it('refuses a host trying to eject their own seat', async () => {
+    // It would leave the room with nobody able to admit, unlock or eject, and
+    // no way to appoint anyone.
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 1: 6, 2: 6 }, seed: 22 },
+    });
+    const welcome = (await host.next('welcome')) as Extract<RoomMessage, { type: 'welcome' }>;
+    host.send({ type: 'eject', seat: welcome.seat });
+    const refusal = (await host.next('error')) as Extract<RoomMessage, { type: 'error' }>;
+    expect(refusal.error.kind === 'protocol' && refusal.error.code).toBe('not-host');
+  });
 
   it('a dropped client reconnects with its token and resumes the same seat (AE2)', async () => {
     const room = uniqueRoom();
@@ -212,12 +462,10 @@ describe('PartyKit room — end to end', () => {
     await host.next('welcome');
     const p2 = client(room);
     await p2.open;
-    p2.send({ type: 'join' });
-    await p2.next('welcome');
+    await admit(host, p2);
     const p3 = client(room);
     await p3.open;
-    p3.send({ type: 'join' });
-    await p3.next('welcome');
+    await admit(host, p3);
 
     host.send({ type: 'start' });
     const seatBView = (await p2.next('update')) as Extract<RoomMessage, { type: 'update' }>;

@@ -269,6 +269,15 @@
   margin-top: 0.9rem;
 }
 
+/* The code and its copy button read as one object, stacked so the button sits
+   under the code at narrow widths rather than pushing it off the header. */
+.codeBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .hint {
   font-size: 0.85rem;
   color: var(--muted);
@@ -324,4 +333,26 @@
 .banner[data-status='closed'] {
   background: #fbe4e0;
   color: #8a2f22;
+}
+
+/* The knock queue: only the host is sent one, so this only ever renders there. */
+.door {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule, rgba(0, 0, 0, 0.12));
+}
+
+.doorTitle {
+  margin: 0 0 0.5rem;
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.doorActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
 }

@@ -3,6 +3,13 @@
 # `electron-builder` run produces unsigned artifacts.
 appId: com.boomtown.desktop
 productName: Boomtown
+# The launched binary's name on Windows and Linux. Without it electron-builder
+# derives one from the *package* name, which is `@boomtown/desktop` — and it
+# sanitises that to `@boomtowndesktop`, a name with an `@` in it that no player
+# should ever see and that the itch manifests cannot point at. Setting it makes
+# the path predictable, which is what `electron/afterPack.mjs` and
+# `build/itch/*.itch.toml` both assume.
+executableName: boomtown
 copyright: © 2026 Boomtown
 
 directories:
@@ -44,6 +51,12 @@ mac:
   # separately, calls the hook on each, merges them with `@electron/universal`,
   # then calls the hook again on the merged app. See `electron/afterPack.mjs` —
   # the ad-hoc re-sign must happen only on that last call.
+  #
+  # itch.io does not get the DMG: `electron/itch.mjs` pushes the unpacked
+  # `dist/mac-universal/` directory with butler, which is itch's own advice —
+  # push the `.app`, with the manifest beside it in a folder. butler manages
+  # symlinks and fixes permissions on that push and the itch app fixes them
+  # again at launch, so no separate zip target is needed for it.
   target:
     - target: dmg
       arch:
@@ -55,6 +68,12 @@ mac:
   entitlementsInherit: build/entitlements.mac.plist
 
 win:
+  # NSIS is the download on the GitHub release page. It is deliberately *not*
+  # what goes to itch.io: itch's compatibility policy ranks traditional
+  # installers (NSIS, MSI, InnoSetup) second-worst — "may require administrator
+  # access and offer the poorest user experience" — and its Windows page says to
+  # push the install folder instead. `electron/itch.mjs` pushes the
+  # `dist/win-unpacked/` directory electron-builder packs before building this.
   target:
     - target: nsis
       arch:
@@ -66,6 +85,11 @@ nsis:
   allowToChangeInstallationDirectory: true
 
 linux:
+  # AppImage for the GitHub release page. itch.io gets `dist/linux-unpacked/`
+  # instead (`electron/itch.mjs`): itch's Linux guidance is to make a portable
+  # build and push it with butler, and a folder is something butler can patch
+  # and the itch app can fix permissions on — where an AppImage is one opaque
+  # file that also needs FUSE on the player's machine.
   target:
     - target: AppImage
       arch:

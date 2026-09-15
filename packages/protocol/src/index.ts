@@ -13,6 +13,24 @@ export {
   wireEngineError,
 } from './errors.js';
 
+export {
+  ADDRESS_LENGTH,
+  TICKET_LENGTH,
+  mintRoomAddress,
+  mintTicket,
+  isRoomAddress,
+  isTicket,
+  normaliseTicket,
+  formatTicket,
+} from './addresses.js';
+
+export {
+  MAX_MESSAGE_BYTES,
+  MAX_NAME_BYTES,
+  type ParseResult,
+  parseClientMessage,
+} from './validate.js';
+
 export type {
   PlayerViewDTO,
   EngineEventDTO,
@@ -27,10 +45,16 @@ export type {
   WireMessage,
   Hello,
   CreateRoom,
-  JoinRoom,
+  Knock,
+  Admit,
+  Decline,
+  SetLocked,
+  Eject,
   StartGame,
   SendCommand,
   Welcome,
+  Waiting,
+  Knocker,
   RoomStateMessage,
   Update,
   ErrorMessage,

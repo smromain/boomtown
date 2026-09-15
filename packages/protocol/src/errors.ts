@@ -10,7 +10,14 @@ export type ProtocolErrorCode =
   | 'bad-token'
   | 'not-in-room'
   | 'game-not-started'
-  | 'malformed-message';
+  | 'malformed-message'
+  | 'message-too-large'
+  | 'rate-limited'
+  | 'room-exhausted'
+  | 'room-locked'
+  | 'knock-declined'
+  | 'not-host'
+  | 'unknown-knock';
 
 export interface ProtocolError {
   readonly kind: 'protocol';

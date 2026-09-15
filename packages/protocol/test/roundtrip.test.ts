@@ -45,15 +45,18 @@ describe('message round-trips', () => {
         seed: 1,
       },
     },
-    { type: 'join' },
+    { type: 'knock' },
     { type: 'start' },
     { type: 'command', command: { type: 'place-tile', seat: 0, tile: '1A' } },
     { type: 'welcome', seat: 1, token: 'tok' },
     {
       type: 'room-state',
       state: {
-        code: 'ABCD12',
+        ticket: 'ABCD1234',
         phase: 'lobby',
+        hostSeat: 0,
+        knocks: [{ id: 'a1b2c3d4', name: 'Cal' }],
+        locked: false,
         config: { seatCount: 3, edition: 'edition-2015', visibility: 'hidden', bots: {} },
         seats: [
           { index: 0, kind: 'human', name: 'Ana', connected: true },

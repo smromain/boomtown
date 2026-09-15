@@ -1,10 +1,14 @@
 import type * as Party from 'partykit/server';
-import type { ClientMessage, RoomMessage } from '@boomtown/protocol';
-import { PROTOCOL_VERSION, protocolError } from '@boomtown/protocol';
+import type { RoomMessage } from '@boomtown/protocol';
+import { PROTOCOL_VERSION, isRoomAddress, mintTicket, parseClientMessage, protocolError } from '@boomtown/protocol';
 import type { Seat } from '@boomtown/engine';
 import { GameRoom, type Outbound } from './game-room.js';
 import { roomLog, roomWarn } from './log.js';
+import { LIMITS, RoomGuards } from './limits.js';
+import { mintToken } from './tokens.js';
+import { LIFECYCLE, isIdle, lastActivity, purge, touch, type AlarmStore } from './lifecycle.js';
 import type { KeyValueStore } from './storage.js';
+import { configError, humanlessRoom } from './seats.js';
 
 /**
  * The PartyKit adapter. One instance per room (`room.id` is the room code).
@@ -19,6 +23,8 @@ export default class BoomtownRoom implements Party.Server {
   private game: GameRoom | null = null;
   /** seat <- connection id, mirrored here so onClose can find the seat fast. */
   private readonly seatByConnection = new Map<string, Seat>();
+  /** Per-connection rate limits and strike counts (`limits.ts`). */
+  private readonly guards = new RoomGuards();
 
   constructor(readonly room: Party.Room) {}
 
@@ -64,6 +70,24 @@ export default class BoomtownRoom implements Party.Server {
       gameExists: this.game !== null,
     });
 
+    // Cap concurrent connections before anything else looks at this one. Seats
+    // are capped by the ruleset; this bounds the sockets a room will hold open
+    // for reconnect overlap, so a room cannot be held open by strangers.
+    const live = [...this.room.getConnections()].length;
+    if (live > LIMITS.maxConnections) {
+      roomWarn(this.room.id, 'refused a connection — room at its connection cap', {
+        connection: connection.id,
+        live,
+        cap: LIMITS.maxConnections,
+      });
+      this.sendTo(connection, {
+        type: 'error',
+        error: protocolError('room-full', 'this room has too many connections'),
+      });
+      connection.close();
+      return;
+    }
+
     // Version-gate every connection, not just reconnects — a fresh joiner with
     // a stale protocol version must be turned away before it can create or
     // join a room it cannot parse.
@@ -88,8 +112,11 @@ export default class BoomtownRoom implements Party.Server {
         const name = url.searchParams.get('name') ?? '';
         roomLog(this.room.id, 'reconnected a seat by token', { seat: bound.seat, connection: connection.id });
         this.seatByConnection.set(connection.id, bound.seat);
-        connection.setState({ seat: bound.seat, token, name });
-        this.sendTo(connection, { type: 'welcome', seat: bound.seat, token });
+        // The token rotated on use: persist and return the new one, never the
+        // one that was presented. Sending back the old token would keep a
+        // captured credential alive for the rest of the game.
+        connection.setState({ seat: bound.seat, token: bound.token, name });
+        this.sendTo(connection, { type: 'welcome', seat: bound.seat, token: bound.token });
         const view = this.game.currentUpdateFor(bound.seat);
         if (view) this.sendTo(connection, view);
         this.broadcastRoomState();
@@ -97,17 +124,61 @@ export default class BoomtownRoom implements Party.Server {
       }
     }
     // Otherwise wait for an explicit hello / create-room / join in onMessage.
+    await this.touchRoom();
+  }
+
+  /**
+   * The idle alarm fired. If nothing has happened since it was armed, delete
+   * everything this room holds; otherwise re-arm for the remaining time — a
+   * message that arrived after the alarm was set has already moved the
+   * deadline, and `setAlarm` only holds one.
+   */
+  async onAlarm(): Promise<void> {
+    const store = this.room.storage as unknown as KeyValueStore;
+    const now = Date.now();
+    const last = await lastActivity(store);
+    if (!isIdle(last, now)) {
+      await this.alarms()?.setAlarm((last ?? now) + LIFECYCLE.idleExpiryMs);
+      return;
+    }
+    const deleted = await purge(store);
+    this.game = null;
+    this.seatByConnection.clear();
+    roomLog(this.room.id, 'expired an idle room and deleted its storage', {
+      keys: deleted,
+      idleMs: last === null ? null : now - last,
+    });
   }
 
   async onMessage(raw: string | ArrayBuffer | ArrayBufferView, sender: Party.Connection): Promise<void> {
-    let message: ClientMessage;
-    try {
-      const text = typeof raw === 'string' ? raw : new TextDecoder().decode(raw as ArrayBuffer);
-      message = JSON.parse(text) as ClientMessage;
-    } catch {
-      this.sendTo(sender, { type: 'error', error: protocolError('malformed-message', 'not JSON') });
+    // Nothing reaches the game without passing the boundary check first — see
+    // `@boomtown/protocol`'s `parseClientMessage`. A connection that keeps
+    // sending refuse-able frames is not a client having a bad day, and is
+    // dropped rather than answered indefinitely.
+    const parsed = parseClientMessage(raw);
+    if (!parsed.ok) {
+      const guard = this.guards.for(sender.id);
+      const exhausted = guard.recordFailure();
+      roomWarn(this.room.id, 'rejected a malformed frame', {
+        connection: sender.id,
+        code: parsed.error.code,
+        reason: parsed.error.message,
+        failures: guard.failureCount(),
+      });
+      this.sendTo(sender, { type: 'error', error: parsed.error });
+      if (exhausted) {
+        roomWarn(this.room.id, 'closing a connection on repeated malformed frames', {
+          connection: sender.id,
+          limit: LIMITS.maxValidationFailures,
+        });
+        sender.close();
+      }
       return;
     }
+    const message = parsed.message;
+    // Every accepted frame pushes the expiry deadline out (`lifecycle.ts`), so
+    // a room in play never ages out and an abandoned one always does.
+    await this.touchRoom();
 
     switch (message.type) {
       case 'hello':
@@ -122,20 +193,149 @@ export default class BoomtownRoom implements Party.Server {
           this.sendTo(sender, { type: 'error', error: protocolError('game-not-started', 'room already exists') });
           return;
         }
+        // A room is addressed by 160 bits of entropy the creator minted, not by
+        // anything a person typed. Refusing anything else is what stops a room
+        // being created at a guessable id and then waited at.
+        if (!isRoomAddress(this.room.id)) {
+          roomWarn(this.room.id, 'create-room refused — not a room address');
+          this.sendTo(sender, {
+            type: 'error',
+            error: protocolError('not-in-room', 'rooms are addressed by a generated id'),
+          });
+          sender.close();
+          return;
+        }
+        // Rule checks on the config happen here as well as at `start`, because
+        // a config that can never start should not cost a ticket and a room
+        // first. The all-bot table is the one that matters: nothing would be
+        // wrong until the creator was refused a seat in their own room.
+        const bad =
+          configError(message.config) ??
+          (humanlessRoom(message.config) ? 'an online room needs at least one seat left for a person' : null);
+        if (bad) {
+          roomWarn(this.room.id, 'create-room refused — bad config', { reason: bad, config: message.config });
+          this.sendTo(sender, { type: 'error', error: protocolError('malformed-message', bad) });
+          return;
+        }
         this.game = new GameRoom(this.room.id, message.config, this.room.storage as unknown as KeyValueStore);
         await this.game.persistConfig();
-        this.joinSender(sender);
+        this.game.ticket = await this.claimTicket();
+        // The creator is the host, and takes the first seat without knocking —
+        // there is nobody to admit them. Whichever seat that turns out to be
+        // (seat 0 may be configured as a bot) is persisted as the host seat.
+        const seated = this.seatSender(sender);
+        if (seated !== null) {
+          this.game.hostSeat = seated;
+          await this.game.persistLobby();
+        }
         return;
       }
 
-      case 'join': {
-        roomLog(this.room.id, 'join', { connection: sender.id, gameExists: this.game !== null });
+      case 'knock': {
         if (!this.game) {
-          roomWarn(this.room.id, 'join refused — no such room');
           this.sendTo(sender, { type: 'error', error: protocolError('not-in-room', 'no such room') });
           return;
         }
-        this.joinSender(sender);
+        const name = new URL(sender.uri).searchParams.get('name') ?? '';
+        const knock = this.game.door.knock(sender.id, name, Date.now());
+        if (!knock) {
+          roomWarn(this.room.id, 'knock refused', { connection: sender.id, locked: this.game.door.locked });
+          this.sendTo(sender, {
+            type: 'error',
+            error: this.game.door.locked
+              ? protocolError('room-locked', 'this room is not accepting anyone else')
+              : protocolError('knock-declined', 'the host turned you away'),
+          });
+          sender.close();
+          return;
+        }
+        roomLog(this.room.id, 'someone knocked', { knock: knock.id, name: knock.name });
+        this.sendTo(sender, { type: 'waiting' });
+        this.broadcastRoomState();
+        return;
+      }
+
+      case 'admit':
+      case 'decline': {
+        if (!this.requireHost(sender)) return;
+        const knock =
+          message.type === 'admit'
+            ? this.game!.door.take(message.knockId, Date.now())
+            : this.game!.door.decline(message.knockId, Date.now());
+        if (!knock) {
+          this.sendTo(sender, {
+            type: 'error',
+            error: protocolError('unknown-knock', 'that knock is no longer waiting'),
+          });
+          return;
+        }
+        const waiting = this.room.getConnection(knock.connectionId);
+        if (message.type === 'decline') {
+          roomLog(this.room.id, 'host declined a knock', { knock: knock.id });
+          if (waiting) {
+            this.sendTo(waiting, {
+              type: 'error',
+              error: protocolError('knock-declined', 'the host turned you away'),
+            });
+            waiting.close();
+          }
+          this.broadcastRoomState();
+          return;
+        }
+        if (!waiting) {
+          roomWarn(this.room.id, 'admitted a knock whose connection had gone', { knock: knock.id });
+          this.broadcastRoomState();
+          return;
+        }
+        roomLog(this.room.id, 'host admitted a knock', { knock: knock.id, name: knock.name });
+        this.seatSender(waiting);
+        return;
+      }
+
+      case 'eject': {
+        if (!this.requireHost(sender)) return;
+        if (message.seat === this.game!.hostSeat) {
+          // A host ejecting themselves would leave the room with nobody able to
+          // admit, unlock or eject, and no way to appoint anyone.
+          this.sendTo(sender, {
+            type: 'error',
+            error: protocolError('not-host', 'the host cannot remove their own seat'),
+          });
+          return;
+        }
+        const updates = await this.game!.ejectSeat(message.seat);
+        if (updates === null) {
+          this.sendTo(sender, {
+            type: 'error',
+            error: protocolError('unknown-knock', 'nobody is sitting there'),
+          });
+          return;
+        }
+        // Close the ejected player's socket: their token is gone with the seat,
+        // so leaving it open would only produce refusals they cannot act on.
+        for (const [connId, seat] of this.seatByConnection) {
+          if (seat !== message.seat) continue;
+          const conn = this.room.getConnection(connId);
+          this.seatByConnection.delete(connId);
+          if (conn) {
+            this.sendTo(conn, {
+              type: 'error',
+              error: protocolError('knock-declined', 'the host removed you from the table'),
+            });
+            conn.close();
+          }
+        }
+        this.dispatch(updates);
+        this.broadcastRoomState();
+        return;
+      }
+
+      case 'set-locked': {
+        if (!this.requireHost(sender)) return;
+        this.game!.door.locked = message.locked;
+        await this.game!.persistLobby();
+        roomLog(this.room.id, 'host set the door', { locked: message.locked });
+        this.broadcastRoomState();
         return;
       }
 
@@ -158,6 +358,19 @@ export default class BoomtownRoom implements Party.Server {
 
       case 'command': {
         if (!this.game) return;
+        // Rate-limited before the seat lookup: an unseated flooder should cost
+        // the room a bucket check, not a map scan and an engine call.
+        if (!this.guards.for(sender.id).commands.take()) {
+          roomWarn(this.room.id, 'rate-limited a command', {
+            connection: sender.id,
+            perSecond: LIMITS.commandsPerSecond,
+          });
+          this.sendTo(sender, {
+            type: 'error',
+            error: protocolError('rate-limited', 'too many commands — slow down'),
+          });
+          return;
+        }
         const seat = this.seatByConnection.get(sender.id) ?? this.seatFromState(sender);
         if (seat === undefined) {
           roomWarn(this.room.id, 'command from a connection with no seat', {
@@ -180,6 +393,8 @@ export default class BoomtownRoom implements Party.Server {
       seat: this.seatByConnection.get(connection.id) ?? null,
     });
     this.seatByConnection.delete(connection.id);
+    this.guards.release(connection.id);
+    this.game?.door.dropConnection(connection.id);
     this.game?.markDisconnected(connection.id);
     this.broadcastRoomState();
   }
@@ -195,34 +410,52 @@ export default class BoomtownRoom implements Party.Server {
     return state.seat;
   }
 
-  private joinSender(sender: Party.Connection): void {
-    if (!this.game) return;
+  private seatSender(sender: Party.Connection): number | null {
+    if (!this.game) return null;
     // Blank rather than an invented default: `SeatTable` owns what a nameless
     // seat is called, so there is one rule instead of three edges guessing.
     const name = new URL(sender.uri).searchParams.get('name') ?? '';
-    const token = crypto.randomUUID();
+    const token = mintToken();
     const bound = this.game.join(name, token, sender.id);
     if (!bound) {
       roomWarn(this.room.id, 'join refused — room full', { connection: sender.id, name });
       this.sendTo(sender, { type: 'error', error: protocolError('room-full', 'all seats are taken') });
       sender.close();
-      return;
+      return null;
     }
     this.seatByConnection.set(sender.id, bound.seat);
     sender.setState({ seat: bound.seat, token, name });
     roomLog(this.room.id, 'seated a player', { seat: bound.seat, name, connection: sender.id });
     this.sendTo(sender, { type: 'welcome', seat: bound.seat, token });
+    // A ticket that has done its job stops being a way in at all, rather than
+    // idling until its TTL. Nobody else can be seated here anyway.
+    if (this.game.seats.allSeatsFilled()) void this.retireTicket();
+    this.game.door.dropConnection(sender.id);
     this.broadcastRoomState();
+    return bound.seat;
   }
 
+  /**
+   * Room state, sent per connection rather than broadcast, because one field
+   * differs by recipient: only the host is told who is knocking. Sending the
+   * queue to everyone would turn the lobby into a way to watch who is trying to
+   * get into a room you are already in.
+   */
   private broadcastRoomState(): void {
     if (!this.game) return;
-    const state = this.game.roomState();
-    roomLog(this.room.id, 'broadcast room-state', {
-      phase: state.phase,
-      seats: state.seats.map((s) => `${s.index}:${s.kind}${s.connected ? '' : ' (off)'}`),
+    const forGuests = this.game.roomState();
+    const forHost = this.game.roomState(this.game.door.list(Date.now()));
+    roomLog(this.room.id, 'send room-state', {
+      phase: forGuests.phase,
+      knocks: forHost.knocks.length,
+      locked: forGuests.locked,
+      seats: forGuests.seats.map((s) => `${s.index}:${s.kind}${s.connected ? '' : ' (off)'}`),
     });
-    this.room.broadcast(JSON.stringify({ type: 'room-state', state } satisfies RoomMessage));
+    for (const connection of this.room.getConnections()) {
+      const seat = this.seatByConnection.get(connection.id);
+      const state = seat === this.game.hostSeat ? forHost : forGuests;
+      this.sendTo(connection, { type: 'room-state', state });
+    }
   }
 
   private dispatch(updates: Outbound[]): void {
@@ -248,6 +481,83 @@ export default class BoomtownRoom implements Party.Server {
         });
       }
     }
+  }
+
+  /** PartyKit's alarm handle, when the runtime provides one. */
+  private alarms(): AlarmStore | null {
+    const storage = this.room.storage as unknown as Partial<AlarmStore>;
+    return typeof storage.setAlarm === 'function' ? (storage as AlarmStore) : null;
+  }
+
+  private async touchRoom(): Promise<void> {
+    await touch(this.room.storage as unknown as KeyValueStore, this.alarms(), Date.now());
+  }
+
+  /**
+   * Ask the directory for a ticket pointing at this room. Retries on the
+   * vanishingly unlikely collision with a live ticket; gives up quietly rather
+   * than failing room creation, because a room with no ticket is still
+   * perfectly playable by anyone holding its address.
+   */
+  private async claimTicket(): Promise<string | null> {
+    const directory = this.room.context.parties['directory'];
+    if (!directory) return null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const ticket = mintTicket();
+      try {
+        const response = await directory.get(ticket).fetch({
+          method: 'POST',
+          body: JSON.stringify({ address: this.room.id }),
+        });
+        if (response.ok) {
+          roomLog(this.room.id, 'claimed a ticket', { attempt: attempt + 1 });
+          return ticket;
+        }
+      } catch (error) {
+        roomWarn(this.room.id, 'ticket claim failed', { error: String(error) });
+        return null;
+      }
+    }
+    roomWarn(this.room.id, 'could not claim a ticket in three attempts');
+    return null;
+  }
+
+  private async retireTicket(): Promise<void> {
+    const ticket = this.game?.ticket;
+    if (!ticket) return;
+    if (this.game) this.game.ticket = null;
+    try {
+      await this.room.context.parties['directory']?.get(ticket).fetch({ method: 'DELETE' });
+      roomLog(this.room.id, 'retired the ticket — every seat is taken');
+    } catch (error) {
+      roomWarn(this.room.id, 'ticket retire failed', { error: String(error) });
+    }
+  }
+
+  /**
+   * Only the host seat may admit, decline or lock. Anyone else asking is told
+   * plainly rather than ignored — a client that thinks it is the host is a bug
+   * worth seeing, not a silence to debug later.
+   */
+  private requireHost(sender: Party.Connection): boolean {
+    if (!this.game) {
+      this.sendTo(sender, { type: 'error', error: protocolError('not-in-room', 'no such room') });
+      return false;
+    }
+    const seat = this.seatByConnection.get(sender.id) ?? this.seatFromState(sender);
+    if (seat !== this.game.hostSeat) {
+      roomWarn(this.room.id, 'refused a host-only message', {
+        connection: sender.id,
+        seat: seat ?? null,
+        hostSeat: this.game.hostSeat,
+      });
+      this.sendTo(sender, {
+        type: 'error',
+        error: protocolError('not-host', 'only the player who made the room can do that'),
+      });
+      return false;
+    }
+    return true;
   }
 
   private sendTo(connection: Party.Connection, message: RoomMessage): void {

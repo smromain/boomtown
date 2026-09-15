@@ -193,7 +193,7 @@ the rack or on the board to place it; merger decisions surface as a modal. With 
 seat, an opaque hand‑off card covers the screen between turns so nobody sees the next player's
 tiles.
 
-**Online.** "Play online" creates a room (a six‑character code to share) or joins one by code. Seats
+**Online.** "Play online" creates a room and shows an eight‑character code to share, or knocks at one by code. Seats
 fill as people arrive; bot seats are filled by the room itself. The room is authoritative — it deals,
 validates every command, plays the bots, and sends each client only its own filtered view.
 
@@ -336,11 +336,59 @@ cd apps/desktop && npm run package    # electron-vite build + electron-builder
 generated from the logo by `python3 design/make_icon.py`). An `afterPack` hook flips the Electron
 **fuses** on the packed binary — no `run-as-node`, ASAR integrity on, load only from ASAR.
 
-Releases are cut by pushing a `vX.Y.Z` tag (or running the **Release** workflow with a version).
-That builds installers on all three OSes, publishes a GitHub Release, and deploys the PartyKit room
-from the same commit. Signing credentials come from repository secrets; without them the workflow
-still produces unsigned artifacts. Full detail — including the deployed room and the baked online
-host — is in `docs/deploying.md`.
+### Cutting a release
+
+Publishing runs entirely in GitHub Actions. `npm run package` above builds installers locally for
+testing, but nothing local publishes them — the Release page, the itch.io channels and the online
+room all come from one workflow run, off one commit.
+
+**To release:** open **Actions → Release → Run workflow**, pick the branch, **leave the version
+box empty**, and run it. That's the whole procedure.
+
+Leaving the version empty is the normal case: the workflow finds the highest `vYYYY.M.*` tag for
+the current month and adds one. Fill it in only to force a specific value. Pushing a tag works too
+and skips the tag-creation step:
+
+```bash
+git tag v2026.9.3 && git push origin v2026.9.3
+```
+
+Versions are **CalVer — `YYYY.M.N`**, where `N` counts releases *within that month* (not the day of
+the month), because the game ships when it ships rather than in stable/breaking increments. The
+month carries no leading zero: `2026.9.3`, never `2026.09.3`. That is not stylistic — electron‑builder
+parses this as semver and a leading zero is invalid there. The workflow rejects a bad shape in the
+first job, in seconds. `PROTOCOL_VERSION` is *not* this number and does not move with it — see
+**Versioning** in `docs/deploying.md`.
+
+**What runs, in order:**
+
+| Job | What it does |
+|---|---|
+| `prepare` | Resolves the version, validates its shape, creates and pushes the tag |
+| `build` (×3) | On macOS, Windows and Linux in parallel: `npm ci`, **typecheck, full test suite**, stamp the version, package installers, push to itch.io, upload artifacts |
+| `release` | Collects the three platforms' artifacts into one GitHub Release, with generated notes |
+| `deploy-party` | `partykit deploy` — the online room, from the same commit |
+
+**The tests are the gate.** `build` runs `npm run typecheck` and `npm test` before it packages
+anything, so a red suite fails the release rather than shipping. There is no flag to skip that.
+
+**Most missing credentials degrade rather than fail.** `release` and `deploy-party` run in
+parallel off `build`, so a room deploy that fails does not un-publish a release that already went
+out:
+
+| Secret / variable | Without it |
+|---|---|
+| `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` | macOS build is unsigned — players need the `xattr` step above |
+| `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD` | Windows build is unsigned — SmartScreen warns |
+| `BUTLER_API_KEY` | itch.io push is skipped; the GitHub Release is still published |
+| `PARTYKIT_LOGIN` **and** `PARTYKIT_TOKEN` | `deploy-party` goes red and the room keeps running its previous code; the installers still publish. Both are needed — with only one, the CLI silently falls back to an interactive login and hangs until the job times out |
+| `ITCH_TARGET` (variable) | itch.io push is skipped — there is no default, because a publish step must never guess an account name. Set it to `<your itch user>/<project>` |
+
+Set them at **Settings → Secrets and variables → Actions**.
+
+**Afterwards:** check the Release page has all three installers, and that the itch.io page shows the
+new version on each channel. Full detail — the room, the baked online host, the itch channels and
+what gets pushed — is in `docs/deploying.md`.
 
 ### Toolchain note
 
@@ -477,10 +525,44 @@ refused at the door, so a stale client can't half‑parse a newer room.
 
 ### Online identity is a per‑seat token, not an account
 
-Creating or joining a room mints a session token; reconnection presents it in the query string and
-the room re‑binds that seat. No password, no email, no persistence beyond the active game. A seat
-stays reserved by its token while its player is away, so a dropped connection is a pause, not a
-forfeit.
+Creating or joining a room mints a 256‑bit session token; reconnection presents it in the query
+string and the room re‑binds that seat. No password, no email, no persistence beyond the active
+game. A seat stays reserved by its token while its player is away, so a dropped connection is a
+pause, not a forfeit. The token is compared in constant time and **rotates on every resume**, so a
+captured one is worth a single reconnect rather than the rest of the game.
+
+### Having the way in gets you a knock, not a seat
+
+A joiner does not take a seat by connecting. They **knock**, and the room's host
+sees them waiting and lets them in or turns them away. Possession of the address
+or a live code moves you to *knocking* and no further; there is no path from
+there to *seated* that a joiner can drive alone.
+
+That is why a leaked link degrades to a nuisance rather than a disaster: the
+cost is a knock the host declines, not a hijacked seat in a game already under
+way. It is also the one control here that needs no identity at all — the person
+who knows who they invited decides, and nobody has to have an account for that
+to work. A decline sticks, so "turn away" does not mean "wait a second and try
+again", and the host can close the door entirely once everyone has arrived.
+
+The room is the authority on who hosts: it knows which seat created the game and
+refuses `admit`, `decline` and `set-locked` from any other. The client's own
+sense of being the host only decides what to draw.
+
+### A room's address is not the code you read out
+
+These are two things, and they used to be one. A room is addressed by **160 bits** the creator
+mints — never spoken, never shown — and that is what the socket connects to. The **eight‑character
+code** a player shares is a separate, *expiring* ticket: the room claims it from a directory party,
+it resolves to the address for about fifteen minutes, and it is retired the moment the last seat
+fills.
+
+Collapsing the two is what made the old scheme weak. When the room *was* its code, the address space
+was however large a code a person can say out loud — around a billion, which is unguessable among
+friends and enumerable from a public endpoint. Splitting them means the thing that must be
+unguessable is 160 bits, and the thing a person says is short because it only has to survive a few
+minutes. An unissued, expired and retired ticket all answer identically, so sweeping the space
+learns nothing from the shape of a miss.
 
 ### Build order: engine first, offline before any server
 
@@ -500,7 +582,7 @@ thin authority over an engine that was already trusted.
 | `docs/decisions.md` | What was decided and why, what is still open, and the traps already hit |
 | `docs/deploying.md` | Deploying the PartyKit room and building/signing the desktop installers; the app's icon and name |
 | `docs/screenshots/` | Seventeen frames from one real game, in play order — what each shows, and how to retake them |
-| `docs/plans/` | The architecture plan (20 units, KTD1–12, verification contract), the online‑multiplayer substrate plan, and the game‑feel plan |
+| `docs/plans/` | The architecture plan (20 units, KTD1–12, verification contract), the online‑multiplayer substrate plan, the game‑feel plan, and the web‑deployment plan (the public‑internet threat model and what changes for a hosted build) |
 | `docs/handoffs/` | What each recent session diagnosed and landed — the running record of bugs and fixes |
 | `design/build.py` | Generates the design canvas **and** is the reference implementation of the naming rules — port it, don't reimplement it |
 | `design/make_icon.py` | Generates the app icon from the logo — stdlib only; re‑run it after changing the logo |

@@ -1,5 +1,6 @@
 import { PRESETS, RULES, type SetupOptions } from '@boomtown/engine';
-import type { RoomConfig, SeatSlot } from '@boomtown/protocol';
+import type { Knocker, RoomConfig, SeatSlot } from '@boomtown/protocol';
+import { mintToken, tokensMatch } from './tokens.js';
 
 /**
  * Lobby seat bookkeeping for one room. Pure and synchronous — the PartyKit
@@ -19,19 +20,43 @@ export interface SeatOccupant {
  *  concern as much as anything. */
 export const MAX_NAME_LENGTH = 24;
 
-/** Trim, collapse runs of whitespace, and cap. Returns '' for a blank name. */
+/**
+ * Normalise an untrusted display name: NFC, strip the characters that let a
+ * name misrepresent itself, collapse whitespace, cap. Returns '' for a name
+ * that is blank or was made entirely of removed characters.
+ *
+ * The strip list is not decoration. Bidirectional overrides reorder the text
+ * around them, so a name can be made to render as another player's; zero-width
+ * characters produce two visibly identical names that are not equal; control
+ * characters corrupt any log line the name reaches. Every client renders the
+ * string the room hands it, so normalising here is what makes every client
+ * agree on what a player is called.
+ */
 export function cleanName(raw: string): string {
-  return raw.trim().replace(/\s+/g, ' ').slice(0, MAX_NAME_LENGTH);
+  return raw
+    .normalize('NFC')
+    // C0/C1 controls, zero-width and BOM, bidi embedding/override/isolate marks
+    .replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/gu, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, MAX_NAME_LENGTH);
 }
 
 export class SeatTable {
   private readonly humans = new Map<number, SeatOccupant>();
+  /**
+   * Seats a human held and no longer does. Kept separate from `config.bots`
+   * because the config is what the deal was built from: mutating it would make
+   * the room's own setup disagree with the one the command log replays against,
+   * and the seat would deal differently on the next wake.
+   */
+  private readonly ejected = new Set<number>();
 
   constructor(private readonly config: RoomConfig) {}
 
-  /** Seat indices that are bots, from the config. */
+  /** Seat indices played by a bot: configured at creation, or ejected since. */
   private botSeats(): Set<number> {
-    return new Set(Object.keys(this.config.bots).map(Number));
+    return new Set([...Object.keys(this.config.bots).map(Number), ...this.ejected]);
   }
 
   /** Every seat index 0..seatCount-1. */
@@ -94,17 +119,55 @@ export class SeatTable {
   }
 
   /**
-   * Re-bind a reconnecting human by token. Returns the seat, or `null` when
-   * the token matches no seat in this room.
+   * Re-bind a reconnecting human by token, rotating the token as it goes.
+   * Returns the seat and the *new* token to hand back, or `null` when the
+   * token matches no seat in this room.
+   *
+   * Every occupant is compared even after a match, so the time this takes does
+   * not depend on which seat the token belongs to — a loop that returned early
+   * would leak seat order to anyone who could time it.
    */
-  reconnect(token: string, connectionId: string): { seat: number } | null {
+  reconnect(token: string, connectionId: string): { seat: number; token: string } | null {
+    let found: { seat: number; occupant: SeatOccupant } | null = null;
     for (const [seat, occupant] of this.humans) {
-      if (occupant.token === token) {
-        occupant.connectionId = connectionId;
-        return { seat };
-      }
+      if (tokensMatch(occupant.token, token)) found = { seat, occupant };
     }
-    return null;
+    if (!found) return null;
+    const rotated = mintToken();
+    this.humans.set(found.seat, {
+      token: rotated,
+      name: found.occupant.name,
+      connectionId,
+    });
+    return { seat: found.seat, token: rotated };
+  }
+
+  /**
+   * Take a seat away from the human holding it and hand it to a bot.
+   *
+   * The seat does not reopen. A seat that went back to `open` mid-game could be
+   * taken by whoever knocked next, which would hand a stranger somebody else's
+   * holdings — so the only exit from `seated` is to a bot. The engine is not
+   * told: it has no concept of who is driving a seat, and the name it dealt
+   * with stays put, so the story and the register still read as they did.
+   *
+   * Returns false when there was no human there to remove.
+   */
+  eject(seat: number): boolean {
+    if (!this.humans.has(seat)) return false;
+    this.humans.delete(seat);
+    this.ejected.add(seat);
+    return true;
+  }
+
+  /** Seats ejected so far — persisted, so a hibernation wake does not hand them back. */
+  ejectedSeats(): number[] {
+    return [...this.ejected].sort((a, b) => a - b);
+  }
+
+  /** Restore ejections after a wake. */
+  restoreEjected(seats: readonly number[]): void {
+    for (const seat of seats) this.ejected.add(seat);
   }
 
   /** Mark a human's seat disconnected (keeps the seat reserved by token). */
@@ -122,10 +185,11 @@ export class SeatTable {
   }
 
   seatForToken(token: string): number | null {
+    let found: number | null = null;
     for (const [seat, occupant] of this.humans) {
-      if (occupant.token === token) return seat;
+      if (tokensMatch(occupant.token, token)) found = seat;
     }
-    return null;
+    return found;
   }
 
   isBot(seat: number): boolean {
@@ -165,11 +229,18 @@ export class SeatTable {
     }));
   }
 
-  snapshot(code: string, phase: 'lobby' | 'playing' | 'over'): {
-    code: string;
+  snapshot(
+    ticket: string | null,
+    phase: 'lobby' | 'playing' | 'over',
+    door: { hostSeat: number; knocks: readonly Knocker[]; locked: boolean },
+  ): {
+    ticket: string | null;
     phase: 'lobby' | 'playing' | 'over';
     config: RoomConfig;
     seats: SeatSlot[];
+    hostSeat: number;
+    knocks: readonly Knocker[];
+    locked: boolean;
   } {
     const bots = this.botSeats();
     const seats: SeatSlot[] = this.allSeats().map((index) => {
@@ -185,7 +256,7 @@ export class SeatTable {
         connected: occupant.connectionId !== null,
       };
     });
-    return { code, phase, config: this.config, seats };
+    return { ticket, phase, config: this.config, seats, ...door };
   }
 }
 
@@ -227,4 +298,19 @@ export function configError(config: RoomConfig): string | null {
     if (level < 1 || level > 10) return `bot difficulty ${level} out of range`;
   }
   return null;
+}
+
+/**
+ * Whether this config leaves a seat for the person opening the room.
+ *
+ * Deliberately not part of `configError`: a table of nothing but bots is a
+ * perfectly good *game* — `start()` runs one to a ranked result, and the
+ * command log replays it — it just cannot be an online *room*. The creator
+ * takes the first open seat, so with every seat handed to a bot they are
+ * turned away from the room they just made, reading `room-full` as though
+ * someone else got there first. Checked where the room is created, so the
+ * reason can be said plainly and no ticket is spent on it.
+ */
+export function humanlessRoom(config: RoomConfig): boolean {
+  return Object.keys(config.bots).length >= config.seatCount;
 }

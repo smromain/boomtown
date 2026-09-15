@@ -71,7 +71,10 @@ describe('App — online lobby to game transition', () => {
 
     // room reports the game has started -> App swaps to playing-online
     const playing: RoomState = {
-      code: 'ROOM01',
+      ticket: 'ROOM01',
+      hostSeat: 0,
+      knocks: [],
+      locked: false,
       phase: 'playing',
       config: toRoomConfig(defaultConfig()),
       seats: [{ index: 0, kind: 'human', name: 'You', connected: true }],

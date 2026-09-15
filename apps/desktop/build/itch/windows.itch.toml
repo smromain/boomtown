@@ -1,0 +1,10 @@
+# Copied to the top of the packaged Windows build by `electron/itch.mjs` before
+# butler pushes it. Without it the itch app has to guess which of the several
+# executables in an unpacked Electron build is the game.
+#
+# The name is lowercase because that is what electron-builder emits — the same
+# path `electron/afterPack.mjs` flips the fuses on, which would fail the build
+# if it were wrong.
+[[actions]]
+name = "play"
+path = "boomtown.exe"
