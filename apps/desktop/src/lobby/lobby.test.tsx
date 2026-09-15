@@ -241,6 +241,59 @@ await userEvent.click(
     expect(screen.getByRole('textbox', { name: 'Your name' })).toHaveValue('Bo');
   });
 
+  it('takes a pasted code however it arrives, and shows it tidied', async () => {
+    const address = mintRoomAddress();
+    vi.mocked(joinRoom).mockResolvedValue({} as OnlineGame);
+    vi.mocked(resolveTicket).mockResolvedValue(address);
+    render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Join with a code' }));
+    const field = screen.getByRole('textbox', { name: 'Room code' });
+    // What a code actually looks like when it comes out of a chat window: the
+    // dash we put on it ourselves, a stray space, a trailing newline, and the
+    // wrong case.
+    await userEvent.click(field);
+    await userEvent.paste(' abcd-i2o4\n');
+
+    // Tidied in the field, not only on the way out — the player can see that
+    // what they pasted was understood.
+    expect(field).toHaveValue('ABCD-1204');
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Join room' }));
+    });
+    expect(resolveTicket).toHaveBeenCalledWith('ABCD1204');
+  });
+
+  it('keeps a pasted code to eight characters', async () => {
+    render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Join with a code' }));
+    const field = screen.getByRole('textbox', { name: 'Room code' });
+    await userEvent.click(field);
+    await userEvent.paste('ABCD1234EXTRA');
+    expect(field).toHaveValue('ABCD-1234');
+  });
+
+  it('refuses to open an all-bot room, and says why before the button is pressed', async () => {
+    render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
+    for (const n of [1, 2, 3]) {
+      await userEvent.click(
+        within(screen.getByRole('radiogroup', { name: `Seat ${n} type` })).getByRole('radio', { name: 'Bot' }),
+      );
+    }
+    // A room with nobody in it is a local game: the creator takes the first
+    // open seat, and there would be none.
+    expect(screen.getByRole('button', { name: 'Create room' })).toBeDisabled();
+    expect(screen.getByRole('alert')).toHaveTextContent(/at least one seat/i);
+    expect(createRoom).not.toHaveBeenCalled();
+
+    // Handing one seat back to a person clears it.
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Seat 2 type' })).getByRole('radio', { name: 'Human' }),
+    );
+    expect(screen.getByRole('button', { name: 'Create room' })).toBeEnabled();
+    expect(screen.getByRole('alert')).toHaveTextContent('');
+  });
+
   it('blocks joining with a too-short code', async () => {
     render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
     await userEvent.click(screen.getByRole('button', { name: 'Join with a code' }));
@@ -399,6 +452,27 @@ describe('SeatList', () => {
     render(<SeatList game={game} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
     expect(screen.getByText('Waiting for the room…')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Waiting for players/ })).toBeDisabled();
+  });
+
+  it('copies the code to the clipboard, formatted the way it is shown', async () => {
+    const user = userEvent.setup();
+    const { game, emitRoomState } = fakeGame();
+    render(<SeatList game={game} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+    emitRoomState(lobbyState({ ticket: 'ABCD1234' }));
+
+    await user.click(screen.getByRole('button', { name: 'Copy the code' }));
+    // The grouped form goes on the clipboard: it is what the other player
+    // sees in the chat window, and `normaliseTicket` takes the dash back out.
+    expect(await navigator.clipboard.readText()).toBe('ABCD-1234');
+    expect(screen.getByRole('button', { name: 'Copy the code' })).toHaveTextContent('Copied');
+  });
+
+  it('offers nothing to copy once the code has expired', () => {
+    const { game, emitRoomState } = fakeGame();
+    render(<SeatList game={game} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+    emitRoomState(lobbyState({ ticket: null }));
+    expect(screen.getByText('code expired')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Copy the code' })).not.toBeInTheDocument();
   });
 
   it('a non-host sees a waiting message, no Start button', () => {

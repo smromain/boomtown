@@ -175,6 +175,23 @@ describe('PartyKit room — end to end', () => {
     expect(err.type === 'error' && err.error.kind === 'protocol' && err.error.code).toBe('wrong-version');
   });
 
+  it('refuses to create a room with no seat left for a person', async () => {
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    // Every seat a bot: the creator would knock at their own door and be told
+    // the room is full, so the room is never made.
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 0: 5, 1: 5, 2: 5 }, seed: 3 },
+    });
+    const err = await host.next('error');
+    expect(err.type === 'error' && err.error.kind === 'protocol' && err.error.code).toBe('malformed-message');
+    expect(err.type === 'error' && err.error.kind === 'protocol' && err.error.message).toMatch(
+      /at least one seat/,
+    );
+  });
+
   it('plays a full game with 1 human + 2 bots to a ranked result', async () => {
     const room = uniqueRoom();
     const host = client(room);

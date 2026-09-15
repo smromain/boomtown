@@ -299,3 +299,18 @@ export function configError(config: RoomConfig): string | null {
   }
   return null;
 }
+
+/**
+ * Whether this config leaves a seat for the person opening the room.
+ *
+ * Deliberately not part of `configError`: a table of nothing but bots is a
+ * perfectly good *game* — `start()` runs one to a ranked result, and the
+ * command log replays it — it just cannot be an online *room*. The creator
+ * takes the first open seat, so with every seat handed to a bot they are
+ * turned away from the room they just made, reading `room-full` as though
+ * someone else got there first. Checked where the room is created, so the
+ * reason can be said plainly and no ticket is spent on it.
+ */
+export function humanlessRoom(config: RoomConfig): boolean {
+  return Object.keys(config.bots).length >= config.seatCount;
+}

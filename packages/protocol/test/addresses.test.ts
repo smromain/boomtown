@@ -70,4 +70,11 @@ describe('what a person typed', () => {
   it('shows as two groups of four, which is easier to read back', () => {
     expect(formatTicket('ABCD1234')).toBe('ABCD-1234');
   });
+
+  it('leaves a partial ticket unseparated, because the join field formats as you type', () => {
+    expect(formatTicket('')).toBe('');
+    expect(formatTicket('AB')).toBe('AB');
+    expect(formatTicket('ABCD')).toBe('ABCD');
+    expect(formatTicket('ABCD1')).toBe('ABCD-1');
+  });
 });

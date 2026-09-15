@@ -8,6 +8,7 @@ import { LIMITS, RoomGuards } from './limits.js';
 import { mintToken } from './tokens.js';
 import { LIFECYCLE, isIdle, lastActivity, purge, touch, type AlarmStore } from './lifecycle.js';
 import type { KeyValueStore } from './storage.js';
+import { configError, humanlessRoom } from './seats.js';
 
 /**
  * The PartyKit adapter. One instance per room (`room.id` is the room code).
@@ -202,6 +203,18 @@ export default class BoomtownRoom implements Party.Server {
             error: protocolError('not-in-room', 'rooms are addressed by a generated id'),
           });
           sender.close();
+          return;
+        }
+        // Rule checks on the config happen here as well as at `start`, because
+        // a config that can never start should not cost a ticket and a room
+        // first. The all-bot table is the one that matters: nothing would be
+        // wrong until the creator was refused a seat in their own room.
+        const bad =
+          configError(message.config) ??
+          (humanlessRoom(message.config) ? 'an online room needs at least one seat left for a person' : null);
+        if (bad) {
+          roomWarn(this.room.id, 'create-room refused — bad config', { reason: bad, config: message.config });
+          this.sendTo(sender, { type: 'error', error: protocolError('malformed-message', bad) });
           return;
         }
         this.game = new GameRoom(this.room.id, message.config, this.room.storage as unknown as KeyValueStore);

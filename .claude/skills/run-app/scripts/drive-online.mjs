@@ -72,7 +72,7 @@ await host.getByRole('radio', { name: '3 seats' }).click();
 await host.getByRole('radio', { name: 'Bot', exact: true }).nth(2).click();
 await host.getByRole('button', { name: 'Create room' }).click();
 await host.getByRole('region', { name: 'Room lobby' }).waitFor({ timeout: 20000 });
-const ticket = (await host.getByLabel('Room code').innerText()).replace(/[^0-9A-Z]/gi, '');
+const ticket = (await host.getByLabel('Room code', { exact: true }).innerText()).replace(/[^0-9A-Z]/gi, '');
 console.log(`room created, shareable code ${ticket}`);
 await snap(host, 'host-lobby');
 

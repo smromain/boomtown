@@ -44,6 +44,30 @@ export function SeatList({
     [game, onEnterGame],
   );
 
+  // Copying is the way the code actually travels: people paste it into a chat
+  // window, and reading eight characters off a screen to type them back is
+  // exactly where a 0 becomes an O. The formatted form is what goes on the
+  // clipboard, because `normaliseTicket` on the joining side takes the dash
+  // back out anyway.
+  const [copied, setCopied] = useState(false);
+  const copyCode = async (ticket: string) => {
+    try {
+      await navigator.clipboard.writeText(formatTicket(ticket));
+      setCopied(true);
+    } catch (error) {
+      // A clipboard the browser or the packaged shell refuses is not worth an
+      // error banner: the code is on screen, and selecting it still works.
+      netlog.log('lobby', 'warn', 'could not copy the room code', { error: String(error) });
+    }
+  };
+  // The confirmation is a label change, so it has to go back on its own.
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  const ticket = roomState?.ticket ?? null;
   const seats = roomState?.seats ?? [];
   // `[].every()` is vacuously true — without the length guard an empty seat
   // list reads as "full" and offers Start for a room we know nothing about.
@@ -87,9 +111,16 @@ export function SeatList({
               characters of entropy nobody reads out, and it is already in the
               URL this client connected to. A retired or expired ticket shows
               as nothing rather than as a code that no longer works. */}
-          <span className={styles.code} aria-label={copy.lobby.roomCode}>
-            {roomState?.ticket ? formatTicket(roomState.ticket) : copy.lobby.ticketExpired}
-          </span>
+          <div className={styles.codeBlock}>
+            <span className={styles.code} aria-label={copy.lobby.roomCode}>
+              {ticket ? formatTicket(ticket) : copy.lobby.ticketExpired}
+            </span>
+            {ticket && (
+              <Button variant="ghost" aria-label={copy.lobby.copyCodeLabel} onClick={() => void copyCode(ticket)}>
+                {copied ? copy.lobby.copied : copy.lobby.copyCode}
+              </Button>
+            )}
+          </div>
         </header>
 
         <div className={form.body}>

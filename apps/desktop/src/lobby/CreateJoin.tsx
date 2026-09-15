@@ -4,7 +4,7 @@ import { defaultConfig, type GameConfig } from '../setup/gameConfig.js';
 import { Choice } from '../setup/Choice.js';
 import { VisibilityChoice } from '../setup/VisibilityChoice.js';
 import { SeatRow } from '../setup/SeatConfig.js';
-import { mintRoomAddress, normaliseTicket, TICKET_LENGTH } from '@boomtown/protocol';
+import { formatTicket, mintRoomAddress, normaliseTicket, TICKET_LENGTH } from '@boomtown/protocol';
 import { createRoom, joinRoom, type OnlineGame } from '../online/onlineGame.js';
 import { resolveTicket } from '../online/hostUrl.js';
 import { randomName } from '../online/randomName.js';
@@ -56,10 +56,22 @@ export function CreateJoin({
     patch({ seats });
   };
 
+  // A room with no human seat cannot be joined by the person creating it: the
+  // host takes the first *open* seat, and with every seat handed to a bot there
+  // is none. The server refuses it too — this is so the button says why before
+  // anyone presses it.
+  const humanSeats = config.seats.filter((s) => s.kind === 'human').length;
+  const allBots = mode === 'create' && humanSeats === 0;
+
   const go = async () => {
     const chosen = name.trim();
     if (chosen === '') {
       setError(copy.online.errors.noName);
+      return;
+    }
+
+    if (allBots) {
+      setError(copy.online.errors.allBots);
       return;
     }
 
@@ -140,12 +152,22 @@ export function CreateJoin({
             <div className={form.columns}>
               <label className={form.field}>
                 <span>{copy.online.roomCode}</span>
+                {/* Normalised as it is typed *or pasted*, which is the point:
+                    a code arrives from a chat window with a stray space, a
+                    trailing newline, lowercase, or the dash we put there
+                    ourselves, and all of that has to land as eight characters.
+                    `normaliseTicket` is the same function the submit path used
+                    to run alone, so what you see is now what is sent. */}
                 <input
                   className={`${form.input} ${styles.codeInput}`}
                   value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value)}
+                  onChange={(e) =>
+                    setJoinCode(formatTicket(normaliseTicket(e.target.value).slice(0, TICKET_LENGTH)))
+                  }
                   aria-label={copy.online.roomCode}
                   placeholder={copy.online.roomCodePlaceholder}
+                  autoComplete="off"
+                  spellCheck={false}
                 />
                 <span className={form.note}>{copy.online.roomCodeNote}</span>
               </label>
@@ -201,8 +223,11 @@ export function CreateJoin({
             </>
           )}
 
+          {/* The all-bot reason stands in the same place as a failure, because
+              the button is disabled before it can be pressed — a control that
+              refuses without saying why is the worse half of this fix. */}
           <p className={form.error} role="alert">
-            {error ?? ''}
+            {error ?? (allBots ? copy.online.errors.allBots : '')}
           </p>
         </div>
 
@@ -210,7 +235,7 @@ export function CreateJoin({
           <Button variant="ghost" onClick={onBack}>
             {copy.online.back}
           </Button>
-          <Button variant="primary" disabled={busy} onClick={() => void go()}>
+          <Button variant="primary" disabled={busy || allBots} onClick={() => void go()}>
             {busy
               ? copy.online.connecting
               : mode === 'create'

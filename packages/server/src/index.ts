@@ -8,6 +8,7 @@ export {
   setupOptionsFor,
   clampSeatCount,
   configError,
+  humanlessRoom,
   cleanName,
   MAX_NAME_LENGTH,
 } from './seats.js';

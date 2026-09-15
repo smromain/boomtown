@@ -40,7 +40,8 @@
       "noName": "Enter a name, or roll one.",
       "noCode": "Enter a room code.",
       "failed": "Could not connect.",
-      "badCode": "That code is not working. It may have expired — codes last about fifteen minutes — or the room may already be full. Ask for a fresh one."
+      "badCode": "That code is not working. It may have expired — codes last about fifteen minutes — or the room may already be full. Ask for a fresh one.",
+      "allBots": "Leave at least one seat for a person — an all-bot table is a local game, not a room."
     },
     "noHostConfigured": "No online host is configured. This release was built without VITE_PARTYKIT_HOST (apps/desktop/.env.production) — set an “Online host” in Settings to play online."
   },
@@ -67,7 +68,10 @@
     "lock": "Close the door",
     "unlock": "Open the door",
     "waitingAtDoor": "Waiting for the host to let you in…",
-    "eject": "Hand to a bot"
+    "eject": "Hand to a bot",
+    "copyCode": "Copy",
+    "copied": "Copied",
+    "copyCodeLabel": "Copy the code"
   },
   "setup": {
     "screenLabel": "New game",

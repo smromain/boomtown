@@ -7,6 +7,7 @@ import {
   SeatTable,
   cleanName,
   configError,
+  humanlessRoom,
   seatOnClock,
   setupOptionsFor,
 } from '@boomtown/server';
@@ -106,6 +107,21 @@ describe('configError', () => {
   it('rejects a bot difficulty outside 1–10', () => {
     expect(configError(baseConfig({ bots: { 0: 0 } }))).toMatch(/difficulty/);
     expect(configError(baseConfig({ bots: { 0: 11 } }))).toMatch(/difficulty/);
+  });
+  it('accepts an all-bot table, which is a fine game if not a fine room', () => {
+    // `humanlessRoom` is what refuses this online; the engine runs it happily,
+    // and `GameRoom.start()` below plays one to a ranked result.
+    expect(configError(baseConfig({ seatCount: 3, bots: { 0: 5, 1: 5, 2: 5 } }))).toBeNull();
+  });
+});
+
+describe('humanlessRoom', () => {
+  it('spots a table with no seat left for the person opening it', () => {
+    expect(humanlessRoom(baseConfig({ seatCount: 3, bots: { 0: 5, 1: 5, 2: 5 } }))).toBe(true);
+  });
+  it('passes a table that is bots but for one seat', () => {
+    expect(humanlessRoom(baseConfig({ seatCount: 3, bots: { 1: 5, 2: 5 } }))).toBe(false);
+    expect(humanlessRoom(baseConfig({ seatCount: 3, bots: {} }))).toBe(false);
   });
 });
 

@@ -84,7 +84,13 @@ export function normaliseTicket(raw: string): string {
     .replace(/[^0-9A-Z]/g, '');
 }
 
-/** How a ticket is shown to a person: `AB3K-7QXM`, which is easier to read back. */
+/**
+ * How a ticket is shown to a person: `AB3K-7QXM`, which is easier to read
+ * back. Safe on a partial ticket, because the join field formats what someone
+ * is still typing: a group separator is only added once there is a second
+ * group to separate, so four characters never read as `ABCD-`.
+ */
 export function formatTicket(ticket: string): string {
+  if (ticket.length <= 4) return ticket;
   return `${ticket.slice(0, 4)}-${ticket.slice(4)}`;
 }

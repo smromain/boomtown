@@ -269,6 +269,15 @@
   margin-top: 0.9rem;
 }
 
+/* The code and its copy button read as one object, stacked so the button sits
+   under the code at narrow widths rather than pushing it off the header. */
+.codeBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .hint {
   font-size: 0.85rem;
   color: var(--muted);
