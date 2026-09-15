@@ -1,4 +1,13 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useGameState } from '../client/GameClientProvider.js';
 import { triggerFor, type Beat } from './beatTriggers.js';
 import { EMPTY_BEAT_QUEUE, advance, enqueue, type BeatQueue } from './beatQueue.js';
@@ -8,9 +17,27 @@ interface BeatApi {
   /** Identity for the active beat — the orchestrator's React key. See `BeatQueue`. */
   readonly serial: number;
   readonly dismiss: () => void;
+  /**
+   * Whether the victory beat still owes the player the result.
+   *
+   * The end screen prints the winner and the final standings, and it renders
+   * the moment `status` flips to `over`. That is the same commit the
+   * `game-over` event lands in (`endGame` in the engine sets both), which is
+   * one commit *before* the effect below can queue the beat whose entire job is
+   * to reveal them. Measured in a real bot game, the standings sat uncovered
+   * for ~1.2s before the curtain arrived — long enough to read the winner off
+   * the screen the beat was about to announce.
+   *
+   * So the end screen asks this rather than `status`, and it is answered from
+   * the log, because the queue is the thing that lags. False for a client that
+   * joined after the game had already ended: the hydration mark means no beat
+   * will ever play for it, and a result nothing is going to reveal must not be
+   * withheld.
+   */
+  readonly resultHeld: boolean;
 }
 
-const NOOP: BeatApi = { active: null, serial: 0, dismiss: () => {} };
+const NOOP: BeatApi = { active: null, serial: 0, dismiss: () => {}, resultHeld: false };
 const BeatContext = createContext<BeatApi>(NOOP);
 
 /**
@@ -34,6 +61,8 @@ const WATCHDOG_MS = 30_000;
 export function BeatProvider({ children }: { children: ReactNode }) {
   const log = useGameState((state) => state.log);
   const [queue, setQueue] = useState<BeatQueue>(EMPTY_BEAT_QUEUE);
+  /** Beats that have had the screen and given it back. See `resultHeld`. */
+  const [played, setPlayed] = useState<ReadonlySet<Beat['id']>>(() => new Set());
 
   // Hydration mark (AE8): only events appended past this index are beat
   // candidates — everything already in the log when this mounts plays no beat.
@@ -61,27 +90,41 @@ export function BeatProvider({ children }: { children: ReactNode }) {
     );
   }, [log]);
 
+  // What is on screen, for `finish` to retire. A ref rather than a closure over
+  // `queue.active` so `finish` and `dismiss` stay stable across renders — the
+  // keydown listener and the watchdog below hold them, and neither should
+  // re-arm on every commit.
+  const activeId = useRef<Beat['id'] | null>(null);
+
   useEffect(() => {
+    activeId.current = queue.active?.id ?? null;
     if (queue.active && savedFocus.current == null) {
       savedFocus.current = document.activeElement;
     }
   }, [queue.active]);
 
-  const dismiss = (): void => {
+  /** Retire the active beat: it has had its run, whoever ended it. */
+  const finish = useCallback((): void => {
+    const id = activeId.current;
+    if (id) setPlayed((current) => (current.has(id) ? current : new Set(current).add(id)));
     setQueue((current) => advance(current));
+  }, []);
+
+  const dismiss = useCallback((): void => {
+    finish();
     const el = savedFocus.current;
     savedFocus.current = null;
     if (el instanceof HTMLElement) el.focus();
-  };
+  }, [finish]);
 
   // The backstop. Keyed on `serial`, not on `active`: two consecutive beats can
   // be `toEqual` one another, and a watchdog that didn't re-arm for the second
   // one would be exactly the bug it exists to catch.
   useEffect(() => {
     if (!queue.active) return;
-    const timer = window.setTimeout(() => setQueue((current) => advance(current)), WATCHDOG_MS);
+    const timer = window.setTimeout(finish, WATCHDOG_MS);
     return () => window.clearTimeout(timer);
-  }, [queue.active, queue.serial]);
+  }, [queue.active, queue.serial, finish]);
 
   useEffect(() => {
     if (!queue.active) return;
@@ -93,10 +136,19 @@ export function BeatProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [queue.active]);
+  }, [queue.active, dismiss]);
+
+  // Asked of the log, not the queue — see `resultHeld`. `hydrationMark` is null
+  // on the very first render, which is the right answer for a client joining a
+  // game that is already over: nothing landed while it was watching.
+  const endedWhileWatching = useMemo(() => {
+    const mark = hydrationMark.current;
+    return mark != null && log.slice(mark).some((event) => event.type === 'game-over');
+  }, [log]);
+  const resultHeld = endedWhileWatching && !played.has('victory');
 
   return (
-    <BeatContext.Provider value={{ active: queue.active, serial: queue.serial, dismiss }}>
+    <BeatContext.Provider value={{ active: queue.active, serial: queue.serial, dismiss, resultHeld }}>
       {children}
     </BeatContext.Provider>
   );
