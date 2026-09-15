@@ -44,8 +44,20 @@ mac:
   # separately, calls the hook on each, merges them with `@electron/universal`,
   # then calls the hook again on the merged app. See `electron/afterPack.mjs` —
   # the ad-hoc re-sign must happen only on that last call.
+  #
+  # Two artifacts from one universal bundle: the DMG is the download on the
+  # GitHub release page, the zip is what goes to itch.io. The itch app cannot
+  # install from a DMG, and itch's own guidance is that a zipped .app bundle is
+  # the canonical way to ship a Mac game. Build electron-builder's zip target
+  # rather than archiving the .app by hand — an .app contains symlinks (the
+  # Frameworks directory) and executable bits, and a naive `zip -r` flattens
+  # both, which macOS reports as "damaged and can't be opened" exactly like an
+  # unsigned app does.
   target:
     - target: dmg
+      arch:
+        - universal
+    - target: zip
       arch:
         - universal
   hardenedRuntime: true
@@ -55,8 +67,15 @@ mac:
   entitlementsInherit: build/entitlements.mac.plist
 
 win:
+  # NSIS for the release page; a zipped unpacked build for itch.io. The itch app
+  # manages its own install directory, so handing it an interactive installer
+  # (oneClick: false, choose-your-own-path below) works against it — a plain
+  # folder it can drop in place is what it wants.
   target:
     - target: nsis
+      arch:
+        - x64
+    - target: zip
       arch:
         - x64
 
@@ -66,6 +85,9 @@ nsis:
   allowToChangeInstallationDirectory: true
 
 linux:
+  # The AppImage needs no itch-specific variant: butler sets the executable bit
+  # on push and the itch app fixes it again on install, which is the one thing
+  # that usually goes wrong with a Linux upload.
   target:
     - target: AppImage
       arch:

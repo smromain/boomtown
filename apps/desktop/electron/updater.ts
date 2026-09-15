@@ -1,13 +1,16 @@
 import { app, dialog } from 'electron';
+import { updatesAreStoreManaged } from './distribution.js';
 
 /**
  * Auto-update check on launch (U19). Uses `electron-updater` against the
- * generic feed in `electron-builder.yml`. A no-op in development and when
- * `electron-updater` is not installed (it is a packaged-build-only dependency);
- * that keeps the dev and test paths free of the native module.
+ * generic feed in `electron-builder.yml`. A no-op in development, in a build
+ * made for a store that updates it (`distribution.ts`), and when `electron-updater` is not
+ * installed (it is a packaged-build-only dependency); that keeps the dev and
+ * test paths free of the native module.
  */
 export async function checkForUpdates(): Promise<{ available: boolean }> {
   if (!app.isPackaged) return { available: false };
+  if (updatesAreStoreManaged()) return { available: false };
 
   try {
     const { autoUpdater } = await import('electron-updater');

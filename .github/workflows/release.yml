@@ -116,6 +116,60 @@ jobs:
         # build at a different room, edit that file (an empty env var here would
         # shadow it with a blank value — see src/online/hostUrl.ts).
 
+      # itch.io, from the build job rather than a later one: the artifacts
+      # below travel as a zip that does not preserve the executable bit, and a
+      # macOS .app or an AppImage that has lost it will not launch. Pushing
+      # from the runner that produced the build keeps the permissions butler
+      # then uploads. Skipped when no BUTLER_API_KEY is set, the same way
+      # signing is — and the check is inside the script because a step's own
+      # `env:` block is not readable from its `if:`.
+      - name: Publish to itch.io
+        shell: bash
+        working-directory: apps/desktop
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          ITCH_TARGET: ${{ vars.ITCH_TARGET || 'smromain/boomtown' }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BUTLER_API_KEY:-}" ]; then
+            echo "no BUTLER_API_KEY secret — skipping the itch.io push"
+            exit 0
+          fi
+
+          # butler's own arm64 macOS channel is preferred; the amd64 build is
+          # the fallback for runner images without it (and for Rosetta).
+          case "${{ matrix.os }}" in
+            macos-latest)   ARCHES="darwin-arm64 darwin-amd64"; PLATFORM=mac;   BUTLER=butler ;;
+            windows-latest) ARCHES="windows-amd64";             PLATFORM=win;   BUTLER=butler.exe ;;
+            *)              ARCHES="linux-amd64";               PLATFORM=linux; BUTLER=butler ;;
+          esac
+
+          for ARCH in $ARCHES; do
+            if curl -fsSL -o butler.zip "https://broth.itch.zone/butler/$ARCH/LATEST/archive/default"; then
+              echo "fetched butler for $ARCH"
+              break
+            fi
+            echo "no butler build for $ARCH"
+          done
+          [ -f butler.zip ] || { echo "::error::could not download butler"; exit 1; }
+
+          # `unzip` is not on the Windows runner; 7z is. bsdtar cannot be the
+          # one code path either — GNU tar on Linux does not read zips.
+          if [ "$PLATFORM" = "win" ]; then
+            7z x -obutler-bin -y butler.zip >/dev/null
+          else
+            unzip -o -q butler.zip -d butler-bin
+          fi
+          chmod +x "butler-bin/$BUTLER"
+
+          # Stages the .itch.toml manifest and prints what to push: the unpacked
+          # build directory on macOS and Windows, the AppImage on Linux.
+          PUSH_PATH="$(node electron/itch.mjs "$PLATFORM")"
+          CHANNEL="$(node -e "import('./electron/itch.mjs').then((m) => process.stdout.write(m.CHANNELS['$PLATFORM']))")"
+          echo "pushing $PUSH_PATH to $ITCH_TARGET:$CHANNEL as $VERSION"
+          "butler-bin/$BUTLER" push "$PUSH_PATH" "$ITCH_TARGET:$CHANNEL" --userversion "$VERSION"
+
       - uses: actions/upload-artifact@v4
         with:
           name: installers-${{ matrix.os }}

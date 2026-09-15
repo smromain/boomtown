@@ -50,6 +50,69 @@ to reading `~/.config/partykit`, which doesn't exist in CI, and dies with
 
 Set both at GitHub → repo Settings → Secrets and variables → Actions.
 
+## itch.io
+
+The same `npm run package` output, pushed with butler. Three things differ from
+the release-page downloads, each of them a way an itch upload otherwise breaks.
+
+**What goes up is not the installer.** The itch app cannot install from a DMG,
+and the NSIS installer is interactive (`oneClick: false`, choose-your-own path) —
+which fights a launcher that wants to own the install directory. So macOS and
+Windows push the **unpacked build directory** (`dist/mac-universal/`,
+`dist/win-unpacked/`), and `electron-builder.yml` builds a `zip` target
+alongside the DMG and the installer so those directories exist. Linux pushes the
+AppImage as it stands. Pushing directories is also what makes butler's
+block-diff patching work — it has nothing to diff inside an archive.
+
+**Never archive an `.app` by hand.** A macOS bundle carries symlinks (the
+`Frameworks` directory) and executable bits; `zip -r` flattens both, and macOS
+reports the result as "damaged and can't be opened" — the same message an
+unsigned app gives, from an entirely different cause. Use electron-builder's
+`zip` target, or push the directory and let butler do it.
+
+**A manifest says what to launch.** `build/itch/<platform>.itch.toml` is copied
+to the root of the pushed directory as `.itch.toml` by `electron/itch.mjs`. It
+names `Boomtown.app` / `Boomtown.exe` under the well-known action name `play`,
+which the itch app renders as the highlighted *Play Now* button. An AppImage is
+a single file with no root to copy into, and needs none — it is the executable.
+
+### Push
+
+```bash
+cd apps/desktop
+npm run package
+npm run itch:stage -- mac        # stages the manifest, prints the path to push
+butler push "$(npm run --silent itch:stage -- mac)" smromain/boomtown:osx --userversion 1.0.0
+```
+
+Channel names carry the platform tag, so they are the plain keywords —
+`osx`, `windows`, `linux` — in kebab-case. A channel named anything else ships a
+build with no platform tag, which no launcher will pick up. `--userversion` puts
+your semver on the page instead of a build number.
+
+### CI
+
+The `Publish to itch.io` step runs inside the **build** job, on each platform's
+own runner, rather than as a later job. That is deliberate: `upload-artifact`
+does not preserve the executable bit, so a `.app` or an AppImage that travelled
+through an artifact would not launch. The step no-ops unless `BUTLER_API_KEY` is
+set (itch.io → settings → API keys), the same way signing does; the itch target
+defaults to `smromain/boomtown` and is overridable with an `ITCH_TARGET` repo
+variable.
+
+### Auto-update is off for itch builds
+
+The itch app installs into a directory it manages and patches it in place, so
+the app must not also update itself. `BOOMTOWN_DISTRIBUTION=itch` at build time
+is baked into the main process by `electron.vite.config.ts` and read by
+`electron/distribution.ts`; `checkForUpdates()` returns early on it. There is no
+update feed configured today, so this changes nothing yet — it is there so that
+adding one cannot quietly turn every itch install into two updaters writing the
+same files.
+
+**Gatekeeper still applies.** An itch build is as unsigned as any other, so the
+`xattr -dr com.apple.quarantine` note belongs in the itch page description too.
+
 ## The desktop app (Electron)
 
 Config: `apps/desktop/electron-builder.yml`. electron-vite bundles the renderer

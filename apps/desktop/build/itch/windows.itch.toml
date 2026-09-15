@@ -1,0 +1,6 @@
+# Copied to the top of the packaged Windows build by `electron/itch.mjs` before
+# butler pushes it. Without it the itch app has to guess which of the several
+# executables in an unpacked Electron build is the game.
+[[actions]]
+name = "play"
+path = "Boomtown.exe"

@@ -12,6 +12,12 @@ const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
  */
 export default defineConfig({
   main: {
+    // The distribution this build is for, read by `electron/updater.ts`. Set to
+    // `itch` for a build going to itch.io, where the itch app owns installing
+    // and updating; empty for the installers on the release page.
+    define: {
+      __BOOMTOWN_DISTRIBUTION__: JSON.stringify(process.env['BOOMTOWN_DISTRIBUTION'] ?? ''),
+    },
     build: {
       outDir: 'out/main',
       lib: { entry: r('./electron/main.ts') },
