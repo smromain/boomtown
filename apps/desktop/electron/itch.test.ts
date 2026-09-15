@@ -112,3 +112,14 @@ describe('the packaged targets', () => {
     expect(builder).toMatch(/target: AppImage/);
   });
 });
+
+describe('the executable name the manifests point at', () => {
+  it('is pinned in electron-builder.yml, not derived from the package name', () => {
+    // Without `executableName`, electron-builder derives one from the package
+    // name `@boomtown/desktop` and sanitises it to `@boomtowndesktop` — which
+    // is what a real release actually produced, and what the Linux and Windows
+    // manifests were pointing past. Pinning it is what makes those paths true.
+    const builder = readFileSync(at('../electron-builder.yml'), 'utf8');
+    expect(builder).toMatch(/^executableName: boomtown$/m);
+  });
+});

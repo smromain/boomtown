@@ -161,13 +161,19 @@ jobs:
         shell: bash
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-          ITCH_TARGET: ${{ vars.ITCH_TARGET }}
+          # Read from both places it could plausibly live. `vars` only sees the
+          # Variables tab, so a target set as a *secret* resolves to empty and
+          # the push silently skips — which is exactly what happened on the
+          # first attempt. Taking either costs nothing and removes a failure
+          # whose only symptom is a skipped step.
+          ITCH_TARGET: ${{ vars.ITCH_TARGET || secrets.ITCH_TARGET }}
         run: |
           if [ -z "${BUTLER_API_KEY:-}" ]; then
             echo "no BUTLER_API_KEY secret — skipping the itch.io push"
           elif [ -z "${ITCH_TARGET:-}" ]; then
             echo "::warning::BUTLER_API_KEY is set but ITCH_TARGET is not — skipping the itch.io push"
-            echo "Set the ITCH_TARGET repo variable to your itch user and project, e.g. yourname/boomtown"
+            echo "Set ITCH_TARGET (repo variable or secret) to your itch user and project, e.g. yourname/boomtown."
+            echo "Note: a value saved under Settings > Environments is not visible here unless the job declares that environment."
           else
             echo "ITCH_PUBLISH=true" >> "$GITHUB_ENV"
           fi
@@ -192,7 +198,7 @@ jobs:
         working-directory: apps/desktop
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-          ITCH_TARGET: ${{ vars.ITCH_TARGET }}
+          ITCH_TARGET: ${{ vars.ITCH_TARGET || secrets.ITCH_TARGET }}
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -euo pipefail

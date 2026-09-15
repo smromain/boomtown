@@ -3,6 +3,13 @@
 # `electron-builder` run produces unsigned artifacts.
 appId: com.boomtown.desktop
 productName: Boomtown
+# The launched binary's name on Windows and Linux. Without it electron-builder
+# derives one from the *package* name, which is `@boomtown/desktop` — and it
+# sanitises that to `@boomtowndesktop`, a name with an `@` in it that no player
+# should ever see and that the itch manifests cannot point at. Setting it makes
+# the path predictable, which is what `electron/afterPack.mjs` and
+# `build/itch/*.itch.toml` both assume.
+executableName: boomtown
 copyright: © 2026 Boomtown
 
 directories:
