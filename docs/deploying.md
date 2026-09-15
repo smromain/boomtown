@@ -129,8 +129,29 @@ update feed configured today, so this changes nothing yet — it is there so tha
 adding one cannot quietly turn every itch install into two updaters writing the
 same files.
 
-**Gatekeeper still applies.** An itch build is as unsigned as any other, so the
-`xattr -dr com.apple.quarantine` note belongs in the itch page description too.
+### Gatekeeper: the itch app is the path that works
+
+An itch build is exactly as unsigned as the DMG on the release page, but the
+consequence is not the same, and this is worth getting right on the itch page.
+
+macOS refuses an unsigned app with "is damaged and can't be opened" when the
+file carries the `com.apple.quarantine` attribute — which a *browser* applies to
+anything it downloads. The itch app fetches and extracts the build itself, so
+nothing ever applies that attribute and the same bytes launch normally. itch's
+own docs say as much: players using the app do not hit this, and they suggest
+encouraging players towards it.
+
+So the page copy should lead with the app for macOS, and keep the `xattr` line
+as the fallback for anyone taking the direct download:
+
+> **macOS:** install through the itch app and it just works. If you download the
+> zip directly, macOS will call the app "damaged" — it isn't, it's unsigned, and
+> macOS reports those the same way. Clear the flag once:
+> `xattr -dr com.apple.quarantine /Applications/Boomtown.app`
+
+None of this is a reason to skip signing: a signed build removes the caveat for
+both paths, and the release workflow already signs whenever the secrets are
+present.
 
 ## The desktop app (Electron)
 
