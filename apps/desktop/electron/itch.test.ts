@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-const { CHANNELS, macBuildDir, appImage, target, stage } = await import('./itch.mjs');
+const { CHANNELS, macBuildDir, target, stage } = await import('./itch.mjs');
 
 const at = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
@@ -30,21 +30,33 @@ describe('what gets pushed', () => {
     expect(() => macBuildDir(['win-unpacked'])).toThrow(/no macOS build/);
   });
 
-  it('pushes the unpacked directories, never the DMG or the installer', () => {
-    // The whole point: the itch app cannot install from a DMG, and an
-    // interactive NSIS installer fights it for the install directory.
-    const entries = ['mac-universal', 'win-unpacked', 'Boomtown-1.0.0-universal.dmg', 'Boomtown Setup 1.0.0.exe'];
+  it('pushes the unpacked directories on every platform, never an installer', () => {
+    // itch ranks a butler push of a build folder top-tier and traditional
+    // installers second-worst; the AppImage is skipped for the same reason a
+    // DMG is — one opaque file butler cannot patch well.
+    const entries = [
+      'mac-universal',
+      'win-unpacked',
+      'linux-unpacked',
+      'Boomtown-1.0.0-universal.dmg',
+      'Boomtown Setup 1.0.0.exe',
+      'Boomtown-1.0.0.AppImage',
+    ];
     expect(target('mac', entries).path).toBe('mac-universal');
     expect(target('win', entries).path).toBe('win-unpacked');
+    expect(target('linux', entries).path).toBe('linux-unpacked');
   });
 
-  it('pushes the AppImage as it stands, with no manifest', () => {
-    const found = target('linux', ['Boomtown-1.0.0.AppImage']);
-    expect(found).toMatchObject({ channel: 'linux', path: 'Boomtown-1.0.0.AppImage', manifest: null });
+  it('every platform gets a manifest, since every platform pushes a directory', () => {
+    const entries = ['mac-universal', 'win-unpacked', 'linux-unpacked'];
+    for (const platform of ['mac', 'win', 'linux']) {
+      expect(target(platform, entries).manifest).toMatch(/\.itch\.toml$/);
+    }
   });
 
-  it('refuses an ambiguous dist rather than pushing a stale AppImage', () => {
-    expect(() => appImage(['Boomtown-1.0.0.AppImage', 'Boomtown-0.9.0.AppImage'])).toThrow(/more than one/);
+  it('says which build is missing rather than pushing the wrong thing', () => {
+    expect(() => target('linux', ['mac-universal'])).toThrow(/no linux-unpacked in dist/);
+    expect(() => target('win', ['mac-universal'])).toThrow(/no win-unpacked in dist/);
   });
 
   it('names the platforms it knows when handed one it does not', () => {
@@ -56,46 +68,47 @@ describe('staging the manifest', () => {
   it('copies the manifest to the root of the pushed directory as .itch.toml', async () => {
     const dist = await mkdtemp(join(tmpdir(), 'boomtown-itch-'));
     await mkdir(join(dist, 'win-unpacked'));
-    await writeFile(join(dist, 'win-unpacked', 'Boomtown.exe'), '');
+    await writeFile(join(dist, 'win-unpacked', 'boomtown.exe'), '');
 
     const staged = await stage('win', dist, at('../build/itch'));
 
     expect(staged.pushPath).toBe(join(dist, 'win-unpacked'));
     // The manifest sits beside the executable, not inside a subdirectory —
     // the itch app reads it from the root of what it installed.
-    expect(await readFile(join(dist, 'win-unpacked', '.itch.toml'), 'utf8')).toMatch(/path = "Boomtown\.exe"/);
+    expect(await readFile(join(dist, 'win-unpacked', '.itch.toml'), 'utf8')).toMatch(/path = "boomtown\.exe"/);
   });
 });
 
 describe('the manifests in the repo', () => {
-  it('launch the product name electron-builder actually produces', async () => {
-    // productName in electron-builder.yml decides both of these filenames; if
-    // it is ever renamed, the manifests point at something that is not there.
-    const [osx, windows] = await Promise.all([
+  it('launch the executables electron-builder actually emits', async () => {
+    // These are the same paths `afterPack.mjs` flips the fuses on — that hook
+    // runs on every package and would fail the build if they were wrong, which
+    // is the only evidence available without packaging here. `butler validate`
+    // in the release workflow is the check against a real build.
+    const [osx, windows, linux] = await Promise.all([
       readFile(at('../build/itch/osx.itch.toml'), 'utf8'),
       readFile(at('../build/itch/windows.itch.toml'), 'utf8'),
+      readFile(at('../build/itch/linux.itch.toml'), 'utf8'),
     ]);
     expect(osx).toMatch(/^path = "Boomtown\.app"$/m);
-    expect(windows).toMatch(/^path = "Boomtown\.exe"$/m);
+    expect(windows).toMatch(/^path = "boomtown\.exe"$/m);
+    expect(linux).toMatch(/^path = "boomtown"$/m);
     // `play` is the well-known name the itch app renders as "Play Now".
-    expect(osx).toMatch(/^name = "play"$/m);
-    expect(windows).toMatch(/^name = "play"$/m);
+    for (const manifest of [osx, windows, linux]) {
+      expect(manifest).toMatch(/^name = "play"$/m);
+    }
   });
 });
 
 describe('the packaged targets', () => {
   const builder = readFileSync(at('../electron-builder.yml'), 'utf8');
 
-  it('builds a zip for macOS as well as the DMG, because itch cannot use a DMG', () => {
-    expect(builder).toMatch(/target: zip/);
-    const mac = builder.slice(builder.indexOf('\nmac:'), builder.indexOf('\nwin:'));
-    expect(mac).toMatch(/target: dmg/);
-    expect(mac).toMatch(/target: zip/);
-  });
-
-  it('builds a zip for Windows as well as the installer', () => {
-    const win = builder.slice(builder.indexOf('\nwin:'), builder.indexOf('\nnsis:'));
-    expect(win).toMatch(/target: nsis/);
-    expect(win).toMatch(/target: zip/);
+  it('build only the release-page installers — itch gets the unpacked dirs', () => {
+    // A zip target would be dead weight: electron-builder leaves the unpacked
+    // directory beside every installer, and that directory is what butler gets.
+    expect(builder).not.toMatch(/target: zip/);
+    expect(builder).toMatch(/target: dmg/);
+    expect(builder).toMatch(/target: nsis/);
+    expect(builder).toMatch(/target: AppImage/);
   });
 });

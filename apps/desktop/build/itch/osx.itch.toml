@@ -1,6 +1,7 @@
 # Copied to the top of the packaged macOS build by `electron/itch.mjs` before
-# butler pushes it. It has to sit beside the bundle, not inside it — the itch
-# app reads the manifest from the root of the build it installed.
+# butler pushes it. itch's macOS guidance is exactly this shape: push the `.app`
+# with butler, and "if an app manifest is needed, place both the `.app` and the
+# manifest in a folder before uploading".
 #
 # `play` is a well-known action name: the itch app renders it as the highlighted
 # "Play Now" button rather than a generic launch entry.

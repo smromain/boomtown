@@ -45,19 +45,13 @@ mac:
   # then calls the hook again on the merged app. See `electron/afterPack.mjs` —
   # the ad-hoc re-sign must happen only on that last call.
   #
-  # Two artifacts from one universal bundle: the DMG is the download on the
-  # GitHub release page, the zip is what goes to itch.io. The itch app cannot
-  # install from a DMG, and itch's own guidance is that a zipped .app bundle is
-  # the canonical way to ship a Mac game. Build electron-builder's zip target
-  # rather than archiving the .app by hand — an .app contains symlinks (the
-  # Frameworks directory) and executable bits, and a naive `zip -r` flattens
-  # both, which macOS reports as "damaged and can't be opened" exactly like an
-  # unsigned app does.
+  # itch.io does not get the DMG: `electron/itch.mjs` pushes the unpacked
+  # `dist/mac-universal/` directory with butler, which is itch's own advice —
+  # push the `.app`, with the manifest beside it in a folder. butler manages
+  # symlinks and fixes permissions on that push and the itch app fixes them
+  # again at launch, so no separate zip target is needed for it.
   target:
     - target: dmg
-      arch:
-        - universal
-    - target: zip
       arch:
         - universal
   hardenedRuntime: true
@@ -67,15 +61,14 @@ mac:
   entitlementsInherit: build/entitlements.mac.plist
 
 win:
-  # NSIS for the release page; a zipped unpacked build for itch.io. The itch app
-  # manages its own install directory, so handing it an interactive installer
-  # (oneClick: false, choose-your-own-path below) works against it — a plain
-  # folder it can drop in place is what it wants.
+  # NSIS is the download on the GitHub release page. It is deliberately *not*
+  # what goes to itch.io: itch's compatibility policy ranks traditional
+  # installers (NSIS, MSI, InnoSetup) second-worst — "may require administrator
+  # access and offer the poorest user experience" — and its Windows page says to
+  # push the install folder instead. `electron/itch.mjs` pushes the
+  # `dist/win-unpacked/` directory electron-builder packs before building this.
   target:
     - target: nsis
-      arch:
-        - x64
-    - target: zip
       arch:
         - x64
 
@@ -85,9 +78,11 @@ nsis:
   allowToChangeInstallationDirectory: true
 
 linux:
-  # The AppImage needs no itch-specific variant: butler sets the executable bit
-  # on push and the itch app fixes it again on install, which is the one thing
-  # that usually goes wrong with a Linux upload.
+  # AppImage for the GitHub release page. itch.io gets `dist/linux-unpacked/`
+  # instead (`electron/itch.mjs`): itch's Linux guidance is to make a portable
+  # build and push it with butler, and a folder is something butler can patch
+  # and the itch app can fix permissions on — where an AppImage is one opaque
+  # file that also needs FUSE on the player's machine.
   target:
     - target: AppImage
       arch:

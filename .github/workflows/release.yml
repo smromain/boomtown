@@ -169,6 +169,12 @@ jobs:
           # build directory on macOS and Windows, the AppImage on Linux.
           PUSH_PATH="$(node electron/itch.mjs "$PLATFORM")"
           CHANNEL="$(node -e "import('./electron/itch.mjs').then((m) => process.stdout.write(m.CHANNELS['$PLATFORM']))")"
+          # itch recommends wiring this into CI, and it is the only check that
+          # runs against a real packaged build: it exits non-zero on a launch
+          # target that does not exist, a misspelled manifest key, or a missing
+          # prerequisite — none of which the unit tests can see.
+          butler validate "$PUSH_PATH"
+
           echo "pushing $PUSH_PATH to $ITCH_TARGET:$CHANNEL as $VERSION"
           butler push "$PUSH_PATH" "$ITCH_TARGET:$CHANNEL" --userversion "$VERSION"
 

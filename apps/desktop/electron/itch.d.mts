@@ -8,16 +8,13 @@ export function manifestsDir(): string;
 
 /** The macOS build directory in a `dist` listing (universal, else single-arch). */
 export function macBuildDir(entries: string[]): string;
-/** The one `.AppImage` in a `dist` listing. Throws on none or several. */
-export function appImage(entries: string[]): string;
-
 export interface ItchTarget {
   /** itch channel to push to. */
   channel: string;
   /** Path within `dist` to push. */
   path: string;
-  /** Manifest to copy in beside it, or null where there is nowhere to put one. */
-  manifest: string | null;
+  /** Manifest to copy in beside it as `.itch.toml`. */
+  manifest: string;
 }
 
 export function target(platform: string, entries: string[]): ItchTarget;

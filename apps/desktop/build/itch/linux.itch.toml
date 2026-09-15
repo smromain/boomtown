@@ -1,0 +1,9 @@
+# Copied to the top of the packaged Linux build by `electron/itch.mjs` before
+# butler pushes it. itch's Linux guidance is "make a portable build and push it
+# with butler" — that is the unpacked directory, not the AppImage.
+#
+# The name matches what electron-builder emits, which is the path
+# `electron/afterPack.mjs` flips the fuses on.
+[[actions]]
+name = "play"
+path = "boomtown"

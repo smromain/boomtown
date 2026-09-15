@@ -52,29 +52,56 @@ Set both at GitHub → repo Settings → Secrets and variables → Actions.
 
 ## itch.io
 
-The same `npm run package` output, pushed with butler. Three things differ from
-the release-page downloads, each of them a way an itch upload otherwise breaks.
+The same `npm run package` output, pushed with butler. What differs from the
+release-page downloads is *which* artifact goes up, and it is not the one you
+would guess.
 
-**What goes up is not the installer.** The itch app cannot install from a DMG,
-and the NSIS installer is interactive (`oneClick: false`, choose-your-own path) —
-which fights a launcher that wants to own the install directory. So macOS and
-Windows push the **unpacked build directory** (`dist/mac-universal/`,
-`dist/win-unpacked/`), and `electron-builder.yml` builds a `zip` target
-alongside the DMG and the installer so those directories exist. Linux pushes the
-AppImage as it stands. Pushing directories is also what makes butler's
-block-diff patching work — it has nothing to diff inside an archive.
+### Push the unpacked directory, on all three platforms
 
-**Never archive an `.app` by hand.** A macOS bundle carries symlinks (the
-`Frameworks` directory) and executable bits; `zip -r` flattens both, and macOS
-reports the result as "damaged and can't be opened" — the same message an
-unsigned app gives, from an entirely different cause. Use electron-builder's
-`zip` target, or push the directory and let butler do it.
+itch's compatibility policy ranks distribution formats, and the gap between top
+and bottom is wide:
 
-**A manifest says what to launch.** `build/itch/<platform>.itch.toml` is copied
-to the root of the pushed directory as `.itch.toml` by `electron/itch.mjs`. It
-names `Boomtown.app` / `Boomtown.exe` under the well-known action name `play`,
-which the itch app renders as the highlighted *Play Now* button. An AppImage is
-a single file with no root to copy into, and needs none — it is the executable.
+| Tier | Format | What the player gets |
+|---|---|---|
+| **Platinum** | a butler push of a build folder | no admin rights, pause/resume, integrity checks and file healing, binary patch updates, near-instant uninstall |
+| Gold | `.zip`, `.rar`, `.tar` | installs without extra disk space or admin rights, but no automatic upgrades or integrity checks |
+| Silver | `.7z`, `.tar.xz` | must be downloaded to disk first, using temporary space |
+| **Bronze** | **NSIS, MSI, InnoSetup** | "may require administrator access and offer the poorest user experience" |
+| Oh No | `.deb`, `.rpm`, `.pkg`, custom installers | unsupported |
+
+So the installers we build for the GitHub release page are exactly what must
+*not* go to itch. Each platform page says the same thing in its own words: the
+Windows page says that instead of shipping an installer, push the install
+folder; the Linux page says make a portable build and push it; the macOS page
+says push the `.app`, and put the `.app` and the manifest in a folder together
+when there is a manifest. `electron/itch.mjs` pushes `dist/mac-universal/`,
+`dist/win-unpacked/` and `dist/linux-unpacked/` — the directories
+electron-builder packs *before* it builds each installer, so they cost nothing
+extra to produce.
+
+The AppImage is skipped for the same reason the DMG and the NSIS installer are:
+one opaque file butler cannot patch well, which additionally needs FUSE on the
+player's machine. It stays the Linux download on the GitHub release page.
+
+**Symlinks and permissions are not our problem, as long as we push a
+directory.** butler manages symlinks and fixes file permissions on push, and the
+itch app fixes permissions again at launch. That is what spares a `.app` bundle
+the mangling a hand-rolled `zip -r` would inflict, and what spares a Linux
+binary the missing executable bit — a direct download without it gives players
+"Error -10810" on macOS. None of it applies to an archive we build ourselves,
+which is the other reason butler is never handed one.
+
+### The manifest
+
+`build/itch/<platform>.itch.toml` is copied to the root of the pushed directory
+as `.itch.toml` by `electron/itch.mjs`, naming what to launch under the
+well-known `play` action, which the itch app renders as a highlighted *Play Now*
+button.
+
+The launch paths are `Boomtown.app`, `boomtown.exe` and `boomtown` — lowercase
+on Windows and Linux because that is what electron-builder emits. They are the
+same paths `electron/afterPack.mjs` flips the Electron fuses on, and that hook
+runs on every package and would fail the build if they were wrong.
 
 ### Push
 
@@ -82,52 +109,63 @@ a single file with no root to copy into, and needs none — it is the executable
 cd apps/desktop
 npm run package
 npm run itch:stage -- mac        # stages the manifest, prints the path to push
-butler push "$(npm run --silent itch:stage -- mac)" smromain/boomtown:osx --userversion 1.0.0
+butler validate  "$(npm run --silent itch:stage -- mac)"
+butler push      "$(npm run --silent itch:stage -- mac)" smromain/boomtown:osx --userversion 1.0.0
 ```
 
-Channel names carry the platform tag, so they are the plain keywords —
-`osx`, `windows`, `linux` — in kebab-case. A channel named anything else ships a
-build with no platform tag, which no launcher will pick up. `--userversion` puts
+Channel names carry the platform tag, so they are the plain keywords — `osx`,
+`windows`, `linux` — in kebab-case. A channel named anything else ships a build
+with no platform tag, which the launcher will not pick up. `--userversion` puts
 your semver on the page instead of a build number.
+
+`butler validate` is not optional politeness: it exits non-zero on a launch
+target that does not exist, a misspelled manifest key, or a missing
+prerequisite, and itch recommends wiring it into CI. It is the only check in
+this repo that runs against a real packaged build — the unit tests can only
+assert what the manifests *say*.
 
 ### CI
 
 The itch push runs inside the **build** job, on each platform's own runner,
 rather than as a later job. That is deliberate: `upload-artifact` does not
-preserve the executable bit, so a `.app` or an AppImage that travelled through
-an artifact would not launch.
+preserve the executable bit, so a `.app` or a Linux binary that travelled
+through an artifact would arrive unlaunchable.
 
 Three steps: `Configure itch.io publishing` sets `ITCH_PUBLISH` when a
 `BUTLER_API_KEY` secret exists (itch.io → settings → API keys) and skips the
 rest when it does not — via an env var, because a step's own `env:` block is not
 readable from its own `if:`. `Set up butler` installs the CLI. `Publish to
-itch.io` stages the manifest and pushes. The itch target defaults to
+itch.io` stages the manifest, validates, and pushes. The itch target defaults to
 `smromain/boomtown` and is overridable with an `ITCH_TARGET` repo variable.
 
 butler comes from **`remarkablegames/setup-butler`, pinned by commit SHA**
 (v3.0.2) rather than its moving `@v3` tag. It uses `@actions/tool-cache`, which
-downloads, extracts, caches and puts butler on `PATH` — and in particular
-extracts a zip correctly on all three runners, where a hand-rolled step needs
-`7z` on Windows (no `unzip`) and `unzip` elsewhere (GNU tar cannot read zips).
-The pin is the point: the action supplies the binary that is handed the itch API
-key moments later, so the version that runs should be one that was chosen rather
+downloads, extracts, caches and puts butler on `PATH` on all three runners. The
+pin is the point: the action supplies the binary that is handed the itch API key
+moments later, so the version that runs should be one that was chosen rather
 than whatever the tag moved to. Bump it deliberately. The setup step is not
 given the key — it does not need one to install a CLI.
 
-One sharp edge to know: the action maps an arm64 macOS runner straight to
-butler's `darwin-arm64` channel with no fallback, and offers no arch input. If
-that channel is ever missing the mac leg fails outright rather than degrading to
-the amd64 build.
+One sharp edge: the action maps an arm64 macOS runner straight to butler's
+`darwin-arm64` channel with no fallback, and offers no arch input. If that
+channel is ever missing, the mac leg fails outright rather than degrading to the
+amd64 build.
 
 ### Auto-update is off for itch builds
 
-The itch app installs into a directory it manages and patches it in place, so
-the app must not also update itself. `BOOMTOWN_DISTRIBUTION=itch` at build time
-is baked into the main process by `electron.vite.config.ts` and read by
-`electron/distribution.ts`; `checkForUpdates()` returns early on it. There is no
-update feed configured today, so this changes nothing yet — it is there so that
-adding one cannot quietly turn every itch install into two updaters writing the
-same files.
+The itch app checks for game updates on launch and every 30 minutes after, and
+installs them by removing files the new build does not have while leaving
+everything else in place. An app that also updated itself would be writing into
+that same directory behind the launcher's back.
+
+`BOOMTOWN_DISTRIBUTION=itch` at build time is baked into the main process by
+`electron.vite.config.ts` and read by `electron/distribution.ts`;
+`checkForUpdates()` returns early on it. There is no update feed configured
+today, so this changes nothing yet — it is there so that adding one cannot
+quietly turn every itch install into two updaters fighting.
+
+Player settings are unaffected either way: they live in Electron's per-user
+`userData`, not in the install directory the itch app manages.
 
 ### Gatekeeper: the itch app is the path that works
 
@@ -136,22 +174,44 @@ consequence is not the same, and this is worth getting right on the itch page.
 
 macOS refuses an unsigned app with "is damaged and can't be opened" when the
 file carries the `com.apple.quarantine` attribute — which a *browser* applies to
-anything it downloads. The itch app fetches and extracts the build itself, so
-nothing ever applies that attribute and the same bytes launch normally. itch's
-own docs say as much: players using the app do not hit this, and they suggest
-encouraging players towards it.
+anything it downloads, and which is what triggers the code-signing, developer-ID
+and notarization checks in the first place. The itch app fetches and extracts
+the build itself, so nothing applies that attribute and Gatekeeper is never
+invoked. itch says as much on its macOS page: players not using the app may see
+the warning, and it recommends encouraging players towards the app.
 
-So the page copy should lead with the app for macOS, and keep the `xattr` line
-as the fallback for anyone taking the direct download:
+So the page copy should lead with the app on macOS, and keep the `xattr` line as
+the fallback for anyone taking the direct download:
 
-> **macOS:** install through the itch app and it just works. If you download the
-> zip directly, macOS will call the app "damaged" — it isn't, it's unsigned, and
+> **macOS:** install through the itch app and it just works. If you download
+> directly, macOS will call the app "damaged" — it isn't, it's unsigned, and
 > macOS reports those the same way. Clear the flag once:
 > `xattr -dr com.apple.quarantine /Applications/Boomtown.app`
 
-None of this is a reason to skip signing: a signed build removes the caveat for
-both paths, and the release workflow already signs whenever the secrets are
-present.
+This is a workaround, not the fix. Signing and notarizing removes the caveat for
+both paths at once, and the release workflow already signs whenever the Apple
+secrets are present — the missing piece is an Apple Developer account, not code.
+
+### Two things itch offers that we have not taken up
+
+Both are deliberate, and both are worth revisiting rather than forgetting:
+
+- **The itch sandbox.** A manifest action can set `sandbox = true` to opt in.
+  itch's sandbox denies by default and explicitly blocks a game from reading
+  itch credentials and browser data; on macOS it is `sandbox-exec`, on Linux
+  bubblewrap or firejail, on Windows a restricted local account. Boomtown needs
+  its own install directory and the network and nothing else, so it is a
+  plausible fit — but Linux exposes network access as a per-game setting, which
+  could break online play, and this needs testing on all three platforms before
+  it is claimed.
+- **itch API identity.** A manifest action can request `profile:me` scope, and
+  the app then passes `ITCHIO_API_KEY` to the game, which can identify the
+  itch.io account playing and verify it owns a copy. itch names exactly our
+  problem as the use case: restricting online play to legitimate owners. That is
+  a stronger identity than anything in `docs/plans/2026-09-14-feat-web-deployment-plan.md`,
+  but it only works for players launching through the itch app — not the web
+  build, not a direct download — so it can only ever be an additional signal on
+  top of host admission, never a replacement for it.
 
 ## The desktop app (Electron)
 

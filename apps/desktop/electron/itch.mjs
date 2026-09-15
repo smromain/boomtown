@@ -7,32 +7,34 @@ import { fileURLToPath } from 'node:url';
  *
  * `npm run package` already produces everything itch needs — the difference is
  * *which* artifact goes up and what sits next to it. This module answers both,
- * and `main()` does the copying so the release workflow is a one-liner per
+ * and `stage()` does the copying so the release workflow is a one-liner per
  * platform rather than a pile of shell.
  *
- * Three things decided here, each of them a way an itch upload usually goes
- * wrong:
+ * Three things decided here, each straight out of itch's own guidance:
  *
- * - **What to push.** macOS and Windows push the *unpacked build directory*,
- *   not the DMG or the installer: the itch app cannot install from a DMG, and
- *   an interactive NSIS installer fights the app for control of the install
- *   directory. Linux pushes the AppImage as it stands. Pushing directories is
- *   also what makes butler's block-diff patching work — it has nothing to diff
- *   inside an archive.
+ * - **Push the unpacked build directory, on every platform.** itch's
+ *   compatibility policy puts a butler push of a build folder in its top tier
+ *   and traditional installers (NSIS, MSI, InnoSetup) in its second-worst,
+ *   "may require administrator access and offer the poorest user experience".
+ *   Its Windows page says it outright: instead of shipping an installer, just
+ *   push the install folder. Its Linux page says make a portable build and push
+ *   that. Its macOS page says push the `.app`, and put the `.app` and the
+ *   manifest in a folder together when there is a manifest — which is exactly
+ *   what we do. Pushing directories is also what butler patches against.
  * - **The channel name.** itch reads the platform off the channel name, so
  *   these are the plain `osx` / `windows` / `linux` keywords in kebab-case. A
- *   channel called something clever gets no platform tag and the page shows a
- *   download nobody's launcher will touch.
+ *   channel called something clever gets no platform tag, and the page then
+ *   shows a download the launcher will not touch.
  * - **The manifest.** `build/itch/<platform>.itch.toml` is copied to the root
- *   of the pushed directory, naming the thing to launch. The AppImage is a
- *   single file with no root to copy into, and needs no manifest — it is the
- *   executable.
+ *   of the pushed directory, naming the thing to launch under the well-known
+ *   `play` action.
+ *
+ * What is deliberately *not* handled here: symlinks and executable bits. butler
+ * manages symlinks and fixes permissions on push, and the itch app fixes
+ * permissions again at launch. That is only true of a butler push of a
+ * directory, which is the other reason this never hands butler an archive.
  */
 
-/**
- * Resolved lazily rather than at import: under vitest `import.meta.url` is not
- * a `file:` URL, and the tests pass their own directories in anyway.
- */
 const here = () => fileURLToPath(new URL('.', import.meta.url));
 
 /** Where `npm run package` leaves its output. */
@@ -60,36 +62,26 @@ export function macBuildDir(entries) {
   return found;
 }
 
-/** The one AppImage in `dist`. More than one means a stale build is still lying around. */
-export function appImage(entries) {
-  const images = entries.filter((e) => e.endsWith('.AppImage'));
-  if (images.length === 0) throw new Error('no .AppImage in dist — run `npm run package` on Linux first');
-  if (images.length > 1) {
-    throw new Error(`more than one .AppImage in dist (${images.join(', ')}) — clear it and repackage`);
-  }
-  return images[0];
-}
-
-/**
- * What to push for a platform, and what to stage beside it.
- *
- * `manifest` is null where there is nowhere to put one: an AppImage is a single
- * file, so the itch app launches it directly.
- */
+/** What to push for a platform, and the manifest to stage beside it. */
 export function target(platform, entries) {
   switch (platform) {
     case 'mac':
       return { channel: CHANNELS.mac, path: macBuildDir(entries), manifest: 'osx.itch.toml' };
     case 'win':
-      if (!entries.includes('win-unpacked')) {
-        throw new Error('no win-unpacked in dist — run `npm run package` on Windows first');
-      }
-      return { channel: CHANNELS.win, path: 'win-unpacked', manifest: 'windows.itch.toml' };
+      return { channel: CHANNELS.win, path: unpacked('win-unpacked', entries), manifest: 'windows.itch.toml' };
     case 'linux':
-      return { channel: CHANNELS.linux, path: appImage(entries), manifest: null };
+      return { channel: CHANNELS.linux, path: unpacked('linux-unpacked', entries), manifest: 'linux.itch.toml' };
     default:
       throw new Error(`unknown platform '${platform}' — expected one of ${PLATFORMS.join(', ')}`);
   }
+}
+
+/** An unpacked build directory electron-builder always leaves beside its installers. */
+function unpacked(dir, entries) {
+  if (!entries.includes(dir)) {
+    throw new Error(`no ${dir} in dist — run \`npm run package\` on that platform first`);
+  }
+  return dir;
 }
 
 /**
@@ -99,9 +91,7 @@ export function target(platform, entries) {
 export async function stage(platform, dist = distDir(), manifests = manifestsDir()) {
   const chosen = target(platform, await readdir(dist));
   const pushPath = join(dist, chosen.path);
-  if (chosen.manifest) {
-    await copyFile(join(manifests, chosen.manifest), join(pushPath, '.itch.toml'));
-  }
+  await copyFile(join(manifests, chosen.manifest), join(pushPath, '.itch.toml'));
   return { ...chosen, pushPath };
 }
 
