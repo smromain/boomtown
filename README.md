@@ -336,14 +336,59 @@ cd apps/desktop && npm run package    # electron-vite build + electron-builder
 generated from the logo by `python3 design/make_icon.py`). An `afterPack` hook flips the Electron
 **fuses** on the packed binary — no `run-as-node`, ASAR integrity on, load only from ASAR.
 
-Releases are cut by running the **Release** workflow (leave the version blank and the next one
-is worked out for you), or by pushing a `v<version>` tag. Versions are CalVer — `YYYY.M.N`,
-where `N` counts releases within that month — because the game ships when it ships rather than
-in stable/breaking increments. See `docs/deploying.md`.
-That builds installers on all three OSes, publishes a GitHub Release, and deploys the PartyKit room
-from the same commit. Signing credentials come from repository secrets; without them the workflow
-still produces unsigned artifacts. Full detail — including the deployed room and the baked online
-host — is in `docs/deploying.md`.
+### Cutting a release
+
+Publishing runs entirely in GitHub Actions. `npm run package` above builds installers locally for
+testing, but nothing local publishes them — the Release page, the itch.io channels and the online
+room all come from one workflow run, off one commit.
+
+**To release:** open **Actions → Release → Run workflow**, pick the branch, **leave the version
+box empty**, and run it. That's the whole procedure.
+
+Leaving the version empty is the normal case: the workflow finds the highest `vYYYY.M.*` tag for
+the current month and adds one. Fill it in only to force a specific value. Pushing a tag works too
+and skips the tag-creation step:
+
+```bash
+git tag v2026.9.3 && git push origin v2026.9.3
+```
+
+Versions are **CalVer — `YYYY.M.N`**, where `N` counts releases *within that month* (not the day of
+the month), because the game ships when it ships rather than in stable/breaking increments. The
+month carries no leading zero: `2026.9.3`, never `2026.09.3`. That is not stylistic — electron‑builder
+parses this as semver and a leading zero is invalid there. The workflow rejects a bad shape in the
+first job, in seconds. `PROTOCOL_VERSION` is *not* this number and does not move with it — see
+**Versioning** in `docs/deploying.md`.
+
+**What runs, in order:**
+
+| Job | What it does |
+|---|---|
+| `prepare` | Resolves the version, validates its shape, creates and pushes the tag |
+| `build` (×3) | On macOS, Windows and Linux in parallel: `npm ci`, **typecheck, full test suite**, stamp the version, package installers, push to itch.io, upload artifacts |
+| `release` | Collects the three platforms' artifacts into one GitHub Release, with generated notes |
+| `deploy-party` | `partykit deploy` — the online room, from the same commit |
+
+**The tests are the gate.** `build` runs `npm run typecheck` and `npm test` before it packages
+anything, so a red suite fails the release rather than shipping. There is no flag to skip that.
+
+**Most missing credentials degrade rather than fail.** `release` and `deploy-party` run in
+parallel off `build`, so a room deploy that fails does not un-publish a release that already went
+out:
+
+| Secret / variable | Without it |
+|---|---|
+| `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` | macOS build is unsigned — players need the `xattr` step above |
+| `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD` | Windows build is unsigned — SmartScreen warns |
+| `BUTLER_API_KEY` | itch.io push is skipped; the GitHub Release is still published |
+| `PARTYKIT_LOGIN` **and** `PARTYKIT_TOKEN` | `deploy-party` goes red and the room keeps running its previous code; the installers still publish. Both are needed — with only one, the CLI silently falls back to an interactive login and hangs until the job times out |
+| `ITCH_TARGET` (variable) | Defaults to `smromain/boomtown` |
+
+Set them at **Settings → Secrets and variables → Actions**.
+
+**Afterwards:** check the Release page has all three installers, and that the itch.io page shows the
+new version on each channel. Full detail — the room, the baked online host, the itch channels and
+what gets pushed — is in `docs/deploying.md`.
 
 ### Toolchain note
 
