@@ -19,12 +19,12 @@
   color: var(--chrome-ink);
 }
 
+/* The night town fills the screen rather than banding the bottom: the moon and
+   the stars are half of it, and they live in the sky the wordmark sits in.
+   Held back so it stays a backdrop — at full strength the buildings compete
+   with the two plates. */
 .launchArt {
-  position: absolute;
-  inset: auto 0 0 0;
-  width: 100%;
-  height: 45%;
-  opacity: 0.5;
+  opacity: 0.85;
 }
 
 .launchContent {

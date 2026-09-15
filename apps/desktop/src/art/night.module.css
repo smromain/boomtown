@@ -1,0 +1,87 @@
+/*
+ * The launch screen's night town (F2).
+ *
+ * Four layers over the ink chrome, recoloured from `design/skyline.psd` by
+ * `design/make_skyline.py`: stars, a moon, a far rank of buildings and a near
+ * one. The ranks drift at different speeds and the sky does not move at all —
+ * a moon that slides off the edge reads as a camera pan, where two ranks at
+ * different speeds read as depth.
+ *
+ * Every layer is scaled by *height* from the same 550x367 canvas, so the
+ * horizon lands in the same place in all four whatever the window is doing.
+ */
+.frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* Pixel art. Smoothing it is the one thing that would make it look like a
+     mistake rather than a choice. */
+  image-rendering: pixelated;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  background-position: left bottom;
+  /* Height-scaled, never cropped by width: a wide window gets more town, not
+     a bigger one. */
+  background-size: auto 100%;
+}
+
+/* Speckle, so the repeat has nothing to give away. */
+.stars {
+  background-repeat: repeat-x;
+  opacity: 0.75;
+}
+
+.moon {
+  background-repeat: no-repeat;
+}
+
+/*
+ * The drifting ranks.
+ *
+ * A track of tiles, each the art at its own aspect, sliding by exactly two
+ * tiles before it repeats. Two, not one: every other tile is mirrored — which
+ * is what makes the joins invisible, since a mirrored tile meets its
+ * neighbours on identical edges — so a shift of one tile would land the loop
+ * on the opposite parity and jump. Eight tiles because the frame has to stay
+ * covered while the last two are travelling; six of them will span any window
+ * the app can be opened at.
+ */
+.track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: drift var(--drift-duration, 90s) linear infinite;
+}
+
+.tile {
+  height: 100%;
+  aspect-ratio: 550 / 367;
+  background-position: left bottom;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+.mirrored {
+  transform: scaleX(-1);
+}
+
+@keyframes drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* Two tiles of eight. Any other fraction shows the seam once a cycle. */
+    transform: translateX(-25%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track {
+    animation: none;
+  }
+}
