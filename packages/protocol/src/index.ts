@@ -13,6 +13,13 @@ export {
   wireEngineError,
 } from './errors.js';
 
+export {
+  MAX_MESSAGE_BYTES,
+  MAX_NAME_BYTES,
+  type ParseResult,
+  parseClientMessage,
+} from './validate.js';
+
 export type {
   PlayerViewDTO,
   EngineEventDTO,

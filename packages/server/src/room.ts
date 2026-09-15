@@ -1,9 +1,10 @@
 import type * as Party from 'partykit/server';
-import type { ClientMessage, RoomMessage } from '@boomtown/protocol';
-import { PROTOCOL_VERSION, protocolError } from '@boomtown/protocol';
+import type { RoomMessage } from '@boomtown/protocol';
+import { PROTOCOL_VERSION, parseClientMessage, protocolError } from '@boomtown/protocol';
 import type { Seat } from '@boomtown/engine';
 import { GameRoom, type Outbound } from './game-room.js';
 import { roomLog, roomWarn } from './log.js';
+import { LIMITS, RoomGuards } from './limits.js';
 import type { KeyValueStore } from './storage.js';
 
 /**
@@ -19,6 +20,8 @@ export default class BoomtownRoom implements Party.Server {
   private game: GameRoom | null = null;
   /** seat <- connection id, mirrored here so onClose can find the seat fast. */
   private readonly seatByConnection = new Map<string, Seat>();
+  /** Per-connection rate limits and strike counts (`limits.ts`). */
+  private readonly guards = new RoomGuards();
 
   constructor(readonly room: Party.Room) {}
 
@@ -64,6 +67,24 @@ export default class BoomtownRoom implements Party.Server {
       gameExists: this.game !== null,
     });
 
+    // Cap concurrent connections before anything else looks at this one. Seats
+    // are capped by the ruleset; this bounds the sockets a room will hold open
+    // for reconnect overlap, so a room cannot be held open by strangers.
+    const live = [...this.room.getConnections()].length;
+    if (live > LIMITS.maxConnections) {
+      roomWarn(this.room.id, 'refused a connection — room at its connection cap', {
+        connection: connection.id,
+        live,
+        cap: LIMITS.maxConnections,
+      });
+      this.sendTo(connection, {
+        type: 'error',
+        error: protocolError('room-full', 'this room has too many connections'),
+      });
+      connection.close();
+      return;
+    }
+
     // Version-gate every connection, not just reconnects — a fresh joiner with
     // a stale protocol version must be turned away before it can create or
     // join a room it cannot parse.
@@ -100,14 +121,31 @@ export default class BoomtownRoom implements Party.Server {
   }
 
   async onMessage(raw: string | ArrayBuffer | ArrayBufferView, sender: Party.Connection): Promise<void> {
-    let message: ClientMessage;
-    try {
-      const text = typeof raw === 'string' ? raw : new TextDecoder().decode(raw as ArrayBuffer);
-      message = JSON.parse(text) as ClientMessage;
-    } catch {
-      this.sendTo(sender, { type: 'error', error: protocolError('malformed-message', 'not JSON') });
+    // Nothing reaches the game without passing the boundary check first — see
+    // `@boomtown/protocol`'s `parseClientMessage`. A connection that keeps
+    // sending refuse-able frames is not a client having a bad day, and is
+    // dropped rather than answered indefinitely.
+    const parsed = parseClientMessage(raw);
+    if (!parsed.ok) {
+      const guard = this.guards.for(sender.id);
+      const exhausted = guard.recordFailure();
+      roomWarn(this.room.id, 'rejected a malformed frame', {
+        connection: sender.id,
+        code: parsed.error.code,
+        reason: parsed.error.message,
+        failures: guard.failureCount(),
+      });
+      this.sendTo(sender, { type: 'error', error: parsed.error });
+      if (exhausted) {
+        roomWarn(this.room.id, 'closing a connection on repeated malformed frames', {
+          connection: sender.id,
+          limit: LIMITS.maxValidationFailures,
+        });
+        sender.close();
+      }
       return;
     }
+    const message = parsed.message;
 
     switch (message.type) {
       case 'hello':
@@ -158,6 +196,19 @@ export default class BoomtownRoom implements Party.Server {
 
       case 'command': {
         if (!this.game) return;
+        // Rate-limited before the seat lookup: an unseated flooder should cost
+        // the room a bucket check, not a map scan and an engine call.
+        if (!this.guards.for(sender.id).commands.take()) {
+          roomWarn(this.room.id, 'rate-limited a command', {
+            connection: sender.id,
+            perSecond: LIMITS.commandsPerSecond,
+          });
+          this.sendTo(sender, {
+            type: 'error',
+            error: protocolError('rate-limited', 'too many commands — slow down'),
+          });
+          return;
+        }
         const seat = this.seatByConnection.get(sender.id) ?? this.seatFromState(sender);
         if (seat === undefined) {
           roomWarn(this.room.id, 'command from a connection with no seat', {
@@ -180,6 +231,7 @@ export default class BoomtownRoom implements Party.Server {
       seat: this.seatByConnection.get(connection.id) ?? null,
     });
     this.seatByConnection.delete(connection.id);
+    this.guards.release(connection.id);
     this.game?.markDisconnected(connection.id);
     this.broadcastRoomState();
   }

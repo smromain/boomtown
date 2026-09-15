@@ -19,9 +19,26 @@ export interface SeatOccupant {
  *  concern as much as anything. */
 export const MAX_NAME_LENGTH = 24;
 
-/** Trim, collapse runs of whitespace, and cap. Returns '' for a blank name. */
+/**
+ * Normalise an untrusted display name: NFC, strip the characters that let a
+ * name misrepresent itself, collapse whitespace, cap. Returns '' for a name
+ * that is blank or was made entirely of removed characters.
+ *
+ * The strip list is not decoration. Bidirectional overrides reorder the text
+ * around them, so a name can be made to render as another player's; zero-width
+ * characters produce two visibly identical names that are not equal; control
+ * characters corrupt any log line the name reaches. Every client renders the
+ * string the room hands it, so normalising here is what makes every client
+ * agree on what a player is called.
+ */
 export function cleanName(raw: string): string {
-  return raw.trim().replace(/\s+/g, ' ').slice(0, MAX_NAME_LENGTH);
+  return raw
+    .normalize('NFC')
+    // C0/C1 controls, zero-width and BOM, bidi embedding/override/isolate marks
+    .replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/gu, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, MAX_NAME_LENGTH);
 }
 
 export class SeatTable {
