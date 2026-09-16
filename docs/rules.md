@@ -161,24 +161,29 @@ against 7–17% at quorum 3, and the ⅔ quota that carries 63% of the time at t
 
 ## Edition configuration
 
-| Rule | 2015 Avalon Hill | Classic | Config key |
+Every row is one key of the `Ruleset` interface in `packages/engine/src/ruleset/types.ts`. The key
+names below are the real ones — read them there, not from prose, if they ever disagree.
+
+| Rule | 2015 Avalon Hill | Classic | `Ruleset` key |
 |---|---|---|---|
-| Board | 100 tiles, dimensions never stated | 12 × 9 = 108, `1A`–`12I` | `boardCols` / `boardRows` |
+| Board | 100 tiles, dimensions never stated | 12 × 9 = 108, `1A`–`12I` | `board: { cols, rows }` |
 | Safe size | 10+ | 11+ | `safeSize` |
 | End trigger | one corporation at 38+ | one chain at 41+ | `endChainSize` |
-| Bonus tiers | primary · secondary · tertiary | majority · minority | `bonusTiers` |
-| Price bands | 2,3,4,5,6–7,8–17,18–27,28–37,38+ | 2,3,4,5,6–10,11–20,21–30,31–40,41+ | `priceBands` |
-| Sole shareholder | primary + tertiary | both bonuses | `soleHolderPolicy` |
-| Dead tiles | discarded face-up and replaced | discarded face-up and replaced (from the same rule, applied to both) | `deadTilePolicy` |
-| Two-player rule | bank is a shareholder; its holding drawn from the tile pile each merger | not addressed | `phantomShareholder` |
-| Split rounding | round up to nearest 100 | silent | `splitRounding` |
+| Bonus tiers | primary · secondary · tertiary | majority · minority | `bonusTiers` (`3` / `2`) |
+| Price bands | 2,3,4,5,6–7,8–17,18–27,28–37,38+ | 2,3,4,5,6–10,11–20,21–30,31–40,41+ | `bandCuts` — eight ascending cutoffs defining nine bands |
+| Sole shareholder | primary + tertiary | both bonuses | `soleHolderPolicy` (`'primaryAndTertiary'` / `'both'`) |
+| Dead tiles | discarded face-up and replaced | discarded face-up and replaced (from the same rule, applied to both) | `deadTilePolicy` (`'discardAndReplace'` / `'none'`) |
+| Two-player rule | bank is a shareholder; its holding drawn from the tile pile each merger | not addressed | `phantomShareholderInTwoPlayer` |
+| Split rounding | round up to nearest 100 | silent | `splitRounding` (`'up100'` / `'none'`) |
+| Merged names | — | — | `mergeNaming` (see `naming.md`) |
+| Preset id | `'edition-2015'` | `'classic'` | `id` |
 
 Boomtown takes the Classic column wholesale and adds two keys of its own:
 
-| Rule | Boomtown | Config key |
+| Rule | Boomtown | `Ruleset` key |
 |---|---|---|
-| Cash and holdings | always hidden — not a table setting | `forcedVisibility` |
-| Vote to end | see *Going Public* above | `endVote` |
+| Cash and holdings | always hidden — not a table setting | `forcedVisibility: 'hidden'` |
+| Vote to end | see *Going Public* above | `endVote: EndVoteConfig` |
 
 **Boomtown is the default preset.** It takes classic's numbers, so what follows about classic's
 geometry decides the default too: classic's board is unambiguous where the 2015 rulebook lists 100
@@ -187,6 +192,23 @@ reason.
 
 A consequence worth stating where the engine is specified: a game created without naming a ruleset
 has the books closed and can end by vote. The published editions are opt-in by name.
+
+## Where this model lives in the code
+
+| Part of this document | Code |
+|---|---|
+| The presets | `packages/engine/src/ruleset/{classic,edition2015,boomtown}.ts` |
+| Turn structure, end check | `packages/engine/src/reducer/{turn,endcheck,endgame}.ts` |
+| Placement outcomes | `packages/engine/src/reducer/{place,placement,found}.ts` |
+| Merger sequencing | `packages/engine/src/reducer/merge/machine.ts` |
+| Bonuses and ties | `packages/engine/src/reducer/merge/bonuses.ts` |
+| The price/bonus table | `packages/engine/src/pricing.ts` |
+| Going Public | `packages/engine/src/reducer/motion.ts`, `packages/ai/src/vote.ts` |
+| Final settlement | `packages/engine/src/scoring.ts` |
+| The chart players read | `apps/desktop/src/reference/` — generated from the ruleset, never drawn |
+
+Every row of the price/bonus table and every clause of Going Public is pinned by
+`packages/engine/test/`; see `testing.md`.
 
 ## Invariants
 

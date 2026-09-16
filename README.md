@@ -132,9 +132,10 @@ packages/
 apps/
   desktop/       Electron app — hardened shell, 2D board, panels, decision modals, beats,
                  sound, settings, reference chart, online lobby
-docs/            rules model, naming system, decisions, deployment, plans, session handoffs
+docs/            the documentation set — architecture, rules, naming, online play, development,
+                 testing, deploying, decisions; plus plans/, history/ and screenshots/
 design/          build.py — generates the design canvas AND is the reference impl of the naming
-                 rules; make_icon.py — generates the app icon from the logo
+                 rules; make_icon.py — the app icon; make_skyline.py — the launch backdrop
 ```
 
 The dependency direction is strict: **`engine` depends on nothing.** `protocol` depends only on
@@ -239,7 +240,7 @@ env -u ELECTRON_RUN_AS_NODE \
 
 - `BOOMTOWN_DEV_PORT` — renderer port for this instance (`electron.vite.config.ts`); default 5173.
 - `BOOMTOWN_DEV_USER_DATA` — a private Electron profile dir for this instance (`electron/main.ts`);
-  dev‑only. Create the room in one window, join by its six‑character code in the other.
+  dev‑only. Create the room in one window, join by its eight‑character code in the other.
 
 Both `BOOMTOWN_DEV_PORT` and `BOOMTOWN_DEV_USER_DATA` are unset in normal use and CI.
 
@@ -259,18 +260,18 @@ Tests run under a **Vitest workspace** with two projects:
 
 | Project | Environment | Covers |
 |---|---|---|
-| `engine` | node | `packages/*/test/**` — engine, protocol, ai, client‑core, and the room's own logic (396 tests) |
-| `desktop` | jsdom | `apps/desktop/**/*.test.{ts,tsx}` — components via `@testing-library/react`, plus the Electron main‑process modules (352 tests) |
+| `engine` | node | `packages/*/test/**` — engine, protocol, ai, client‑core, and the room's own logic (467 tests) |
+| `desktop` | jsdom | `apps/desktop/**/*.test.{ts,tsx}` — components via `@testing-library/react`, plus the Electron main‑process modules (390 tests) |
 
 Integration tests live outside both, because they boot a real `partykit dev` room (workerd) and are
 too slow for the default suite.
 
 ```bash
-npm test                # both projects, once (748 tests)
+npm test                # both projects, once (857 tests)
 npm run test:watch      # watch mode
 npm run test:engine     # just the node project
 npm run test:desktop    # just the jsdom project
-npm run test:server     # integration: a real PartyKit room, end to end (11 tests)
+npm run test:server     # integration: a real PartyKit room, end to end (20 tests)
 npm run typecheck       # tsc --noEmit for both tsconfigs
 npm run lint            # eslint (flat config)
 npm run smoke           # build + boot the real Electron app, verify it renders
@@ -306,8 +307,10 @@ runs lint, typecheck and `npm test` only.
 
 **And what the integration suite adds** (`npm run test:server`, against a real `partykit dev` room):
 a full 1‑human/2‑bot game to a ranked result, three clients each receiving only their own view, a
-dropped client resuming its seat on its token, and the lobby getting its room state even when it
-subscribes after connecting — the regression behind the "Waiting for the room…" hang.
+knocker holding no seat until the host admits them, a dropped client resuming its seat on its token,
+a ticket that resolves to the room address and is retired when the last seat fills, and the lobby
+getting its room state even when it subscribes after connecting — the regression behind the
+"Waiting for the room…" hang. Full detail in `docs/testing.md`.
 
 ---
 
@@ -400,8 +403,9 @@ This resolves when the toolchain moves to Vitest 3 / Vite 6 together. Electron i
 
 ## Design decisions
 
-The full rationale lives in the plan's **Key Technical Decisions** (KTD1–KTD12) and in
-`docs/decisions.md`. The load‑bearing ones:
+`docs/decisions.md` is the record — what was chosen, what was reversed, what is still open — and
+`docs/architecture.md` is the system as it stands. What follows is the short tour of the
+load‑bearing calls:
 
 ### The ruleset is data, not code
 
@@ -491,7 +495,7 @@ That distinction is load‑bearing. In hot‑seat the turn advances the instant 
 next player's rack is already rendered — the opaque hand‑off card has to cover the screen *then*,
 not after the flourish finishes. Anything that covers the screen defers the hand‑off; anything that
 doesn't, doesn't. A light beat that got this wrong leaked the next player's hand for a second every
-turn, which is `docs/handoffs/2026-09-09-hotseat-and-merger-readability-fixes.md`.
+turn, which is `docs/history/handoffs/2026-09-09-hotseat-and-merger-readability-fixes.md`.
 
 ### Electron hardening
 
@@ -575,17 +579,25 @@ thin authority over an engine that was already trusted.
 
 ## Where to read more
 
+**[`docs/README.md`](docs/README.md) is the index.** It says which document owns which question and
+what is current versus archival. The set:
+
 | File | What it holds |
 |---|---|
-| `docs/rules.md` | The complete rules model — the two published editions reconciled, the Boomtown variant specified, turn structure, merger sequencing, bonus ties, the full price/bonus table, edition config keys, invariants |
+| `docs/architecture.md` | What exists, where it lives, and how a command travels from a click to the engine and back |
+| `docs/rules.md` | The complete rules model — the two published editions reconciled, the Boomtown variant specified, turn structure, merger sequencing, bonus ties, the full price/bonus table, every `Ruleset` key, invariants |
 | `docs/naming.md` | The 28‑company pool, the merged‑name rule, flavour accretion, card consolidation |
-| `docs/decisions.md` | What was decided and why, what is still open, and the traps already hit |
-| `docs/deploying.md` | Deploying the PartyKit room and building/signing the desktop installers; the app's icon and name |
+| `docs/online-play.md` | The room and its security model — addresses and tickets, knock/admit, seat tokens, every limit the room enforces |
+| `docs/development.md` | Running the app three ways, two dev instances, every environment variable, diagnosing online play |
+| `docs/testing.md` | What each suite guarantees, what tests cannot catch, and the conventions worth keeping |
+| `docs/deploying.md` | The PartyKit room, versioning, and the itch.io pipeline |
+| `docs/decisions.md` | What was decided and why, what was reversed, what is still open, and the traps already hit |
 | `docs/screenshots/` | Seventeen frames from one real game, in play order — what each shows, and how to retake them |
-| `docs/plans/` | The architecture plan (20 units, KTD1–12, verification contract), the online‑multiplayer substrate plan, the game‑feel plan, and the web‑deployment plan (the public‑internet threat model and what changes for a hosted build) |
-| `docs/handoffs/` | What each recent session diagnosed and landed — the running record of bugs and fixes |
+| `docs/plans/` | The four plans the project was built from, with a status note per plan |
+| `docs/history/` | Archival — the original design document, the phase‑D follow‑ups, and the session handoffs |
 | `design/build.py` | Generates the design canvas **and** is the reference implementation of the naming rules — port it, don't reimplement it |
 | `design/make_icon.py` | Generates the app icon from the logo — stdlib only; re‑run it after changing the logo |
+| `design/make_skyline.py` | Recolours `design/skyline.psd` into the launch screen's night backdrop |
 
 Published design canvas:
 <https://claude.ai/code/artifact/f1b58905-2da0-4cd0-9c2e-8d65624260a3>

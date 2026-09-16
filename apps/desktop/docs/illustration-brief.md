@@ -53,8 +53,21 @@ illustration does not replace them.
 
 ## Placeholder assets in this codebase
 
-The illustration wired into the five surfaces is `apps/desktop/src/art/Skyline.tsx` — a flat,
-hand-authored inline-SVG skyline to this brief, parameterised by which industry accents show
-(so the launch/victory variants can pick up the game's actual colours later without a new
-asset). It is a stand-in for commissioned art: near-zero bundle cost, and swapping in real
-artwork later means replacing this one component, not five call sites.
+The illustration wired into four of the five surfaces is `apps/desktop/src/art/Skyline.tsx` — a
+flat, hand-authored inline-SVG skyline to this brief, parameterised by which industry accents show
+(so the victory variant can pick up the game's actual colours without a new asset). It is a
+stand-in for commissioned art: near-zero bundle cost, and swapping in real artwork later means
+replacing this one component, not five call sites.
+
+**The launch screen is now an exception to the brief**, recorded here rather than left to
+contradict it silently. `apps/desktop/src/art/NightSkyline.tsx` draws a **pixel-art town at night**
+— supplied as `design/skyline.psd` and recoloured onto the palette by `design/make_skyline.py`,
+with the ranks drifting sideways at two speeds while the moon and stars hold still. It keeps what
+this brief is actually protecting (abstracted buildings rather than real ones, no mascots, no
+photography, no gradients, a small palette drawn from `global.css`) and breaks the flat-facet
+treatment on purpose: pixel art at deliberate scale reads as a choice, where the same art smoothed
+would read as a mistake. If commissioned art ever lands, the question to settle is whether the
+launch screen rejoins the other four or the four follow it.
+
+Everything under `apps/desktop/src/assets/night/` is generated. Edit the PSD and re-run the
+script — never the PNGs.

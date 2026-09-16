@@ -165,6 +165,17 @@ founded again.
 Lowering `stem` toward 0.6 makes names drift further from where they started. Worth playtesting,
 not deciding up front.
 
+## Where this lives in the code
+
+| Part of this document | Code |
+|---|---|
+| The pool of 28, industries, tiers, colours | `packages/engine/src/pool.ts` — **the pool of record** |
+| `stem`, `fragment`, `displayName`, `accretedFlavour` | `packages/engine/src/naming/index.ts` |
+| Syllable splitting | `packages/engine/src/naming/syllables.ts` |
+| The blocklist and its fallback | `packages/engine/src/naming/blocklist.ts` |
+| `mergeNaming` config | `packages/engine/src/ruleset/types.ts` |
+| Card consolidation (one slot per corporation contained) | `apps/desktop/src/game/CorporationBand.tsx` |
+
 ## Reference implementation
 
 `design/build.py` contains working Python for `stem()`, `fragment()`, `_syls()` and
