@@ -1,165 +1,177 @@
-# Boomtown — decisions and open questions
+# Decisions — what was chosen, what changed, what is open
 
-## Settled
+Three sections, and the distinction matters: **Accepted** is what the code does now and the reason
+it does it; **Superseded** is a decision that was reversed, kept because the reversal is itself
+information; **Open** is a live question nobody has answered yet. A decision that shipped is not
+listed as open, however much reasoning it took to get there.
+
+The commit history is the record of *how* each of these was reached. This file records where they
+landed.
+
+## Accepted
+
+### The game
 
 | Decision | Choice | Why |
 |---|---|---|
-| Ruleset | **Configurable**, defaulting to Boomtown | The two rulebooks disagree on safe size, end trigger, bonus tiers and price bands. One data-driven config covers both editions, our own Boomtown variant, and house rules; see `rules.md`. |
-| Going Public | **Shipped**, as a third preset named **Boomtown** | Classic numbers plus closed books and a vote that can end the game early. A preset rather than a change to either published edition: nobody has to accept a changed ending to a ruleset they know, and forced-hidden visibility is what the preset *is* rather than an exception carved out of a shipped edition. Built across https://github.com/smromain/boomtown/issues/23. The full design note, with the game theory and a worked tally, is the design canvas's sibling artifact: https://claude.ai/code/artifact/16f2c904-19b8-4c7b-a477-5a9cf95db85e |
-| Play modes | Local hot-seat, online multiplayer, **and** AI opponents | Chosen together. Online multiplayer is what forces an authoritative server: the tile bag and hands are genuinely hidden information. AI needs the engine to expose a clean legal-move list and a state evaluator. |
-| Visual direction | **Saxon City** direction, now "Boomtown" | Picked from three: Board Room (the board is the subject), Saxon City (the corporations are), Trading Floor (the money is). The other two are kept on the canvas's "Earlier directions" page for reference. |
-| Title | **Boomtown** | Original; the original game's name is a live trademark. |
-| Corporations | Parodies of **defunct** giants, drawn one per industry from a pool of 28 | Lower risk than live brands and a better joke — the theme rhymes with the mechanic. See `naming.md`. |
-| Merged names | **Accrete**, never replace | A replacing rule threw away everything previously swallowed and converged on a stable stem. Accretion keeps the whole meal and gets sillier over a game. |
-| Long names | Solved by **card consolidation**, not truncation | Steve's idea. Cards are one slot wide per corporation they contain, so the band's total width is constant and a corporation earns its own room. |
-| Board geometry | 12 × 9 = 108, `1A`–`12I` | Classic is unambiguous; the 2015 rulebook says 100 tiles and never states the grid. |
-| Stock reference | A modal, **generated from the ruleset**, showing live market positions | The paper game ships a printed card. The digital one renders the same table from `priceBands` and `bonusTiers`, so the 2015 preset produces different bands and a third bonus column from one component — and it can mark where every corporation actually stands, which cardboard cannot. |
-| Dead-tile sweep | **Both editions** — reveal, set out of play, replace | The classic rulebook does not spell it out, but the rule (a tile that would merge two safe corporations is unplayable and gets replaced) is the same in both; a tile that can never be played must not stay stuck in a hand. `deadTilePolicy` still exists as a config knob. |
-| Online substrate | **PartyKit**, one room object per game (KTD6) | Hand-rolled `ws` server, Colyseus and boardgame.io all rejected — see the architecture plan's alternatives. Deployed at `boomtown.smromain.partykit.dev`; `packages/server/`. |
-| Desktop packaging | electron-builder, three-OS CI matrix, unsigned by default | electron-vite bundles everything from source so the app ships no `node_modules`. Fuses (KTD9) flipped in `afterPack`. Signing/notarization secrets are wired in `release.yml` but not set. See `deploying.md`. |
-| Online host in the build | Baked from `apps/desktop/.env.production`, Settings can override per-user | A release build with neither is a packaging mistake and throws rather than silently falling back to `localhost`. |
-| Auto-update | Wired in code, **no feed** — graceful no-op until a hosting target is picked | GitHub Releases / S3 / static host is an open call; `updater.ts` already degrades cleanly. |
-| Board rendering | **2D CSS grid** (`apps/desktop/src/board/`) | Reverses KTD8's "deliberately basic 3D / React Three Fiber". The design canvas always drew a flat grid; a top-down R3F board added a fixed-zoom camera, a font pipeline (troika) and ~2.2 MB of bundle to reproduce it. The grid fills its container via `aspect-ratio`, so it scales with the space. R3F / three / troika removed. |
+| Ruleset | **Data, not code**, defaulting to Boomtown | The two published rulebooks disagree on safe size, end trigger, bonus tiers, price bands, sole-shareholder policy, dead tiles, the two-player rule and split rounding. One `Ruleset` object covers both editions, our own variant, and house rules. See `rules.md` |
+| The Boomtown variant | **Shipped as a third preset, and the default** | Classic's numbers plus closed books and a vote that can end the game early. A preset rather than a change to either published edition: nobody has to accept a changed ending to a ruleset they know, and forced-hidden visibility is what the preset *is* rather than an exception carved out of a shipped edition. Built across [#23](https://github.com/smromain/boomtown/issues/23) |
+| The vote's dials | **Measured, not argued** | ~200 seeded bot games per configuration ([#27](https://github.com/smromain/boomtown/issues/27)). Quorum 2 (not 3), ⅔ at three and four seats but ½ at five and six, at least two distinct backers, one motion per player, no notice period. Detail in `rules.md` |
+| Title | **Boomtown** | Original. The original game's name is a live trademark |
+| Corporations | Parodies of **defunct** giants, one per industry from a pool of 28 | Lower risk than live brands and a better joke — the theme rhymes with the mechanic. See `naming.md` |
+| Merged names | **Accrete**, never replace | A replacing rule threw away everything previously swallowed and converged on a stable stem. Accretion keeps the whole meal and gets sillier over a game |
+| Long names | Solved by **card consolidation**, not truncation | Steve's idea. A card is one slot wide per corporation it contains, so the band's total width is constant and a corporation earns its own room |
+| Board geometry | 12 × 9 = 108, `1A`–`12I` | Classic is unambiguous; the 2015 rulebook says 100 tiles and never states the grid |
+| Dead-tile sweep | **Both editions** — reveal, set out of play, replace | The classic rulebook does not spell it out, but the rule is the same in both, and a tile that can never be played must not stay stuck in a hand. `deadTilePolicy` remains a knob |
+| Stock reference | A modal **generated from the ruleset** | The paper game ships a printed card. Generating it from `bandCuts` and `bonusTiers` means the 2015 preset produces different bands and a third bonus column from one component — and it can mark where every corporation actually stands, which cardboard cannot |
+
+### The system
+
+| Decision | Choice | Why |
+|---|---|---|
+| Engine | A **custom headless engine**, not a framework | `boardgame.io` was closest — turn-based, hidden state via `playerView`, generated bots — but its phase/stage model does not cleanly express nested, interruptible merger resolution, and it couples game state to its own server and storage |
+| Engine contract | **Command → events + state, or a typed rejection** | `reduce` never throws for a rule violation. The ordered command log is both the persistence substrate and the replay/resync mechanism |
+| Randomness | One seeded mulberry32 PRNG in state | `Math.random` and `Date.now` are lint errors in the engine. One unseeded call breaks replay, reconnection and bot reproducibility at once |
+| Merger | An explicit **state machine** yielding typed pending decisions | The only genuinely sequenced part of the game. Hot-seat UI, bots and the room all satisfy decisions through the same command interface, and progress lives in the serialisable snapshot so it survives the reducer's clone |
+| Hidden state | `viewFor(seat)`, plus `clientView` on top | The room serialises only a seat's own view. `clientView` adds `legalMoves` and per-tile effects the renderer cannot compute without full state |
+| Play modes | Hot-seat, bots **and** online, chosen together | Online is what forces an authoritative server, because the bag and the hands are genuinely hidden. Bots are what force the engine to expose legal moves and an evaluator |
+| Transports | One `GameTransport` seam, three implementations | Local, Web Worker, socket. Everything above it — store, dispatch, reconciliation — is identical, which is why the panels have no idea whether a game is local or online |
+| Bots | A heuristic `Policy` over the engine, **no LLM** | One 1–10 dial drives lookahead plies and a blunder rate: a weak bot is a strong bot that fumbles, which keeps low difficulty from feeling broken rather than stupid |
+| Bot information | A **redacted `GameState`**, not a narrower argument | A policy must run `reduce` to look ahead, so the honest boundary is `beliefState`: own hand intact, every other secret replaced by a plausible deal. Rule: *a bot sees what a player at that table could see*. Not yet true of the room's own bots — see **Open** |
+| Bot beliefs | A **light ledger**, not a belief engine | Steve's call. The public log names the corporation bought, not the quantity, so the honest observable is a purchase *event* per seat per corporation. A pure fold over the log, rebuilt each turn, anchored to the publicly known issued total, so it stays replay-safe |
+| Online substrate | **PartyKit**, one room object per game | A hand-rolled `ws` server, Colyseus and boardgame.io were all rejected; see the architecture plan's alternatives. Deployed at `boomtown.smromain.partykit.dev` |
+| Room durability | Append to the log **before** events are observable | What makes the room disposable: it hibernates and rebuilds by replay. A log that cannot replay parks the room read-only, because a throw on wake would brick that room forever |
+| Online identity | A rotating **per-seat token**, no accounts | 256 bits, compared in constant time, re-minted on every resume, so a captured token is worth one reconnect. A seat stays reserved while its player is away — a drop is a pause, not a forfeit |
+| Getting a seat | **A knock, not a seat** | Possession of an address or a live code gets you into the host's queue and no further. A leaked link costs a declined knock rather than a hijacked seat, and it is the one control that needs no identity at all |
+| Room addressing | **160-bit address, separate expiring ticket** | Collapsing the two made the address space as large as a code a person can read out. Split, the unguessable thing is 160 bits and the spoken thing only has to survive fifteen minutes. See `online-play.md` |
+| Room visibility | No listing, no lobby browser, uniform misses | An unissued, expired and retired ticket answer identically, so sweeping the space learns nothing |
+| Desktop packaging | electron-builder, three-OS CI matrix, unsigned by default | electron-vite bundles from source so the app ships no `node_modules`. Fuses flipped in `afterPack`. Signing secrets are wired in `release.yml` but not set |
+| Online host in the build | Baked from `.env.production`, overridable in Settings | A release build with neither is a packaging mistake and throws rather than silently falling back to `localhost` |
+| Versioning | **CalVer `YYYY.M.N`**, and a separate protocol integer | Semver promises compatibility to API consumers; this project has players on a storefront, for whom the only useful question is how fresh their build is. `PROTOCOL_VERSION` moves only when the wire breaks. See `deploying.md` |
+| itch.io packaging | Push the **unpacked directory** per platform, not the installers | butler manages symlinks and permissions on a directory push, and the itch app extracts it itself — which is also why Gatekeeper never sees a quarantine flag on that path |
+| Build order | Engine first, offline before any server | Phase A proved the engine — especially the merger, where getting it wrong makes everything else moot. B was a fully offline hot-seat app, C bots, D the server, E packaging. That order is why the room could be a thin authority over an engine already trusted |
+
+### The look
+
+| Decision | Choice | Why |
+|---|---|---|
+| Visual direction | **Saxon City**, now simply "Boomtown" | Picked from three: Board Room (the board is the subject), Saxon City (the corporations are), Trading Floor (the money is). The other two are on the canvas's "Earlier directions" page |
+| Board rendering | **2D CSS grid** | See **Superseded** — this reverses the original 3D call |
+| Moments | Six **beats**, driven off engine events | Founding, buy, merger, motion, endgame, victory, as timed skippable overlays with sound, rather than animation sprinkled through components. Five drop an opaque curtain; the buy flourish is deliberately light and never pauses play |
+| Hot-seat privacy | An opaque hand-off card, **by construction** | The turn advances the instant a buy resolves, so anything that covers the screen defers the hand-off and anything that does not, does not. A light beat that got this wrong leaked the next player's hand for a second every turn |
+| Copy | One file, `copy/constants.json` | Revising the writing is a pass through one file rather than a hunt across fifty components, and a phrase used twice cannot drift into two versions of itself |
+| Launch backdrop | The **pixel-art town at night**, recoloured from `design/skyline.psd` | Replaced the drifting vector skyline. Four layers so the ranks can drift at different speeds while the moon and stars hold still; every colour mapped onto the palette by `design/make_skyline.py`, which fails rather than passing an unmapped colour through |
+| Electron hardening | Isolation on, node off, sandbox on, strict CSP, fuses flipped | A narrow frozen `window.boomtown` bridge; CSP applied as a response header so it covers both the packaged `file://` load and the dev server; no `unsafe-eval` |
+
+## Superseded
+
+- **3D board → 2D CSS grid.** The original plan called for a "deliberately basic" top-down board in
+  React Three Fiber. The design canvas always drew a flat grid, and reproducing it in R3F added a
+  fixed-zoom camera, a font pipeline (troika) and ~2.2 MB of bundle. The grid fills its container
+  via `aspect-ratio`, so it scales with the space. R3F, three and troika were removed.
+- **The vote's notice period.** Designed as a turn's delay between raising a motion and voting on
+  it; did not ship at any seat count. At three seats it hands the table a free turn to gerrymander
+  the register against a mover who has just published it — a fourth cost on one action, when the
+  likeliest failure of the whole design is that nobody ever calls a motion.
+- **A fixed ⅔ quota at every seat count.** Measurement killed it: ⅔ carries 63% of motions at three
+  seats and 6% at six, because coordinating a supermajority gets harder with every seat.
+  `quotaBySeats` drops it to ½ at five and six.
+- **Bots voting through the generic evaluator.** Made every bot vote yes and every motion carry at
+  every quota, because settlement realises *everyone's* equity at full value. Replaced by
+  `vote.ts`: a player votes on where they stand, not on their balance.
+- **A two-tile mirrored drift track.** The launch backdrop's first version tiled two copies with the
+  second mirrored and travelled one tile per cycle — which lands the loop on the opposite parity and
+  jumps. It now travels two tiles of eight. Worth keeping because the verification was also wrong:
+  sampling "100% of the cycle" with a negative animation delay reproduced the *start* frame.
+- **One room code, doing both jobs.** See the addressing decision above.
 
 ## Open
 
-- **Trademark clearance.** Nothing in the pool has been searched. The mechanics are not
-  protectable and you can implement them freely, but the names have not been cleared and should be
-  before launch. Known to avoid: *Big Fish* (Big Fish Games publishes games), *Blockbusting* (real
-  estate term with an ugly history). *Bigger Boat* was rejected as a Jaws quote.
-- **The backwards Я in "Toys Я Were"** is Toys R Us trade dress rather than wordplay. It is the
-  riskiest single element in the pool and the first thing to swap if anyone gets nervous.
-- **The "riffing on" column** in `naming.md` and on the pool artboard is a design note so the list
-  can be reviewed. It must not ship as a string anywhere in the product.
-- **"Boomtown" — a third preset carrying the Going Public ending.** *Shipped* — this entry is kept
-  for the reasoning, not as a live question; the rules themselves are specified in `rules.md`.
-  Sliced and built across https://github.com/smromain/boomtown/issues/23. It is a **third preset alongside
-  Classic and Modern, and neither published edition changes** — which removes the sharpest
-  objection to the design (nobody has to accept a changed ending to a ruleset they know) and makes
-  the forced-hidden visibility what the preset *is* rather than an exception carved out of a
-  shipped edition. `CLAUDE.md`'s "visibility is a per-table setting, not a rule" therefore stands
-  for the editions it was written about. Named simply **Boomtown**: the label lands in a small-caps
-  chip beside the turn counter where a longer name is several times the width of the others, and
-  the game's own name is the right one for the game's own ruleset.
-  Scoping turned up that the decision channel already exists: `PendingDecision` flows engine →
-  `viewFor` → client store → `DecisionModal` → bots and every consumer downstream is written
-  against it generically, so only four places hard-code `state.merger` (`viewFor`, `legalMoves`,
-  the server's `seatOnClock`, the AI's lookahead). A vote is a new variant on a working channel,
-  not a new system.
+### Product and legal
 
-- **The Going Public mechanic itself, as designed.** *Shipped, with two dials moved by
-  measurement rather than argument — see the simulation note at the end of this entry.* Classic as the baseline plus
-  one addition: once two corporations are safe, a player may move to liquidate early, carried by a
-  supermajority of a register where one share in a *safe* corporation is one vote. Raising a motion
-  publishes that register, and if the motion **fails**, everyone who backed it opens their books
-  permanently. Every price in the design is a failure price — a carried motion ends the game, so
-  none of the disclosure matters. The name is the mechanic: an offering, and opening the books.
-  The dials move with the seat count — no vote at all at two seats (a call, where *refusing*
-  discloses), ⅔ at three and four, 60% of votes cast plus a seconder at five and six. Pressure
-  testing moved four things:
-  - **At least two distinct backers, at every seat count.** The supermajority does not do what it
-    looks like it does: the window opens when two corporations are safe, and a register that small
-    can be two-thirds held by one player, so a leader could carry a motion alone at the earliest
-    legal moment — exactly what the quota exists to prevent.
-  - **The log names the corporation but never the quantity.** Suppressing purchase detail outright
-    also blinded the *mover*, who must judge whether two-thirds is reachable before publishing the
-    register that would tell them. Naming the corporation keeps the electorate's shape estimable
-    while the weights stay secret.
-  - **The notice period survives only at two seats.** At three it hands the table a free turn to
-    gerrymander the register against a mover who has just published it — a fourth cost on one
-    action, and the likeliest failure of the whole design is that nobody ever calls a motion.
-  - **Build the simulation first.** `playOut()` in `packages/ai/test/policy.test.ts` already drives
-    headless games with a policy per seat; the quota, the window and the motion limit should be
-    tuned by counting outcomes over a few thousand games before any UI exists.
-  - **Bots get a light ledger, not a belief engine** (Steve's call). Since the log names the
-    corporation and not the amount, the one honest observable is a purchase *event* per seat per
-    corporation, and the model is a tally of those — "Ana's Concordia tally is six, her Enrun tally
-    is two". `CorpView.bankShares` is public and ungated, so issued shares per corporation
-    (25 − bankShares) is known exactly; the tallies only split a total that is already certain, and
-    a bot subtracts its own holdings first. Anchoring to that total is what keeps estimation errors
-    zero-sum instead of systematically underrating whoever buys in bulk. The ledger is a pure fold
-    over the public log — `ledger(log) → tallies`, rebuilt each turn — so there is no mutable
-    belief state and it stays replay-safe. Two consequences worth knowing: `PlayerView` carries no
-    log, so the policy signature has to become `chooseMove(view, log, seat, rng)` (the log is
-    public — every client holds it and `StoryCard` renders it); and because the tally counts events
-    rather than shares, purchase *cadence* becomes a bluff — dribbling inflates your apparent
-    weight, bulk buying conceals it, both cost tempo, and the public issued total caps the
-    distortion. The same fold should power an optional "who has been buying what" panel so the
-    bots' model is inspectable and a human who does not take notes is not playing a worse game. The full note — the game theory, a worked tally, the config keys
-  and the engine surface — is the design canvas's sibling artifact:
-  https://claude.ai/code/artifact/16f2c904-19b8-4c7b-a477-5a9cf95db85e
-  Two things it turns up that outlive the proposal:
-  - **It makes visibility a rule, contradicting a stated principle.** `CLAUDE.md` says cash and
-    holdings visibility is a per-table setting. Going Public has to force `hidden` and refuse to let
-    the table change it: at an open table the register is already public and the disclosure costs
-    nothing, so the mechanic evaporates. If it ships, that exception needs to be stated where the
-    principle is.
-  - **A plain majority vote is not worth building.** Ending the game freezes variance, and variance
-    is the only route to first for anyone not already there, so every trailing player votes to
-    continue. The yes-coalition is normally one player against the rest, and the vote becomes a
-    ritual. Weighting by shareholding is what makes it a real decision; a supermajority is what
-    stops the leader self-serving.
+- **Trademark clearance.** Nothing in the pool has been searched. The mechanics are not protectable
+  and can be implemented freely, but the names have not been cleared and should be before any real
+  launch. Known to avoid: *Big Fish* (Big Fish Games publishes games), *Blockbusting* (a real-estate
+  term with an ugly history). *Bigger Boat* was rejected as a Jaws quote.
+- **The backwards Я in "Toys Я Were"** is Toys R Us trade dress rather than wordplay. The riskiest
+  single element in the pool and the first thing to swap if anyone gets nervous.
+- **Three pool names are not defunct.** BP, Netflix and Chuck E. Cheese are all still trading, so
+  those rows are exceptions to the stated rule rather than examples of it. See `naming.md`.
+- **The "riffing on" column** in `naming.md` and on the pool artboard is a design note. It must not
+  ship as a string anywhere in the product.
+- **Code signing.** Both signing paths are wired in `release.yml` and neither secret is set, so
+  macOS players need the `xattr` step and Windows shows SmartScreen. A certificate is a purchase
+  decision, not a code one.
+- **No update feed.** `updater.ts` degrades cleanly and store-managed distributions stand down
+  (`distribution.ts`), but nothing is configured, so a released build never learns about a newer
+  one. GitHub Releases as the feed is the obvious candidate.
+- **itch.io account identity as a trust signal on host admission.** Deferred with a named revisit
+  trigger in `plans/2026-09-14-feat-web-deployment-plan.md`; the game is pay-what-you-want, so most
+  players will have no purchase to prove. Revisit only if a hosted public deployment happens.
 
-  **What shipped, and what the simulation changed** (https://github.com/smromain/boomtown/issues/27,
-  ~200 games per configuration):
-  - **The quota base is the register, not votes cast.** Only a fixed denominator can settle a
-    motion before everyone has spoken, and abstention — the thing that would make the two bases
-    genuinely differ — is not implemented.
-  - **⅔ at three and four seats, ½ at five and six.** ⅔ carries 63% of the time at three seats and
-    only 6% at six: coordinating a supermajority gets harder with every seat, and everyone waits
-    for someone else to move against the leader. `quotaBySeats` corrects it.
-  - **Quorum two, not three.** Two safe corporations gives a motion in 53–72% of games against
-    7–17% at quorum three, and a mechanic nobody uses is the likeliest way this design fails, well
-    ahead of unbalancing anything.
-  - **The notice period did not ship at all**, at any seat count.
-  - **Bots vote on standing, not on score.** Routing the vote through the generic evaluator made
-    every bot vote yes and every motion carry at every quota, because settlement realises
-    *everyone's* equity at full value — ending the game raises everybody's score. The quota was
-    measuring nothing. A player votes on where they stand, not on their balance.
-  - **The motion was unreachable when first built**, and twenty engine tests missed it because they
-    set the step by hand: `finishTurn` only held at the end-check step when an end condition was
-    met, and a motion is legal only while one is *not*. Playing whole games found it in one run.
+### Technical
 
-- **Bots are handed the authoritative state, not a filtered view.** `attachBotDriver` calls
-  `chooseMove(options.snapshot(), seat, rng)`, and `snapshot()` returns the full `GameState`.
-  `clientView()` does the per-seat filtering that hidden information depends on, and the bot path
-  goes around it. What they *reach* and what they *use* differ, and the difference decides how big
-  the fix is:
-  - **Opponents' holdings are genuinely read.** `bonusExposure` in `queries/evaluate.ts` maps over
-    `state.seats` to rank every holder of a corporation. Its own docstring claims the function
-    "reads only public state and `seat`'s own holdings" — the comment asserts the invariant the
-    code breaks. Legitimate at an open table, a leak at a hidden one.
-  - **Hands and the bag are not read into any score**, and that is structural rather than lucky:
-    `ownMoves` filters `legalMoves` to the bot's own commands, and `scoreMove` stops recursing once
-    `decider !== seat`, so lookahead never expands an opponent's options. Nothing *enforces* it,
-    though — deepen the lookahead to model an opponent reply and the hands are right there in the
-    parameter. Worth making unreachable rather than merely unused.
-
-  The fix is "a bot sees what a player at that table could see", which is what `clientView` already
-  computes — not a bespoke rule about bots. It costs little strength, for the reason below.
-
-- **"Hidden" holdings are derivable from the public log.** `shares-bought` carries the exact
-  `picks`, and `eventText` renders it to the whole table ("Ana bought 3 Concordia, 1 Enrun for
-  $4,200"); the server filters each connection's *view*, not the event log. So the hidden setting
-  conceals the running tally, not the transactions — card counting, where the information is public
-  and the bookkeeping is the work. Two consequences: restricting bots to a filtered view barely
-  weakens them, since they can accumulate the log like anyone else; and **Going Public needs a second
-  clause suppressing purchase detail in the public log**, or the register it publishes is one the
-  table could already reconstruct and the mover's disclosure sells nothing.
-
-- **`mergeNaming.stem` value.** 0.75 as specified; 0.6 drifts further. Playtest rather than decide.
+- **The room's bots are handed authoritative state.** `runBots` calls
+  `policy.chooseMove(this.state, …)` where the local driver passes
+  `beliefState(options.snapshot(), …)`. So online bots can read hidden holdings — `bonusExposure` in
+  `queries/evaluate.ts` does map over `state.seats` — which at a closed table they should not. Hands
+  and the bag are not read into any score, and that is structural rather than lucky (`ownMoves`
+  filters to the bot's own commands and `scoreMove` stops recursing once the decider is another
+  seat), but nothing enforces it: deepen the lookahead and the hands are right there in the
+  parameter. The fix is the rule already stated — a bot sees what a player at that table could see —
+  applied in `game-room.ts` as it already is in `bots.ts`.
+- **"Hidden" holdings are derivable from the public log.** `shares-bought` carries the exact picks,
+  and `eventText` renders it to the whole table; the room filters each connection's *view*, not the
+  log. So the hidden setting conceals the running tally rather than the transactions — card
+  counting, where the information is public and the bookkeeping is the work. Two consequences:
+  restricting bots to a redacted view barely weakens them, and the register a motion publishes is
+  one an attentive table could already reconstruct. A second clause suppressing purchase *detail*
+  in the public log is the fix, and it is not written.
+- **The design canvas shows companies that are not in the game.** `design/build.py` carries its own
+  older `POOL` — Woolyworth, Compuwas, Pan-Atlas, Braniffle, Texicorps, Wattage, Megahit Video,
+  Tower of Records — and the artboards are generated from it. `packages/engine/src/pool.ts` is the
+  pool of record. Reconciling means editing `build.py`, regenerating and republishing.
+- **`mergeNaming.stem` value.** 0.75 as specified; 0.6 drifts names further from where they started.
+  Playtest rather than decide.
 - **2015 board dimensions**, if that preset is ever wanted for real. The rulebook does not say.
-- **The 2015 corporation names** live on the info-card artwork, which is an image in the PDF. Only
-  *Etch* and *Bolt* appear in the worked examples. Not needed unless the 2015 preset ships with its
-  own names.
+- **The 2015 corporation names** live on info-card artwork, which is an image in the PDF. Only
+  *Etch* and *Bolt* appear in the worked examples. Not needed unless that preset ships with its own
+  names.
+- **Two orphan release-candidate tags** (`v2026.9.1-rc1`, `v2026.9.1-rc2`) are still on the remote;
+  deleting a ref is blocked from the agent environment.
 
-## Things that bit during design — worth not rediscovering
+## Things that bit — worth not rediscovering
 
 - **The 2015 secondary bonus column is not a formula.** Primary is 10× share price and tertiary is
   5×, but secondary (1500, 2200, 3000, 3700, 4200, 5000, 5700, 6200, 7000, 7700, 8200) fits no
-  multiplier. It must ship as a lookup table. Verified against the rulebook's own worked example.
+  multiplier. It ships as a lookup table, verified against the rulebook's worked example.
 - **A naive syllable splitter returns whole words.** `Transworldly` and `Sizzle's` both yielded
   themselves as fragments, which swamps the stem. Fixed with a VCCV split rule, a 3–6 letter clamp,
-  and skipping one-character words. All 28 pool names were re-checked, not just the seven in play.
+  and skipping one-character words. All 28 names were re-checked, not just the seven in play.
 - **The board badge stays stable for free**, because the stem is always taken from the front. Worth
   keeping as a deliberate constraint rather than an accident.
+- **The motion was unreachable when first built**, and twenty engine tests missed it because they
+  set the turn step by hand: `finishTurn` only held at end-check when an end condition was met, and
+  a motion is legal only while one is *not*.
+- **Suppressing purchase detail outright blinds the mover too.** They must judge whether the quota
+  is reachable *before* publishing the register that would tell them. Naming the corporation but not
+  the quantity keeps the electorate's shape estimable while the weights stay secret.
+- **A plain majority vote is not worth building.** Ending the game freezes variance, and variance is
+  the only route to first for anyone not already there, so every trailing player votes to continue.
+  Weighting by shareholding is what makes it a decision; a supermajority is what stops the leader
+  self-serving.
+- **Rate limits calibrated against a person punish a client.** 8/s and then 30/s both stalled the
+  integration suite, which plays a whole game over a socket with no pacing. The burst has to cover a
+  game, not a turn.
+- **A test can pass against a mock of the thing that is wrong.** `afterPack.test.ts` mocks
+  `executableName`, so a Linux binary named `@boomtowndesktop` shipped with itch manifests pointing
+  at a file that did not exist.
+- **macOS Gatekeeper's "damaged" refusal needs the quarantine flag**, which a *browser* applies.
+  The itch app extracts its own download, so Gatekeeper is never invoked on that path — which is why
+  the itch install needs no `xattr` step and the direct download does.
+- **`vars.*` in a workflow only reads the Variables tab.** A value set as a secret, or under
+  Settings → Environments, resolves empty with no error. `vars.X || secrets.X` covers two of the
+  three.
+- **An `aria-label` that contains another element's label matches both.** `"Copy the room code"`
+  contains `"Room code"`, so `getByLabel('Room code')` stopped being unique and broke a driver
+  script.

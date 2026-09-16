@@ -1,5 +1,9 @@
 # Deploying Boomtown
 
+> Release *procedure* — what to click, which jobs run, which secrets matter — is in the README's
+> **Cutting a release**. This document owns the parts that outlive a run: the room, versioning, and
+> the itch.io pipeline. The rest of the documentation set is indexed in `README.md`.
+
 Two independent artifacts: the **online room** (PartyKit, for cross-machine play)
 and the **desktop app** (Electron installers). Neither depends on the other at
 runtime — a desktop build with no reachable room simply can't start online games.
@@ -85,6 +89,12 @@ and it finds the highest `vYYYY.M.*` tag for the current month and adds one;
 fill it in to force a value; a tag push uses the tag. A shape guard rejects
 anything that is not `YYYY.M.N`, so a leading zero fails in `prepare` in seconds
 rather than at packaging time twenty minutes later.
+
+**An optional `-rcN` suffix rides along** for a rehearsal release: `2026.9.3-rc1`
+is still valid semver, and semver orders a prerelease *below* its release, so an
+rc and the real thing share an `N` on purpose. The auto-increment ignores rc tags
+for the same reason — cutting `rc1` must not burn the number its release wants —
+and the GitHub Release is marked as a prerelease.
 
 `apps/desktop/package.json` stays at its placeholder `0.0.0` permanently. The
 release version is stamped into the manifest for the build only and never
