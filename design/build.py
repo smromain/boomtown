@@ -1881,7 +1881,7 @@ AFTER_SERIES = [
 # (`docs/rules.md`) — and a dashed rule for the merger that ended it. The label
 # text stays in ink; the mark carries the identity.
 # Four panels and a note row; measured from the render.
-AFTER_H = 2153
+AFTER_H = 2869
 
 AFTER_EVENTS = [
   (1,  "found",   "books"),
@@ -1899,16 +1899,43 @@ AFTER_EVENTS = [
 AFTER_CASH = {name: cash for name, cash, _ in PLAYERS}
 AFTER_SHARES = {name: sum(h.values()) for name, _, h in PLAYERS}
 
-def af_tabs(active):
-    tabs = ["Standings", "Tracking the market", "Awards"]
+AF_FRAMES = [
+  # tab label, how long it holds, why it holds that long
+  ("Standings", 8, "one read"),
+  ("Tracking the market", 10, "one read"),
+  ("Company by company", 30, "5 companies at 6s"),
+  ("Awards", 30, "5 pages at 6s"),
+]
+
+def af_tabs(active, progress=0.45):
+    """The tab row doubles as the carousel's position. A tab is still a tab —
+    clicking one goes there and holds it — but left alone the row advances on
+    its own, and the sliver under the live pill says how much of this frame is
+    left. Nothing here is a control the table has to operate to see everything;
+    the screen plays itself."""
     out = []
-    for t in tabs:
-        on = t == active
-        out.append('<span style="padding:7px 15px;border-radius:999px;font-size:12.5px;%s">%s</span>'
+    for i, (t, _secs, _why) in enumerate(AF_FRAMES):
+        on = i == active
+        bar = ('<span style="position:absolute;left:3px;right:3px;bottom:3px;height:2px;'
+               'border-radius:999px;background:%s;opacity:.35">'
+               '<span style="position:absolute;left:0;top:0;bottom:0;width:%d%%;border-radius:999px;'
+               'background:%s"></span></span>' % (B_BG, int(progress * 100), B_BG)) if on else ""
+        out.append('<span style="position:relative;padding:7px 15px 9px;border-radius:999px;'
+                   'font-size:12.5px;%s">%s%s</span>'
                    % ("background:%s;color:%s;font-weight:600" % (B_INK, B_BG) if on
-                      else "color:%s" % B_MUTED, t))
+                      else "color:%s" % B_MUTED, t, bar))
     return ('<div style="display:inline-flex;gap:3px;padding:3px;border:1px solid %s;border-radius:999px;'
             'background:%s">%s</div>' % (B_RULE, B_PANEL, "".join(out)))
+
+def af_frame(i, inner, progress=0.45):
+    """One state of the screen, drawn whole: the tab row as it stands on that
+    frame, and the panel under it."""
+    label, secs, why = AF_FRAMES[i]
+    return ('<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:12px">'
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:20px">%s'
+            '<span style="font-size:11px;color:%s">frame %d of %d · holds %ds · %s</span></div>'
+            '<div style="display:flex;gap:22px;align-items:flex-start">%s</div></div>'
+            % (af_tabs(i, progress), B_MUTED, i + 1, len(AF_FRAMES), secs, why, inner))
 
 def af_panel(title, note, inner, w=None):
     return ('<div style="%sbackground:%s;%sborder-radius:4px;box-shadow:%s;padding:18px 20px 20px;'
@@ -2221,34 +2248,55 @@ def af_note(title, body):
             % (B_RULE, B_ACCENT, title, B_INK, body))
 
 def build_after():
+    total = sum(s for _t, s, _w in AF_FRAMES)
     header = (
-      '<div style="width:1440px;padding:0 44px;display:flex;flex-direction:column;gap:10px">'
+      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:10px">'
       '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">'
       'Boomtown · after the game (#68 + #69)</span>'
       '<span class="ser" style="font-size:34px">The shape of the game, once it is over</span>'
-      '<span style="font-size:13px;line-height:1.55;color:%s;max-width:940px">One screen, three tabs — the '
-      'standings every game already ends on, the per-turn graph, and the awards. It sits <em>behind</em> the '
-      'victory beat\'s last-to-first reveal: that is the payoff, this is what the table talks over afterwards. '
-      'Disclosure is free here — settlement already publishes every seat\'s cash and holdings — which is why '
-      'the whole-table version of the graph belongs at the end and nowhere else.</span>'
-      '<div style="margin-top:6px">%s</div></div>' % (B_MUTED, B_MUTED, af_tabs("Standings"))
+      '<span style="font-size:13px;line-height:1.55;color:%s;max-width:1000px">Four frames, turning over on '
+      'their own: the standings every game already ends on, the per-turn graph, the market company by company, '
+      'and the awards. It sits <em>behind</em> the victory beat\'s last-to-first reveal — that is the payoff, '
+      'this is what the table talks over afterwards, and a screen nobody has to drive is the right shape for '
+      'that. Every frame is still a tab: click one and it holds. Disclosure is free here — settlement already '
+      'publishes every seat\'s cash and holdings — which is why the whole-table version of any of this belongs '
+      'at the end and nowhere else.</span>'
+      '<div style="display:flex;align-items:baseline;gap:14px;margin-top:4px">'
+      '<span class="ser num" style="font-size:20px">%d seconds</span>'
+      '<span style="font-size:11.5px;color:%s">all the way round · every frame below is one state of the same '
+      'screen</span></div></div>' % (B_MUTED, B_MUTED, total, B_MUTED)
     )
-    row = lambda inner: ('<div style="width:1440px;padding:0 44px;display:flex;gap:22px;'
-                         'align-items:flex-start">%s</div>' % inner)
-    rows = "".join(row(p) for p in (af_standings(), af_graph_lit(), af_awards(), af_pool()))
+
+    seat_max = mk_seat_max([mk_market_series(k) for k in ORDER if MARKET[k]["spans"]])
+    frames = "".join([
+      af_frame(0, af_standings(), 0.62),
+      af_frame(1, af_graph_lit(), 0.30),
+      af_frame(2, af_panel("The market, company by company",
+                           "company 2 of 5 in this frame · "
+                           "<span style=\"white-space:nowrap\">◆ majority changed hands</span>",
+                           mk_stage("video", seat_max, 14000)), 0.44),
+      af_frame(3, af_awards(), 0.18),
+    ])
+
+    pool = ('<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:12px">'
+            '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;'
+            'color:%s">not a frame — the set behind the awards frame, for reference</span>%s</div>'
+            % (B_MUTED, af_pool()))
+
     notes = (
-      '<div style="width:1440px;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
-      % (af_note("Why the seats have no colours",
+      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
+      % (af_note("A frame that cycles holds for all of it",
+                 "Two of the four have a carousel of their own — five companies, five pages of awards — "
+                 "and two cycles running at different rates is how a screen stops being readable. So the outer "
+                 "one waits: a frame with an inner cycle holds until the inner cycle has been all the way "
+                 "round, which is why those two hold 30 seconds and the flat ones hold 8 and 10. One thing "
+                 "moves at a time, and it is always the innermost."),
+         af_note("Why the seats have no colours",
                  "#68 asks for a seat palette that is colourblind-safe <em>and</em> distinct from the seven "
                  "corporation colours. 12,000 candidates through the dataviz validator say it does not exist at "
                  "six seats — not at ΔE 15 from the board palette, not at 12, not at 10. The board already "
-                 "spends the usable space. So identity is the label and the row, never the hue — and the colour "
-                 "you do see on the chart belongs to companies, which already own it."),
-         af_note("Why the standings are numbers",
-                 "They carried a sparkline per seat and it was the chart below at a tenth the resolution. What "
-                 "a standings table is <em>for</em> is the figures, so the width goes on splitting net worth "
-                 "into the parts it is made of — cash, shares, stock at close — which is also the only place "
-                 "the table can check settlement's arithmetic. The shape of the game lives in one panel."),
+                 "spends the usable space. So identity is the label, the row and the dash, never the hue — and "
+                 "the colour you do see belongs to companies, which already own it."),
          af_note("What the y-axis is",
                  "Net worth — cash plus stock at closing price — and it says so on the panel rather than "
                  "leaving it inferred. Cash alone would show a fully-invested player as broke. It must come from "
@@ -2258,8 +2306,8 @@ def build_after():
     body = (
       '<div style="width:1440px;min-height:%dpx;background:%s;color:%s;'
       'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:40px 0 44px;'
-      'display:flex;flex-direction:column;gap:26px;align-items:center">%s%s%s</div>'
-      % (AFTER_H, B_BG, B_INK, header, rows, notes)
+      'display:flex;flex-direction:column;gap:30px;align-items:center">%s%s%s%s</div>'
+      % (AFTER_H, B_BG, B_INK, header, frames, pool, notes)
     )
     write("After.dc.html", B_HELMET, body)
 
@@ -2732,7 +2780,7 @@ def mk_stress():
                     '<div style="flex:1;min-width:0">%s</div>%s</div>'
                     % (svg, mk_side(ind, series, STRESS_SEATS, note)))
 
-MARKET_H = 1461
+MARKET_H = 1478
 
 def build_market():
     feature = "books"
@@ -2750,7 +2798,7 @@ def build_market():
              % (B_MUTED, B_MUTED, money(total_max), money(seat_max)))
 
     header = (
-      '<div style="width:1440px;padding:0 44px;display:flex;flex-direction:column;gap:10px">'
+      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:10px">'
       '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">'
       'Boomtown · after the game (#68) · company by company</span>'
       '<span class="ser" style="font-size:34px">Who owned what, while it was worth something</span>'
@@ -2763,7 +2811,7 @@ def build_market():
       'two bonuses would pay — a tie kept as a tie, because the rules pay it as one.</span></div>'
       % (B_MUTED, B_MUTED))
 
-    panel = ('<div style="width:1440px;padding:0 44px">%s</div>'
+    panel = ('<div style="width:1440px;box-sizing:border-box;padding:0 44px">%s</div>'
              % af_panel("The market, company by company",
                         "<span style=\"white-space:nowrap\">● founded</span> · "
                         "<span style=\"white-space:nowrap\">○ founded again</span> · "
@@ -2772,10 +2820,10 @@ def build_market():
                         "hover a lane block for the whole name",
                         '<div style="display:flex;flex-direction:column;gap:18px">%s%s%s</div>'
                         % (mk_stage(feature, seat_max, total_max), strip, pager)))
-    stress = '<div style="width:1440px;padding:0 44px">%s</div>' % mk_stress()
+    stress = '<div style="width:1440px;box-sizing:border-box;padding:0 44px">%s</div>' % mk_stress()
 
     notes = (
-      '<div style="width:1440px;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
+      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
       % (af_note("Why the stacks went",
                  "Two objections, one root. Order the stack by the final holding and a seat who led for twenty "
                  "turns is drawn in the wrong step the whole way; order it turn by turn and the bands cross "
@@ -2818,8 +2866,8 @@ def build_canvas():
         {"file": "Names.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 2680, "title": "Merged names", "print": "flow", "page": "page-1"},
         {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "The pool", "print": "flow", "page": "page-1"},
         {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
-        {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 2240, "title": "After the game", "print": "flow", "page": "page-1"},
-        {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 1548, "title": "Company by company", "print": "flow", "page": "page-1"},
+        {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 2956, "title": "After the game", "print": "flow", "page": "page-1"},
+        {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 1565, "title": "Company by company", "print": "flow", "page": "page-1"},
         {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4720, "title": "Rules model",
          "print": "flow", "page": "page-2"},
         {"file": "BoardRoom.dc.html",    "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "A - Board Room", "page": "page-3"},
@@ -2831,7 +2879,7 @@ def build_canvas():
         {"id": "note-names", "x": 760, "y": -210, "w": 660, "page": "page-1",
          "text": "Seven companies that were once unassailable and then got eaten - which is what happens to every corporation on this board. Parodies of defunct brands, not live ones. Nothing here has been trademark-searched, and the backwards R is trade dress rather than wordplay: swap it first if anyone gets nervous."},
         {"id": "note-after", "x": 4680, "y": 2140, "w": 700, "page": "page-1",
-         "text": "The post-game screen (#68 + #69), designed as one thing because both issues asked for that. The seats deliberately have no colours: a palette that is both colourblind-safe and distinct from the seven corporation colours does not exist at six seats - 12,000 candidates through the dataviz validator say so. Identity is the label and the row."},
+         "text": "The post-game screen (#68 + #69), designed as one thing because both issues asked for that. It is a carousel now, not a page: four frames that turn over on their own, 78 seconds all the way round, each still a tab you can click to hold. Every block below is one state of the same screen. The seats deliberately have no colours - a palette both colourblind-safe and distinct from the seven corporation colours does not exist at six seats, and 12,000 candidates through the dataviz validator say so."},
         {"id": "note-market", "x": 6240, "y": -210, "w": 700, "page": "page-1",
          "text": "The third reading of the same game (#68): one company at a time, a band for what it was worth and a line per seat for whose it was. It started as stacked bars and the table killed them - a stack has to be ordered, and no order survives six seats trading the majority back and forth over forty turns. The second frame is that worst case, drawn, so the claim can be checked."},
         {"id": "note-rules", "x": 0, "y": -150, "w": 700, "page": "page-2",
@@ -2847,5 +2895,5 @@ def build_canvas():
 
 if __name__ == "__main__":
     build_a(); build_b(); build_c(); build_rules(); build_names(); build_pool(); build_reference()
-    build_language(); build_beats(); build_after(); build_market()
+    build_language(); build_beats(); build_market(); build_after()
     build_canvas()

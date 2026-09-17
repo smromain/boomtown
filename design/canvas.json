@@ -78,7 +78,7 @@
       "x": 4680,
       "y": 2350,
       "w": 1440,
-      "h": 2240,
+      "h": 2956,
       "title": "After the game",
       "print": "flow",
       "page": "page-1"
@@ -88,7 +88,7 @@
       "x": 6240,
       "y": 0,
       "w": 1440,
-      "h": 1548,
+      "h": 1565,
       "title": "Company by company",
       "print": "flow",
       "page": "page-1"
@@ -145,7 +145,7 @@
       "y": 2140,
       "w": 700,
       "page": "page-1",
-      "text": "The post-game screen (#68 + #69), designed as one thing because both issues asked for that. The seats deliberately have no colours: a palette that is both colourblind-safe and distinct from the seven corporation colours does not exist at six seats - 12,000 candidates through the dataviz validator say so. Identity is the label and the row."
+      "text": "The post-game screen (#68 + #69), designed as one thing because both issues asked for that. It is a carousel now, not a page: four frames that turn over on their own, 78 seconds all the way round, each still a tab you can click to hold. Every block below is one state of the same screen. The seats deliberately have no colours - a palette both colourblind-safe and distinct from the seven corporation colours does not exist at six seats, and 12,000 candidates through the dataviz validator say so."
     },
     {
       "id": "note-market",
