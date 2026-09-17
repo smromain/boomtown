@@ -88,7 +88,7 @@
       "x": 6240,
       "y": 0,
       "w": 1440,
-      "h": 975,
+      "h": 1432,
       "title": "Company by company",
       "print": "flow",
       "page": "page-1"
@@ -153,7 +153,7 @@
       "y": -210,
       "w": 700,
       "page": "page-1",
-      "text": "The third reading of the same game (#68): one chart per company, stacked by seat, measured in money. It is the one direction that needs no seat palette - a cell is one company, so the segments are steps of its own colour. Largest holder on top, ranked once so no band crosses another."
+      "text": "The third reading of the same game (#68): one company at a time, a band for what it was worth and a line per seat for whose it was. It started as stacked bars and the table killed them - a stack has to be ordered, and no order survives six seats trading the majority back and forth over forty turns. The second frame is that worst case, drawn, so the claim can be checked."
     },
     {
       "id": "note-rules",

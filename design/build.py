@@ -2332,245 +2332,275 @@ def mk_mix(hexcol, pct):
     2px gap between segments, so they are wide apart rather than even."""
     r, g, b = (int(hexcol[i:i + 2], 16) for i in (1, 3, 5))
     pr, pg, pb = (int(B_PANEL[i:i + 2], 16) for i in (1, 3, 5))
-    return "#%02X%02X%02X" % tuple(int(round(c + (p - c) * pct)) for c, p in ((r, pr), (g, pg), (b, pb)))
+    return "#%02X%02X%02X" % tuple(min(255, max(0, int(round(c + (p - c) * pct))))
+                                  for c, p in ((r, pr), (g, pg), (b, pb)))
 
-MK_STEPS = [0.0, 0.28, 0.50, 0.68]
+MK_DASH = ["", "7 4", "1.5 3.5", "10 3.5 1.5 3.5", "16 5", "1.5 3.5 7 3.5"]
 
-# Lightness alone was not enough: four steps of one hue in a 16px bar blend
-# into each other, and which step a seat gets changes cell by cell because it
-# is the rank that sets it. So identity is a **texture**, assigned once per
-# seat and the same in every cell — the seat is the hatch, the company is the
-# hue, the rank is the step. It is also the fill that survives greyscale,
-# forced colours and a printout, which no lightness ramp does.
-MK_TEXTURE = ["solid", "diagonal", "dots", "cross", "horizontal", "vertical"]
+# A six-handed table over forty-six turns — the case the stacked version could
+# not survive, kept as a frame on the artboard so the claim can be checked
+# rather than believed. The majority changes hands four times in it.
+STRESS_SEATS = ["You", "Nadia", "June", "Ravi", "Otto", "Mara"]
+STRESS_TURNS = list(range(0, 47))
+STRESS = {
+  "spans": [(3, 46)],
+  "size": {3: 2, 5: 3, 7: 4, 9: 5, 11: 6, 14: 8, 17: 11, 20: 14, 24: 18, 28: 22,
+           33: 26, 38: 30, 43: 34},
+  "held": {"You":   {4: 1, 9: 2, 15: 3, 22: 4, 31: 6, 39: 7},
+           "Nadia": {5: 2, 12: 3, 20: 5, 27: 6},
+           "June":  {6: 1, 14: 3, 19: 4, 29: 5},
+           "Ravi":  {7: 1, 18: 2, 35: 3},
+           "Otto":  {11: 1, 24: 2},
+           "Mara":  {13: 1, 33: 2}},
+}
 
-def mk_pattern(pid, kind, shade, ink):
-    """One tile of a seat's fill. The tiles are seamless at their own size, so
-    a 9px segment and a 60px one read as the same fill."""
-    body = '<rect width="100%%" height="100%%" fill="%s"/>' % shade
-    w = h = 6
-    if kind == "diagonal":
-        body += ('<path d="M-1 1 L1 -1 M0 6 L6 0 M5 7 L7 5" stroke="%s" stroke-width="1.7" '
-                 'fill="none"/>' % ink)
-    elif kind == "cross":
-        body += ('<path d="M-1 1 L1 -1 M0 6 L6 0 M5 7 L7 5 M-1 5 L1 7 M0 0 L6 6 M5 -1 L7 1" '
-                 'stroke="%s" stroke-width="1.4" fill="none"/>' % ink)
-    elif kind == "dots":
-        w = h = 5
-        body += ('<circle cx="1.4" cy="1.4" r="1.25" fill="%s"/>'
-                 '<circle cx="3.9" cy="3.9" r="1.25" fill="%s"/>' % (ink, ink))
-    elif kind == "horizontal":
-        h = 5
-        body += '<path d="M0 1.4 H6 M0 3.9 H6" stroke="%s" stroke-width="1.4"/>' % ink
-    elif kind == "vertical":
-        w = 5
-        body += '<path d="M1.4 0 V6 M3.9 0 V6" stroke="%s" stroke-width="1.4"/>' % ink
-    return ('<pattern id="%s" width="%d" height="%d" patternUnits="userSpaceOnUse">%s</pattern>'
-            % (pid, w, h, body))
-
-def mk_swatch(kind, shade, ink, size=11):
-    """The same fill at legend size, drawn rather than described — a coloured
-    square next to a name is the thing that stopped working."""
-    # deterministic: the generated file has to be byte-stable between runs
-    pid = "sw-%s-%s-%s-%d" % (kind, shade.lstrip("#"), ink.lstrip("#"), size)
-    return ('<svg width="%d" height="%d" style="display:block;flex-shrink:0">%s'
-            '<rect width="%d" height="%d" rx="2" fill="url(#%s)" stroke="%s" stroke-width="1" '
-            'stroke-opacity=".35"/></svg>'
-            % (size, size, mk_pattern(pid, kind, shade, ink), size, size, pid, ink))
-
-def mk_series(ind):
+def mk_series(spec, seats, turns, tier):
     """Expand the steps into a per-turn record: size, price, holdings, value."""
-    spec = MARKET[ind]
     live = set()
     for a, b in spec["spans"]:
         live |= set(range(a, b + 1))
-    out, size, held = {}, 0, {s: 0 for s in MARKET_SEATS}
-    for t in AFTER_TURNS:
+    out, size, held = {}, 0, {s: 0 for s in seats}
+    for t in turns:
         if t in spec["size"]: size = spec["size"][t]
-        for s in MARKET_SEATS:
+        for s in seats:
             if t in spec["held"].get(s, {}): held[s] = spec["held"][s][t]
         if t not in live:
             size = 0
             continue
-        p = price(size, CORP[ind]["tier"]) or 0
+        p = price(size, tier) or 0
         out[t] = {"size": size, "price": p, "held": dict(held),
-                  "value": {s: held[s] * p for s in MARKET_SEATS}}
+                  "value": {s: held[s] * p for s in seats}}
     return out
 
-def mk_stack_order(ind, series):
-    """**Fixed** for the whole chart, largest at the top, ranked by what each
-    seat was holding on the company's last live turn (peak, then name, breaks a
-    tie). Re-ranking every turn is what the brief asked for and it makes a
-    seat's band swap layers mid-chart — you lose the one thing a stacked bar is
-    for, which is following your own band across time. Ranking once keeps the
-    order the brief wants without the crossing."""
-    if not series: return []
+def mk_market_series(ind):
+    return mk_series(MARKET[ind], MARKET_SEATS, AFTER_TURNS, CORP[ind]["tier"])
+
+def mk_rank(series, seats):
+    """Order for the side table and the labels: who ended up holding most,
+    peak then name breaking a tie. It orders a *list*, not a stack — nothing
+    on the chart depends on it any more."""
+    if not series: return list(seats)
     last = series[max(series)]["held"]
-    peak = {s: max((r["held"][s] for r in series.values()), default=0) for s in MARKET_SEATS}
-    return sorted(MARKET_SEATS, key=lambda s: (-last[s], -peak[s], s))
+    peak = {s: max((r["held"][s] for r in series.values()), default=0) for s in seats}
+    return sorted(seats, key=lambda s: (-last[s], -peak[s], s))
 
-def mk_chart(ind, ymax, W, H, big=False):
-    """The chart for one company, at either size it is drawn at.
+def mk_leads(series, seats):
+    """The turns the majority changed hands. A tie holds the incumbent, which
+    is not the rule for a bonus but is the right reading of "changed hands" —
+    nobody took it off anyone."""
+    out, cur = [], None
+    for t in sorted(series):
+        held = series[t]["held"]
+        top = max(held.values())
+        if top == 0: continue
+        winners = [s for s in seats if held[s] == top]
+        if cur in winners: continue
+        if len(winners) > 1: continue
+        if cur is not None: out.append((t, winners[0]))
+        cur = winners[0]
+    return out
 
-    The small one is a thumbnail in the filmstrip and carries shape only; the
-    big one carries the axis, the events and a name inside every segment of the
-    last bar. Same geometry either way, so the thumbnail you click is the chart
-    you get."""
-    corp, series = CORP[ind], mk_series(ind)
-    PAD_B, PAD_T = (30, 16) if big else (8, 4)
-    n = len(AFTER_TURNS)
-    colw = W / n
-    barw = colw - (18 if big else 3)
-    order = mk_stack_order(ind, series)
-    shade = {s: mk_mix(corp["color"], MK_STEPS[i]) for i, s in enumerate(order)}
-    # The seat's texture is fixed table-wide; the ink it is drawn in flips to
-    # paper on the darkest step, which is the base colour itself.
-    tex = {s: MK_TEXTURE[MARKET_SEATS.index(s)] for s in order}
-    tink = {s: (B_PANEL if i == 0 else corp["color"]) for i, s in enumerate(order)}
-    pid = {s: "tx-%s-%s%s" % (ind, s.lower(), "-b" if big else "") for s in order}
-    meta = {"order": order, "shade": shade, "tex": tex, "tink": tink, "series": series}
-    if not series:
-        return "", meta
-    defs = "<defs>%s</defs>" % "".join(mk_pattern(pid[s], tex[s], shade[s], tink[s]) for s in order)
+def mk_chart(ind, series, seats, W, H, turns, spans, seat_max, total_max,
+             big=False, strip_only=False):
+    """One company: a line per seat, under a strip of what the company itself
+    was worth.
 
-    def y(v): return PAD_T + (1 - v / ymax) * (H - PAD_B - PAD_T)
+    The stacked version this replaces could not answer two questions from the
+    table — six seats, and a company that lives forty turns — and both had the
+    same root. A stack has to be ordered, and every order is a lie for some
+    part of the game: order by the end and the seat who led for twenty turns is
+    drawn in the wrong step throughout; order turn by turn and the bands cross
+    every time the lead moves, which at six seats is most turns.
 
-    parts, lives = [], MARKET[ind]["spans"]
-    for v in range(5000, int(ymax), 5000):
-        parts.append('<line x1="0" y1="%.1f" x2="%d" y2="%.1f" stroke="%s" stroke-width="1" '
-                     'stroke-dasharray="2 5"/>' % (y(v), W, y(v), B_RULE))
-        if big:
-            parts.append('<text x="2" y="%.1f" font-size="9" fill="%s" dominant-baseline="after-edge" '
-                         'class="num">%s</text>' % (y(v) - 2, B_MUTED, money(v)))
-    # the dead span, so a gap in the bars reads as "it did not exist" rather
-    # than as missing data
-    for (_a1, b1), (a2, _b2) in zip(lives, lives[1:]):
-        x0, x1 = (b1 + 0.5) * colw, (a2 - 0.5) * colw
-        parts.append('<rect x="%.1f" y="%d" width="%.1f" height="%.1f" fill="%s" opacity=".6"/>'
-                     % (x0, PAD_T, x1 - x0, H - PAD_B - PAD_T, B_BG))
-        if big:
-            parts.append('<text x="%.1f" y="%.1f" font-size="10" fill="%s" text-anchor="middle" '
-                         'style="letter-spacing:.14em;text-transform:uppercase">gone</text>'
-                         % ((x0 + x1) / 2, (PAD_T + H - PAD_B) / 2, B_MUTED))
+    Lines have no order to get wrong. The lead changing hands *is* the picture
+    — two lines crossing, marked with a ◆ — rather than something the drawing
+    has to survive, and forty-six turns is a longer line rather than forty-six
+    shoved bars.
 
-    # the stacks: largest holder on top, 2px of paper between segments
-    for t, rec in sorted(series.items()):
-        x = t * colw - barw / 2 + colw / 2
-        top = 0.0
-        for s in reversed(order):          # draw upward, so `order` lands top-down
-            v = rec["value"][s]
-            if not v: continue
-            h = (v / ymax) * (H - PAD_B - PAD_T)
-            parts.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="url(#%s)" rx="%s"/>'
-                         % (x, y(top) - h, barw, max(h - 2, 1), pid[s], "2" if big else "1"))
-            top += v
-
-    # The last live bar labels itself, so the biggest bar on the stage is
-    # readable without looking anything up.
-    tlast = max(series)
-    xl, top = tlast * colw - barw / 2 + colw / 2, 0.0
-    for s in reversed(order):
-        v = series[tlast]["value"][s]
-        if not v: continue
-        h = (v / ymax) * (H - PAD_B - PAD_T)
-        floor = 15 if big else 13
-        if h >= floor:
-            parts.append('<text x="%.1f" y="%.1f" font-size="%s" font-weight="700" fill="%s" '
-                         'text-anchor="middle" dominant-baseline="middle" opacity=".92">%s</text>'
-                         % (xl + barw / 2, y(top) - h / 2 - 1, "11" if big else "9",
-                            corp["ink"] if s == order[0] else B_INK, s if big else s[0]))
-        top += v
-
-    parts.append('<line x1="0" y1="%.1f" x2="%d" y2="%.1f" stroke="%s" stroke-width="1"/>'
-                 % (y(0), W, y(0), B_RULE))
-
-    # the events, on the axis: founded, founded again, folded, and the turn a
-    # price band moved — which is the difference between a stack that grew
-    # because somebody bought and one that grew because the price did.
-    prev, opens = None, {a for a, _b in lives}
-    for t, rec in sorted(series.items()):
-        x = t * colw + colw / 2
-        # not on a founding turn: the dot is already saying something there
-        if prev is not None and rec["price"] != prev and t not in opens:
-            parts.append('<path d="M%.1f %.1f l%s -%s h-%s Z" fill="%s"/>'
-                         % (x, y(0) + (11 if big else 9), 4 if big else 3.5, 6 if big else 5,
-                            8 if big else 7, B_MUTED))
-        prev = rec["price"]
-    for i, (a, b) in enumerate(lives):
-        xa, xb = a * colw + colw / 2, b * colw + colw / 2
-        r = 5 if big else 3.5
-        parts.append('<circle cx="%.1f" cy="%.1f" r="%s" %s/>'
-                     % (xa, y(0), r, 'fill="%s"' % corp["color"] if i == 0 else
-                        'fill="%s" stroke="%s" stroke-width="2"' % (B_PANEL, corp["color"])))
-        if big:
-            parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
-                         'stroke-dasharray="1 4" opacity=".7"/>'
-                         '<text x="%.1f" y="%d" font-size="9" fill="%s" text-anchor="middle" '
-                         'style="letter-spacing:.09em;text-transform:uppercase">%s</text>'
-                         % (xa, PAD_T, xa, y(0), corp["color"], xa, PAD_T - 5, B_MUTED,
-                            "founded" if i == 0 else "founded again"))
-        if b < AFTER_TURNS[-1]:
-            parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
-                         'stroke-dasharray="3 3"/>' % (xb + colw / 2, PAD_T, xb + colw / 2, y(0), B_MUTED))
-            if big:
-                parts.append('<text x="%.1f" y="%d" font-size="9" fill="%s" text-anchor="middle" '
-                             'style="letter-spacing:.09em;text-transform:uppercase">folded</text>'
-                             % (xb + colw / 2, PAD_T - 5, B_MUTED))
-
-    if big:
-        for t in AFTER_TURNS:
-            parts.append('<text x="%.1f" y="%.1f" font-size="10" fill="%s" text-anchor="middle" '
-                         'class="num">%d</text>' % (t * colw + colw / 2, y(0) + 24, B_MUTED, t))
-
-    return ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;overflow:visible">%s%s</svg>'
-            % (W, H, W, H, defs, "".join(parts)), meta)
-
-def mk_stage(ind, ymax):
-    """The slide. One company, big, with the seats broken out beside it — the
-    numbers the chart can only approximate."""
+    The two readings get their own heights rather than one shared axis. The
+    company's total is six times any one seat's line at a six-handed table, so
+    a common scale would flatten the fight into the bottom sixth of the plot.
+    The strip is the company; the plot under it is whose.
+    """
     corp = CORP[ind]
-    svg, meta = mk_chart(ind, ymax, 916, 300, big=True)
-    series, order = meta["series"], meta["order"]
+    PAD_B, PAD_R = (30, 100) if big else (6, 0)
+    STRIP_Y, STRIP_H = (30, 44) if big else (0, H - PAD_B)
+    PLOT_Y = STRIP_Y + STRIP_H + 38
+    n = len(turns)
+    def x(t): return t * (W - PAD_R) / (n - 1)
+    def ys(v): return STRIP_Y + STRIP_H - (v / total_max) * STRIP_H     # the strip
+    def y(v): return H - PAD_B - (v / seat_max) * (H - PAD_B - PLOT_Y)  # the seats
+    if not series:
+        return ""
+
+    ink = mk_mix(corp["color"], -0.24)     # the hue, darkened enough to draw with
+    parts = []
+
+    # --- the company: its whole worth, as one band ---------------------------
+    for a, b in spans:
+        span = [t for t in sorted(series) if a <= t <= b]
+        if len(span) < 2: continue
+        pts = [(x(t), ys(sum(series[t]["value"].values()))) for t in span]
+        d = "M" + " L".join("%.1f %.1f" % p for p in pts)
+        base = ys(0)
+        parts.append('<path d="%s L%.1f %.1f L%.1f %.1f Z" fill="%s" opacity=".18"/>'
+                     '<path d="%s" fill="none" stroke="%s" stroke-width="1.5" opacity=".55"/>'
+                     % (d, pts[-1][0], base, pts[0][0], base, corp["color"], d, ink))
+    parts.append('<line x1="0" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1"/>'
+                 % (ys(0), x(turns[-1]), ys(0), B_RULE))
+    if big:
+        peak = max(sum(r["value"].values()) for r in series.values())
+        parts.append('<text x="0" y="%d" font-size="9" fill="%s" '
+                     'style="letter-spacing:.11em;text-transform:uppercase">the company · %s at its '
+                     'peak</text>' % (STRIP_Y - 20, B_MUTED, money(peak)))
+        parts.append('<text x="%.1f" y="%.1f" font-size="9" fill="%s" dominant-baseline="middle" '
+                     'class="num">%s</text>' % (x(turns[-1]) + 8, ys(total_max) + 5, B_MUTED,
+                                                money(total_max)))
+
+    if strip_only:
+        return ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;'
+                'overflow:visible">%s</svg>' % (W, H, W, H, "".join(parts)))
+
+    # --- the seats: one line each, on their own scale ------------------------
+    step = 2000 if seat_max <= 9000 else 5000
+    for v in range(step, int(seat_max) + 1, step):
+        parts.append('<line x1="0" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
+                     'stroke-dasharray="2 5"/>'
+                     '<text x="2" y="%.1f" font-size="9" fill="%s" dominant-baseline="after-edge" '
+                     'class="num">%s</text>'
+                     % (y(v), x(turns[-1]), y(v), B_RULE, y(v) - 2, B_MUTED, money(v)))
+    parts.append('<text x="0" y="%.1f" font-size="9" fill="%s" '
+                 'style="letter-spacing:.11em;text-transform:uppercase">each seat\'s holding</text>'
+                 % (PLOT_Y - 20, B_MUTED))
+
+    for i, s in enumerate(seats):
+        dash = MK_DASH[i % len(MK_DASH)]
+        for a, b in spans:
+            span, seen = [], False
+            for t in sorted(series):
+                if not a <= t <= b: continue
+                seen = seen or series[t]["held"][s] > 0
+                if seen: span.append(t)
+            if len(span) < 2: continue
+            parts.append('<path d="M%s" fill="none" stroke="%s" stroke-width="2" '
+                         'stroke-linejoin="round" stroke-linecap="round"%s/>'
+                         % (" L".join("%.1f %.1f" % (x(t), y(series[t]["value"][s])) for t in span),
+                            ink, ' stroke-dasharray="%s"' % dash if dash else ""))
+
+    parts.append('<line x1="0" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1"/>'
+                 % (y(0), x(turns[-1]), y(0), B_RULE))
+
+    # the majority changing hands: the event the table asked about, marked
+    # where it happens rather than left to be inferred from a crossing
+    for t, _who in mk_leads(series, seats):
+        parts.append('<path d="M%.1f %.1f l4.5 5.5 l-4.5 5.5 l-4.5 -5.5 Z" fill="%s"/>'
+                     % (x(t), y(0) + 4, B_ACCENT))
+
+    # founded / founded again / folded, ruled through both plots so the
+    # company's turn and the seats' turn are the same turn
+    for i, (a, b) in enumerate(spans):
+        parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
+                     'stroke-dasharray="1 4" opacity=".75"/>'
+                     '<circle cx="%.1f" cy="%.1f" r="4.5" %s/>'
+                     % (x(a), STRIP_Y, x(a), y(0), corp["color"], x(a), ys(0),
+                        'fill="%s"' % corp["color"] if i == 0 else
+                        'fill="%s" stroke="%s" stroke-width="2"' % (B_PANEL, corp["color"])))
+        parts.append('<text x="%.1f" y="%d" font-size="9" fill="%s" text-anchor="middle" '
+                     'style="letter-spacing:.09em;text-transform:uppercase">%s</text>'
+                     % (x(a), STRIP_Y - 6, B_MUTED, "founded" if i == 0 else "founded again"))
+        if b < turns[-1]:
+            parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
+                         'stroke-dasharray="3 3"/>'
+                         '<text x="%.1f" y="%d" font-size="9" fill="%s" text-anchor="middle" '
+                         'style="letter-spacing:.09em;text-transform:uppercase">folded</text>'
+                         % (x(b), STRIP_Y, x(b), y(0), B_MUTED, x(b), STRIP_Y - 6, B_MUTED))
+
+    tick = 1 if n <= 16 else (2 if n <= 26 else 5)
+    for t in turns:
+        if t % tick == 0:
+            parts.append('<text x="%.1f" y="%.1f" font-size="10" fill="%s" text-anchor="middle" '
+                         'class="num">%d</text>' % (x(t), y(0) + 24, B_MUTED, t))
+
+    # Direct labels at the end of every line — the thing that makes six of them
+    # readable. Pushed apart where they would collide, with a leader back to
+    # the line each belongs to.
+    tlast = max(series)
+    want = sorted(((series[tlast]["value"][s], s) for s in seats), key=lambda p: -p[0])
+    prev = -1e9
+    for v, s in want:
+        yy = max(y(v), prev + 14)
+        prev = yy
+        parts.append('<path d="M%.1f %.1f L%.1f %.1f" stroke="%s" stroke-width="1" fill="none" '
+                     'opacity=".55"/>'
+                     '<text x="%.1f" y="%.1f" font-size="10.5" fill="%s" dominant-baseline="middle">'
+                     '%s</text>'
+                     '<text x="%.1f" y="%.1f" font-size="10" fill="%s" dominant-baseline="middle" '
+                     'text-anchor="end" class="num">%s</text>'
+                     % (x(tlast), y(v), x(tlast) + 9, yy, B_RULE,
+                        x(tlast) + 14, yy, B_INK, s, W, yy, B_MUTED, money(v)))
+
+    return ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;overflow:visible">'
+            '%s</svg>' % (W, H, W, H, "".join(parts)))
+
+def mk_dashswatch(i, ink, w=22):
+    dash = MK_DASH[i % len(MK_DASH)]
+    return ('<svg width="%d" height="8" style="display:block;flex-shrink:0">'
+            '<line x1="0" y1="4" x2="%d" y2="4" stroke="%s" stroke-width="2" stroke-linecap="round"%s/></svg>'
+            % (w, w, ink, ' stroke-dasharray="%s"' % dash if dash else ""))
+
+def mk_side(ind, series, seats, note):
+    corp = CORP[ind]
+    ink = mk_mix(corp["color"], -0.24)
     last = series[max(series)]
-    cap = sum(last["value"].values())
-    dead = max(series) < AFTER_TURNS[-1]
     rows = []
-    for s in order:
+    for s in mk_rank(series, seats):
         if not last["held"][s]: continue
         rows.append(
-          '<div style="display:grid;grid-template-columns:13px 1fr auto auto;align-items:center;gap:10px;'
-          'padding:9px 0;border-bottom:1px solid %s">%s'
+          '<div style="display:grid;grid-template-columns:24px 1fr auto auto;align-items:center;gap:10px;'
+          'padding:8px 0;border-bottom:1px solid %s">%s'
           '<span style="font-size:13.5px">%s</span>'
           '<span class="num" style="font-size:12px;color:%s">%d sh</span>'
           '<span class="ser num" style="font-size:15px;min-width:64px;text-align:right">%s</span></div>'
-          % (B_RULE, mk_swatch(meta["tex"][s], meta["shade"][s], meta["tink"][s], 13), s,
-             B_MUTED, last["held"][s], money(last["value"][s])))
-    side = (
-      '<div style="width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:10px">'
-      '<div style="display:flex;align-items:center;gap:10px">%s'
-      '<span class="ser" style="font-size:24px">%s</span></div>'
-      '<span style="font-size:12px;color:%s;font-style:italic">%s</span>'
-      '<div style="display:flex;align-items:baseline;gap:10px;padding:8px 0 2px">'
-      '<span class="ser num" style="font-size:30px">%s</span>'
-      '<span style="font-size:11.5px;color:%s">%s</span></div>'
-      '<div style="border-top:1px solid %s">%s</div>'
-      '<span style="font-size:11px;color:%s;padding-top:2px">%s</span></div>'
-      % (b_mark(ind, corp["color"], 26), corp["name"], B_MUTED, corp["flavor"],
-         money(cap), B_MUTED,
-         "held by the table when it folded" if dead else "held by the table at the close",
-         B_RULE, "".join(rows), B_MUTED,
-         "founded turn %d · folded turn %d" % (MARKET[ind]["spans"][0][0], max(series)) if dead
-         else "founded turn %d · %d shares still in the bank"
-              % (MARKET[ind]["spans"][0][0], 25 - sum(last["held"].values()))))
-    return ('<div style="display:flex;gap:32px;align-items:flex-start">'
-            '<div style="flex:1;min-width:0">%s</div>%s</div>' % (svg, side))
+          % (B_RULE, mk_dashswatch(seats.index(s), ink), s, B_MUTED, last["held"][s],
+             money(last["value"][s])))
+    return ('<div style="width:326px;flex-shrink:0;display:flex;flex-direction:column;gap:9px">'
+            '<div style="display:flex;align-items:center;gap:10px">%s'
+            '<span class="ser" style="font-size:23px">%s</span></div>'
+            '<span style="font-size:12px;color:%s;font-style:italic">%s</span>'
+            '<div style="display:flex;align-items:baseline;gap:10px;padding:6px 0 2px">'
+            '<span class="ser num" style="font-size:29px">%s</span>'
+            '<span style="font-size:11.5px;color:%s">held by the table</span></div>'
+            '<div style="border-top:1px solid %s">%s</div>'
+            '<span style="font-size:11px;color:%s;padding-top:2px;line-height:1.5">%s</span></div>'
+            % (b_mark(ind, corp["color"], 25), corp["name"], B_MUTED, corp["flavor"],
+               money(sum(last["value"].values())), B_MUTED, B_RULE, "".join(rows), B_MUTED, note))
 
-def mk_thumb(ind, ymax, active):
-    """One frame of the filmstrip: the same chart, small, doubling as the
-    carousel's position indicator. A company that never founded keeps its frame
-    — that it never came out of the pool is a fact about the game."""
+# One seat scale for every frame of a game, so a seat's line means the same
+# thing whichever company is on the stage.
+def mk_seat_max(gseries):
+    peak = max((max(r["value"].values()) for s in gseries for r in s.values()), default=0)
+    return int(-(-peak // 2000)) * 2000
+
+def mk_stage(ind, seat_max, total_max):
+    series = mk_market_series(ind)
+    svg = mk_chart(ind, series, MARKET_SEATS, 900, 300, AFTER_TURNS, MARKET[ind]["spans"],
+                   seat_max, total_max, big=True)
+    leads = mk_leads(series, MARKET_SEATS)
+    note = "founded turn %d · %d shares still in the bank · the majority changed hands %d %s" % (
+        MARKET[ind]["spans"][0][0], 25 - sum(series[max(series)]["held"].values()),
+        len(leads), "time" if len(leads) == 1 else "times")
+    return ('<div style="display:flex;gap:30px;align-items:flex-start">'
+            '<div style="flex:1;min-width:0">%s</div>%s</div>'
+            % (svg, mk_side(ind, series, MARKET_SEATS, note)))
+
+def mk_thumb(ind, total_max, active):
+    """One frame of the filmstrip: the company's own band and nothing else. Six
+    lines at this size would be a smudge, and what a filmstrip is for is
+    telling you which company you are about to see."""
     corp = CORP[ind]
-    svg, _meta = mk_chart(ind, ymax, 152, 50)
+    series = mk_market_series(ind)
+    svg = mk_chart(ind, series, MARKET_SEATS, 152, 50, AFTER_TURNS,
+                   MARKET[ind]["spans"], 1, total_max, strip_only=True) if series else ""
     return ('<div style="display:flex;flex-direction:column;gap:6px;padding:9px 10px 10px;'
             'border-radius:4px;%s">'
             '<div style="display:flex;align-items:center;gap:6px">%s'
@@ -2583,70 +2613,89 @@ def mk_thumb(ind, ymax, active):
                svg or '<div style="height:50px;display:flex;align-items:center;font-size:10px;color:%s">'
                       'never founded</div>' % B_MUTED))
 
-MARKET_H = 888
+def mk_stress():
+    """The frame the objections asked for: six seats, forty-six turns, the
+    majority moving four times. Its own pair of scales, because a company that
+    trades this long is worth twice what a short one is and borrowing the short
+    game's axis would flatter it."""
+    ind = "tech"
+    series = mk_series(STRESS, STRESS_SEATS, STRESS_TURNS, CORP[ind]["tier"])
+    svg = mk_chart(ind, series, STRESS_SEATS, 900, 300, STRESS_TURNS, STRESS["spans"],
+                   mk_seat_max([series]), 26000, big=True)
+    leads = mk_leads(series, STRESS_SEATS)
+    note = ("founded turn 3 · still trading at turn 46 · the majority changed hands %d times — %s"
+            % (len(leads), ", ".join("%s on turn %d" % (w, t) for t, w in leads)))
+    return af_panel("The same frame at the far end of the table",
+                    "six seats · forty-six turns · ◆ the majority changed hands",
+                    '<div style="display:flex;gap:30px;align-items:flex-start">'
+                    '<div style="flex:1;min-width:0">%s</div>%s</div>'
+                    % (svg, mk_side(ind, series, STRESS_SEATS, note)))
+
+MARKET_H = 1345
 
 def build_market():
-    ymax = 14000
     feature = "books"
-    stage = mk_stage(feature, ymax)
+    gseries = [mk_market_series(k) for k in ORDER if MARKET[k]["spans"]]
+    seat_max = mk_seat_max(gseries)
+    total_max = 14000
     strip = ('<div style="display:grid;grid-template-columns:repeat(7, 1fr);gap:10px;'
              'border-top:1px solid %s;padding-top:14px">%s</div>'
-             % (B_RULE, "".join(mk_thumb(k, ymax, k == feature) for k in ORDER)))
+             % (B_RULE, "".join(mk_thumb(k, total_max, k == feature) for k in ORDER)))
     pager = ('<div style="display:flex;align-items:center;justify-content:space-between;gap:16px">'
              '<span style="font-size:11px;color:%s">company 1 of 7 · turns over every 6 seconds · '
              'hover, focus or click a frame to hold it</span>'
-             '<span style="font-size:11px;color:%s">value of shares out · gridlines every %s · '
-             '%s at full height, the same on every frame</span></div>'
-             % (B_MUTED, B_MUTED, money(5000), money(ymax)))
+             '<span style="font-size:11px;color:%s">every frame of a game shares both scales — '
+             '%s across the strip, %s across the seats</span></div>'
+             % (B_MUTED, B_MUTED, money(total_max), money(seat_max)))
 
     header = (
       '<div style="width:1440px;padding:0 44px;display:flex;flex-direction:column;gap:10px">'
       '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">'
       'Boomtown · after the game (#68) · company by company</span>'
       '<span class="ser" style="font-size:34px">Who owned what, while it was worth something</span>'
-      '<span style="font-size:13px;line-height:1.55;color:%s;max-width:1000px">One company at a time, one bar '
-      'per turn, stacked by seat and measured in money — the same carousel the awards use, for the same '
-      'reason: seven cramped cells nobody reads beats one company given the room to be read. The per-turn '
-      'graph answers who won; this answers what each company was <em>worth</em> and who was holding it at the '
-      'time. It needs no seat palette at all — the hue is the company\'s own and the seats are told apart by a '
-      'hatch each, which survives greyscale, forced colours and a printout as no ramp of one hue does.</span>'
-      '</div>' % (B_MUTED, B_MUTED))
+      '<span style="font-size:13px;line-height:1.55;color:%s;max-width:1000px">One company at a time: a band '
+      'for what the company was worth, and under it a line per seat for whose it was. The stacked version this '
+      'replaces could not answer two questions from the table — six seats, and a company that lives forty '
+      'turns — and both had the same root: a stack has to be ordered, and every order is a lie for some part '
+      'of the game. Lines have no order to get wrong, and the majority changing hands becomes the picture '
+      'rather than a problem the drawing has to survive.</span></div>' % (B_MUTED, B_MUTED))
 
     panel = ('<div style="width:1440px;padding:0 44px">%s</div>'
              % af_panel("The market, company by company",
                         "<span style=\"white-space:nowrap\">● founded</span> · "
                         "<span style=\"white-space:nowrap\">○ founded again</span> · "
                         "<span style=\"white-space:nowrap\">┆ folded</span> · "
-                        "<span style=\"white-space:nowrap\">▾ price band moved</span>",
+                        "<span style=\"white-space:nowrap\">◆ majority changed hands</span>",
                         '<div style="display:flex;flex-direction:column;gap:18px">%s%s%s</div>'
-                        % (stage, strip, pager)))
+                        % (mk_stage(feature, seat_max, total_max), strip, pager)))
+    stress = '<div style="width:1440px;padding:0 44px">%s</div>' % mk_stress()
 
     notes = (
       '<div style="width:1440px;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
-      % (af_note("Four steps of one hue was not enough",
-                 "The first pass gave each seat a lightness step of the company colour and they blended — four "
-                 "steps inside a 16px bar is not a distinction, and the step a seat gets changes cell by cell "
-                 "because the <em>rank</em> sets it. So the step stays (it is rank, and rank is worth seeing) "
-                 "and identity moved to a texture fixed per seat: solid, diagonal, dots, cross, and two more "
-                 "for a six-handed table. Colour never carries identity on its own."),
-         af_note("The order of the stack",
-                 "The brief says largest shareholder on top. Ranking <em>every turn</em> does that and makes a "
-                 "seat's band swap layers mid-chart, which costs the one thing a stacked bar is for — following "
-                 "your own band across time. So the rank is taken once, on the company's last live turn, and "
-                 "held for the whole frame. Largest is still on top; nothing crosses."),
+      % (af_note("Why the stacks went",
+                 "Two objections, one root. Order the stack by the final holding and a seat who led for twenty "
+                 "turns is drawn in the wrong step the whole way; order it turn by turn and the bands cross "
+                 "every time the lead moves, which at six seats is most turns. There is no third order. A line "
+                 "per seat has nothing to order — and the crossing that broke the stack is the thing worth "
+                 "seeing, so it is marked with a ◆ on the axis and counted in the panel."),
+         af_note("Two heights, not one axis",
+                 "The company's total is six times any one seat's line at a six-handed table, so drawing both "
+                 "against one scale flattens the fight into the bottom sixth of the plot. The band up top is "
+                 "the company on its own scale; the plot under it is the seats on theirs. They share the turn "
+                 "axis and every rule — founded, folded, the majority moving — is drawn through both, so the "
+                 "company's turn and the seats' turn are visibly the same turn."),
          af_note("Why the height is money and not shares",
-                 "Shares would make every company the same size and a 25-share stack of something worth $200 "
-                 "would tower over a real position. Money puts the small companies where they belong and lets "
-                 "the stack double at a merger — but it also means a bar can grow with nobody buying, which is "
-                 "what the ▾ price-band ticks are there to disambiguate. The bank's unsold shares are left out "
-                 "for the same reason: they would make every frame the same height."))
+                 "Inside one company the two rank identically — everybody pays the same price — so money costs "
+                 "nothing in fidelity and adds the company's own rise and fall. It also means every line steps "
+                 "together when the price band moves, which is honest: each position really did revalue at "
+                 "once. The bank's unsold shares stay out; they would flatten every frame to one height."))
     )
 
     body = (
       '<div style="width:1440px;min-height:%dpx;background:%s;color:%s;'
       'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:40px 0 44px;'
-      'display:flex;flex-direction:column;gap:26px;align-items:center">%s%s%s</div>'
-      % (MARKET_H, B_BG, B_INK, header, panel, notes)
+      'display:flex;flex-direction:column;gap:26px;align-items:center">%s%s%s%s</div>'
+      % (MARKET_H, B_BG, B_INK, header, panel, stress, notes)
     )
     write("Market.dc.html", B_HELMET, body)
 
@@ -2663,7 +2712,7 @@ def build_canvas():
         {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "The pool", "print": "flow", "page": "page-1"},
         {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
         {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 2240, "title": "After the game", "print": "flow", "page": "page-1"},
-        {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 975, "title": "Company by company", "print": "flow", "page": "page-1"},
+        {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 1432, "title": "Company by company", "print": "flow", "page": "page-1"},
         {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4720, "title": "Rules model",
          "print": "flow", "page": "page-2"},
         {"file": "BoardRoom.dc.html",    "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "A - Board Room", "page": "page-3"},
@@ -2677,7 +2726,7 @@ def build_canvas():
         {"id": "note-after", "x": 4680, "y": 2140, "w": 700, "page": "page-1",
          "text": "The post-game screen (#68 + #69), designed as one thing because both issues asked for that. The seats deliberately have no colours: a palette that is both colourblind-safe and distinct from the seven corporation colours does not exist at six seats - 12,000 candidates through the dataviz validator say so. Identity is the label and the row."},
         {"id": "note-market", "x": 6240, "y": -210, "w": 700, "page": "page-1",
-         "text": "The third reading of the same game (#68): one chart per company, stacked by seat, measured in money. It is the one direction that needs no seat palette - a cell is one company, so the segments are steps of its own colour. Largest holder on top, ranked once so no band crosses another."},
+         "text": "The third reading of the same game (#68): one company at a time, a band for what it was worth and a line per seat for whose it was. It started as stacked bars and the table killed them - a stack has to be ordered, and no order survives six seats trading the majority back and forth over forty turns. The second frame is that worst case, drawn, so the claim can be checked."},
         {"id": "note-rules", "x": 0, "y": -150, "w": 700, "page": "page-2",
          "text": "The sheet to argue with before any code exists. Every disagreement between the two rulebooks is listed as a config key rather than a fork."},
         {"id": "note-earlier", "x": 0, "y": -170, "w": 700, "page": "page-3",
