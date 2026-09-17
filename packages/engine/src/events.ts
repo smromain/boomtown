@@ -18,11 +18,20 @@ export type EngineEvent =
       readonly added: readonly TileId[];
       readonly newSize: number;
     }
+  /**
+   * A purchase. `picks` names the corporations bought into; the quantity and
+   * `cost` are `null` when the event has been redacted for a reader not
+   * entitled to the detail (`redactEventsFor`, closed books). Naming the
+   * corporation without the amount is the deliberate line: it keeps the
+   * electorate's shape estimable for a would-be mover while the weights stay
+   * secret. `cost` alone would give the quantity away — it is the price times
+   * the count, and the price is public — so the two are redacted together.
+   */
   | {
       readonly type: 'shares-bought';
       readonly seat: Seat;
-      readonly picks: Partial<Record<Industry, number>>;
-      readonly cost: number;
+      readonly picks: Partial<Record<Industry, number | null>>;
+      readonly cost: number | null;
     }
   | { readonly type: 'tiles-drawn'; readonly seat: Seat; readonly count: number }
   | { readonly type: 'dead-tiles-swept'; readonly seat: Seat; readonly tiles: readonly TileId[] }
@@ -34,14 +43,19 @@ export type EngineEvent =
       readonly defunct: Industry;
       readonly payouts: readonly { readonly seat: Seat; readonly tier: 'primary' | 'secondary' | 'tertiary'; readonly amount: number }[];
     }
+  /**
+   * One seat's disposal of a defunct chain. The counts and proceeds are `null`
+   * under the same redaction as `shares-bought`: they are a direct statement of
+   * how much of the defunct corporation this seat held.
+   */
   | {
       readonly type: 'shares-disposed';
       readonly seat: Seat;
       readonly defunct: Industry;
-      readonly hold: number;
-      readonly sell: number;
-      readonly trade: number;
-      readonly proceeds: number;
+      readonly hold: number | null;
+      readonly sell: number | null;
+      readonly trade: number | null;
+      readonly proceeds: number | null;
     }
   | { readonly type: 'corporation-defunct'; readonly industry: Industry; readonly absorbedInto: Industry }
   | { readonly type: 'merger-completed'; readonly survivor: Industry }

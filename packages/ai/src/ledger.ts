@@ -18,7 +18,10 @@ import {
  *
  * Deliberately counts events and not shares even where the event still carries
  * a quantity: the quantity is the thing being hidden, and reading it here would
- * put the leak back one layer down.
+ * put the leak back one layer down. That was the only thing keeping the model
+ * honest until #60 — the sentence above described the log the ledger was built
+ * against, not the log that shipped, which printed every quantity and cost.
+ * `redactEventsFor` makes it true.
  */
 export interface Ledger {
   /** `tally[seat][industry]` — purchase-like events observed. */
@@ -73,8 +76,11 @@ export function ledgerFrom(log: readonly EngineEvent[], seatCount: number): Ledg
         break;
       case 'shares-disposed':
         // A 2:1 trade moves stock into the survivor — purchase-like on the same
-        // terms, and register-relevant because the survivor may be safe.
-        if (event.trade > 0 && survivor) bump(event.seat, survivor);
+        // terms, and register-relevant because the survivor may be safe. A
+        // redacted disposal (`trade === null`) says a seat settled a defunct
+        // chain and nothing about how, so there is no trade to count: guessing
+        // one would invent a shareholding out of a hidden event.
+        if (event.trade !== null && event.trade > 0 && survivor) bump(event.seat, survivor);
         break;
       default:
         break;

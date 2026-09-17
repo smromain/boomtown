@@ -35,6 +35,9 @@ export const boomtown: Ruleset = {
   ...classic,
   id: 'boomtown',
   forcedVisibility: 'hidden',
+  // Closed books that the event log then reads out are not closed (#60). The
+  // public log names the corporation bought into and never the amount.
+  publicPurchaseDetail: false,
   mergeNaming: DEFAULT_MERGE_NAMING,
   endVote: {
     quorumSafeCorps: 2,

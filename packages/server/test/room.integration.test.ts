@@ -451,6 +451,80 @@ describe('PartyKit room — end to end', () => {
     expect(view.view.status).toBe('playing');
   });
 
+  // --- closed books, on the wire (#60) ---------------------------------
+  //
+  // The claim is about the *frames a seat receives*, not about what the UI
+  // prints, so it can only be checked here: the room used to filter each
+  // connection's view and hand every connection the same unfiltered event
+  // array. One human and two bots is enough — the bots are the other seats,
+  // and the human's own purchases are the other half of the rule.
+
+  /**
+   * Play a table until enough purchases have gone by, buying for real wherever
+   * a share is affordable, and return every event the human was sent. A script
+   * that always passed (`picks: {}`) would prove nothing about quantities.
+   */
+  async function collectPurchases(edition: 'boomtown' | 'classic') {
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition, visibility: 'hidden', bots: { 1: 6, 2: 6 }, seed: 11 },
+    });
+    await host.next('welcome');
+    host.send({ type: 'start' });
+
+    const events: import('@boomtown/engine').EngineEvent[] = [];
+    let view = (await host.next('update')) as Extract<RoomMessage, { type: 'update' }>;
+    events.push(...view.events);
+    let safety = 0;
+    let ownPurchases = 0;
+    while (view.view.status === 'playing' && safety++ < 300 && ownPurchases < 3) {
+      if (view.view.activeSeat !== 0 && !view.view.pendingDecision) {
+        view = (await host.next('update', 8000)) as Extract<RoomMessage, { type: 'update' }>;
+        events.push(...view.events);
+        continue;
+      }
+      const command = pickBuyingMove(view.view);
+      if (command.type === 'buy-shares' && Object.keys(command.picks).length > 0) ownPurchases += 1;
+      host.send({ type: 'command', command });
+      view = (await host.next('update', 8000)) as Extract<RoomMessage, { type: 'update' }>;
+      events.push(...view.events);
+    }
+    const purchases = events.flatMap((e) => (e.type === 'shares-bought' ? [e] : []));
+    return {
+      own: purchases.filter((e) => e.seat === 0),
+      others: purchases.filter((e) => e.seat !== 0),
+      ownPurchases,
+    };
+  }
+
+  it('never puts another seat\'s purchase amounts on the wire at a Boomtown table', async () => {
+    const { own, others, ownPurchases } = await collectPurchases('boomtown');
+    expect(ownPurchases).toBeGreaterThan(0);
+    expect(others.length).toBeGreaterThan(0);
+
+    for (const event of others) {
+      // The corporations, and no number at all. Cost alone would give the
+      // quantity away — the share price is public.
+      expect(event.cost).toBeNull();
+      expect(Object.values(event.picks).every((n) => n === null)).toBe(true);
+    }
+    // Your own are yours in full, exactly as in `viewFor`.
+    expect(own.some((event) => event.cost !== null && event.cost > 0)).toBe(true);
+  }, 30_000);
+
+  it('logs exactly what it always logged at a classic table', async () => {
+    const { own, others, ownPurchases } = await collectPurchases('classic');
+    expect(ownPurchases).toBeGreaterThan(0);
+    expect(others.length).toBeGreaterThan(0);
+    for (const event of [...own, ...others]) {
+      expect(event.cost).not.toBeNull();
+      expect(Object.values(event.picks).some((n) => n === null)).toBe(false);
+    }
+  }, 30_000);
+
   it('never leaks another seat\'s hand or the bag in a hidden-visibility game', async () => {
     const room = uniqueRoom();
     const host = client(room);
@@ -478,6 +552,24 @@ describe('PartyKit room — end to end', () => {
     expect(seatBView.view.yourHand).toHaveLength(6);
   });
 });
+
+/**
+ * `pickHumanMove`, except that at the buy step it buys one share of the
+ * cheapest founded corporation it can afford rather than passing. #60 is about
+ * quantities and costs, so a script that never spends anything cannot test it.
+ */
+function pickBuyingMove(view: Extract<RoomMessage, { type: 'update' }>['view']) {
+  if (view.step !== 'buy') return pickHumanMove(view);
+  const affordable = (Object.keys(view.corporations) as (keyof typeof view.corporations)[]).find(
+    (industry) => {
+      const corp = view.corporations[industry];
+      return corp.founded && corp.sharePrice !== null && corp.sharePrice <= view.yourCash;
+    },
+  );
+  return affordable
+    ? { type: 'buy-shares' as const, seat: view.you, picks: { [affordable]: 1 } }
+    : { type: 'buy-shares' as const, seat: view.you, picks: {} };
+}
 
 function pickHumanMove(view: Extract<RoomMessage, { type: 'update' }>['view']) {
   if (view.pendingDecision) {

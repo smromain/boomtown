@@ -10,6 +10,8 @@ export type ProtocolErrorCode =
   | 'bad-token'
   | 'not-in-room'
   | 'game-not-started'
+  | 'game-already-started'
+  | 'game-over'
   | 'malformed-message'
   | 'message-too-large'
   | 'rate-limited'

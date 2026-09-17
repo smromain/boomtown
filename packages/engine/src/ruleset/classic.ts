@@ -17,5 +17,6 @@ export const classic: Ruleset = {
   deadTilePolicy: 'discardAndReplace',
   phantomShareholderInTwoPlayer: false,
   splitRounding: 'none',
+  publicPurchaseDetail: true,
   mergeNaming: DEFAULT_MERGE_NAMING,
 };

@@ -7,10 +7,10 @@ current `main`.
 
 | Command | What runs | Count |
 |---|---|---|
-| `npm test` | Both Vitest projects | **857** |
-| `npm run test:engine` | The `engine` project (node): `packages/*/test/**` — engine, protocol, ai, client-core, and the room's own logic | 467 |
-| `npm run test:desktop` | The `desktop` project (jsdom): `apps/desktop/**/*.test.{ts,tsx}` — components through `@testing-library/react`, plus the Electron main-process modules | 390 |
-| `npm run test:server` | Integration: a real `partykit dev` room (workerd) | 20 |
+| `npm test` | Both Vitest projects | **887** |
+| `npm run test:engine` | The `engine` project (node): `packages/*/test/**` — engine, protocol, ai, client-core, and the room's own logic | 487 |
+| `npm run test:desktop` | The `desktop` project (jsdom): `apps/desktop/**/*.test.{ts,tsx}` — components through `@testing-library/react`, plus the Electron main-process modules | 400 |
+| `npm run test:server` | Integration: a real `partykit dev` room (workerd) | 23 |
 | `npm run typecheck` | `tsc --noEmit` for both tsconfigs | — |
 | `npm run lint` | eslint, flat config (including the no-`Math.random`/`Date.now` rule in the engine) | — |
 | `npm run smoke` | Builds and boots the real Electron app | — |
@@ -52,6 +52,18 @@ Against a real room over a real socket:
 - Three clients each receiving only their own view.
 - A knocker holding no seat until the host admits them.
 - A dropped client resuming its seat on its token.
+- **The amounts a closed table never puts on the wire.** Two humans and a bot play a Boomtown table
+  buying real shares; every `shares-bought` frame each human was *sent* is checked — its own in
+  full, everyone else's with a null cost and null quantities. The claim is about the bytes a
+  connection receives, not about what the UI prints, so it cannot be made anywhere but here. The
+  companion case runs the same script at a classic table and asserts nothing changed.
+- **A room that lost its memory between `start()` and the first move.** The dev server is stopped
+  and started again between the deal and the opening tile: PartyKit keeps each room's storage on
+  disk, so the second server rebuilds the room through the real `onStart` → `rehydrate` path and the
+  opening move is accepted. That is the path a hibernation wake takes — only the trigger differs,
+  because *when* workerd evicts a hibernating object is not something a client can ask for. The
+  deterministic per-case proof (wakes playing, same deal, refuses a second `start`) is in
+  `persistence.test.ts` against the in-memory store.
 - A ticket that resolves to the room address and is retired when the last seat fills.
 - The lobby getting its room state even when it subscribes *after* connecting — the regression
   behind the "Waiting for the room…" hang.

@@ -10,13 +10,25 @@ Code: `packages/server/`. Wire contract: `packages/protocol/`. Client side:
 
 The room holds `GameState` and applies every command through the same `reduce` the desktop app
 uses. A client sends commands and receives `viewFor(itsOwnSeat)` — never the bag, never another
-hand — so a modified client can cheat no more than it can guess. It is also the only authority on
+hand — and, at a table with the books closed, an event stream redacted the same way: a purchase
+names the corporation and carries no quantity or cost unless that seat is yours or its books are
+open. So a modified client can cheat no more than it can guess. It is also the only authority on
 whose turn it is, on who hosts, and on which seat a connection holds.
 
 Each accepted command is appended to a persisted log **before** its events are observable. That is
 what makes the room disposable: it hibernates between messages and rebuilds itself by replaying the
 log on wake. A log that cannot replay parks the room read-only rather than throwing, because a
 throw on wake would brick that room forever.
+
+The log is not quite the whole of what a wake needs. Between the deal and the first move there is
+nothing in it, and an empty log used to be indistinguishable from a room still sitting in the
+lobby — so a room that hibernated in that window woke up amnesiac and answered the opening move
+with "no game in progress" (#63). A durable *started* marker rides the lobby key alongside the host
+seat and the lock, and a wake with that marker and an empty log rebuilds the base game from the
+persisted config. The resolved seed is what makes the rebuild the same deal, which is the invariant
+replay already leans on. A room whose storage says it started refuses a second `start` outright,
+because the alternative failure is silent: the seed is persisted, so a re-deal deals the same
+game.
 
 Bot seats are played by the room itself, inline (the edge has no worker threads and the policy is
 synchronous), so a game with one human and two bots needs nobody else connected.

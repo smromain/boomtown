@@ -6,6 +6,7 @@ import {
   type Command,
   type EngineEvent,
   type GameState,
+  redactEventsFor,
   type Rng,
   type Seat,
 } from '@boomtown/engine';
@@ -68,6 +69,12 @@ export class GameRoom {
   private phase: 'lobby' | 'playing' | 'over' = 'lobby' as 'lobby' | 'playing' | 'over';
   /** True once the game is stuck (a replay error, a bricked bot loop). No commands are accepted. */
   private broken = false;
+  /**
+   * True once the game has been dealt, persisted alongside the lobby facts. It
+   * is what `phase` is restored from when the log is still empty, and what
+   * `start()` checks so a woken room can never be re-dealt (#63).
+   */
+  private started = false;
 
   constructor(
     readonly code: string,
@@ -105,6 +112,7 @@ export class GameRoom {
     if (lobby) {
       room.hostSeat = lobby.hostSeat;
       room.door.locked = lobby.locked;
+      room.started = lobby.started ?? false;
       room.seats.restoreEjected(lobby.ejected ?? []);
       for (const seat of lobby.ejected ?? []) {
         if (!room.policies.has(seat)) {
@@ -113,35 +121,51 @@ export class GameRoom {
       }
     }
     const commands = await log.loadAll();
-    if (commands.length > 0) {
-      // Bot names are known deterministically here; human names arrive later as
-      // the adapter feeds connections back through `restoreSeat`, which patches
-      // them into the live state. Names never affect the deal (KTD13).
-      const base = createGame(setupOptionsFor(config, room.seats.displayNames()));
-      const result = replay(base, commands);
-      if ('error' in result) {
-        roomWarn(code, 'replay failed — parking the room read-only', {
-          commands: commands.length,
-          error: result.error,
+    // Bot names are known deterministically here; human names arrive later as
+    // the adapter feeds connections back through `restoreSeat`, which patches
+    // them into the live state. Names never affect the deal (KTD13).
+    if (commands.length === 0) {
+      // A dealt game that nobody has moved in yet. The log cannot say so — only
+      // the durable `started` marker can — and the base game is exactly what
+      // `start()` built, because the seed was resolved once and persisted (#63).
+      if (room.started) {
+        room.state = createGame(setupOptionsFor(config, room.seats.displayNames()));
+        room.phase = 'playing';
+        roomLog(code, 'rehydrated a started game with an empty log', {
+          onClock: seatOnClock(room.state),
         });
-        // A corrupt or engine-incompatible log. Do NOT throw — onStart re-runs
-        // on every hibernation wake, so a throw here bricks the room code
-        // forever. Park it read-only instead (see `command`).
-        room.broken = true;
-        return room;
+        room.pendingWakeUpdates = await room.runBots();
       }
-      room.state = result.state;
-      room.phase = result.state.status === 'over' ? 'over' : 'playing';
-      roomLog(code, 'rehydrated from the command log', {
-        commands: commands.length,
-        phase: room.phase,
-        onClock: seatOnClock(result.state),
-      });
-      // Replay stops at the last stored command; if a bot is now on the clock,
-      // resume the bot loop (a human command would otherwise be the only way to
-      // un-stick the game). The caller dispatches the returned updates.
-      room.pendingWakeUpdates = await room.runBots();
+      return room;
     }
+
+    const base = createGame(setupOptionsFor(config, room.seats.displayNames()));
+    const result = replay(base, commands);
+    if ('error' in result) {
+      roomWarn(code, 'replay failed — parking the room read-only', {
+        commands: commands.length,
+        error: result.error,
+      });
+      // A corrupt or engine-incompatible log. Do NOT throw — onStart re-runs
+      // on every hibernation wake, so a throw here bricks the room code
+      // forever. Park it read-only instead (see `command`).
+      room.broken = true;
+      return room;
+    }
+    room.state = result.state;
+    // A non-empty log is itself proof the game started, whatever the marker
+    // says — rooms written before the marker existed wake up through here.
+    room.started = true;
+    room.phase = result.state.status === 'over' ? 'over' : 'playing';
+    roomLog(code, 'rehydrated from the command log', {
+      commands: commands.length,
+      phase: room.phase,
+      onClock: seatOnClock(result.state),
+    });
+    // Replay stops at the last stored command; if a bot is now on the clock,
+    // resume the bot loop (a human command would otherwise be the only way to
+    // un-stick the game). The caller dispatches the returned updates.
+    room.pendingWakeUpdates = await room.runBots();
     return room;
   }
 
@@ -165,12 +189,13 @@ export class GameRoom {
    */
   hostSeat = 0;
 
-  /** Write the lobby facts a wake must not lose: host, lock, and ejected seats. */
+  /** Write the lobby facts a wake must not lose: host, lock, ejected seats, started. */
   async persistLobby(): Promise<void> {
     await this.log.saveLobby({
       hostSeat: this.hostSeat,
       locked: this.door.locked,
       ejected: this.seats.ejectedSeats(),
+      started: this.started,
     });
   }
 
@@ -269,9 +294,19 @@ export class GameRoom {
 
   /** Start the game. Returns the initial per-seat updates, or an error. */
   async start(): Promise<{ updates: Outbound[] } | { error: WireError }> {
-    if (this.phase !== 'lobby') {
+    if (this.phase !== 'lobby' || this.started) {
       roomWarn(this.code, 'start refused — not in the lobby', { phase: this.phase });
-      return { error: protocolError('game-not-started', 'game already started') };
+      return { error: protocolError('game-already-started', 'game already started') };
+    }
+    // Defence in depth against this class of bug coming back (#63): whatever
+    // the in-memory phase says, a room with a durable trace of having started
+    // must never be re-dealt. Re-dealing is silent rather than loud — the seed
+    // is persisted, so the second deal is identical to the first — so the check
+    // is worth its two storage reads, which only a lobby `start` ever pays.
+    const durable = await this.log.loadLobby();
+    if (durable?.started || (await this.log.count()) > 0) {
+      roomWarn(this.code, 'start refused — storage says this room already started', {});
+      return { error: protocolError('game-already-started', 'game already started') };
     }
     const bad = configError(this.config);
     if (bad) {
@@ -287,6 +322,10 @@ export class GameRoom {
 
     this.state = createGame(setupOptionsFor(this.config, this.seats.displayNames()));
     this.phase = 'playing';
+    this.started = true;
+    // Before the updates go out, the same order the command log keeps: nothing
+    // is observable until the fact that produced it is durable (KTD13, R7).
+    await this.persistLobby();
     roomLog(this.code, 'game started', { seed: this.config.seed, onClock: seatOnClock(this.state) });
     const updates: Outbound[] = [
       { kind: 'broadcast', message: { type: 'room-state', state: this.roomState() } },
@@ -306,6 +345,12 @@ export class GameRoom {
   async command(fromSeat: Seat, command: Command): Promise<Outbound[]> {
     if (this.broken) {
       return [this.rejection(fromSeat, command, protocolError('game-not-started', 'this room is stuck and cannot continue'))];
+    }
+    if (this.phase === 'over') {
+      // Distinct from "never started": a last click landing after the final
+      // standings is an ordinary race, and being told there is no game when the
+      // game is on screen is the confusing part.
+      return [this.rejection(fromSeat, command, protocolError('game-over', 'this game has finished'))];
     }
     if (!this.state || this.phase !== 'playing') {
       return [{ kind: 'to-seat', seat: fromSeat, message: this.errorMessage(protocolError('game-not-started', 'no game in progress')) }];
@@ -425,14 +470,27 @@ export class GameRoom {
 
   // --- outbound helpers ------------------------------------------------
 
-  /** One `update` per seat, each with that seat's filtered view. */
+  /**
+   * One `update` per seat, each with that seat's filtered view **and** that
+   * seat's filtered events.
+   *
+   * The events used to be one shared array handed to everyone while only the
+   * view was per-seat — so a closed table's purchase quantities and costs went
+   * out on the wire to every connection, one devtools panel from being read
+   * (#60). `redactEventsFor` is the same helper the local transport uses, so
+   * hot-seat and online hide the same things.
+   */
   private seatUpdates(events: readonly EngineEvent[]): Outbound[] {
     if (!this.state) return [];
     const state = this.state;
     return this.seats.liveConnections().map(({ seat }) => ({
       kind: 'to-seat' as const,
       seat,
-      message: { type: 'update' as const, view: clientView(state, seat), events },
+      message: {
+        type: 'update' as const,
+        view: clientView(state, seat),
+        events: redactEventsFor(state, events, seat),
+      },
     }));
   }
 

@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { localTransport, type GameTransport, type TransportMessage } from '@boomtown/client-core';
+import { PRESETS, createGame, type EngineEvent, type Ruleset, type Seat } from '@boomtown/engine';
+import {
+  clientView,
+  localTransport,
+  type GameTransport,
+  type LocalEngine,
+  type TransportMessage,
+} from '@boomtown/client-core';
 
 const setup = { seats: [{ name: 'A' }, { name: 'B' }, { name: 'C' }], seed: 42, turnOrder: [0, 1, 2] } as const;
 const controls = [0, 1, 2];
@@ -53,6 +60,65 @@ describe('localTransport', () => {
     await flush();
     expect(latest().rejection?.error.code).toBe('wrong-step');
     expect(latest().views[0]).toEqual(before);
+  });
+
+  // --- closed books in the events, not only in the views (#60) ---------
+  //
+  // The transport's `engine` seam is exactly the right tool here: the question
+  // is what `localTransport` does to an event on its way out, so the event is
+  // handed to it rather than played for.
+
+  const BOUGHT: EngineEvent = { type: 'shares-bought', seat: 1, picks: { books: 3 }, cost: 4200 };
+
+  /** A `LocalEngine` whose every `apply` yields seat 1's purchase. */
+  function fakeEngine(ruleset: Ruleset): LocalEngine {
+    const state = createGame({ ...setup, ruleset, visibility: 'hidden' });
+    return {
+      apply: () => ({ ok: true, events: [BOUGHT] }),
+      viewsFor: (seats) =>
+        Object.fromEntries(seats.map((seat) => [seat, clientView(state, seat)])) as Record<
+          Seat,
+          ReturnType<typeof clientView>
+        >,
+      snapshot: () => state,
+    };
+  }
+
+  async function deliveredEvent(ruleset: Ruleset, controlled: readonly Seat[]) {
+    const messages: TransportMessage[] = [];
+    const transport = localTransport({
+      setup,
+      controls: [...controlled],
+      engine: fakeEngine(ruleset),
+    });
+    transport.onMessage((m) => messages.push(m));
+    await transport.connect();
+    transport.send({ type: 'end-turn', seat: 0 });
+    await flush();
+    return messages.flatMap((m) => m.events).find((e) => e.type === 'shares-bought')!;
+  }
+
+  it('hides the amounts when several seats share the screen', async () => {
+    // Hot-seat: one store, one log, several people. There is no "you" to
+    // redact for, so the log is the public one.
+    const event = await deliveredEvent(PRESETS.boomtown, [0, 1, 2]);
+    expect(event.type === 'shares-bought' && event.cost).toBeNull();
+    expect(event.type === 'shares-bought' && Object.values(event.picks)).toEqual([null]);
+  });
+
+  it('keeps them for the seat they belong to when the client holds one seat', async () => {
+    // Solo against bots: that seat is the only person at the screen, and sees
+    // its own purchases in full, as it would online.
+    const own = await deliveredEvent(PRESETS.boomtown, [1]); // the buyer's own client
+    expect(own.type === 'shares-bought' && own.cost).toBe(4200);
+    // …and still not somebody else's.
+    const other = await deliveredEvent(PRESETS.boomtown, [0]);
+    expect(other.type === 'shares-bought' && other.cost).toBeNull();
+  });
+
+  it('leaves a published edition alone', async () => {
+    const event = await deliveredEvent(PRESETS.classic, [0, 1, 2]);
+    expect(event.type === 'shares-bought' && event.cost).toBe(4200);
   });
 
   it('stops delivering after disconnect', async () => {

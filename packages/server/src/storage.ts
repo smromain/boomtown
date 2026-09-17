@@ -13,6 +13,24 @@ export interface KeyValueStore {
   delete(key: string): Promise<void>;
 }
 
+/** The lobby facts one room persists outside its config and command log. */
+export interface LobbyRecord {
+  readonly hostSeat: number;
+  readonly locked: boolean;
+  readonly ejected: number[];
+  readonly started: boolean;
+}
+
+/**
+ * The same record as read back. `ejected` and `started` are optional because
+ * rooms written before those fields existed are still on disk; both default to
+ * the pre-existing behaviour (nothing ejected, not started).
+ */
+export type StoredLobbyRecord = Omit<LobbyRecord, 'ejected' | 'started'> & {
+  readonly ejected?: number[];
+  readonly started?: boolean;
+};
+
 const CONFIG_KEY = 'config';
 const LOBBY_KEY = 'lobby';
 const CMD_PREFIX = 'cmd:';
@@ -47,16 +65,22 @@ export class CommandLog {
   }
 
   /**
-   * Lobby facts that are not commands and not config: which seat hosts, and
-   * whether the door is locked. They live in their own key because they change
-   * after creation, where the config never does.
+   * Lobby facts that are not commands and not config: which seat hosts, whether
+   * the door is locked, and whether the game has been dealt. They live in their
+   * own key because they change after creation, where the config never does.
+   *
+   * `started` is the marker that closes the gap between `start()` and the first
+   * persisted command. Without it, "dealt, nobody has moved yet" and "still in
+   * the lobby" are the same bytes in storage, and a hibernation wake in that
+   * window resolves the ambiguity as lobby — answering the opening move with
+   * "no game in progress" (#63).
    */
-  async saveLobby(lobby: { hostSeat: number; locked: boolean; ejected: number[] }): Promise<void> {
+  async saveLobby(lobby: LobbyRecord): Promise<void> {
     await this.store.put(LOBBY_KEY, lobby);
   }
 
-  async loadLobby(): Promise<{ hostSeat: number; locked: boolean; ejected?: number[] } | undefined> {
-    return this.store.get<{ hostSeat: number; locked: boolean; ejected?: number[] }>(LOBBY_KEY);
+  async loadLobby(): Promise<StoredLobbyRecord | undefined> {
+    return this.store.get<StoredLobbyRecord>(LOBBY_KEY);
   }
 
   /** The `cmd:` keys, sorted (application order). */
