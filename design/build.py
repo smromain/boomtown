@@ -2400,6 +2400,30 @@ def mk_leads(series, seats):
         cur = winners[0]
     return out
 
+def mk_holder_runs(series, seats):
+    """Who the two bonuses would pay, turn by turn, collapsed into runs.
+
+    Ranked by shares held, ties kept together rather than broken — a tie for
+    largest is a real position in the rules (`docs/rules.md`, *Bonus ties*: the
+    primary and secondary bonuses combine and halve, and the next holder down
+    becomes secondary), so the lane says "Nadia · June" and means it. Consecutive
+    turns with the same answer become one block, which is the whole point: a
+    reader wants the tenure, not forty-six repetitions of a name.
+    """
+    rows = [[], []]
+    for t in sorted(series):
+        held = series[t]["held"]
+        levels = sorted({v for v in held.values() if v > 0}, reverse=True)
+        for lane in (0, 1):
+            who = ([s for s in seats if held[s] == levels[lane]]
+                   if lane < len(levels) else [])
+            label = " · ".join(who)
+            if rows[lane] and rows[lane][-1][2] == label and rows[lane][-1][1] == t - 1:
+                rows[lane][-1][1] = t
+            else:
+                rows[lane].append([t, t, label])
+    return rows
+
 def mk_chart(ind, series, seats, W, H, turns, spans, seat_max, total_max,
              big=False, strip_only=False):
     """One company: a line per seat, under a strip of what the company itself
@@ -2423,7 +2447,7 @@ def mk_chart(ind, series, seats, W, H, turns, spans, seat_max, total_max,
     The strip is the company; the plot under it is whose.
     """
     corp = CORP[ind]
-    PAD_B, PAD_R = (30, 100) if big else (6, 0)
+    PAD_B, PAD_R = (90, 100) if big else (6, 0)
     STRIP_Y, STRIP_H = (30, 44) if big else (0, H - PAD_B)
     PLOT_Y = STRIP_Y + STRIP_H + 38
     n = len(turns)
@@ -2519,7 +2543,36 @@ def mk_chart(ind, series, seats, W, H, turns, spans, seat_max, total_max,
     for t in turns:
         if t % tick == 0:
             parts.append('<text x="%.1f" y="%.1f" font-size="10" fill="%s" text-anchor="middle" '
-                         'class="num">%d</text>' % (x(t), y(0) + 24, B_MUTED, t))
+                         'class="num">%d</text>' % (x(t), y(0) + 22, B_MUTED, t))
+
+    # Under the turns, who the bonuses would pay. The lines say how close it
+    # was; this says who was actually holding the position, which is the thing
+    # the money keys off and the one question a line chart makes you squint at.
+    half = (W - PAD_R) / (n - 1) / 2
+    lanes = mk_holder_runs(series, seats)
+    for lane, runs in enumerate(lanes):
+        top = y(0) + 34 + lane * 23
+        parts.append('<text x="%.1f" y="%.1f" font-size="8.5" fill="%s" dominant-baseline="middle" '
+                     'style="letter-spacing:.09em;text-transform:uppercase">%s</text>'
+                     % (x(turns[-1]) + 10, top + 9, B_MUTED,
+                        "largest holder" if lane == 0 else "second largest"))
+        for i, (a, b, label) in enumerate(runs):
+            if not label: continue
+            x0 = max(0.0, x(a) - half) + 1
+            x1 = min(x(turns[-1]), x(b) + half) - 1
+            wide = x1 - x0
+            parts.append('<rect x="%.1f" y="%.1f" width="%.1f" height="18" rx="2.5" fill="%s" '
+                         'opacity="%s"/>' % (x0, top, wide, corp["color"], ".26" if lane == 0 else ".13"))
+            # A block too narrow for its name gets an initial, and a *tie* too
+            # narrow for both names gets nothing at all — "YJR" is not a
+            # shorter way of saying anything. The block itself still shows that
+            # the position turned over, which at that width is the reading.
+            text = (label if wide >= 7.2 * len(label) + 8
+                    else label[0] if " · " not in label and wide >= 15 else "")
+            if text:
+                parts.append('<text x="%.1f" y="%.1f" font-size="9.5" fill="%s" text-anchor="middle" '
+                             'dominant-baseline="middle">%s</text>'
+                             % ((x0 + x1) / 2, top + 10, B_INK, text))
 
     # Direct labels at the end of every line — the thing that makes six of them
     # readable. Pushed apart where they would collide, with a leader back to
@@ -2583,7 +2636,7 @@ def mk_seat_max(gseries):
 
 def mk_stage(ind, seat_max, total_max):
     series = mk_market_series(ind)
-    svg = mk_chart(ind, series, MARKET_SEATS, 900, 300, AFTER_TURNS, MARKET[ind]["spans"],
+    svg = mk_chart(ind, series, MARKET_SEATS, 900, 360, AFTER_TURNS, MARKET[ind]["spans"],
                    seat_max, total_max, big=True)
     leads = mk_leads(series, MARKET_SEATS)
     note = "founded turn %d · %d shares still in the bank · the majority changed hands %d %s" % (
@@ -2620,7 +2673,7 @@ def mk_stress():
     game's axis would flatter it."""
     ind = "tech"
     series = mk_series(STRESS, STRESS_SEATS, STRESS_TURNS, CORP[ind]["tier"])
-    svg = mk_chart(ind, series, STRESS_SEATS, 900, 300, STRESS_TURNS, STRESS["spans"],
+    svg = mk_chart(ind, series, STRESS_SEATS, 900, 360, STRESS_TURNS, STRESS["spans"],
                    mk_seat_max([series]), 26000, big=True)
     leads = mk_leads(series, STRESS_SEATS)
     note = ("founded turn 3 · still trading at turn 46 · the majority changed hands %d times — %s"
@@ -2631,7 +2684,7 @@ def mk_stress():
                     '<div style="flex:1;min-width:0">%s</div>%s</div>'
                     % (svg, mk_side(ind, series, STRESS_SEATS, note)))
 
-MARKET_H = 1345
+MARKET_H = 1425
 
 def build_market():
     feature = "books"
@@ -2658,7 +2711,9 @@ def build_market():
       'replaces could not answer two questions from the table — six seats, and a company that lives forty '
       'turns — and both had the same root: a stack has to be ordered, and every order is a lie for some part '
       'of the game. Lines have no order to get wrong, and the majority changing hands becomes the picture '
-      'rather than a problem the drawing has to survive.</span></div>' % (B_MUTED, B_MUTED))
+      'rather than a problem the drawing has to survive. Under the turns, two lanes say plainly who the '
+      'two bonuses would pay — a tie kept as a tie, because the rules pay it as one.</span></div>'
+      % (B_MUTED, B_MUTED))
 
     panel = ('<div style="width:1440px;padding:0 44px">%s</div>'
              % af_panel("The market, company by company",
@@ -2712,7 +2767,7 @@ def build_canvas():
         {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "The pool", "print": "flow", "page": "page-1"},
         {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
         {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 2240, "title": "After the game", "print": "flow", "page": "page-1"},
-        {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 1432, "title": "Company by company", "print": "flow", "page": "page-1"},
+        {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 1512, "title": "Company by company", "print": "flow", "page": "page-1"},
         {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4720, "title": "Rules model",
          "print": "flow", "page": "page-2"},
         {"file": "BoardRoom.dc.html",    "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "A - Board Room", "page": "page-3"},
