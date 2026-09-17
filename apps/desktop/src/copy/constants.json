@@ -543,8 +543,13 @@
     "label": "Buy stock",
     "title": "Buy stock",
     "nothingFounded": "Nothing founded to buy into.",
+    "cashInHand": "${cash} in hand",
+    "pickedOf": "{n} of {max} picked",
     "buyNothing": "Buy nothing and end turn",
     "buyTotal": "Buy {n} for ${cost}",
+    "inBankHeld": "{inBank} in bank · {held} held",
+    "soldOut": "Bank sold out",
+    "tooDear": "More than you hold",
     "oneFewer": "one fewer {name} share",
     "oneMore": "one more {name} share",
     "sharesToBuy": "{name} shares to buy"
