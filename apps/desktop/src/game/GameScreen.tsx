@@ -131,17 +131,28 @@ function PlayArea({
   // the hand goes either way, because the game really has ended.
   const { resultHeld } = useActiveBeat();
 
-  const centre =
-    over && !resultHeld ? <GameOver onLeave={onExit} /> : <Board spectating={!localTurn} />;
+  // The end screen is four frames of charts (#68, #69), not the standings card
+  // it replaced, so it takes the whole width of the table rather than the board
+  // slot: at board width the per-turn graph is 300px across and unreadable. The
+  // band and the tray stay — they are thin, and the companies they name are
+  // exactly what the frames are about.
+  const finished = over && !resultHeld;
 
   return (
     <div className={styles.screen}>
       <Header onExit={onExit} online={online} />
       <div className={styles.body}>
         <CorporationBand />
+        {finished ? (
+          <div className={styles.afterSlot}>
+            <GameOver onLeave={onExit} />
+          </div>
+        ) : (
         <div className={styles.middle}>
           <div className={styles.boardArea}>
-            <div className={styles.boardSlot}>{centre}</div>
+            <div className={styles.boardSlot}>
+              <Board spectating={!localTurn} />
+            </div>
             <OutOfPlay />
             {over ? null : (
               <div className={styles.hand}>
@@ -163,6 +174,7 @@ function PlayArea({
             <MotionPanel />
           </div>
         </div>
+        )}
         <TrayStrip />
       </div>
     </div>

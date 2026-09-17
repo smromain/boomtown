@@ -4,12 +4,15 @@ import {
   companyValueSeries,
   dashFor,
   foundedCompanies,
+  gridLines,
+  moneyAxis,
   holderRuns,
   leadChanges,
   liveSpans,
   neverFounded,
   netWorthSeries,
   niceMax,
+  placeLabels,
   seatValueSeries,
 } from './series.js';
 
@@ -22,6 +25,7 @@ function record(turns: { books: { size: number; price: number }; held: number[][
   const zeroes = () => Object.fromEntries(INDUSTRIES.map((i) => [i, 0])) as Record<Industry, number>;
   return {
     complete: true,
+    settled: false,
     companies: [],
     awards: [],
     turns: turns.map((turn, index) => ({
@@ -161,6 +165,42 @@ describe('the small pieces', () => {
   it('rounds an axis up to something a reader can price', () => {
     expect(niceMax(13_300, 5000)).toBe(15_000);
     expect(niceMax(0, 2000)).toBe(2000);
+  });
+
+  it('keeps the gridlines countable however long the game ran', () => {
+    // a fixed $5,000 step is four lines on a short game and eleven on a long one
+    expect(gridLines(15_000)).toEqual([5000, 10_000, 15_000]);
+    for (const max of [3000, 15_000, 60_000, 250_000]) {
+      expect(gridLines(max).length, `${max}`).toBeLessThanOrEqual(6);
+      expect(gridLines(max).length, `${max}`).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('starts a money axis below the lowest point, not at nothing', () => {
+    // every seat starts on the same dealt cash, so a zero baseline spends its
+    // bottom third on a band nobody is ever in
+    const axis = moneyAxis(6000, 17_300);
+    expect(axis.floor).toBe(5000);
+    expect(axis.max).toBeGreaterThanOrEqual(17_300);
+    expect(axis.lines.length).toBeLessThanOrEqual(6);
+    expect(axis.lines.every((line) => line > axis.floor)).toBe(true);
+  });
+
+  it('never puts the floor below nothing', () => {
+    expect(moneyAxis(200, 900).floor).toBeGreaterThanOrEqual(0);
+  });
+
+  it('lays a label in the first row it clears, and drops one that clears none', () => {
+    const items = [
+      { x: 100, width: 60 },
+      { x: 110, width: 60 },
+      { x: 120, width: 60 },
+      { x: 130, width: 60 },
+      { x: 400, width: 60 },
+    ];
+    const placed = placeLabels(items, 3);
+    expect(placed.map((entry) => entry.index)).toEqual([0, 1, 2, 4]);
+    expect(placed.map((entry) => entry.row)).toEqual([0, 1, 2, 0]);
   });
 
   it('orders the carousel by when each company first appeared', () => {

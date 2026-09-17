@@ -45,6 +45,14 @@ export interface CompanyEvent {
 
 export interface Retrospective {
   readonly turns: readonly TurnRecord[];
+  /**
+   * True when the last record is settlement rather than a played turn. It is
+   * a different kind of number — the bank buys every share back and pays every
+   * bonus at once, which at a long table is more money than the whole game
+   * before it — so a chart of the game as played has to be able to leave it
+   * out, and the standings have to be able to show it.
+   */
+  readonly settled: boolean;
   readonly companies: readonly CompanyEvent[];
   readonly awards: readonly Award[];
   /**
@@ -125,6 +133,7 @@ export function retrospective(initial: GameState, commands: readonly Command[]):
   let state = initial;
   let turn = 0;
   let complete = true;
+  let settled = false;
 
   for (const command of commands) {
     const result = reduce(state, command);
@@ -142,20 +151,30 @@ export function retrospective(initial: GameState, commands: readonly Command[]):
   // which is what the standings beside the graph print: the two must agree or
   // one of them is lying.
   if (state.status === 'over') {
+    // Settlement has already zeroed every holding by the time the state comes
+    // back, so the closing record would say nobody owned anything — the
+    // companies would all be worth nothing on the frame that matters most.
+    // The result it hands over on the way out is the last true statement of
+    // who held what, so the closing record is rebuilt from that: holdings and
+    // net worth from the rankings, everything else from the settled state.
     const record = snapshot(state, turn + 1);
-    const totals = state.result?.rankings ?? [];
+    const rows = state.result?.rankings ?? [];
+    settled = true;
     turns.push({
       ...record,
-      seats: record.seats.map((seat, index) => ({
-        ...seat,
-        netWorth: totals.find((row) => row.seat === index)?.total ?? seat.netWorth,
-      })),
+      seats: record.seats.map((seat, index) => {
+        const row = rows.find((entry) => entry.seat === index);
+        if (!row) return seat;
+        const holdings = { ...seat.holdings };
+        for (const entry of row.holdings) holdings[entry.industry] = entry.shares;
+        return { ...seat, holdings, netWorth: row.total };
+      }),
     });
   } else if (turns[turns.length - 1]!.turn !== turn) {
     turns.push(snapshot(state, turn));
   }
 
-  return { turns, companies, awards: awardsFrom(ledger), complete };
+  return { turns, companies, awards: awardsFrom(ledger), complete, settled };
 
   function note(event: EngineEvent): void {
     switch (event.type) {

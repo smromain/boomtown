@@ -1,20 +1,21 @@
-import { INDUSTRY_INFO, type Retrospective, type Seat } from '@boomtown/engine';
-import { dashFor, linePath, netWorthSeries, niceMax } from './series.js';
+import { memo } from 'react';
+import { INDUSTRY_INFO, type CorpView, type Industry, type Retrospective, type Seat } from '@boomtown/engine';
+import { dashFor, linePath, moneyAxis, netWorthSeries, placeLabels } from './series.js';
 import styles from './after.module.css';
 import { copy } from '../copy/copy.js';
 
 const W = 1000;
 const H = 330;
-const PAD_L = 58;
+const PAD_L = 62;
 const PAD_R = 10;
-const PAD_T = 30;
-const PAD_B = 54;
+const PAD_T = 44;
+const PAD_B = 34;
 
 const money = (n: number): string => `$${n.toLocaleString()}`;
 
 /**
  * Frame two: every seat's net worth, turn by turn, with the company timeline
- * underneath it.
+ * along the top.
  *
  * The seat being read is in the accent and the rest are recessive ink, every
  * line direct-labelled in the legend. Identity is the label and the dash; the
@@ -23,67 +24,93 @@ const money = (n: number): string => `$${n.toLocaleString()}`;
  * the seven corporation colours does not exist at six seats, so the colour you
  * *do* see here belongs to companies, which already own it.
  *
- * A line that doubles in a turn is answering something, so the foundings and
- * the foldings are marked rather than left to be inferred from a kink.
+ * **The line stops where the game did.** Settlement pays every bonus and buys
+ * back every share at once, which at a long table is more money than the whole
+ * game before it: drawn as a data point it triples the axis and flattens forty
+ * turns of play into a line along the bottom with a spike on the end. So the
+ * lines are net worth *in play*, and what each seat settled for is the figure
+ * beside their name. Both numbers are true; only one of them is a series.
  */
-export function MarketGraph({
+export const MarketGraph = memo(function MarketGraph({
   record,
   names,
+  corporations,
   reader,
 }: {
   record: Retrospective;
   names: readonly string[];
+  corporations: Record<Industry, CorpView> | undefined;
   reader: Seat | null;
 }) {
   const after = copy.game.after.market;
   const seats = record.turns[0]?.seats.map((_, seat) => seat) ?? [];
   const series = seats.map((seat) => netWorthSeries(record, seat));
-  const lastTurn = record.turns.length - 1;
-  const peak = Math.max(1, ...series.flat());
-  const floor = Math.min(...series.flat(), 0);
-  const max = niceMax(peak, 5000);
 
-  const x = (turn: number): number => PAD_L + (lastTurn <= 0 ? 0 : (turn / lastTurn) * (W - PAD_L - PAD_R));
+  // The settlement record is the last one when the game finished; it is a
+  // different kind of number and belongs in the legend, not on the line.
+  const played = record.turns.slice(0, record.settled ? -1 : undefined);
+  const lastPlayed = Math.max(0, played.length - 1);
+  const inPlay = series.map((line) => line.slice(0, played.length));
+  const axis = moneyAxis(Math.min(...inPlay.flat()), Math.max(1, ...inPlay.flat()));
+
+  const x = (turn: number): number =>
+    PAD_L + (lastPlayed <= 0 ? 0 : (turn / lastPlayed) * (W - PAD_L - PAD_R));
   const y = (value: number): number =>
-    H - PAD_B - ((value - floor) / (max - floor || 1)) * (H - PAD_B - PAD_T);
+    H - PAD_B - ((value - axis.floor) / (axis.max - axis.floor || 1)) * (H - PAD_B - PAD_T);
 
-  const step = Math.max(1, Math.ceil(lastTurn / 12));
-  const grid: number[] = [];
-  for (let value = 5000; value < max; value += 5000) grid.push(value);
+  const step = Math.max(1, Math.ceil(lastPlayed / 12));
 
   const final = seats
-    .map((seat) => ({ seat, total: series[seat]![lastTurn] ?? 0 }))
+    .map((seat) => ({ seat, total: series[seat]![series[seat]!.length - 1] ?? 0 }))
     .sort((a, b) => b.total - a.total);
   const lit = reader ?? final[0]?.seat ?? 0;
+
+  // Only events that happened while the game was being played; a fold on the
+  // settlement record would sit off the end of the axis.
+  const events = record.companies.filter((event) => event.turn <= lastPlayed);
+  const labelFor = (kind: string): string =>
+    kind === 'folded' ? after.folded : kind === 'refounded' ? after.refounded : after.founded;
+  const nameOf = (industry: Industry): string =>
+    corporations?.[industry]?.baseName ?? corporations?.[industry]?.displayName ?? '';
+  // A label near the right edge is drawn back towards the plot instead of off it.
+  const endLabel = (at: number): boolean => at > W - PAD_R - 70;
+  const placed = placeLabels(
+    events.map((event) => ({ x: x(event.turn), width: 9 + 5.4 * labelFor(event.kind).length })),
+    3,
+  );
 
   return (
     <div className={styles.chartRow}>
       <div className={styles.chartMain}>
         <svg className={styles.chart} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={after.title}>
-          {grid.map((value) => (
+          {axis.lines.map((value) => (
             <g key={value}>
-              <line
-                x1={PAD_L}
-                y1={y(value)}
-                x2={W - PAD_R}
-                y2={y(value)}
-                stroke="var(--rule)"
-                strokeDasharray="2 5"
-              />
-              <text x={PAD_L - 8} y={y(value)} fontSize="10" fill="var(--muted)" textAnchor="end" dominantBaseline="middle" className="tabnum">
+              <line x1={PAD_L} y1={y(value)} x2={W - PAD_R} y2={y(value)} stroke="var(--rule)" strokeDasharray="2 5" />
+              <text
+                x={PAD_L - 8}
+                y={y(value)}
+                fontSize="10"
+                fill="var(--muted)"
+                textAnchor="end"
+                dominantBaseline="middle"
+                className="tabnum"
+              >
                 {money(value)}
               </text>
             </g>
           ))}
 
-          <line x1={PAD_L} y1={y(floor)} x2={W - PAD_R} y2={y(floor)} stroke="var(--rule)" />
+          <line x1={PAD_L} y1={y(axis.floor)} x2={W - PAD_R} y2={y(axis.floor)} stroke="var(--rule)" />
+          <text x={PAD_L - 8} y={y(axis.floor)} fontSize="10" fill="var(--muted)" textAnchor="end" dominantBaseline="middle" className="tabnum">
+            {money(axis.floor)}
+          </text>
 
-          {record.turns.map((turn) =>
+          {played.map((turn) =>
             turn.turn % step === 0 ? (
               <text
                 key={turn.turn}
                 x={x(turn.turn)}
-                y={y(floor) + 16}
+                y={y(axis.floor) + 16}
                 fontSize="10"
                 fill="var(--muted)"
                 textAnchor="middle"
@@ -94,39 +121,51 @@ export function MarketGraph({
             ) : null,
           )}
 
-          {/* The company timeline. Colour is which company; the glyph is what
-              happened to it, and the labels alternate rows so neighbouring
-              turns never collide. */}
-          {record.companies.map((event, index) => {
+          {/* The company timeline: colour is which company, the glyph is what
+              happened to it. Labels take the first row they clear, and one
+              that clears none keeps its marker and its hover text. */}
+          {events.map((event, index) => {
             const info = INDUSTRY_INFO[event.industry];
             const at = x(event.turn);
-            const label = event.kind === 'folded' ? after.folded : event.kind === 'refounded' ? after.refounded : after.founded;
-            const row = index % 2 === 0 ? PAD_T - 18 : PAD_T - 6;
+            const label = placed.find((entry) => entry.index === index);
             return (
               <g key={`${event.industry}-${event.kind}-${event.turn}-${index}`}>
                 <line
                   x1={at}
-                  y1={PAD_T - 2}
+                  y1={PAD_T - 6}
                   x2={at}
-                  y2={y(floor)}
+                  y2={y(axis.floor)}
                   stroke={event.kind === 'folded' ? 'var(--muted)' : info.color}
                   strokeDasharray={event.kind === 'folded' ? '3 3' : '1 4'}
-                  opacity="0.7"
+                  opacity="0.65"
                 />
                 {event.kind === 'folded' ? null : (
                   <circle
                     cx={at}
-                    cy={y(floor)}
+                    cy={y(axis.floor)}
                     r="4"
                     fill={event.kind === 'refounded' ? 'var(--surface)' : info.color}
                     stroke={info.color}
                     strokeWidth="1.8"
                   />
                 )}
-                <rect x={at - 3} y={row - 7} width="6" height="6" rx="1.5" fill={info.color} />
-                <text x={at + 6} y={row - 2} fontSize="8.5" fill="var(--muted)" style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  {label}
-                </text>
+                {label ? (
+                  <g transform={`translate(0 ${label.row * 12})`}>
+                    <rect x={at - 3} y={2} width="6" height="6" rx="1.5" fill={info.color} />
+                    <text
+                      x={at + (endLabel(at) ? -6 : 6)}
+                      textAnchor={endLabel(at) ? 'end' : 'start'}
+                      y={7.5}
+                      fontSize="8.5"
+                      fill="var(--muted)"
+                      dominantBaseline="middle"
+                      style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}
+                    >
+                      {labelFor(event.kind)}
+                    </text>
+                  </g>
+                ) : null}
+                <title>{`${nameOf(event.industry)} — ${labelFor(event.kind)}, turn ${event.turn}`}</title>
               </g>
             );
           })}
@@ -134,7 +173,7 @@ export function MarketGraph({
           {seats.map((seat) => (
             <path
               key={seat}
-              d={linePath(record.turns.map((turn) => [x(turn.turn), y(series[seat]![turn.turn] ?? 0)] as const))}
+              d={linePath(played.map((turn) => [x(turn.turn), y(inPlay[seat]![turn.turn] ?? axis.floor)] as const))}
               fill="none"
               stroke={seat === lit ? 'var(--accent)' : 'var(--ink)'}
               strokeWidth={seat === lit ? 2.5 : 1.5}
@@ -170,7 +209,8 @@ export function MarketGraph({
             <span className={`tabnum ${styles.legendValue}`}>{money(row.total)}</span>
           </div>
         ))}
+        <span className={styles.sideNote}>{record.settled ? after.settledNote : ''}</span>
       </div>
     </div>
   );
-}
+});

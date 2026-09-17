@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { INDUSTRY_INFO, type Award, type AwardId, type CorpView, type Industry } from '@boomtown/engine';
 import styles from './after.module.css';
 import { copy, fill } from '../copy/copy.js';
@@ -35,7 +36,7 @@ const items = copy.game.after.awards.items as Record<string, { title: string; su
  * seats have no colour on this screen, which is the finding the whole
  * after-game design turns on.
  */
-export function AwardsFrame({
+export const AwardsFrame = memo(function AwardsFrame({
   awards,
   page,
   pages,
@@ -101,4 +102,4 @@ export function AwardsFrame({
       </div>
     </>
   );
-}
+});

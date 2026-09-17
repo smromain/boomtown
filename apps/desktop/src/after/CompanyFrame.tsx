@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { INDUSTRY_INFO, type CorpView, type Industry, type Retrospective } from '@boomtown/engine';
 import { IndustryMark } from '../game/marks.js';
 import {
@@ -45,7 +46,7 @@ const money = (n: number): string => `$${n.toLocaleString()}`;
  * Under the turns, two lanes say plainly who the two bonuses would pay. A tie
  * is kept as a tie, because `docs/rules.md` pays it as one.
  */
-export function CompanyFrame({
+export const CompanyFrame = memo(function CompanyFrame({
   record,
   industry,
   corp,
@@ -209,7 +210,10 @@ export function CompanyFrame({
             const half = lastTurn <= 0 ? 0 : (W - PAD_L - PAD_R) / lastTurn / 2;
             return (
               <g key={`lane-${lane}`}>
-                <text x={W - PAD_R} y={top + 9} fontSize="8.5" fill="var(--muted)" textAnchor="end" dominantBaseline="middle" style={{ letterSpacing: '0.09em', textTransform: 'uppercase' }}>
+                {/* In the left gutter, not at the right edge: a run that
+                    lasts to the end of the game reaches that edge, and the
+                    label was printing on top of it. */}
+                <text x={PAD_L - 8} y={top + 9} fontSize="8" fill="var(--muted)" textAnchor="end" dominantBaseline="middle" style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                   {lane === 0 ? after.largest : after.second}
                 </text>
                 {holderRuns(record, industry, lane).map((run) => {
@@ -273,4 +277,4 @@ export function CompanyFrame({
       </div>
     </div>
   );
-}
+});

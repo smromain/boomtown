@@ -59,6 +59,7 @@ Headless and dependency-free. Public surface in `src/index.ts`; the load-bearing
 | Merger | `reducer/merge/{machine,bonuses}.ts` | The sequenced state machine and the bonus/tie maths |
 | Pricing | `pricing.ts` | Price bands and bonus rows, including the 2015 secondary lookup |
 | Queries | `queries/{legalMoves,evaluate}.ts` | What the AI and the UI both read |
+| After the game | `retrospective.ts`, `awards.ts` | `retrospective(initial, log)` — a pure fold over the command log producing the per-turn series, the company timeline and the 22 superlatives (#68, #69) |
 | Naming | `naming/{index,syllables,blocklist}.ts` | `stem`, `fragment`, `displayName`, `accretedFlavour` |
 | Pool | `pool.ts` | The 28 companies, seven industries, tiers and colours — **the pool of record** |
 | Randomness | `rng.ts` | Seeded mulberry32. The only source of randomness in the package |

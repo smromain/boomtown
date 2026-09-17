@@ -135,6 +135,79 @@ export function niceMax(value: number, step: number): number {
   return Math.ceil(value / step) * step;
 }
 
+const STEPS = [500, 1000, 2000, 5000, 10_000, 20_000, 50_000, 100_000];
+
+/**
+ * Gridlines a reader can count. A fixed $5,000 step is four lines on a short
+ * game and eleven on a long one, and eleven is a ruled page rather than a
+ * chart — so the step comes from the range, aiming for five or so.
+ */
+export function gridLines(max: number): number[] {
+  const step = STEPS.find((candidate) => max / candidate <= 6) ?? STEPS[STEPS.length - 1]!;
+  const lines: number[] = [];
+  for (let value = step; value <= max; value += step) lines.push(value);
+  return lines;
+}
+
+export interface Axis {
+  readonly floor: number;
+  readonly max: number;
+  readonly lines: readonly number[];
+}
+
+/**
+ * A money axis over a range that does not start at nothing.
+ *
+ * Every seat starts the game on the same dealt cash and only climbs from
+ * there, so an axis anchored at zero spends its bottom third on a band nobody
+ * is ever in and squeezes the whole game into the top. This one starts at a
+ * round number below the lowest point instead — which is a truncated axis, and
+ * so it is only ever used for a *line*, where the shape is the reading, and
+ * every gridline is labelled with what it is.
+ */
+export function moneyAxis(low: number, high: number): Axis {
+  const span = Math.max(1, high - low);
+  const step = STEPS.find((candidate) => span / candidate <= 5) ?? STEPS[STEPS.length - 1]!;
+  const floor = Math.max(0, Math.floor(low / step) * step);
+  const max = Math.ceil(high / step) * step;
+  const lines: number[] = [];
+  for (let value = floor + step; value <= max; value += step) lines.push(value);
+  return { floor, max, lines };
+}
+
+export interface PlacedLabel {
+  readonly index: number;
+  readonly x: number;
+  readonly row: number;
+}
+
+/**
+ * Lay labels along an axis in as many rows as it takes, dropping any that will
+ * not fit at all.
+ *
+ * Two alternating rows is the usual trick and it holds until a game runs long
+ * enough to found, fold and refound around the same few turns — then three
+ * labels land on top of each other and the row reads "FOLDEFOLDED". Here each
+ * label takes the first row it clears, and one that clears none is left to its
+ * marker and its hover text, which is better than printing it over its
+ * neighbour.
+ */
+export function placeLabels(
+  items: readonly { x: number; width: number }[],
+  rows: number,
+  gap = 6,
+): PlacedLabel[] {
+  const ends: number[] = Array.from({ length: rows }, () => -Infinity);
+  const placed: PlacedLabel[] = [];
+  items.forEach((item, index) => {
+    const row = ends.findIndex((end) => item.x - item.width / 2 >= end + gap);
+    if (row < 0) return;
+    ends[row] = item.x + item.width / 2;
+    placed.push({ index, x: item.x, row });
+  });
+  return placed;
+}
+
 /** `M x y L x y …` for a series, dropping nothing — the caller slices first. */
 export function linePath(points: readonly (readonly [number, number])[]): string {
   return points.map(([x, y], index) => `${index === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');

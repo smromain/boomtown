@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { RankingRow, Retrospective } from '@boomtown/engine';
 import styles from './after.module.css';
 import { copy } from '../copy/copy.js';
@@ -13,7 +14,12 @@ const money = (n: number): string => `$${n.toLocaleString()}`;
  * shares, stock at close — which is also the only place the table can check
  * settlement's arithmetic rather than take it on trust.
  */
-export function Standings({
+/**
+ * Memoised, like every frame: the carousel re-renders ten times a second to
+ * move the sliver under the live tab, and a sixty-turn chart has no business
+ * being rebuilt for that.
+ */
+export const Standings = memo(function Standings({
   rankings,
   record,
   names,
@@ -61,4 +67,4 @@ export function Standings({
       </tbody>
     </table>
   );
-}
+});

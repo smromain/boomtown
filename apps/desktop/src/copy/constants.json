@@ -496,11 +496,12 @@
       },
       "market": {
         "title": "Tracking the market",
-        "note": "net worth per turn · mergers marked",
+        "note": "net worth per turn, while it was being played",
         "founded": "founded",
         "refounded": "founded again",
         "folded": "folded",
-        "turns": "turn"
+        "turns": "turn",
+        "settledNote": "The figures are what each seat settled for — the bank buying every share back and paying every bonus at once, which is a different number from anything the game was worth while it ran."
       },
       "companies": {
         "title": "The market, company by company",
@@ -509,8 +510,8 @@
         "theCompany": "The company · {peak} at its peak",
         "eachSeat": "Each seat's holding",
         "held": "held by the table",
-        "largest": "Largest holder",
-        "second": "Second largest",
+        "largest": "Largest",
+        "second": "Second",
         "shares": "{n} sh",
         "neverFounded": "Never founded — every share of it still in the bank",
         "folded": "Founded turn {founded} · folded turn {folded}",

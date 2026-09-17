@@ -148,7 +148,9 @@ export function AfterGame({
         </div>
 
         {live.key === 'standings' ? <Standings rankings={rankings} record={record} names={names} /> : null}
-        {live.key === 'market' && record ? <MarketGraph record={record} names={names} reader={reader} /> : null}
+        {live.key === 'market' && record ? (
+          <MarketGraph record={record} names={names} corporations={corporations} reader={reader} />
+        ) : null}
         {live.key === 'companies' && record && industry ? (
           <CompanyFrame record={record} industry={industry} corp={corporations?.[industry]} names={names} />
         ) : null}
