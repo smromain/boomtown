@@ -24,12 +24,14 @@
   padding: 1.25rem;
 }
 
-/* The buy modal grows with its content — long derived names widen the grid —
-   from a comfortable minimum up to a cap, then the name column wraps. */
+/* The buy modal holds one width. It used to grow with its content so a long
+   derived name would fit, which meant the dialog — and every stepper in it —
+   moved and resized from one turn to the next as names accreted. The name
+   scrolls instead (`Marquee`), the same answer the corp card already gives to
+   the same problem. */
 .buyContent {
-  width: max-content;
-  min-width: min(28rem, 90vw);
-  max-width: 90vw;
+  width: min(30rem, 92vw);
+  max-width: 92vw;
 }
 
 .content h2 {
@@ -219,10 +221,15 @@
 }
 
 .buyName {
-  /* wrap only once the modal has grown to its max width */
-  overflow-wrap: anywhere;
+  /* `minmax(0, 1fr)` above is what lets this actually be narrower than its
+     text, which is what gives the marquee something to scroll. */
+  min-width: 0;
   font-size: 0.95rem;
   line-height: 1.25;
+}
+
+.buyNameText {
+  display: block;
 }
 
 /* the "N in bank · M held" float count under a corporation's name */

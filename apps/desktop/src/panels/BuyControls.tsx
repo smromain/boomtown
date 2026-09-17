@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { INDUSTRY_INFO, RULES, type Industry } from '@boomtown/engine';
 import { useGameClient, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import { IndustryMark } from '../game/marks.js';
+import { Marquee } from '../game/Marquee.js';
 import { Button } from '../ui/Button.js';
 import {
   buyCost,
@@ -30,6 +31,12 @@ import { copy, fill } from '../copy/copy.js';
  * what am I buying" should be answerable by looking rather than by reading four
  * numbers. Hidden information is unchanged: everything shown comes from
  * `useLocalActiveView`, which is the acting seat's own view.
+ *
+ * Long names **scroll** (`Marquee`, the same component the band card uses)
+ * rather than widening the dialog. A derived `displayName` grows with every
+ * merger (`docs/naming.md`), and a modal sized to its content moved and resized
+ * under the player from one turn to the next — on the one surface they meet
+ * every turn, where the stepper should be in the same place each time.
  */
 export function BuyControls() {
   const view = useLocalActiveView();
@@ -142,7 +149,7 @@ function BuyRow({
       </span>
 
       <span className={styles.buyName}>
-        <span className="serif">{name}</span>
+        <Marquee className={`serif ${styles.buyNameText}`}>{name}</Marquee>
         <span className={`tabnum ${styles.buyFloat}`}>
           {blocked ? (
             <span className={styles.buyStanding}>

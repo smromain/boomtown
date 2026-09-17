@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { GameState } from '@boomtown/engine';
 import { BuyControls } from './BuyControls.js';
 import { rowStanding } from './buying.js';
-import { NAMES, renderPanel, seedCorp } from '../testing/harness.js';
+import { NAMES, mergedName, renderPanel, seedCorp } from '../testing/harness.js';
 
 describe('BuyControls', () => {
   async function atBuyStep() {
@@ -118,6 +118,34 @@ describe('BuyControls', () => {
     const marks = container.querySelectorAll('svg[aria-hidden="true"]');
     expect(marks.length).toBeGreaterThan(0);
     expect(container.querySelectorAll('svg:not([aria-hidden="true"])')).toHaveLength(0);
+  });
+
+  it('scrolls a merged name rather than widening the dialog', async () => {
+    // A derived `displayName` accretes with every merger (`docs/naming.md`),
+    // and the dialog used to size itself to whatever the longest one was — so
+    // it moved and resized under the player from turn to turn. The name goes
+    // through `Marquee`, the same answer the corp card gives to the same
+    // problem, and the row's own width is the modal's.
+    const { container } = await renderPanel(<BuyControls />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['5H', '5I', '4I']);
+        state.corporations.video.eaten = [
+          { industry: 'books', displayName: NAMES.books, flavours: [] },
+          { industry: 'toys', displayName: NAMES.toys, flavours: [] },
+        ];
+        state.step = 'buy';
+        state.hands[0] = [];
+      },
+    });
+    const merged = mergedName('video', 'books', 'toys');
+    expect(merged.length).toBeGreaterThan(NAMES.video.length); // it really did accrete
+    // The name is inside a marquee viewport, not loose in the row.
+    const viewport = container.querySelector('[class*="viewport"]');
+    expect(viewport).not.toBeNull();
+    expect(viewport!.textContent).toBe(merged);
+    // And the full name still reaches assistive tech through the steppers,
+    // which is where these controls get their accessible names from.
+    expect(screen.getByRole('button', { name: `one more ${merged} share` })).toBeInTheDocument();
   });
 
   it('tracks the running total on the confirm button as rows are picked', async () => {
