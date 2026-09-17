@@ -2425,7 +2425,7 @@ def mk_holder_runs(series, seats):
     return rows
 
 def mk_chart(ind, series, seats, W, H, turns, spans, seat_max, total_max,
-             big=False, strip_only=False):
+             big=False, strip_only=False, demo_turn=None):
     """One company: a line per seat, under a strip of what the company itself
     was worth.
 
@@ -2507,9 +2507,12 @@ def mk_chart(ind, series, seats, W, H, turns, spans, seat_max, total_max,
                 if seen: span.append(t)
             if len(span) < 2: continue
             parts.append('<path d="M%s" fill="none" stroke="%s" stroke-width="2" '
-                         'stroke-linejoin="round" stroke-linecap="round"%s/>'
+                         'stroke-linejoin="round" stroke-linecap="round"%s><title>%s</title></path>'
                          % (" L".join("%.1f %.1f" % (x(t), y(series[t]["value"][s])) for t in span),
-                            ink, ' stroke-dasharray="%s"' % dash if dash else ""))
+                            ink, ' stroke-dasharray="%s"' % dash if dash else "",
+                            "%s \u2014 %d shares at turn %d, %s"
+                            % (s, series[span[-1]]["held"][s], span[-1],
+                               money(series[span[-1]]["value"][s]))))
 
     parts.append('<line x1="0" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1"/>'
                  % (y(0), x(turns[-1]), y(0), B_RULE))
@@ -2561,8 +2564,16 @@ def mk_chart(ind, series, seats, W, H, turns, spans, seat_max, total_max,
             x0 = max(0.0, x(a) - half) + 1
             x1 = min(x(turns[-1]), x(b) + half) - 1
             wide = x1 - x0
+            # Every block is hoverable, the unlabelled ones most of all — an
+            # abbreviation is only honest if the whole name is one hover away,
+            # and a block with no room for any text at all still has to be
+            # able to say what it is.
+            tip = "%s \u2014 %s, turn%s %s" % (
+                label, "largest holder" if lane == 0 else "second largest",
+                "" if a == b else "s", a if a == b else "%d\u2013%d" % (a, b))
             parts.append('<rect x="%.1f" y="%.1f" width="%.1f" height="18" rx="2.5" fill="%s" '
-                         'opacity="%s"/>' % (x0, top, wide, corp["color"], ".26" if lane == 0 else ".13"))
+                         'opacity="%s"><title>%s</title></rect>'
+                         % (x0, top, wide, corp["color"], ".26" if lane == 0 else ".13", tip))
             # A block too narrow for its name gets an initial, and a *tie* too
             # narrow for both names gets nothing at all — "YJR" is not a
             # shorter way of saying anything. The block itself still shows that
@@ -2573,6 +2584,43 @@ def mk_chart(ind, series, seats, W, H, turns, spans, seat_max, total_max,
                 parts.append('<text x="%.1f" y="%.1f" font-size="9.5" fill="%s" text-anchor="middle" '
                              'dominant-baseline="middle">%s</text>'
                              % ((x0 + x1) / 2, top + 10, B_INK, text))
+
+
+    # The readout, drawn in place at one turn so the hover state is part of
+    # the artboard rather than a promise in a caption. Live, it follows the
+    # pointer or the arrow keys, and the lanes hand over the names the blocks
+    # are too narrow to print.
+    if demo_turn is not None and demo_turn in series:
+        t = demo_turn
+        rec = series[t]
+        rows = sorted(((rec["held"][s], s) for s in seats if rec["held"][s]), reverse=True)
+        levels = sorted({h for h, _s in rows}, reverse=True)
+        cw, ch = 168, 34 + 17 * len(rows)
+        cx0 = min(x(t) + 14, W - PAD_R - cw)
+        cy0 = PLOT_Y + 6
+        parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1"/>'
+                     % (x(t), STRIP_Y, x(t), y(0) + 34 + 23 + 18, B_INK))
+        for h, seat in rows:
+            parts.append('<circle cx="%.1f" cy="%.1f" r="3.5" fill="%s"/>'
+                         % (x(t), y(rec["value"][seat]), ink))
+        parts.append('<rect x="%.1f" y="%.1f" width="%d" height="%d" rx="4" fill="%s" stroke="%s" '
+                     'stroke-width="1"/>' % (cx0, cy0, cw, ch, B_PANEL, B_RULE))
+        parts.append('<text x="%.1f" y="%.1f" font-size="9" fill="%s" '
+                     'style="letter-spacing:.11em;text-transform:uppercase">turn %d · %s</text>'
+                     % (cx0 + 11, cy0 + 17, B_MUTED, t, money(sum(rec["value"].values()))))
+        for i, (h, seat) in enumerate(rows):
+            yy = cy0 + 34 + i * 17
+            tag = ("largest" if h == levels[0] else
+                   "second" if len(levels) > 1 and h == levels[1] else "")
+            parts.append('<text x="%.1f" y="%.1f" font-size="10.5" fill="%s">%s</text>'
+                         '<text x="%.1f" y="%.1f" font-size="10" fill="%s" text-anchor="end" '
+                         'class="num">%d sh</text>'
+                         % (cx0 + 11, yy, B_INK, seat, cx0 + cw - 11, yy,
+                            B_ACCENT if tag == "largest" else B_MUTED, h))
+            if tag:
+                parts.append('<text x="%.1f" y="%.1f" font-size="8" fill="%s" '
+                             'style="letter-spacing:.09em;text-transform:uppercase">%s</text>'
+                             % (cx0 + 58, yy, B_MUTED, tag))
 
     # Direct labels at the end of every line — the thing that makes six of them
     # readable. Pushed apart where they would collide, with a leader back to
@@ -2674,17 +2722,17 @@ def mk_stress():
     ind = "tech"
     series = mk_series(STRESS, STRESS_SEATS, STRESS_TURNS, CORP[ind]["tier"])
     svg = mk_chart(ind, series, STRESS_SEATS, 900, 360, STRESS_TURNS, STRESS["spans"],
-                   mk_seat_max([series]), 26000, big=True)
+                   mk_seat_max([series]), 26000, big=True, demo_turn=13)
     leads = mk_leads(series, STRESS_SEATS)
     note = ("founded turn 3 · still trading at turn 46 · the majority changed hands %d times — %s"
             % (len(leads), ", ".join("%s on turn %d" % (w, t) for t, w in leads)))
     return af_panel("The same frame at the far end of the table",
-                    "six seats · forty-six turns · ◆ the majority changed hands",
+                    "six seats · forty-six turns · drawn with the hover readout open at turn 13",
                     '<div style="display:flex;gap:30px;align-items:flex-start">'
                     '<div style="flex:1;min-width:0">%s</div>%s</div>'
                     % (svg, mk_side(ind, series, STRESS_SEATS, note)))
 
-MARKET_H = 1425
+MARKET_H = 1461
 
 def build_market():
     feature = "books"
@@ -2720,7 +2768,8 @@ def build_market():
                         "<span style=\"white-space:nowrap\">● founded</span> · "
                         "<span style=\"white-space:nowrap\">○ founded again</span> · "
                         "<span style=\"white-space:nowrap\">┆ folded</span> · "
-                        "<span style=\"white-space:nowrap\">◆ majority changed hands</span>",
+                        "<span style=\"white-space:nowrap\">◆ majority changed hands</span> · "
+                        "hover a lane block for the whole name",
                         '<div style="display:flex;flex-direction:column;gap:18px">%s%s%s</div>'
                         % (mk_stage(feature, seat_max, total_max), strip, pager)))
     stress = '<div style="width:1440px;padding:0 44px">%s</div>' % mk_stress()
@@ -2732,7 +2781,10 @@ def build_market():
                  "turns is drawn in the wrong step the whole way; order it turn by turn and the bands cross "
                  "every time the lead moves, which at six seats is most turns. There is no third order. A line "
                  "per seat has nothing to order — and the crossing that broke the stack is the thing worth "
-                 "seeing, so it is marked with a ◆ on the axis and counted in the panel."),
+                 "seeing, so it is marked with a ◆ on the axis and counted in the panel. An abbreviation is "
+                 "only honest when the whole name is one hover away, so every lane block answers with its own "
+                 "— the unlabelled ones most of all — and the readout drawn open below gives the whole "
+                 "table at that turn."),
          af_note("Two heights, not one axis",
                  "The company's total is six times any one seat's line at a six-handed table, so drawing both "
                  "against one scale flattens the fight into the bottom sixth of the plot. The band up top is "
@@ -2767,7 +2819,7 @@ def build_canvas():
         {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "The pool", "print": "flow", "page": "page-1"},
         {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
         {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 2240, "title": "After the game", "print": "flow", "page": "page-1"},
-        {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 1512, "title": "Company by company", "print": "flow", "page": "page-1"},
+        {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 1548, "title": "Company by company", "print": "flow", "page": "page-1"},
         {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4720, "title": "Rules model",
          "print": "flow", "page": "page-2"},
         {"file": "BoardRoom.dc.html",    "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "A - Board Room", "page": "page-3"},
