@@ -2,6 +2,7 @@ import { act } from 'react';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import type { GameState } from '@boomtown/engine';
 import { DecisionModal } from './DecisionModal.js';
 import { NAMES, flush, renderPanel, seedCorp } from '../testing/harness.js';
 
@@ -157,6 +158,92 @@ describe('DecisionModal', () => {
     expect(dialog).toHaveTextContent('Dispose of Chapter Eleven stock');
     expect(dialog).toHaveTextContent(new RegExp(`into ${NAMES.video}`));
     expect(dialog).not.toHaveTextContent(/\bbooks\b/);
+  });
+
+  // --- keeping is a choice you can take (#66) --------------------------
+
+  /** A merger where seat 0 holds `shares` of the defunct chain. */
+  async function atDisposal(shares: number, over: (state: GameState) => void = () => {}) {
+    const { client } = await renderPanel(<DecisionModal />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']); // survives
+        seedCorp(state, 'books', ['6E', '7E']); // defunct
+        state.hands[0] = ['5E'];
+        state.seats[0]!.holdings.books = shares;
+        over(state);
+      },
+    });
+    await place(client, '5E');
+    return screen.getByRole('dialog');
+  }
+
+  it('keeps everything in one press, and says so before you touch anything', async () => {
+    const dialog = await atDisposal(4);
+    // The prompt opens on keep-all, so the shortcut for it is already spent.
+    expect(within(dialog).getByRole('button', { name: 'Keep all' })).toBeDisabled();
+    expect(within(dialog).getByLabelText('hold')).toHaveTextContent('4');
+
+    // Step away and back: keeping is reachable in one action, not by undoing.
+    await userEvent.click(within(dialog).getByRole('button', { name: 'sell more' }));
+    expect(within(dialog).getByLabelText('hold')).toHaveTextContent('3');
+    const keepAll = within(dialog).getByRole('button', { name: 'Keep all' });
+    expect(keepAll).toBeEnabled();
+    await userEvent.click(keepAll);
+    expect(within(dialog).getByLabelText('hold')).toHaveTextContent('4');
+    expect(within(dialog).getByLabelText('sell')).toHaveTextContent('0');
+  });
+
+  it('sells the lot, and trades the most the bank can absorb', async () => {
+    const dialog = await atDisposal(4);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Sell all' }));
+    expect(within(dialog).getByLabelText('sell')).toHaveTextContent('4');
+    expect(within(dialog).getByLabelText('hold')).toHaveTextContent('0');
+    expect(within(dialog).getByRole('button', { name: 'Confirm' })).toBeEnabled();
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Trade the most I can' }));
+    expect(within(dialog).getByLabelText('trade')).toHaveTextContent('4');
+    expect(within(dialog).getByLabelText('sell')).toHaveTextContent('0');
+    expect(within(dialog).getByRole('button', { name: 'Confirm' })).toBeEnabled();
+  });
+
+  it('never proposes a split the rules would refuse', async () => {
+    // An odd holding cannot be traded whole (2-for-1), and the survivor's bank
+    // is the other ceiling. `maxTrade` is what keeps the shortcut honest.
+    const dialog = await atDisposal(5, (state) => {
+      state.bankShares.video = 1; // one share in the bank -> at most 2 traded
+    });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Trade the most I can' }));
+    expect(within(dialog).getByLabelText('trade')).toHaveTextContent('2');
+    expect(within(dialog).getByLabelText('hold')).toHaveTextContent('3');
+    expect(within(dialog).getByRole('button', { name: 'Confirm' })).toBeEnabled();
+  });
+
+  it('offers no trade shortcut when the survivor has nothing to trade into', async () => {
+    const dialog = await atDisposal(4, (state) => {
+      state.bankShares.video = 0;
+    });
+    expect(within(dialog).getByRole('button', { name: 'Trade the most I can' })).toBeDisabled();
+  });
+
+  it('says what keeping is worth, under the defunct chain\'s own name', async () => {
+    const dialog = await atDisposal(4);
+    // The base name, not the derived display name: it is the name that can be
+    // founded again, and the one held stock keys off.
+    expect(dialog).toHaveTextContent(
+      new RegExp(`live again if ${NAMES.books} is refounded`),
+    );
+  });
+
+  it('survives a peek at the board, shortcut and all', async () => {
+    // `sell`/`trade` live in DecisionModal so a peek does not reset the split.
+    // A shortcut writing local state would put that bug straight back.
+    const dialog = await atDisposal(4);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Sell all' }));
+    expect(within(dialog).getByLabelText('sell')).toHaveTextContent('4');
+
+    await userEvent.click(within(dialog).getByRole('button', { name: /Peek at the board/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Resume trading in stock/ }));
+    expect(within(screen.getByRole('dialog')).getByLabelText('sell')).toHaveTextContent('4');
   });
 
   it('trade is disabled when the survivor has no bank stock left', async () => {

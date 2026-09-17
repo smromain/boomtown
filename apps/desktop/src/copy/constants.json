@@ -517,9 +517,14 @@
     "disposal": {
       "title": "Dispose of {name} stock",
       "seat": "{name} holds {shares} · sells at ${price} a share · trade is 2-for-1 into {survivor} ({bank} in bank)",
-      "hold": "Hold",
+      "hold": "Keep",
       "sell": "Sell",
       "trade": "Trade",
+      "keepWorth": "live again if {name} is refounded",
+      "keepAll": "Keep all",
+      "sellAll": "Sell all",
+      "tradeMax": "Trade the most I can",
+      "shortcuts": "Quick splits",
       "holdOutput": "hold",
       "sellOutput": "sell",
       "tradeOutput": "trade",
@@ -656,5 +661,13 @@
     "accountForAll": "Must account for all {n} shares",
     "twoForOne": "Trades are two-for-one",
     "bankShort": "Only {n} survivor shares left"
+  },
+  "exitGame": {
+    "label": "Leave the game",
+    "title": "Leave this game?",
+    "bodyLocal": "This table is not saved anywhere. Leaving ends the game for everyone at this screen.",
+    "bodyOnline": "Your seat is held for you — the room keeps it, and you can rejoin with the same link. The table plays on without you until you do.",
+    "confirm": "Leave the game",
+    "cancel": "Stay at the table"
   }
 }

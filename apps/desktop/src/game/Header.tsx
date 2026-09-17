@@ -15,6 +15,7 @@ import { soundManager } from '../audio/soundManager.js';
 import { musicManager } from '../audio/musicManager.js';
 import { copy, fill } from '../copy/copy.js';
 import { Button } from '../ui/Button.js';
+import { ExitGame } from './ExitGame.js';
 import logoUrl from '../assets/boomtown-logo.png';
 import styles from './game.module.css';
 
@@ -27,7 +28,7 @@ const PHASE: Record<TurnStep, string> = {
   vote: copy.header.phase.vote,
 };
 
-export function Header() {
+export function Header({ onExit, online = false }: { onExit?: (() => void) | undefined; online?: boolean }) {
   // Two views, deliberately. Everything in the status block except the phase
   // readout is public and belongs to the table, not the turn, so it reads
   // `useAnyView()` and stays on screen throughout — waiting is exactly when a
@@ -198,6 +199,10 @@ export function Header() {
             {track.title}
           </span>
         )}
+        {/* In the brand region, which is always rendered — the status block
+            below needs a view, and a broken table is exactly when there may
+            not be one and exactly when you want out (#73). */}
+        {onExit && <ExitGame onExit={onExit} online={online} />}
       </div>
       {view && (
         <div className={styles.status}>

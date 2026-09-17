@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Header } from './Header.js';
@@ -220,5 +220,63 @@ describe('Header reference controls', () => {
 
     await renderPanel(withReference, { controls: [0], localSeats: [0] });
     expect(screen.getByText('Place a tile')).toBeInTheDocument();
+  });
+});
+
+describe('leaving the game from the header (#73)', () => {
+  const withExit = (onExit: () => void, online = false) => (
+    <ReferenceProvider>
+      <Header onExit={onExit} online={online} />
+    </ReferenceProvider>
+  );
+
+  it('offers no way out when there is nowhere to go', async () => {
+    await renderPanel(withReference);
+    expect(screen.queryByRole('button', { name: 'Leave the game' })).not.toBeInTheDocument();
+  });
+
+  it('asks before leaving, and stays put if you say no', async () => {
+    const onExit = vi.fn();
+    await renderPanel(withExit(onExit));
+    await userEvent.click(screen.getByRole('button', { name: 'Leave the game' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    // The speedbump is the point: one click must not end the game.
+    expect(onExit).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Stay at the table' }));
+    expect(onExit).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('leaves once you confirm', async () => {
+    const onExit = vi.fn();
+    await renderPanel(withExit(onExit));
+    await userEvent.click(screen.getByRole('button', { name: 'Leave the game' }));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Leave the game' }));
+    expect(onExit).toHaveBeenCalledTimes(1);
+  });
+
+  it('says what leaving costs, and it is not the same thing online', async () => {
+    // Locally the table is gone; online the room holds the seat. Telling a
+    // player the wrong one of those is worse than telling them neither.
+    const local = await renderPanel(withExit(vi.fn(), false));
+    await userEvent.click(screen.getByRole('button', { name: 'Leave the game' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent(/ends the game/i);
+    expect(screen.getByRole('dialog')).not.toHaveTextContent(/seat is held/i);
+    local.unmount();
+
+    await renderPanel(withExit(vi.fn(), true));
+    await userEvent.click(screen.getByRole('button', { name: 'Leave the game' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent(/seat is held/i);
+    expect(screen.getByRole('dialog')).not.toHaveTextContent(/ends the game/i);
+  });
+
+  it('is in the always-rendered brand region, not the view-gated status block', async () => {
+    // The moment you most want out is the moment the table may be broken, and
+    // the status block only renders once there is a view.
+    await renderPanel(withExit(vi.fn()));
+    const exit = screen.getByRole('button', { name: 'Leave the game' });
+    expect(exit.closest('[class*="brand"]')).not.toBeNull();
+    expect(exit.closest('[class*="status"]')).toBeNull();
   });
 });

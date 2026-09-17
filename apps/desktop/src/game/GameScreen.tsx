@@ -51,7 +51,17 @@ import styles from './game.module.css';
  * bar and the placement targets — are withheld, and the waiting card takes the
  * hand strip's place.
  */
-export function GameScreen({ game, onExit }: { game: StartedGame; onExit?: () => void }) {
+export function GameScreen({
+  game,
+  onExit,
+  online = false,
+}: {
+  game: StartedGame;
+  onExit?: () => void;
+  /** Online, leaving is a disconnect and the room holds the seat; locally it
+   *  ends the table. The exit speedbump says whichever is true (#73). */
+  online?: boolean;
+}) {
   return (
     <GameClientProvider client={game.client} localSeats={game.localSeats}>
       <HotSeatProvider>
@@ -62,6 +72,7 @@ export function GameScreen({ game, onExit }: { game: StartedGame; onExit?: () =>
               nudgeBots={game.nudgeBots}
               snapshot={game.snapshot}
               onExit={onExit}
+              online={online}
             />
             <DecisionModal />
             <TurnModal />
@@ -104,11 +115,13 @@ function PlayArea({
   nudgeBots,
   snapshot,
   onExit,
+  online,
 }: {
   config: GameConfig;
   nudgeBots: (() => void) | undefined;
   snapshot: (() => GameState) | undefined;
   onExit: (() => void) | undefined;
+  online: boolean;
 }) {
   const over = useGameState((state) => state.status === 'over');
   const localTurn = useIsLocalTurn();
@@ -123,7 +136,7 @@ function PlayArea({
 
   return (
     <div className={styles.screen}>
-      <Header />
+      <Header onExit={onExit} online={online} />
       <div className={styles.body}>
         <CorporationBand />
         <div className={styles.middle}>

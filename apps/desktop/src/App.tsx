@@ -179,5 +179,5 @@ function OnlineGameScreen({ room, onExit }: { room: OnlineGame; onExit: () => vo
   const localSeats: Seat[] = seat == null ? [] : [seat];
   const config = useMemo(() => configFromRoom(room.config, roomState), [room.config, roomState]);
 
-  return <GameScreen game={{ client: room.client, config, localSeats }} onExit={onExit} />;
+  return <GameScreen game={{ client: room.client, config, localSeats }} onExit={onExit} online />;
 }

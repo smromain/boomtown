@@ -76,6 +76,53 @@
 
 /* The three music controls read as one instrument rather than three loose
    buttons, so they sit tighter to each other than to the speaker beside them. */
+/* The way out (#73). It sits at the end of the brand region, set apart from
+   the audio controls by a rule: those are properties of the app, this leaves
+   the game, and they should not read as one cluster. */
+.exitButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 12px;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--chrome-rule);
+  border-radius: 0;
+  padding-left: 12px;
+  box-sizing: content-box;
+  background: transparent;
+  color: var(--chrome-muted);
+  cursor: pointer;
+}
+
+.exitButton:hover {
+  color: var(--accent);
+}
+
+.exitDialog {
+  width: min(26rem, 90vw);
+}
+
+.exitTitle {
+  font-size: 1.35rem;
+  margin: 0 0 0.5rem;
+}
+
+.exitBody {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0 0 1.25rem;
+}
+
+.exitActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
 .musicGroup {
   display: inline-flex;
   align-items: center;

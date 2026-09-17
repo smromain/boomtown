@@ -116,12 +116,47 @@
   cursor: pointer;
 }
 
+/* Disposal quick splits (#66) — one press per line, so keeping is a move you
+   make rather than the thing left over when you touch nothing. */
+.shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.9rem;
+}
+
+.shortcut {
+  font-size: 0.78rem;
+  padding: 0.35rem 0.7rem;
+}
+
 .split {
   display: grid;
   grid-template-columns: auto 1fr auto auto auto;
   gap: 0.5rem 0.75rem;
   align-items: center;
   margin: 1rem 0;
+}
+
+/* The prompt opens on keep-everything, so the row says so from the outset
+   rather than looking like an untouched control. */
+.keepCount {
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.keepCount[data-chosen] {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* What keeping is worth, in the same column the other two rows use for their
+   consequence. It is the whole case for holding, and the prompt never made it.
+   The defunct chain's headquarters returns to the tray, so a name that comes
+   back brings these shares back with it. */
+.keepWorth {
+  font-size: 0.72rem;
+  color: var(--muted);
 }
 
 /* ---- Buy step (#58) -------------------------------------------------
