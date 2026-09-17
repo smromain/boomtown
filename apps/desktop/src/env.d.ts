@@ -7,6 +7,10 @@ declare global {
     /** The preload bridge (KTD9). Only present in the Electron renderer. */
     readonly boomtown: BoomtownBridge;
   }
+
+  /** Stamped by `apps/desktop/buildStamp.ts` — see `settings/buildInfo.ts`. */
+  const __BOOMTOWN_VERSION__: string;
+  const __BOOMTOWN_BUILT__: string;
 }
 
 declare module '*.css';

@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { netlog } from '@boomtown/client-core';
 import { RULES, type RulesetId, type Visibility } from '@boomtown/engine';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './settings.js';
+import { buildInfo } from './buildInfo.js';
 import type { PreviewKind } from '../beats/debug/fixtures.js';
 import { Choice } from '../setup/Choice.js';
 import { Button } from '../ui/Button.js';
@@ -13,6 +14,9 @@ import decisionStyles from '../decisions/decisions.module.css';
 import styles from './settings.module.css';
 
 const c = copy.settings;
+
+/** Fixed for the life of the process — the constants are stamped at build time. */
+const build = buildInfo();
 
 /** "Music: 40%", or "Music: off" at the bottom of the range — a slider sitting
  *  at zero should say what that means rather than leave it to be inferred. */
@@ -221,26 +225,33 @@ export function SettingsDialog({
                   <span className={form.note}>{c.onlineHostNote}</span>
                 </label>
 
-                <div className={form.field}>
-                  <span>{c.logging}</span>
-                  <Choice
-                    quiet
-                    label={c.logging}
-                    value={logging ? 'on' : 'off'}
-                    options={[
-                      { value: 'on', label: c.on },
-                      { value: 'off', label: c.off },
-                    ]}
-                    onChange={(value) => {
-                      // Persisted immediately, not on Save: a player being
-                      // talked through a stuck room should not have to find
-                      // Save first.
-                      netlog.setEnabled(value === 'on', true);
-                      setLogging(value === 'on');
-                    }}
-                  />
-                  <span className={form.note}>{c.loggingNote}</span>
-                </div>
+                {/* Dev builds only. In a packaged build the log is off and
+                    there is no way to switch it on: a control whose whole
+                    purpose is diagnosing a stuck room is noise on a settings
+                    page a player reads once. The capture code still ships —
+                    it costs a release nothing — but nothing reaches it. */}
+                {import.meta.env.DEV && (
+                  <div className={form.field}>
+                    <span>{c.logging}</span>
+                    <Choice
+                      quiet
+                      label={c.logging}
+                      value={logging ? 'on' : 'off'}
+                      options={[
+                        { value: 'on', label: c.on },
+                        { value: 'off', label: c.off },
+                      ]}
+                      onChange={(value) => {
+                        // Persisted immediately, not on Save: a player being
+                        // talked through a stuck room should not have to find
+                        // Save first.
+                        netlog.setEnabled(value === 'on', true);
+                        setLogging(value === 'on');
+                      }}
+                    />
+                    <span className={form.note}>{c.loggingNote}</span>
+                  </div>
+                )}
               </section>
             </div>
 
@@ -279,6 +290,15 @@ export function SettingsDialog({
           </div>
 
           <footer className={styles.actions}>
+            {/* Which build this is, in the footer rather than the body: the
+                body scrolls and this is the one thing a player is asked to read
+                back when reporting a bug, so it should never be below the
+                fold. */}
+            <span className={styles.build} aria-label={c.buildLabel}>
+              {build.released
+                ? fill(c.buildVersion, { version: build.version, date: build.date })
+                : fill(c.buildUnreleased, { date: build.date })}
+            </span>
             <Button variant="ghost" onClick={() => setDraft(DEFAULT_SETTINGS)}>
               {c.reset}
             </Button>

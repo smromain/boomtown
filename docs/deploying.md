@@ -101,6 +101,17 @@ release version is stamped into the manifest for the build only and never
 committed, so there is no version to bump by hand and no chance of the repo and
 the release disagreeing.
 
+The settings pane prints that version back, bottom-left of its footer, with the
+date the bundle was built: `v2026.9.1 · released 2026-09-14`. Both are
+compile-time constants from `apps/desktop/buildStamp.ts` — the renderer never
+touches the Electron bridge, so `app.getVersion()` is not available to it, and
+reading the manifest at config time picks up the `npm version` the workflow runs
+one step earlier. The date is the build day in UTC, which for a release build is
+the release date, because the workflow builds from the tag it has just cut;
+`BOOMTOWN_BUILD_DATE` overrides it for a reproducible rebuild. A build that did
+not come off the workflow still carries `0.0.0`, and the line reads *Unreleased
+build* rather than printing a version no release ever had.
+
 ### The protocol: a plain integer
 
 `PROTOCOL_VERSION` in `packages/protocol/src/version.ts` is a compatibility

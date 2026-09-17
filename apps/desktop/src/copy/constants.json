@@ -198,6 +198,9 @@
     "on": "On",
     "off": "Off",
     "musicCredits": "Music credits",
+    "buildLabel": "This build",
+    "buildVersion": "v{version} · released {date}",
+    "buildUnreleased": "Unreleased build · {date}",
     "reset": "Reset",
     "save": "Save",
     "debug": {

@@ -150,14 +150,14 @@ testable core. Detail in `online-play.md`; the file map:
 | `board/` | The 108-cell CSS grid and click-to-place |
 | `client/` | The `GameClient` provider and `ownView` |
 | `copy/` | `constants.json` — every word the app says — plus `copy.ts`, `Rich.tsx` and usage tests |
-| `debug/` | The netlog overlay (`Ctrl`/`Cmd`+`Shift`+`L`) and `dump.ts` |
+| `debug/` | The netlog overlay (`Ctrl`/`Cmd`+`Shift`+`L`, dev builds only) and `dump.ts` |
 | `decisions/` | The decision modal and its five prompts: found, survivor, defunct order, disposal, vote |
 | `game/` | The game screen and its furniture — header, action bar, corporation band, shareholders, story, rack, hand-off, motion panel, marquee |
 | `lobby/` | `CreateJoin` and `SeatList` — creating or joining a room, the knock queue, the lock |
 | `online/` | `onlineGame` (wiring a room into a `GameClient`), `hostUrl` (host resolution + ticket lookup), `randomName` |
 | `panels/` | Buy controls and event text |
 | `reference/` | The stock reference chart, generated from the ruleset |
-| `settings/` | The settings dialog and the persisted `Settings` (with migrations) |
+| `settings/` | The settings dialog, the persisted `Settings` (with migrations), and `buildInfo` — the version and build date stamped in at build time |
 | `setup/` | The new-game screen: edition, seats, visibility |
 | `ui/` | `Button`, `Panel`, `clipboard` |
 

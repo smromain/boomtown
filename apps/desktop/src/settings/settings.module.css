@@ -157,6 +157,16 @@
 
 /* Sits below the scroll with a rule of its own, the way the setup screens keep
    their primary action on the plate rather than at the end of the content. */
+/* The build line, pushed to the left of the footer's buttons: present for the
+   one moment it matters — reading a version back — and quiet the rest of the
+   time. */
+.build {
+  margin-right: auto;
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;
