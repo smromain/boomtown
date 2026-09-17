@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'electron-vite';
+import { buildStamp } from './buildStamp.js';
 
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
@@ -34,6 +35,9 @@ export default defineConfig({
   renderer: {
     root: '.',
     plugins: [react()],
+    // The version and build date the settings pane prints. See `buildStamp.ts`
+    // for why they are compile-time constants rather than a bridge call.
+    define: buildStamp(import.meta.url),
     resolve: {
       alias: {
         '@boomtown/engine': r('../../packages/engine/src/index.ts'),

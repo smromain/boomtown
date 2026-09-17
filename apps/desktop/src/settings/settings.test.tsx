@@ -4,10 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings.js';
 import { SettingsDialog } from './SettingsDialog.js';
+import { buildInfo } from './buildInfo.js';
 import { partykitHost } from '../online/hostUrl.js';
 import { defaultConfig } from '../setup/gameConfig.js';
 import { MUSIC_SOURCE, TRACKS } from '../audio/musicManager.js';
-import { copy } from '../copy/copy.js';
+import { copy, fill } from '../copy/copy.js';
 import { soundManager } from '../audio/soundManager.js';
 
 vi.mock('howler', () => ({
@@ -299,5 +300,31 @@ await userEvent.click(
     await userEvent.click(screen.getByRole('button', { name: copy.settings.debug.mergerThree }));
     expect(onDebugTrigger).toHaveBeenCalledWith('merger-three-way');
     expect(onClose).toHaveBeenCalledOnce();
+  });
+});
+
+describe('SettingsDialog build line', () => {
+  it('names the build in the footer, which does not scroll away', () => {
+    render(<SettingsDialog open onClose={() => {}} />);
+    const line = screen.getByLabelText(copy.settings.buildLabel);
+
+    // The repo's package.json sits at the 0.0.0 placeholder — CalVer is
+    // resolved at release time — so a test run is by definition an unreleased
+    // build, and the line has to say that rather than print a version no
+    // release ever had.
+    const { released, version, date } = buildInfo();
+    expect(released).toBe(false);
+    expect(version).toBe('0.0.0');
+    expect(line).toHaveTextContent(fill(copy.settings.buildUnreleased, { date }));
+    expect(line).not.toHaveTextContent('0.0.0');
+    expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('reads a stamped version back as a release line', () => {
+    // What the release workflow's `npm version` produces, formatted the way a
+    // player is asked to read it back.
+    expect(fill(copy.settings.buildVersion, { version: '2026.9.1', date: '2026-09-17' })).toBe(
+      'v2026.9.1 · released 2026-09-17',
+    );
   });
 });

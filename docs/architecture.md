@@ -157,7 +157,7 @@ testable core. Detail in `online-play.md`; the file map:
 | `online/` | `onlineGame` (wiring a room into a `GameClient`), `hostUrl` (host resolution + ticket lookup), `randomName` |
 | `panels/` | Buy controls and event text |
 | `reference/` | The stock reference chart, generated from the ruleset |
-| `settings/` | The settings dialog and the persisted `Settings` (with migrations) |
+| `settings/` | The settings dialog, the persisted `Settings` (with migrations), and `buildInfo` — the version and build date stamped in at build time |
 | `setup/` | The new-game screen: edition, seats, visibility |
 | `ui/` | `Button`, `Panel`, `clipboard` |
 
