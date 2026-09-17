@@ -3,6 +3,7 @@ import {
   type Command,
   type EngineEvent,
   type GameState,
+  type Retrospective,
   type Seat,
   type SetupOptions,
 } from '@boomtown/engine';
@@ -16,6 +17,8 @@ export interface LocalEngine {
   viewsFor(seats: readonly Seat[]): Record<Seat, ClientView>;
   /** The authoritative state — the bot driver reads it to choose moves. */
   snapshot(): GameState;
+  /** The end-of-game record, once there is one. */
+  retrospective?(): Retrospective | null;
 }
 
 export interface LocalTransportOptions {
@@ -63,9 +66,16 @@ export function localTransport({ setup, controls, engine }: LocalTransportOption
     disconnect: () => handlers.clear(),
     send: (command: Command) => {
       const result = backend.apply(command);
+      // The record rides on the update that ends the game, so the end screen
+      // has it the moment it opens rather than a frame later.
+      const record = result.ok ? (backend.retrospective?.() ?? null) : null;
       void deliver(
         result.ok
-          ? { events: visible(result.events), views: backend.viewsFor(seats) }
+          ? {
+              events: visible(result.events),
+              views: backend.viewsFor(seats),
+              ...(record ? { retrospective: record } : {}),
+            }
           : { events: [], views: backend.viewsFor(seats), rejection: { command, error: result.error } },
       );
     },

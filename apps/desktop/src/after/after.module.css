@@ -1,0 +1,381 @@
+/* The after-game carousel (#68, #69). One screen, four frames, and the frame
+   is the only thing that changes — the chrome above it holds still so the eye
+   has somewhere to rest between them. */
+
+.after {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+/* --- the chrome: tabs on the left, transport on the right --------------- */
+
+.chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tabs {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.tab {
+  position: relative;
+  padding: 7px 15px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tab[data-live='true'] {
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+/* How much of this frame is left. It measures the whole frame, not one step of
+   it, so a frame that pages through five companies does not look like it keeps
+   starting over. */
+.sliver {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--bg) 35%, transparent);
+  overflow: hidden;
+}
+
+.sliverFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.transport {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.transportButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.transportButton:hover {
+  border-color: color-mix(in oklab, var(--ink) 30%, var(--rule));
+}
+
+.transportButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.transportHint {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* --- the frame ---------------------------------------------------------- */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 20px;
+  border-top: 3px solid var(--ink);
+  border-radius: 4px;
+  background: var(--surface);
+  box-shadow: var(--elev-2);
+  /* Every frame reserves the tallest frame's height, so the chrome above and
+     the button below do not jump as the carousel turns over. */
+  min-height: 430px;
+}
+
+.panelHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.panelTitle {
+  font-size: 19px;
+}
+
+.panelNote {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* --- standings ---------------------------------------------------------- */
+
+.standings {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.standings th {
+  padding: 0 4px 8px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: right;
+}
+
+.standings th:nth-child(1),
+.standings th:nth-child(2) {
+  text-align: left;
+}
+
+.standings td {
+  padding: 13px 4px;
+  border-bottom: 1px solid var(--rule);
+  text-align: right;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.standings td:nth-child(1) {
+  width: 40px;
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 19px;
+  text-align: left;
+}
+
+.standings td:nth-child(2) {
+  font-size: 16px;
+  color: var(--ink);
+  text-align: left;
+}
+
+.standings .total {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 24px;
+  color: var(--ink);
+}
+
+.standings tr[data-winner='true'] td:nth-child(1),
+.standings tr[data-winner='true'] .total {
+  color: var(--accent);
+}
+
+.standings tr[data-winner='true'] td:nth-child(2) {
+  font-weight: 700;
+}
+
+/* --- the charts --------------------------------------------------------- */
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.chartRow {
+  display: flex;
+  gap: 26px;
+  align-items: flex-start;
+}
+
+.chartMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.side {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sideHead {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.sideName {
+  font-size: 20px;
+}
+
+.sideFlavour {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.sideTotal {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 26px;
+}
+
+.sideNote {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.legendRow {
+  display: grid;
+  grid-template-columns: 24px 18px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.legendName {
+  font-size: 13.5px;
+}
+
+.legendShares {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legendValue {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 15px;
+  min-width: 62px;
+  text-align: right;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* --- awards -------------------------------------------------------------- */
+
+.awardList {
+  display: flex;
+  flex-direction: column;
+}
+
+.award {
+  display: grid;
+  grid-template-columns: 3px minmax(180px, 280px) 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.awardBar {
+  align-self: stretch;
+  border-radius: 2px;
+}
+
+.awardTitle {
+  font-size: 17px;
+}
+
+.awardSub {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.awardWho {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: right;
+}
+
+.awardSeat {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.awardStat {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.counter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dots {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--rule);
+}
+
+.dot[data-live='true'] {
+  width: 20px;
+  background: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .chartRow {
+    flex-direction: column;
+  }
+
+  .side {
+    width: 100%;
+  }
+
+  .award {
+    grid-template-columns: 3px 1fr auto;
+  }
+
+  .awardSub {
+    display: none;
+  }
+}

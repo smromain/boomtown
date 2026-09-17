@@ -1,25 +1,33 @@
-import { anyView, gameResult } from '@boomtown/client-core';
+import { anyView, endRecord, gameResult } from '@boomtown/client-core';
 import { useGameState } from '../client/GameClientProvider.js';
+import { AfterGame } from '../after/AfterGame.js';
 import { Skyline } from '../art/Skyline.js';
 import { Button } from '../ui/Button.js';
 import styles from './game.module.css';
 import { copy, fill } from '../copy/copy.js';
 
 /**
- * The end screen: final standings and a way out. Shown whenever the game is
- * over, ahead of the board / waiting branch — before this, a game that ended on
- * a bot's (or remote player's) turn left the screen frozen on "waiting for …".
+ * The end screen: who won, and then the whole game to talk over (#68, #69).
+ * Shown whenever the game is over, ahead of the board / waiting branch —
+ * before this, a game that ended on a bot's (or remote player's) turn left the
+ * screen frozen on "waiting for …".
+ *
+ * The headline is the payoff and comes first; `AfterGame` is the carousel
+ * underneath it, which is deliberately the part that moves. `names` is passed
+ * down rather than re-derived there so every frame spells a seat the same way.
  */
 export function GameOver({ onLeave }: { onLeave: (() => void) | undefined }) {
   const result = useGameState(gameResult);
   // select stable references; derive arrays in render to avoid a re-render loop
   const seats = useGameState((state) => anyView(state)?.seats);
   const announcedBy = useGameState((state) => anyView(state)?.endAnnouncedBy ?? null);
+  const record = useGameState(endRecord);
+  const corporations = useGameState((state) => anyView(state)?.corporations);
+  const reader = useGameState((state) => anyView(state)?.you ?? null);
   const names = seats?.map((s) => s.name) ?? [];
 
   if (!result) return null;
 
-  const top = result.rankings[0]?.total ?? 0;
   const nameOf = (seat: number) =>
     names[seat] ?? fill(copy.common.playerFallback, { n: seat + 1 });
 
@@ -40,28 +48,13 @@ export function GameOver({ onLeave }: { onLeave: (() => void) | undefined }) {
         </p>
       )}
 
-      <table className={styles.standings}>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>{copy.game.gameOver.player}</th>
-            <th>{copy.game.gameOver.cash}</th>
-            <th>{copy.game.gameOver.stock}</th>
-            <th>{copy.game.gameOver.total}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {result.rankings.map((row, i) => (
-            <tr key={row.seat} data-winner={row.total === top}>
-              <td>{i + 1}</td>
-              <td>{nameOf(row.seat)}</td>
-              <td className="tabnum">${row.cash.toLocaleString()}</td>
-              <td className="tabnum">${row.equity.toLocaleString()}</td>
-              <td className="tabnum">${row.total.toLocaleString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <AfterGame
+        record={record}
+        rankings={result.rankings}
+        names={names}
+        corporations={corporations}
+        reader={reader}
+      />
 
       {onLeave && (
         <Button variant="primary" onClick={onLeave}>

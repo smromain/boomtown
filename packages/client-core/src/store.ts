@@ -1,4 +1,4 @@
-import type { Command, EngineEvent, PendingDecision, Seat } from '@boomtown/engine';
+import type { Command, EngineEvent, PendingDecision, Retrospective, Seat } from '@boomtown/engine';
 import type { RejectionError } from './transport/types.js';
 import type { ClientView } from './view.js';
 
@@ -19,6 +19,12 @@ export interface GameClientState {
   inFlight: Command | null;
   lastError: RejectionError | null;
   log: EngineEvent[];
+  /**
+   * The end-of-game record the authority sent (#68, #69). Null until the game
+   * is over, and null after it for a table whose log would not replay — the
+   * end screen then shows the standings alone rather than half a history.
+   */
+  retrospective: Retrospective | null;
 }
 
 export function initialClientState(): GameClientState {
@@ -30,6 +36,7 @@ export function initialClientState(): GameClientState {
     inFlight: null,
     lastError: null,
     log: [],
+    retrospective: null,
   };
 }
 
@@ -77,6 +84,16 @@ export function anyView(state: GameClientState): ClientView | null {
 export function gameResult(state: GameClientState): ClientView['result'] {
   if (state.status !== 'over') return null;
   return anyView(state)?.result ?? null;
+}
+
+/**
+ * The end-of-game record the authority sent, once the game is over (#68, #69).
+ * Null while the game is live, and null afterwards for a table whose log would
+ * not replay — the end screen then shows the standings alone.
+ */
+export function endRecord(state: GameClientState): Retrospective | null {
+  if (state.status !== 'over') return null;
+  return state.retrospective;
 }
 
 /** The controlled seat that owns the open decision, if any. */

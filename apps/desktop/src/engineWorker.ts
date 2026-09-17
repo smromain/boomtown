@@ -3,7 +3,7 @@ import {
   type EngineWorkerRequest,
   type EngineWorkerResponse,
 } from '@boomtown/client-core';
-import type { Seat } from '@boomtown/engine';
+import { redactEventsFor, type EngineEvent, type Seat } from '@boomtown/engine';
 
 /**
  * The engine, off the main thread (KTD9). Holds one authoritative `GameSession`
@@ -21,6 +21,18 @@ const scope = globalThis as unknown as {
 let session: GameSession | null = null;
 let controls: Seat[] = [];
 
+/**
+ * The same redaction `localTransport` applies, for the same reason (#60): this
+ * is the other local transport, and a closed table must hide the same things
+ * whichever of the two is running the engine. One seat under this client's
+ * control means that seat is the reader; anything else is a hot-seat table
+ * sharing one log, and the reader is nobody.
+ */
+const visible = (events: readonly EngineEvent[]): readonly EngineEvent[] => {
+  if (!session || events.length === 0) return events;
+  return redactEventsFor(session.snapshot(), events, controls.length === 1 ? controls[0]! : null);
+};
+
 scope.addEventListener('message', (event) => {
   const request = event.data;
 
@@ -33,9 +45,14 @@ scope.addEventListener('message', (event) => {
 
   if (!session) return;
   const result = session.apply(request.command);
+  const record = result.ok ? session.retrospective() : null;
   scope.postMessage(
     result.ok
-      ? { events: result.events, views: session.viewsFor(controls) }
+      ? {
+          events: visible(result.events),
+          views: session.viewsFor(controls),
+          ...(record ? { retrospective: record } : {}),
+        }
       : {
           events: [],
           views: session.viewsFor(controls),

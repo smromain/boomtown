@@ -37,3 +37,15 @@ describe('GameSession', () => {
     expect(restored.viewsFor([0])[0]!.step).toBe('buy');
   });
 });
+
+describe('the end-of-game record', () => {
+  it('is null while the game is still being played', () => {
+    const session = new GameSession({ seats: [{ name: 'A' }, { name: 'B' }], seed: 5 });
+    expect(session.retrospective()).toBeNull();
+  });
+
+  it('is null for a session restored from a snapshot, which has no log to replay', () => {
+    const session = new GameSession({ seats: [{ name: 'A' }, { name: 'B' }], seed: 5 });
+    expect(GameSession.fromSnapshot(session.snapshot()).retrospective()).toBeNull();
+  });
+});
