@@ -1879,7 +1879,7 @@ AFTER_SERIES = [
 # inferred from a kink in a line.
 AFTER_MERGERS = [(5, "Enrun folds"), (7, "Concordia folds"), (13, "Palmistry folds")]
 
-def af_spark(values, w=176, h=34, ink=B_INK, fill=True):
+def af_spark(values, w=844, h=40, ink=B_INK, fill=True):
     """One seat's whole game, as its own little chart. One series per facet, so
     identity comes from the row it sits in — no palette, nothing to confuse
     with a corporation."""
@@ -1924,60 +1924,99 @@ def af_standings():
         lead = i == 0
         delta = vals[-1] - vals[0]
         rows.append(
-          '<div style="display:grid;grid-template-columns:26px 190px 176px 1fr auto;align-items:baseline;'
+          '<div style="display:grid;grid-template-columns:26px 150px 1fr 132px 88px;align-items:center;'
           'gap:16px;padding:11px 4px;border-bottom:1px solid %s">'
           '<span class="ser" style="font-size:17px;color:%s">%d</span>'
           '<span style="font-size:15px;%s">%s</span>'
           '%s'
           '<span class="ser num" style="font-size:20px;text-align:right">%s</span>'
-          '<span class="num" style="font-size:12px;text-align:right;color:%s;width:84px;'
-          'padding-left:14px">%s%s</span></div>'
+          '<span class="num" style="font-size:12px;text-align:right;color:%s">%s%s</span></div>'
           % (B_RULE, B_ACCENT if lead else B_MUTED, i + 1,
              "font-weight:700" if lead else "", name,
-             af_spark(vals, ink=B_ACCENT if lead else B_INK),
+             af_spark(vals, w=844, h=40, ink=B_ACCENT if lead else B_INK),
              money(vals[-1]), B_MUTED, "+" if delta >= 0 else "−", money(abs(delta))[1:]))
     return af_panel("Final standings", "net worth · cash + stock at closing price", "".join(rows))
 
-def af_graph_lit():
-    """Direction 2 — one chart, one line lit. Every seat on one pair of axes,
-    the seat being read in the accent and the rest in recessive ink, each
-    direct-labelled at its right end. Identity is the label; the accent only
-    says which line you are following. Hovering or tabbing promotes any line,
-    so the chart has six readings rather than one."""
-    W, H, PAD_L, PAD_B = 560, 258, 8, 38
+def af_graph_lit(W=1050, H=320):
+    """Direction 2 — one chart across the full width, the way the Mario Party
+    end screen does it: the plot takes the room, and a legend sits down the
+    right with each seat's final figure.
+
+    The seat being read is in the accent and the rest are recessive ink, every
+    line direct-labelled at the legend. Identity is the label; the accent only
+    says which line you are following, and hovering or tabbing promotes any of
+    them — so the chart has as many readings as there are seats.
+    """
+    PAD_L, PAD_B, PAD_R, PAD_T = 40, 40, 8, 14
     allv = [v for _, vals in AFTER_SERIES for v in vals]
     lo, hi = min(allv) * 0.96, max(allv) * 1.02
+    n = len(AFTER_TURNS)
     def xy(i, v):
-        return (PAD_L + i * (W - PAD_L - 96) / (len(AFTER_TURNS) - 1),
-                H - PAD_B - (v - lo) * (H - PAD_B - 14) / (hi - lo))
-    # recessive gridlines, one per merger — the moments the lines react to
-    # Two rows, alternating: at 14 turns across 460px two mergers three turns
-    # apart put their labels straight through each other on one line.
-    grid = "".join('<line x1="%.1f" y1="8" x2="%.1f" y2="%d" stroke="%s" stroke-width="1" stroke-dasharray="2 4"/>'
-                   '<text x="%.1f" y="%d" font-size="9" fill="%s" text-anchor="middle" '
-                   'style="letter-spacing:.08em;text-transform:uppercase">%s</text>'
-                   % (xy(t, lo)[0], xy(t, lo)[0], H - PAD_B, B_RULE,
-                      xy(t, lo)[0], H - PAD_B + (13 if i % 2 == 0 else 25), B_MUTED, lbl)
-                   for i, (t, lbl) in enumerate(AFTER_MERGERS))
+        return (PAD_L + i * (W - PAD_L - PAD_R) / (n - 1),
+                H - PAD_B - (v - lo) * (H - PAD_B - PAD_T) / (hi - lo))
+
+    # One faint rule per turn, a number every other one — the reference's own
+    # x-axis. At this width every turn gets its own column without crowding.
+    ticks = []
+    for i in AFTER_TURNS:
+        x = xy(i, lo)[0]
+        ticks.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="1"/>'
+                     % (x, PAD_T - 6, x, H - PAD_B, B_RULE if i % 2 == 0 else B_BG))
+        if i % 2 == 0:
+            ticks.append('<text x="%.1f" y="%d" font-size="10" fill="%s" text-anchor="middle" '
+                         'class="num">%d</text>' % (x, H - PAD_B + 15, B_MUTED, i))
+    # money gridlines, so a reader can price the gap between two lines
+    for v in range(5000, int(hi), 5000):
+        y = xy(0, v)[1]
+        ticks.append('<line x1="%d" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
+                     'stroke-dasharray="2 5"/>'
+                     '<text x="%d" y="%.1f" font-size="9" fill="%s" text-anchor="end" '
+                     'dominant-baseline="middle" class="num">%s</text>'
+                     % (PAD_L, y, xy(n - 1, lo)[0], y, B_RULE, PAD_L - 7, y, B_MUTED, money(v)))
+    # mergers: the moments the lines are reacting to
+    for i, (t, lbl) in enumerate(AFTER_MERGERS):
+        x = xy(t, lo)[0]
+        ticks.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="1" '
+                     'stroke-dasharray="3 3"/>'
+                     '<text x="%.1f" y="%d" font-size="9" fill="%s" text-anchor="middle" '
+                     'style="letter-spacing:.08em;text-transform:uppercase">%s</text>'
+                     % (x, PAD_T - 6, x, H - PAD_B, B_MUTED, x, PAD_T - 11, B_ACCENT, lbl))
+
     lines = []
     for name, vals in AFTER_SERIES:
         lit = name == "You"
         pts = [xy(i, v) for i, v in enumerate(vals)]
         d = "M" + " L".join("%.1f %.1f" % p for p in pts)
         lines.append('<path d="%s" fill="none" stroke="%s" stroke-width="%s" stroke-linejoin="round" '
-                     'stroke-linecap="round" opacity="%s"/>'
-                     '<circle cx="%.1f" cy="%.1f" r="%d" fill="%s"/>'
-                     '<text x="%.1f" y="%.1f" font-size="11.5" fill="%s" dominant-baseline="middle" '
-                     'style="%s">%s · %s</text>'
-                     % (d, B_ACCENT if lit else B_INK, "2.5" if lit else "1.5",
-                        "1" if lit else ".34",
-                        pts[-1][0], pts[-1][1], 4 if lit else 3, B_ACCENT if lit else B_INK,
-                        pts[-1][0] + 9, pts[-1][1], B_INK if lit else B_MUTED,
-                        "font-weight:700" if lit else "", name, money(vals[-1])))
+                     'stroke-linecap="round" opacity="%s"/><circle cx="%.1f" cy="%.1f" r="%d" fill="%s"/>'
+                     % (d, B_ACCENT if lit else B_INK, "2.5" if lit else "1.5", "1" if lit else ".32",
+                        pts[-1][0], pts[-1][1], 4 if lit else 3, B_ACCENT if lit else B_INK))
     svg = ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;overflow:visible">'
-           '<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="%s" stroke-width="1"/>%s%s</svg>'
-           % (W, H, W, H, PAD_L, H - PAD_B, W - 92, H - PAD_B, B_RULE, grid, "".join(lines)))
-    return af_panel("The shape of it", "turn 1 → 14 · mergers marked", svg)
+           '<line x1="%d" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="1"/>%s%s</svg>'
+           % (W, H, W, H, PAD_L, H - PAD_B, xy(n - 1, lo)[0], H - PAD_B, B_RULE,
+              "".join(ticks), "".join(lines)))
+
+    # The legend — the reference's right-hand column: who, where they finished,
+    # and a swatch of their own line so the two read as one thing.
+    legend = []
+    for i, (name, vals) in enumerate(sorted(AFTER_SERIES, key=lambda s: -s[1][-1])):
+        lit = name == "You"
+        legend.append(
+          '<div style="display:grid;grid-template-columns:16px 26px 1fr auto;align-items:center;gap:9px;'
+          'padding:9px 0;border-bottom:1px solid %s">'
+          '<svg width="16" height="8" style="display:block"><line x1="0" y1="4" x2="16" y2="4" '
+          'stroke="%s" stroke-width="%s" opacity="%s" stroke-linecap="round"/></svg>'
+          '<span class="ser" style="font-size:14px;color:%s">%d</span>'
+          '<span style="font-size:13.5px;%s">%s</span>'
+          '<span class="ser num" style="font-size:16px">%s</span></div>'
+          % (B_RULE, B_ACCENT if lit else B_INK, "2.5" if lit else "1.5", "1" if lit else ".4",
+             B_ACCENT if lit else B_MUTED, i + 1, "font-weight:700" if lit else "", name,
+             money(vals[-1])))
+    return af_panel("The shape of it", "net worth per turn · mergers marked",
+                    '<div style="display:flex;gap:26px;align-items:flex-start">'
+                    '<div style="flex:1;min-width:0">%s</div>'
+                    '<div style="width:236px;flex-shrink:0;padding-top:4px">%s</div></div>'
+                    % (svg, "".join(legend)))
 
 def af_awards():
     """#69 — the awards, in the flavour voice. Each is tinted by the
@@ -2002,11 +2041,13 @@ def af_awards():
           '<span style="flex-shrink:0;width:3px;border-radius:2px;background:%s"></span>'
           '<div style="display:flex;flex-direction:column;gap:3px">'
           '<span class="ser" style="font-size:16px">%s</span>'
-          '<span style="font-size:11.5px;color:%s;line-height:1.45;max-width:40ch">%s</span>'
+          '<span style="font-size:11.5px;color:%s;line-height:1.45">%s</span>'
           '<span style="font-size:12px;margin-top:3px"><strong>%s</strong> '
           '<span class="num" style="color:%s">· %s</span></span></div></div>'
           % (B_RULE, tint, title, B_MUTED, sub, who, B_MUTED, stat))
-    return af_panel("Awards", "four of eleven earned this game", "".join(out), w=468)
+    return af_panel("Awards", "four of eleven earned this game",
+                    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 40px">%s</div>'
+                    % "".join(out))
 
 def af_note(title, body):
     return ('<div style="width:430px;border:1px dashed %s;border-radius:4px;padding:15px 17px;'
@@ -2028,10 +2069,9 @@ def build_after():
       'the whole-table version of the graph belongs at the end and nowhere else.</span>'
       '<div style="margin-top:6px">%s</div></div>' % (B_MUTED, B_MUTED, af_tabs("Standings"))
     )
-    row1 = ('<div style="width:1440px;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s</div>'
-            % af_standings())
-    row2 = ('<div style="width:1440px;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s</div>'
-            % (af_graph_lit(), af_awards()))
+    row = lambda inner: ('<div style="width:1440px;padding:0 44px;display:flex;gap:22px;'
+                         'align-items:flex-start">%s</div>' % inner)
+    row1, row2, row3 = row(af_standings()), row(af_graph_lit()), row(af_awards())
     notes = (
       '<div style="width:1440px;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
       % (af_note("Why the seats have no colours",
@@ -2052,10 +2092,10 @@ def build_after():
                  "with growth headroom priced in."))
     )
     body = (
-      '<div style="width:1440px;min-height:1240px;background:%s;color:%s;'
+      '<div style="width:1440px;min-height:1500px;background:%s;color:%s;'
       'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:40px 0 44px;'
-      'display:flex;flex-direction:column;gap:26px;align-items:center">%s%s%s%s</div>'
-      % (B_BG, B_INK, header, row1, row2, notes)
+      'display:flex;flex-direction:column;gap:26px;align-items:center">%s%s%s%s%s</div>'
+      % (B_BG, B_INK, header, row1, row2, row3, notes)
     )
     write("After.dc.html", B_HELMET, body)
 
