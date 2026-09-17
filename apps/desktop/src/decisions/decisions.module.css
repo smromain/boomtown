@@ -24,12 +24,14 @@
   padding: 1.25rem;
 }
 
-/* The buy modal grows with its content — long derived names widen the grid —
-   from a comfortable minimum up to a cap, then the name column wraps. */
+/* The buy modal holds one width. It used to grow with its content so a long
+   derived name would fit, which meant the dialog — and every stepper in it —
+   moved and resized from one turn to the next as names accreted. The name
+   scrolls instead (`Marquee`), the same answer the corp card already gives to
+   the same problem. */
 .buyContent {
-  width: max-content;
-  min-width: min(28rem, 90vw);
-  max-width: 90vw;
+  width: min(30rem, 92vw);
+  max-width: 92vw;
 }
 
 .content h2 {
@@ -122,24 +124,112 @@
   margin: 1rem 0;
 }
 
-/* Buy step: corporation name (sizes to content) · price · − · qty · + */
-.buyGrid {
+/* ---- Buy step (#58) -------------------------------------------------
+ *
+ * The one surface a player meets every turn, so it is built in the table's
+ * language rather than as a form: a row per corporation carrying its colour
+ * and mark, the way the band card, the tray strip and the board badges all
+ * do. There is no artboard for this dialog; the corp card is the precedent,
+ * and `.buyChip` is its cap band at row scale.
+ *
+ * Each row is its own grid rather than cells in one big one, because a row
+ * has to take a background and a rule of its own. The columns still line up:
+ * the rows all stretch to the modal's width, the chip and stepper are fixed,
+ * and the price has a min-width, so only the name column varies — and it is
+ * left-aligned, so it starts at the same place every time.
+ */
+/* `.content h2` sets a 1rem size for every prompt in this file and outranks a
+   bare class, so the buy title has to be named with its element to win. */
+.content h2.buyTitle {
+  font-size: 1.35rem;
+  margin: 0 0 0.15rem;
+}
+
+.buyPurse {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.55rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0 0 0.9rem;
+}
+
+.buyPurseWho {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Separators as borders, not as "·" characters in the copy: the pieces stay
+   three independent strings for translation, and they wrap cleanly. */
+.buyPurseCash,
+.buyPursePicked {
+  padding-left: 0.55rem;
+  border-left: 1px solid var(--rule);
+}
+
+.buyList {
   display: grid;
-  grid-template-columns: minmax(0, auto) auto auto auto auto;
-  gap: 0.55rem 0.85rem;
+  gap: 0.35rem;
+  margin: 0 0 1rem;
+}
+
+.buyRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  margin: 1rem 0;
+  gap: 0.75rem;
+  padding: 0.5rem 0.7rem 0.5rem 0.5rem;
+  border: 1px solid var(--rule);
+  /* The corporation's own colour as a standing edge — the quietest version of
+     the cap band, present before anything is picked. */
+  border-left: 3px solid var(--corp);
+  border-radius: 5px;
+  background: var(--surface);
+}
+
+/* Picked reads as picked: the row tints toward the corporation rather than
+   only a digit changing in the stepper. */
+.buyRowPicked {
+  background: color-mix(in srgb, var(--corp) 11%, var(--surface));
+  border-color: color-mix(in srgb, var(--corp) 45%, var(--rule));
+  border-left-color: var(--corp);
+  box-shadow: var(--elev-1);
+}
+
+/* Sold out, or dearer than this seat can pay. Legible at the row, not only as
+   a greyed-out "+". */
+.buyRowBlocked {
+  background: var(--input);
+  border-left-color: color-mix(in srgb, var(--corp) 40%, var(--rule));
+}
+
+.buyRowBlocked .buyChip,
+.buyRowBlocked .buyName {
+  opacity: 0.55;
+}
+
+.buyChip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  /* The card's cap-band treatment at row scale (CorporationBand.tsx). */
+  background: linear-gradient(160deg, color-mix(in srgb, var(--corp) 88%, #fff), var(--corp));
 }
 
 .buyName {
-  /* wrap only once the modal has grown to its max width */
-  overflow-wrap: anywhere;
+  /* `minmax(0, 1fr)` above is what lets this actually be narrower than its
+     text, which is what gives the marquee something to scroll. */
+  min-width: 0;
+  font-size: 0.95rem;
+  line-height: 1.25;
 }
 
-.buyGrid button {
-  width: 1.8rem;
-  height: 1.8rem;
-  font: inherit;
+.buyNameText {
+  display: block;
 }
 
 /* the "N in bank · M held" float count under a corporation's name */
@@ -147,14 +237,67 @@
   display: block;
   font-size: 0.75rem;
   color: var(--muted);
-  font-variant-numeric: tabular-nums;
   margin-top: 0.1rem;
 }
 
-.buyGrid output {
-  min-width: 1.5rem;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
+.buyStanding {
+  color: var(--accent);
+}
+
+.buyPrice {
+  font-size: 1.1rem;
+  min-width: 4.2ch;
+  text-align: right;
+}
+
+/* − qty + as one dial, rather than three adjacent default buttons. */
+.buyStepper {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.buyStep {
+  width: 1.9rem;
+  height: 1.9rem;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.buyStep:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--corp) 16%, transparent);
+}
+
+.buyStep:disabled {
+  color: var(--muted);
+  opacity: 0.4;
+  cursor: default;
+}
+
+.buyQty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.9rem;
+  border-left: 1px solid var(--rule);
+  border-right: 1px solid var(--rule);
+  font-weight: 600;
+}
+
+/* The anchor of the modal: it carries the running total, so it is the thing
+   the eye should land on last. */
+.buyConfirm {
+  width: 100%;
+  padding: 0.7rem;
+  font-size: 0.95rem;
 }
 
 .split button {

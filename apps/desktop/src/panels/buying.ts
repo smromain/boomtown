@@ -21,6 +21,20 @@ export function buyCost(view: ClientView, picks: BuyPicks): number {
   );
 }
 
+/**
+ * Why a row cannot be bought into at all, independent of what is already
+ * picked. `canIncrement` answers the button's question — "one more, right now?"
+ * — and goes false as soon as three are picked, which is not a fact about the
+ * corporation. This answers the row's question, so it is stable while a player
+ * picks and can be shown as a standing note rather than inferred from a
+ * greyed-out `+` (#58).
+ */
+export function rowStanding(view: ClientView, industry: Industry): 'available' | 'sold-out' | 'too-dear' {
+  if (view.corporations[industry].bankShares === 0) return 'sold-out';
+  if ((view.corporations[industry].sharePrice ?? 0) > view.yourCash) return 'too-dear';
+  return 'available';
+}
+
 /** Whether one more share of `industry` is affordable and within the caps (mirrors the engine's buy rules). */
 export function canIncrement(view: ClientView, picks: BuyPicks, industry: Industry): boolean {
   if (buyTotal(picks) >= RULES.maxStockPurchasesPerTurn) return false;
