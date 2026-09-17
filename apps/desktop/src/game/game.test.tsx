@@ -2,7 +2,7 @@ import { act } from 'react';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { INDUSTRIES } from '@boomtown/engine';
+import { INDUSTRIES, type EngineEvent } from '@boomtown/engine';
 import { ActionBar } from './ActionBar.js';
 import { OutOfPlay } from './OutOfPlay.js';
 import { TurnModal } from './TurnModal.js';
@@ -13,7 +13,7 @@ import { TileRack } from './TileRack.js';
 import { TurnHandoff } from './TurnHandoff.js';
 import { DecisionModal } from '../decisions/DecisionModal.js';
 import { defaultConfig } from './../setup/gameConfig.js';
-import { latestMerger } from './story.js';
+import { currentMerger, latestMerger } from './story.js';
 import { NAMES, flush, mergedName, renderPanel, seedCorp } from '../testing/harness.js';
 
 const humans = (count: number) => ({
@@ -363,6 +363,76 @@ describe('latestMerger', () => {
       { type: 'merger-completed', survivor: 'video' },
     ]);
     expect(story).toMatchObject({ placedTile: '5E', survivor: 'video', defunct: ['books'], complete: true });
+  });
+
+  it('still reports a merger the table has long played past', () => {
+    // The helper is a pure reader over an append-only log and stays that way;
+    // deciding when a merger stops being current is `currentMerger`'s job.
+    expect(latestMerger([...COMPLETED_MERGER, { type: 'turn-advanced', seat: 1 }])).not.toBeNull();
+  });
+});
+
+/** A merger from 5E that resolved in favour of video. */
+const COMPLETED_MERGER: EngineEvent[] = [
+  { type: 'merger-started', placedTile: '5E', corporations: ['books', 'video'] },
+  { type: 'survivor-chosen', survivor: 'video' },
+  { type: 'corporation-defunct', industry: 'books', absorbedInto: 'video' },
+  { type: 'merger-completed', survivor: 'video' },
+];
+
+describe('currentMerger (when the story panel stops narrating a merger)', () => {
+  it('is null with no merger in the log', () => {
+    expect(currentMerger([{ type: 'turn-advanced', seat: 1 }])).toBeNull();
+  });
+
+  it('holds an unfinished merger', () => {
+    const log: EngineEvent[] = [
+      { type: 'merger-started', placedTile: '5E', corporations: ['books', 'video'] },
+      { type: 'survivor-chosen', survivor: 'video' },
+    ];
+    expect(currentMerger(log)).toMatchObject({ survivor: 'video', complete: false });
+  });
+
+  it('holds through the mergemaker\'s buy, so the bonus split stays readable', () => {
+    const log: EngineEvent[] = [
+      ...COMPLETED_MERGER,
+      { type: 'shares-bought', seat: 0, picks: { video: 2 }, cost: 1200 },
+    ];
+    expect(currentMerger(log)).toMatchObject({ survivor: 'video', complete: true });
+  });
+
+  it('retires once the turn advances', () => {
+    expect(currentMerger([...COMPLETED_MERGER, { type: 'turn-advanced', seat: 1 }])).toBeNull();
+  });
+
+  it('stays retired many turns later — the regression this guards', () => {
+    // The bug: the log is append-only for the whole session, so that one
+    // `merger-started` was still the newest twenty turns on and the panel never
+    // went back to the table talk (#59).
+    const log: EngineEvent[] = [...COMPLETED_MERGER];
+    for (let turn = 0; turn < 20; turn++) {
+      log.push({ type: 'turn-advanced', seat: turn % 3 });
+      log.push({ type: 'tile-placed', seat: turn % 3, tile: '1A', outcome: 'grow' });
+    }
+    expect(currentMerger(log)).toBeNull();
+  });
+
+  it('comes back for the next merger', () => {
+    const log: EngineEvent[] = [
+      ...COMPLETED_MERGER,
+      { type: 'turn-advanced', seat: 1 },
+      { type: 'merger-started', placedTile: '7C', corporations: ['video', 'air'] },
+    ];
+    expect(currentMerger(log)).toMatchObject({ placedTile: '7C', complete: false });
+  });
+
+  it('stays on screen when the merger ends the game', () => {
+    // No turn ever advances past it, and there is no next turn to move on to.
+    const log: EngineEvent[] = [
+      ...COMPLETED_MERGER,
+      { type: 'game-over', result: { rankings: [], winners: [] } },
+    ];
+    expect(currentMerger(log)).not.toBeNull();
   });
 });
 

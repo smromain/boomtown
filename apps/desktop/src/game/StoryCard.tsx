@@ -7,9 +7,9 @@ import { Panel } from '../ui/Panel.js';
 import { Skyline } from '../art/Skyline.js';
 import {
   beingAbsorbed,
+  currentMerger,
   eventIndustry,
   isHeadline,
-  latestMerger,
   listOf,
   mergerProse,
   tradingNameIn,
@@ -24,11 +24,18 @@ import { copy, fill } from '../copy/copy.js';
  * it — the sentence, the renamed survivor, and the bonus split, in the design's
  * two-column layout. Otherwise it is a quiet recent-events feed with headline
  * events tinted the acting corporation's colour.
+ *
+ * "In play" is `currentMerger`, not `latestMerger`: the log keeps every event
+ * of the session, so the newest `merger-started` is still the newest one twenty
+ * turns later, and reading it directly pinned the panel to the first merger's
+ * narration for the rest of the game (#59). Once the merger is done and the
+ * turn has advanced, the feed comes back — with the merger's own events in it
+ * as headlines, which is the right detail for something three turns old.
  */
 export function StoryCard() {
   const view = useAnyView();
   const log = useGameState((state) => state.log);
-  const merger = latestMerger(log);
+  const merger = currentMerger(log);
 
   if (!view) return null;
 

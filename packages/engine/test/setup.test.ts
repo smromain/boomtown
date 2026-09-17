@@ -122,9 +122,25 @@ describe('the Boomtown preset', () => {
 
   it('plays by classic rules apart from what it adds — a variant, not a new rulebook', () => {
     const { boomtown, classic } = PRESETS;
-    const { id: _b, forcedVisibility: _v, endVote: _e, ...boomtownRules } = boomtown;
-    const { id: _c, ...classicRules } = classic;
+    // The exclusions are the whole of what Boomtown adds: the name, closed
+    // books, a public log that names corporations without amounts (#60, which
+    // is closed books applied to the log rather than a separate rule), and the
+    // vote itself. Every number below them is classic's.
+    const {
+      id: _b,
+      forcedVisibility: _v,
+      publicPurchaseDetail: _p,
+      endVote: _e,
+      ...boomtownRules
+    } = boomtown;
+    const { id: _c, publicPurchaseDetail: _pc, ...classicRules } = classic;
     expect(boomtownRules).toEqual(classicRules);
+  });
+
+  it('is the only preset that redacts purchase detail from the public log', () => {
+    expect(PRESETS.classic.publicPurchaseDetail).toBe(true);
+    expect(PRESETS['edition-2015'].publicPurchaseDetail).toBe(true);
+    expect(PRESETS.boomtown.publicPurchaseDetail).toBe(false);
   });
 
   it('is the only preset with a vote to end', () => {

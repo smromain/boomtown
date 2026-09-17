@@ -26,7 +26,13 @@ type SharesBought = Extract<EngineEvent, { type: 'shares-bought' }>;
  */
 export type Beat =
   | { readonly id: 'founding'; readonly industry: Industry }
-  | { readonly id: 'buy-stock'; readonly seat: Seat; readonly cost: number; readonly picks: SharesBought['picks'] }
+  | {
+      readonly id: 'buy-stock';
+      readonly seat: Seat;
+      /** Null when the amount is not this reader's to see (`redactEventsFor`). */
+      readonly cost: number | null;
+      readonly picks: SharesBought['picks'];
+    }
   | { readonly id: 'merger' }
   | {
       readonly id: 'motion';
@@ -52,8 +58,12 @@ export function triggerFor(event: EngineEvent): Beat | null {
   switch (event.type) {
     case 'corporation-founded':
       return { id: 'founding', industry: event.industry };
-    case 'shares-bought':
-      return event.cost > 0 ? { id: 'buy-stock', seat: event.seat, cost: event.cost, picks: event.picks } : null;
+    case 'shares-bought': {
+      // A redacted purchase carries no cost (#60), so "did they buy anything"
+      // is the presence of a pick rather than a positive total.
+      const bought = event.cost === null ? Object.keys(event.picks).length > 0 : event.cost > 0;
+      return bought ? { id: 'buy-stock', seat: event.seat, cost: event.cost, picks: event.picks } : null;
+    }
     case 'merger-completed':
       return { id: 'merger' };
     // The *settlement*, not `motion-raised`. A raised motion is immediately

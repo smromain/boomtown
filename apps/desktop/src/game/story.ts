@@ -228,15 +228,46 @@ function linesFor(payouts: Extract<EngineEvent, { type: 'bonus-paid' }>['payouts
   return lines;
 }
 
+/**
+ * The index of the newest `merger-started`, or -1. The client log is
+ * append-only for the whole session, so this finds a merger from twenty turns
+ * ago just as readily as the one happening now — which is `currentMerger`'s
+ * whole reason for existing.
+ */
+function latestMergerStart(log: readonly EngineEvent[]): number {
+  for (let i = log.length - 1; i >= 0; i--) {
+    if (log[i]!.type === 'merger-started') return i;
+  }
+  return -1;
+}
+
+/**
+ * The merger that still owns the table, or null once play has moved past it.
+ *
+ * A merger is over when it has completed *and* the turn it interrupted has
+ * ended. It deliberately outlives `merger-completed` by the mergemaker's buy:
+ * the bonus split is still being read aloud when the merger resolves, and
+ * pulling the narration out from under the table at that moment is worse than
+ * holding it one more beat. `turn-advanced` is the boundary (#59).
+ *
+ * A merger that ends the game never sees a `turn-advanced` and stays on screen,
+ * which is right — there is no next turn to move on to.
+ */
+export function currentMerger(log: readonly EngineEvent[]): MergerStory | null {
+  const start = latestMergerStart(log);
+  if (start === -1) return null;
+  let completed = false;
+  for (let i = start; i < log.length; i++) {
+    const type = log[i]!.type;
+    if (type === 'merger-completed') completed = true;
+    else if (completed && type === 'turn-advanced') return null;
+  }
+  return latestMerger(log);
+}
+
 /** Pull the most recent merger out of the event log, in progress or finished. Null when there is none. */
 export function latestMerger(log: readonly EngineEvent[]): MergerStory | null {
-  let start = -1;
-  for (let i = log.length - 1; i >= 0; i--) {
-    if (log[i]!.type === 'merger-started') {
-      start = i;
-      break;
-    }
-  }
+  const start = latestMergerStart(log);
   if (start === -1) return null;
 
   const span = log.slice(start);

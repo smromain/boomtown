@@ -79,6 +79,21 @@ export interface Ruleset {
   readonly mergeNaming: MergeNamingConfig;
 
   /**
+   * Whether the public event log carries the *amounts* in a purchase and a
+   * merger disposal, or only the corporations involved.
+   *
+   * True for both published editions, where the log says exactly what it has
+   * always said. False under Boomtown: holdings are hidden there by rule, and a
+   * log that printed "3 Concordia Books for $4,200" let anybody keep an exact
+   * running register — the very information the closed books withhold and the
+   * information a motion's `register-published` is supposed to be paying for
+   * (#60). Redaction happens at the transport, per reader, so the numbers never
+   * reach a client that is not entitled to them; `redactEventsFor` is the one
+   * implementation both transports share.
+   */
+  readonly publicPurchaseDetail: boolean;
+
+  /**
    * Visibility this ruleset requires, overriding the table's choice. Absent for
    * the two published editions, where cash and holdings visibility is a table
    * setting and not a rule (`CLAUDE.md`).

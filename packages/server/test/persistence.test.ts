@@ -192,6 +192,101 @@ describe('GameRoom.rehydrate', () => {
     expect(woken!.isPlaying()).toBe(false);
     expect(woken!.roomState().phase).toBe('lobby');
   });
+
+  // --- the started marker (#63) ---------------------------------------
+  //
+  // The window is `start()` until the first command is persisted: one human
+  // opening turn. Before the marker, that wake was indistinguishable from a
+  // room that never started, and the opening move was answered with "no game
+  // in progress".
+
+  /** Three human seats, started, nobody has moved: the ambiguous bytes. */
+  async function startedButUnmoved(code: string) {
+    const store = new MemoryStore();
+    const room = new GameRoom(code, config(), store);
+    await room.persistConfig();
+    room.join('Ana', 't1', 'c1');
+    room.join('Bo', 't2', 'c2');
+    room.join('Cy', 't3', 'c3');
+    const started = await room.start();
+    if ('error' in started) throw new Error(`start refused: ${started.error.kind}`);
+    expect(await new CommandLog(store).count()).toBe(0); // the window
+    return { store, room };
+  }
+
+  it('wakes up playing when the game started and the log is still empty', async () => {
+    const { store } = await startedButUnmoved('HIB01');
+    const woken = await GameRoom.rehydrate('HIB01', store);
+    expect(woken).not.toBeNull();
+    expect(woken!.isPlaying()).toBe(true);
+    expect(woken!.roomState().phase).toBe('playing');
+  });
+
+  it('accepts the first command after that wake', async () => {
+    const { store } = await startedButUnmoved('HIB02');
+    const woken = (await GameRoom.rehydrate('HIB02', store))!;
+    woken.restoreSeat(0, 't1', 'Ana', 'c1');
+    const view = currentView(woken, 0);
+    if (!view) throw new Error('no view after the wake');
+    const out = await woken.command(0, { type: 'place-tile', seat: 0, tile: view.yourHand[0]! });
+    for (const u of out) {
+      if (u.kind === 'to-seat' && u.message.type === 'error') {
+        throw new Error(`the opening move was refused: ${u.message.error.kind}`);
+      }
+      if (u.kind === 'to-seat' && u.message.type === 'update') {
+        expect(u.message.rejection).toBeUndefined();
+      }
+    }
+    expect(await new CommandLog(store).count()).toBe(1);
+  });
+
+  it('deals the same game on that wake as the one start() dealt', async () => {
+    const { store, room } = await startedButUnmoved('HIB03');
+    const woken = (await GameRoom.rehydrate('HIB03', store))!;
+    // Hands are the sharpest witness the deal is identical: the seed was
+    // resolved once and persisted, so createGame rebuilds the same bag.
+    expect(currentView(woken, 0)?.yourHand).toEqual(currentView(room, 0)?.yourHand);
+    expect(currentView(woken, 1)?.yourHand).toEqual(currentView(room, 1)?.yourHand);
+  });
+
+  it('refuses a second start after that wake instead of silently re-dealing', async () => {
+    const { store } = await startedButUnmoved('HIB04');
+    const woken = (await GameRoom.rehydrate('HIB04', store))!;
+    woken.restoreSeat(0, 't1', 'Ana', 'c1');
+    woken.restoreSeat(1, 't2', 'Bo', 'c2');
+    woken.restoreSeat(2, 't3', 'Cy', 'c3');
+    const again = await woken.start();
+    expect('error' in again && again.error.kind === 'protocol' && again.error.code).toBe(
+      'game-already-started',
+    );
+  });
+
+  it('refuses a start when storage says started even if the phase was lost', async () => {
+    // Defence in depth: the marker is on disk, so a room whose in-memory phase
+    // somehow reads `lobby` still cannot be re-dealt.
+    const { store } = await startedButUnmoved('HIB05');
+    const fresh = new GameRoom('HIB05', config(), store); // never rehydrated: phase is 'lobby'
+    fresh.join('Ana', 't1', 'c1');
+    fresh.join('Bo', 't2', 'c2');
+    fresh.join('Cy', 't3', 'c3');
+    const again = await fresh.start();
+    expect('error' in again && again.error.kind === 'protocol' && again.error.code).toBe(
+      'game-already-started',
+    );
+  });
+
+  it('tells a seat the game finished, not that there is no game', async () => {
+    const store = new MemoryStore();
+    const room = new GameRoom('OVER1', config({ seatCount: 2, bots: { 0: 5, 1: 5 } }), store);
+    await room.persistConfig();
+    await room.start(); // two bots: the room plays itself out to the end
+    expect(room.roomState().phase).toBe('over');
+    const out = await room.command(0, { type: 'end-turn', seat: 0 });
+    const error = out.flatMap((u) =>
+      u.kind === 'to-seat' && u.message.type === 'update' ? [u.message.rejection?.error] : [],
+    )[0];
+    expect(error?.kind === 'protocol' && error.code).toBe('game-over');
+  });
 });
 
 // --- helpers ---

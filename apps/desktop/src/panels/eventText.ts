@@ -37,12 +37,20 @@ export function describeEvent(event: EngineEvent, view?: ClientView | null): str
     case 'corporation-grew':
       return fill(L.grew, { corp: co(event.industry), size: event.newSize });
     case 'shares-bought': {
+      // A redacted purchase (closed books, another seat) arrives with null
+      // quantities and a null cost — see `redactEventsFor`. The line then names
+      // the corporations and no amount at all: printing the cost would give the
+      // quantity away, because the share price is public (#60).
+      const blind = event.cost === null;
       const parts = Object.entries(event.picks).map(([industry, qty]) =>
-        fill(L.pick, { n: qty, corp: co(industry as Industry) }),
+        blind
+          ? fill(L.pickBlind, { corp: co(industry as Industry) })
+          : fill(L.pick, { n: qty ?? 0, corp: co(industry as Industry) }),
       );
-      return parts.length
-        ? fill(L.bought, { name: p(event.seat), picks: parts.join(', '), cost: event.cost })
-        : fill(L.boughtNothing, { name: p(event.seat) });
+      if (!parts.length) return fill(L.boughtNothing, { name: p(event.seat) });
+      return blind
+        ? fill(L.boughtInto, { name: p(event.seat), picks: parts.join(', ') })
+        : fill(L.bought, { name: p(event.seat), picks: parts.join(', '), cost: event.cost ?? 0 });
     }
     case 'tiles-drawn':
       return fill(event.count === 1 ? L.drewOne : L.drewMany, {
@@ -67,13 +75,17 @@ export function describeEvent(event: EngineEvent, view?: ClientView | null): str
       return fill(L.bonuses, { corp: co(event.defunct), paid: paid || L.bonusesNone });
     }
     case 'shares-disposed':
-      return fill(L.disposed, {
-        name: p(event.seat),
-        corp: co(event.defunct),
-        hold: event.hold,
-        sell: event.sell,
-        trade: event.trade,
-      });
+      // Same redaction: hold/sell/trade is a direct statement of how much of
+      // the defunct chain this seat held.
+      return event.hold === null
+        ? fill(L.disposedBlind, { name: p(event.seat), corp: co(event.defunct) })
+        : fill(L.disposed, {
+            name: p(event.seat),
+            corp: co(event.defunct),
+            hold: event.hold,
+            sell: event.sell ?? 0,
+            trade: event.trade ?? 0,
+          });
     case 'corporation-defunct':
       return fill(L.folded, { corp: co(event.industry), survivor: co(event.absorbedInto) });
     case 'merger-completed':

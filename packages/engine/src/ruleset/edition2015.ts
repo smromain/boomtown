@@ -17,5 +17,6 @@ export const edition2015: Ruleset = {
   deadTilePolicy: 'discardAndReplace',
   phantomShareholderInTwoPlayer: true,
   splitRounding: 'up100',
+  publicPurchaseDetail: true,
   mergeNaming: DEFAULT_MERGE_NAMING,
 };

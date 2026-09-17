@@ -176,14 +176,27 @@ names below are the real ones — read them there, not from prose, if they ever 
 | Two-player rule | bank is a shareholder; its holding drawn from the tile pile each merger | not addressed | `phantomShareholderInTwoPlayer` |
 | Split rounding | round up to nearest 100 | silent | `splitRounding` (`'up100'` / `'none'`) |
 | Merged names | — | — | `mergeNaming` (see `naming.md`) |
+| Purchase detail in the log | full — amounts and cost | full — amounts and cost | `publicPurchaseDetail: true` |
 | Preset id | `'edition-2015'` | `'classic'` | `id` |
 
-Boomtown takes the Classic column wholesale and adds two keys of its own:
+Boomtown takes the Classic column wholesale and adds three keys of its own:
 
 | Rule | Boomtown | `Ruleset` key |
 |---|---|---|
 | Cash and holdings | always hidden — not a table setting | `forcedVisibility: 'hidden'` |
+| Purchase detail in the log | the corporation, never the amount | `publicPurchaseDetail: false` |
 | Vote to end | see *Going Public* above | `endVote: EndVoteConfig` |
+
+The third is closed books applied to the log rather than a separate rule. A log that printed
+"Ana bought 3 Concordia Books for $4,200" let anyone keep an exact running register, which is what
+the closed books withhold and what a motion's `register-published` is supposed to be paying for.
+Naming the corporation and no amount is the deliberate middle: a would-be mover can still estimate
+the *shape* of the electorate — otherwise they would have to pay for the register before knowing
+whether two-thirds was reachable at all — while the weights stay secret. `cost` is redacted with the
+quantities and not separately, because the share price is public and cost ÷ price is the quantity.
+The same applies to a merger disposal's hold/sell/trade counts. `bonus-paid` is **not** redacted:
+money changing hands is public in the physical game. Redaction happens per reader at the transport
+(`redactEventsFor`), so the amounts never reach a client not entitled to them.
 
 **Boomtown is the default preset.** It takes classic's numbers, so what follows about classic's
 geometry decides the default too: classic's board is unambiguous where the 2015 rulebook lists 100
@@ -229,6 +242,8 @@ Every row of the price/bonus table and every clause of Going Public is pinned by
 - **Hidden information.** Hand tiles and the draw pile are always hidden. Cash and holdings are
   hidden or open **by agreement** — a table setting, not a rule — except where a rule set fixes it
   (`forcedVisibility`), and except for a seat that backed a failed motion, whose books stay open
-  for the rest of the game.
+  for the rest of the game. The public event log obeys the same rule: under
+  `publicPurchaseDetail: false` a seat sees its own purchase amounts and nobody else's, and an
+  open-books seat's are visible to everyone.
 - **A corporation has two names.** See `naming.md`. The base name is identity; the display name
   accretes.

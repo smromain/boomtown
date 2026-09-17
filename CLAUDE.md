@@ -5,7 +5,7 @@ with a variant of our own.
 
 **Where it stands.** Built and shipping. `v2026.9.1` is published with macOS, Windows and Linux
 installers; the release workflow also pushes the unpacked builds to itch.io and deploys the online
-room from the same commit. Hot-seat, bots and online play all work; 857 unit tests and 20
+room from the same commit. Hot-seat, bots and online play all work; 887 unit tests and 23
 integration tests are green. Builds are **unsigned**, so macOS needs one `xattr` command on first
 launch. The work now is refinement, not construction.
 
@@ -90,6 +90,14 @@ getting them wrong once.
   Boomtown preset fixes it closed (`forcedVisibility`), because at an open table the register a
   motion publishes is already public and the disclosure it charges for costs nothing.
 
+- **The event log obeys the same rule as the view.** It did not, and that was a real leak: the room
+  filtered each connection's view and handed everyone one shared array of events, so a closed
+  table's purchase quantities and costs reached every client whether the UI printed them or not.
+  `redactEventsFor` is now called at **both** transports, per reader — under
+  `publicPurchaseDetail: false` a purchase names the corporation and carries no amount unless the
+  seat is yours or its books are open. Redact at the transport, never in the renderer: a number a
+  client should not have must not be in the frame it receives.
+
 - **A bot sees what a player at that table could see.** `redactFor`/`beliefState` hand a policy a
   consistent but redacted `GameState` — its own hand intact, everyone else's replaced by a
   plausible deal. A bot has to run `reduce` to look ahead, so the honest boundary is a redacted
@@ -120,10 +128,10 @@ getting them wrong once.
 
 ```bash
 npm install            # workspaces; ELECTRON_SKIP_BINARY_DOWNLOAD=1 where there is no display
-npm test               # 857 unit tests, both projects
+npm test               # 887 unit tests, both projects
 npm run typecheck      # both tsconfigs
 npm run lint           # eslint flat config
-npm run test:server    # 20 integration tests against a real partykit dev room
+npm run test:server    # 23 integration tests against a real partykit dev room
 npm run dev            # the Electron app
 npm run server:dev     # the room on :1999, which a dev build talks to by default
 ```

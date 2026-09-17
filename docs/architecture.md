@@ -53,6 +53,7 @@ Headless and dependency-free. Public surface in `src/index.ts`; the load-bearing
 |---|---|---|
 | Rulesets | `ruleset/{types,classic,edition2015,boomtown}.ts` | `Ruleset` is data. `PRESETS` maps id → preset; `boomtown` is `defaultRuleset` |
 | State & views | `state.ts` | `GameState`, `PendingDecision`, and `viewFor(seat)` — the only way state leaves the engine |
+| Event redaction | `redact.ts` | `redactEventsFor(state, events, reader)` — the same books rule applied to the event log, shared by both transports |
 | Setup | `setup.ts` | `createGame(SetupOptions)`; draws one company per industry, deals, seats, resolves the seed |
 | Reducer | `reducer/index.ts` + `place/found/buy/turn/endcheck/endgame/motion` | `reduce(state, command)` → events + state, or a typed error. `replay(log)` rebuilds |
 | Merger | `reducer/merge/{machine,bonuses}.ts` | The sequenced state machine and the bonus/tie maths |
@@ -190,7 +191,15 @@ Three layers, each narrower than the one below:
 3. `clientView(view)` → `ClientView` — adds derived affordances (`legalMoves`, per-hand-tile
    effects) that the renderer cannot compute because it never holds full state.
 
-Bots sit at a fourth point: `beliefState` gives a policy a full-shaped `GameState` whose hidden
+The **event stream** is the fourth thing crossing that boundary, and it used to go around it: the
+room filtered each connection's view and handed everyone one shared array of events, so a closed
+table's purchase quantities and costs reached every client whether or not the UI printed them
+(#60). `redactEventsFor(state, events, reader)` closes that, at the transport and per reader, under
+the same books rule `viewFor` applies. Both `game-room.ts` and `localTransport` call it, which is
+what keeps hot-seat and online hiding the same things; a client holding several seats redacts to the
+public view, because one shared screen has no single "you".
+
+Bots sit at a fifth point: `beliefState` gives a policy a full-shaped `GameState` whose hidden
 parts are invented but consistent, because `reduce` needs a whole state to look ahead.
 
 ## Build topology

@@ -558,7 +558,9 @@
     },
     "buyStock": {
       "label": "{name} bought stock",
-      "dismiss": "Dismiss — {name} bought stock"
+      "dismiss": "Dismiss — {name} bought stock",
+      "line": "{name} bought stock — ${cost}",
+      "lineBlind": "{name} bought stock"
     },
     "merger": {
       "label": "Merger",
@@ -611,6 +613,8 @@
     "bought": "{name} bought {picks} for ${cost}",
     "boughtNothing": "{name} bought nothing",
     "pick": "{n} {corp}",
+    "boughtInto": "{name} bought into {picks}",
+    "pickBlind": "{corp}",
     "drewOne": "{name} drew {n} tile",
     "drewMany": "{name} drew {n} tiles",
     "swept": "{name} swept {tiles}",
@@ -622,6 +626,7 @@
     "bonusLine": "{name} {tier} ${amount}",
     "bonusesNone": "none",
     "disposed": "{name} disposed {corp}: hold {hold}, sell {sell}, trade {trade}",
+    "disposedBlind": "{name} settled their {corp} stock",
     "folded": "{corp} folded into {survivor}",
     "mergerComplete": "Merger complete — {corp} carries on",
     "turn": "— {name}’s turn —",
