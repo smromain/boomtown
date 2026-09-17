@@ -54,7 +54,7 @@ describe('GameScreen turn gating', () => {
     expect(screen.getByRole('region', { name: 'Story' }).closest('[data-rail]')).not.toBeNull();
   });
 
-  it('keeps the board (read-only) but hides the rack, and names the bot on its turn', async () => {
+  it('keeps the board and the rack (both read-only), and names the bot on its turn', async () => {
     await mount([0, 2], 1); // seat 1 (bot) on the clock
     // The board stays up so you can watch the game while you wait (#13) —
     // read-only, and with no interactive cell at all.
@@ -65,7 +65,11 @@ describe('GameScreen turn gating', () => {
     expect(board.querySelectorAll('button')).toHaveLength(0);
     expect(within(board).queryByRole('gridcell', { name: /^Place at /i })).not.toBeInTheDocument();
 
-    expect(screen.queryByRole('region', { name: 'Your tiles' })).not.toBeInTheDocument();
+    // The rack stays up so you can plan while you wait (#61) — but inert: no
+    // tile of yours is clickable while somebody else holds the clock.
+    const rack = screen.getByRole('region', { name: 'Your tiles' });
+    for (const tile of within(rack).getAllByRole('button')) expect(tile).toBeDisabled();
+
     const waiting = screen.getByRole('status', { name: 'Waiting for another player' });
     expect(waiting).toHaveTextContent('Robo');
     expect(waiting).toHaveTextContent(/Bot/);

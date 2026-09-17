@@ -120,9 +120,21 @@ export function Board({ spectating = false }: { spectating?: boolean }) {
         aria-label={copy.board.label}
         aria-readonly={spectating || undefined}
         style={{
-          gridTemplateColumns: `var(--hdr) repeat(${cols}, 1fr)`,
-          gridTemplateRows: `var(--hdr) repeat(${rows}, 1fr)`,
+          // `minmax(0, …)`, never a bare `1fr`: a bare `1fr` is
+          // `minmax(auto, 1fr)`, so every column carried a min-content floor
+          // from its own coordinate label. Below the width where those floors
+          // stopped fitting the grid refused to shrink any further and spilled
+          // straight out of `.board`'s `max-width`, sliding under the right
+          // rail instead of scaling down (#71).
+          gridTemplateColumns: `var(--hdr) repeat(${cols}, minmax(0, 1fr))`,
+          gridTemplateRows: `var(--hdr) repeat(${rows}, minmax(0, 1fr))`,
           aspectRatio: `${cols + HDR_FRACTION} / ${rows + HDR_FRACTION}`,
+          // The same ratio as a bare number, for the sizing formula in
+          // `board.module.css`. `aspect-ratio` alone cannot size the plate:
+          // with a definite `height` it is the width that gives way, and a
+          // `max-width` then clamps the box without shrinking the height back
+          // — which left a plate far taller than its own grid (#71).
+          ['--ratio' as string]: String((cols + HDR_FRACTION) / (rows + HDR_FRACTION)),
         }}
       >
         <div className={styles.corner} aria-hidden />

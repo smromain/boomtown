@@ -158,13 +158,46 @@ describe('TileRack', () => {
     expect(screen.getByRole('button', { name: /6E/ })).toBeEnabled();
   });
 
-  it('renders nothing when the active seat is not a local seat', async () => {
+  it('stays on screen, inert, while another seat is on the clock (#61)', async () => {
+    // It used to vanish the moment your turn ended, which is most of the game
+    // — you could not plan, or even remember what you were holding.
     await renderPanel(<TileRack />, {
       localSeats: [0],
+      controls: [0],
       craft: (state) => {
+        state.hands[0] = ['2B', '6E'];
         state.turnPointer = 1; // a bot / remote seat
       },
     });
+    expect(screen.getByRole('region', { name: 'Your tiles' })).toBeInTheDocument();
+    // Inert: `step` is the game's step and `playable` comes from the board, so
+    // neither knows whose turn it is. Only the explicit turn gate does.
+    for (const tile of ['2B', '6E']) {
+      expect(screen.getByRole('button', { name: new RegExp(tile) })).toBeDisabled();
+    }
+  });
+
+  it('never shows a non-local seat\'s hand, even holding its view (leak guard)', async () => {
+    // The client holds a view for seat 1 as well, but seat 1 is not ours. A
+    // rack reading the *active* view would put a bot's hand on screen — and
+    // over one turn cycle, the whole table's.
+    await renderPanel(<TileRack />, {
+      localSeats: [0],
+      controls: [0, 1],
+      craft: (state) => {
+        state.hands[0] = ['2B'];
+        state.hands[1] = ['9H'];
+        state.turnPointer = 1; // the non-local seat is on the clock
+      },
+    });
+    expect(screen.getByRole('button', { name: /2B/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /9H/ })).not.toBeInTheDocument();
+  });
+
+  it('renders no rack at all for a spectator', async () => {
+    // No local seat: `useOwnView` falls back to a public-only view whose hand
+    // is empty, and an empty hand is no rack rather than an empty one.
+    await renderPanel(<TileRack />, { localSeats: [], controls: [] });
     expect(screen.queryByRole('region', { name: 'Your tiles' })).not.toBeInTheDocument();
   });
 });

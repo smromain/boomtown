@@ -76,6 +76,53 @@
 
 /* The three music controls read as one instrument rather than three loose
    buttons, so they sit tighter to each other than to the speaker beside them. */
+/* The way out (#73). It sits at the end of the brand region, set apart from
+   the audio controls by a rule: those are properties of the app, this leaves
+   the game, and they should not read as one cluster. */
+.exitButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 12px;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--chrome-rule);
+  border-radius: 0;
+  padding-left: 12px;
+  box-sizing: content-box;
+  background: transparent;
+  color: var(--chrome-muted);
+  cursor: pointer;
+}
+
+.exitButton:hover {
+  color: var(--accent);
+}
+
+.exitDialog {
+  width: min(26rem, 90vw);
+}
+
+.exitTitle {
+  font-size: 1.35rem;
+  margin: 0 0 0.5rem;
+}
+
+.exitBody {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0 0 1.25rem;
+}
+
+.exitActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
 .musicGroup {
   display: inline-flex;
   align-items: center;
@@ -234,6 +281,10 @@
   align-items: center;
   justify-content: center;
   background: var(--bg);
+  /* The size the plate is measured against. It used to be `.stage`, but the
+     stage now shrink-wraps the plate, and a box cannot be both the ruler and
+     the thing being measured. */
+  container-type: size;
 }
 
 /* Takes the tile rack's place in the right column while a bot / remote player
@@ -405,7 +456,15 @@
 }
 
 .column {
-  flex: 0 1 26rem;
+  /*
+   * The rail yields to the board as the window narrows. It used to be a flat
+   * `26rem` basis, and since `.boardArea` is `flex: 1` with `min-width: 0` the
+   * board was always the one to give — at 990px the rail held 416px against a
+   * 498px board, which is most of the window spent on a short list (#71).
+   * A percentage basis between the two bounds keeps the panels readable while
+   * letting the game have the room.
+   */
+  flex: 0 1 clamp(20rem, 30%, 26rem);
   min-width: 20rem;
   display: flex;
   flex-direction: column;
@@ -530,7 +589,26 @@
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+}
+
+/*
+ * One seat's holding in one corporation: the industry mark on the industry's
+ * colour, then the count.
+ *
+ * This had no rule at all (#74) — an inline `<span>` carrying a background,
+ * so its box came from the line box: taller than it was wide, and the mark
+ * sat on the text baseline inside it. It reads as a chip everywhere else in
+ * the app, so it is a square here too, with the mark centred in it.
+ */
+.chipBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 19px;
+  height: 19px;
+  border-radius: 4px;
 }
 
 .dot {
@@ -752,6 +830,13 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* Off-turn the rack is a readout, not a control, and has to look like one —
+   "disabled buttons" alone reads as a thing that is broken rather than a thing
+   that is not yours yet (#61). */
+.rack[data-idle] {
+  opacity: 0.72;
 }
 
 .rackHeading {
