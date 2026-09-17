@@ -1874,28 +1874,33 @@ AFTER_SERIES = [
   ("June",  [6000,6100,6400,6900,7200,7600,8000,8300,8900,9400,9900,10300,11000,11600,12100]),
   ("Ravi",  [6000,5900,6100,6300,6600,6900,7100,7000,7300,7600,7900,8100,8400,8600,8900]),
 ]
-# Mergers are the storytelling — they happen *inside* a turn and are what the
-# lines are reacting to, so they are marked on the axis rather than left to be
-# inferred from a kink in a line.
-AFTER_MERGERS = [(5, "Enrun folds"), (7, "Concordia folds"), (13, "Palmistry folds")]
+# The company timeline. Colour on this artboard belongs to corporations and to
+# nothing else, so every marker below is tinted by the company it names and the
+# *glyph* says what happened to it: a filled dot for a founding, a hollow one
+# for a refounding — a name can come back, and held stock in it goes live again
+# (`docs/rules.md`) — and a dashed rule for the merger that ended it. The label
+# text stays in ink; the mark carries the identity.
+# Four panels and a note row; measured from the render.
+AFTER_H = 2153
 
-def af_spark(values, w=844, h=40, ink=B_INK, fill=True):
-    """One seat's whole game, as its own little chart. One series per facet, so
-    identity comes from the row it sits in — no palette, nothing to confuse
-    with a corporation."""
-    lo, hi = min(values), max(values)
-    span = (hi - lo) or 1
-    pts = [(i * w / (len(values) - 1), h - 3 - (v - lo) * (h - 7) / span) for i, v in enumerate(values)]
-    d = "M" + " L".join("%.1f %.1f" % p for p in pts)
-    area = ('<path d="%s L%.1f %d L0 %d Z" fill="%s" opacity=".10"/>'
-            % (d, pts[-1][0], h, h, ink)) if fill else ""
-    return ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;overflow:visible">'
-            '%s<path d="%s" fill="none" stroke="%s" stroke-width="2" stroke-linejoin="round" '
-            'stroke-linecap="round"/><circle cx="%.1f" cy="%.1f" r="3" fill="%s"/></svg>'
-            % (w, h, w, h, area, d, ink, pts[-1][0], pts[-1][1], ink))
+AFTER_EVENTS = [
+  (1,  "found",   "books"),
+  (2,  "found",   "electronics"),
+  (3,  "found",   "energy"),
+  (5,  "fold",    "electronics"),
+  (6,  "found",   "video"),
+  (7,  "fold",    "energy"),
+  (9,  "refound", "electronics"),
+  (11, "found",   "tech"),
+  (13, "fold",    "video"),
+]
+
+# Cash comes from the same table the Main artboard prints, so the two agree.
+AFTER_CASH = {name: cash for name, cash, _ in PLAYERS}
+AFTER_SHARES = {name: sum(h.values()) for name, _, h in PLAYERS}
 
 def af_tabs(active):
-    tabs = ["Standings", "The shape of it", "Awards"]
+    tabs = ["Standings", "Tracking the market", "Awards"]
     out = []
     for t in tabs:
         on = t == active
@@ -1913,41 +1918,79 @@ def af_panel(title, note, inner, w=None):
             '<span style="font-size:11px;color:%s">%s</span></div>%s</div>'
             % ("width:%dpx;" % w if w else "flex:1;", B_PANEL, L_TOP_RULE, L_ELEV[1], title, B_MUTED, note, inner))
 
+AF_COLS = "40px 1fr 150px 110px 180px 200px 118px"
+
 def af_standings():
-    """Direction 1 — small multiples. The standings list every game already
-    ends on, with each seat's whole game drawn in its own row. Six of these
-    stack without a single colour decision, and the eye reads shape, which is
-    the thing worth reading."""
+    """The standings, as numbers.
+
+    This row used to carry a sparkline per seat, and it was the graph below at
+    a tenth the resolution — the useful thing in a standings table is the
+    figures. The width is better spent splitting net worth into the parts it is
+    made of, which is also the only place the reader can check the arithmetic:
+    cash plus stock at closing price, published by settlement.
+    """
+    head = ('<div style="display:grid;grid-template-columns:%s;gap:18px;padding:0 4px 8px;'
+            'border-bottom:1px solid %s;font-size:10px;letter-spacing:.14em;text-transform:uppercase;'
+            'color:%s" class="mono">%s</div>'
+            % (AF_COLS, B_RULE, B_MUTED,
+               "".join('<span style="%s">%s</span>' % ("text-align:right" if i >= 2 else "", h)
+                       for i, h in enumerate(["", "seat", "cash", "shares", "stock at close",
+                                              "net worth", "vs start"]))))
     rows = []
     ranked = sorted(AFTER_SERIES, key=lambda s: -s[1][-1])
     for i, (name, vals) in enumerate(ranked):
         lead = i == 0
+        cash = AFTER_CASH[name]
+        stock = vals[-1] - cash
         delta = vals[-1] - vals[0]
         rows.append(
-          '<div style="display:grid;grid-template-columns:26px 150px 1fr 132px 88px;align-items:center;'
-          'gap:16px;padding:11px 4px;border-bottom:1px solid %s">'
-          '<span class="ser" style="font-size:17px;color:%s">%d</span>'
-          '<span style="font-size:15px;%s">%s</span>'
-          '%s'
-          '<span class="ser num" style="font-size:20px;text-align:right">%s</span>'
-          '<span class="num" style="font-size:12px;text-align:right;color:%s">%s%s</span></div>'
-          % (B_RULE, B_ACCENT if lead else B_MUTED, i + 1,
+          '<div style="display:grid;grid-template-columns:%s;align-items:baseline;gap:18px;'
+          'padding:13px 4px;border-bottom:1px solid %s">'
+          '<span class="ser" style="font-size:19px;color:%s">%d</span>'
+          '<span style="font-size:16px;%s">%s</span>'
+          '<span class="num" style="font-size:15px;text-align:right;color:%s">%s</span>'
+          '<span class="num" style="font-size:15px;text-align:right;color:%s">%d</span>'
+          '<span class="num" style="font-size:15px;text-align:right;color:%s">%s</span>'
+          '<span class="ser num" style="font-size:24px;text-align:right;%s">%s</span>'
+          '<span class="num" style="font-size:12.5px;text-align:right;color:%s">%s%s</span></div>'
+          % (AF_COLS, B_RULE, B_ACCENT if lead else B_MUTED, i + 1,
              "font-weight:700" if lead else "", name,
-             af_spark(vals, w=844, h=40, ink=B_ACCENT if lead else B_INK),
-             money(vals[-1]), B_MUTED, "+" if delta >= 0 else "−", money(abs(delta))[1:]))
-    return af_panel("Final standings", "net worth · cash + stock at closing price", "".join(rows))
+             B_MUTED, money(cash), B_MUTED, AFTER_SHARES[name], B_MUTED, money(stock),
+             "color:%s" % B_ACCENT if lead else "", money(vals[-1]),
+             B_MUTED, "+" if delta >= 0 else "−", money(abs(delta))[1:]))
+    return af_panel("Final standings", "net worth · cash + stock at closing price", head + "".join(rows))
 
-def af_graph_lit(W=1050, H=320):
-    """Direction 2 — one chart across the full width, the way the Mario Party
-    end screen does it: the plot takes the room, and a legend sits down the
-    right with each seat's final figure.
+def af_key():
+    """The marker key, in the panel's own note slot: a glyph and a word each."""
+    def glyph(inner):
+        return '<svg width="14" height="12" style="display:block;overflow:visible">%s</svg>' % inner
+    items = [
+      (glyph('<circle cx="7" cy="6" r="4" fill="%s"/>' % B_INK), "founded"),
+      (glyph('<circle cx="7" cy="6" r="3.5" fill="%s" stroke="%s" stroke-width="1.6"/>' % (B_PANEL, B_INK)),
+       "founded again"),
+      (glyph('<line x1="7" y1="0" x2="7" y2="12" stroke="%s" stroke-width="1.5" stroke-dasharray="3 3"/>' % B_MUTED),
+       "folded"),
+    ]
+    return ('<span style="display:inline-flex;align-items:center;gap:14px;color:%s">'
+            '<span>net worth per turn</span>%s</span>'
+            % (B_MUTED, "".join('<span style="display:inline-flex;align-items:center;gap:5px">%s%s</span>' % it
+                                for it in items)))
+
+def af_graph_lit(W=1050, H=330):
+    """One chart across the full width, the way the Mario Party end screen does
+    it: the plot takes the room and a legend sits down the right with each
+    seat's final figure.
 
     The seat being read is in the accent and the rest are recessive ink, every
     line direct-labelled at the legend. Identity is the label; the accent only
     says which line you are following, and hovering or tabbing promotes any of
     them — so the chart has as many readings as there are seats.
+
+    The company timeline rides the x-axis underneath it, because a line that
+    doubles in a turn is answering something: a founding, a refounding, or the
+    merger that ended a company somebody was holding.
     """
-    PAD_L, PAD_B, PAD_R, PAD_T = 40, 40, 8, 14
+    PAD_L, PAD_B, PAD_R, PAD_T = 40, 62, 8, 14
     allv = [v for _, vals in AFTER_SERIES for v in vals]
     lo, hi = min(allv) * 0.96, max(allv) * 1.02
     n = len(AFTER_TURNS)
@@ -1973,14 +2016,32 @@ def af_graph_lit(W=1050, H=320):
                      '<text x="%d" y="%.1f" font-size="9" fill="%s" text-anchor="end" '
                      'dominant-baseline="middle" class="num">%s</text>'
                      % (PAD_L, y, xy(n - 1, lo)[0], y, B_RULE, PAD_L - 7, y, B_MUTED, money(v)))
-    # mergers: the moments the lines are reacting to
-    for i, (t, lbl) in enumerate(AFTER_MERGERS):
+
+    # The company timeline. Foldings are dashed rules labelled along the top,
+    # because they are what the lines are reacting to and the kink is up there;
+    # foundings sit on the axis itself, where the reader is already reading
+    # turn numbers. Two label rows, alternating, so neighbouring turns never
+    # collide.
+    marks, folds = [], [e for e in AFTER_EVENTS if e[1] == "fold"]
+    for i, (t, _, ind) in enumerate(folds):
         x = xy(t, lo)[0]
-        ticks.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="1" '
+        marks.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="1" '
                      'stroke-dasharray="3 3"/>'
-                     '<text x="%.1f" y="%d" font-size="9" fill="%s" text-anchor="middle" '
-                     'style="letter-spacing:.08em;text-transform:uppercase">%s</text>'
-                     % (x, PAD_T - 6, x, H - PAD_B, B_MUTED, x, PAD_T - 11, B_ACCENT, lbl))
+                     '<rect x="%.1f" y="%d" width="7" height="7" rx="1.5" fill="%s"/>'
+                     '<text x="%.1f" y="%d" font-size="9" fill="%s" text-anchor="start" '
+                     'style="letter-spacing:.08em;text-transform:uppercase">%s folds</text>'
+                     % (x, PAD_T - 6, x, H - PAD_B, B_MUTED, x - 3.5, PAD_T - 17, CORP[ind]["color"],
+                        x + 7, PAD_T - 11, B_MUTED, CORP[ind]["name"]))
+    for i, (t, kind, ind) in enumerate([e for e in AFTER_EVENTS if e[1] != "fold"]):
+        x, y = xy(t, lo)[0], H - PAD_B
+        col = CORP[ind]["color"]
+        dot = ('<circle cx="%.1f" cy="%d" r="4" fill="%s"/>' % (x, y, col) if kind == "found"
+               else '<circle cx="%.1f" cy="%d" r="3.6" fill="%s" stroke="%s" stroke-width="1.8"/>'
+                    % (x, y, B_PANEL, col))
+        label = CORP[ind]["name"] + (" again" if kind == "refound" else "")
+        marks.append('%s<text x="%.1f" y="%d" font-size="8.5" fill="%s" text-anchor="middle" '
+                     'style="letter-spacing:.07em;text-transform:uppercase">%s</text>'
+                     % (dot, x, y + (32 if i % 2 == 0 else 45), B_MUTED, label))
 
     lines = []
     for name, vals in AFTER_SERIES:
@@ -1992,9 +2053,9 @@ def af_graph_lit(W=1050, H=320):
                      % (d, B_ACCENT if lit else B_INK, "2.5" if lit else "1.5", "1" if lit else ".32",
                         pts[-1][0], pts[-1][1], 4 if lit else 3, B_ACCENT if lit else B_INK))
     svg = ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;overflow:visible">'
-           '<line x1="%d" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="1"/>%s%s</svg>'
+           '<line x1="%d" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="1"/>%s%s%s</svg>'
            % (W, H, W, H, PAD_L, H - PAD_B, xy(n - 1, lo)[0], H - PAD_B, B_RULE,
-              "".join(ticks), "".join(lines)))
+              "".join(ticks), "".join(marks), "".join(lines)))
 
     # The legend — the reference's right-hand column: who, where they finished,
     # and a swatch of their own line so the two read as one thing.
@@ -2012,42 +2073,145 @@ def af_graph_lit(W=1050, H=320):
           % (B_RULE, B_ACCENT if lit else B_INK, "2.5" if lit else "1.5", "1" if lit else ".4",
              B_ACCENT if lit else B_MUTED, i + 1, "font-weight:700" if lit else "", name,
              money(vals[-1])))
-    return af_panel("The shape of it", "net worth per turn · mergers marked",
+    return af_panel("Tracking the market", af_key(),
                     '<div style="display:flex;gap:26px;align-items:flex-start">'
                     '<div style="flex:1;min-width:0">%s</div>'
                     '<div style="width:236px;flex-shrink:0;padding-top:4px">%s</div></div>'
                     % (svg, "".join(legend)))
 
+# Every candidate from #69, kept — the set is not trimmed, it is *paged*. Each
+# is tinted by the corporation it is genuinely about (the one that died, the one
+# that was built) and left neutral otherwise, which is the answer the seat-colour
+# finding forces on "Colour, literally".
+#   title, subtitle, winner, the number, corporation it is about, Boomtown-only
+AFTER_AWARDS = [
+  ("Synergies Realised", "turned other people's companies into your bonus",
+   "Nadia", "3 chains folded on her tile", "electronics", False),
+  ("Professional Mourner", "made more money from companies dying than from any of them living",
+   "You", money(9000) + " of it in bonuses", "energy", False),
+  ("Rug-Puller", "founded it, let everyone buy in, then pulled the floor out",
+   "You", "Radio Hut · 9 shares left with the others", "electronics", False),
+  ("Sentimental Value", "still holding stock in companies that no longer exist",
+   "Ravi", "11 shares kept through a merger", "books", False),
+  ("Quietly Developing The Suburbs", "placed more tiles that did nothing than anyone",
+   "June", "9 tiles, no effect", None, False),
+  ("Right Place, Right Collapse", "was holding the most of it when it went under",
+   "You", money(4000) + " on Radio Hut", "electronics", False),
+  ("Fire Sale Enthusiast", "sold up the moment the floor went",
+   "June", money(6300) + " in disposals", "video", False),
+  ("Money Was No Object", "spent it as fast as the bank could count it",
+   "Nadia", money(31400) + " across 14 turns", None, False),
+  ("Cash Is A Position", "spent the game waiting for a bargain that never came",
+   "Nadia", money(8200) + " still in hand", None, False),
+  ("Paper Baron", "most shares held when the music stopped",
+   "Nadia", "16 certificates", None, False),
+  ("Buy High, Buy Often", "never once let a price put them off",
+   "You", "34 shares bought", None, False),
+  ("All Eggs, One Basket", "one company, total conviction",
+   "Ravi", "6 of 12 shares in Megahit Video", "video", False),
+  ("A Little Of Everything", "a stake in everything, a position in nothing",
+   "You", "5 companies, none above 5 shares", None, False),
+  ("Too Big To Fail (Briefly)", "built the biggest thing on the board",
+   "June", "Chapter Eleven at 11 tiles", "books", False),
+  ("Serial Entrepreneur", "founded the most corporations",
+   "You", "3 of them, one of them twice", None, False),
+  ("Took The Money", "sold at defunct prices and never looked back",
+   "June", "14 shares at the close", None, False),
+  ("Strictly A Passenger", "never founded a thing, somehow still here",
+   "Nadia", "0 foundings, 2nd place", None, False),
+  ("Zoning Issues", "left more of the board unbuildable than anyone",
+   "June", "5 dead tiles swept", None, False),
+  ("Called Last Orders", "ended it while they were ahead",
+   "You", "end announced on turn 14", None, True),
+  ("Shareholder Activist", "would rather put it to the table",
+   "Ravi", "2 motions raised", None, True),
+  ("Showed Everyone Their Hand", "backed a motion, lost the vote, played on with the books open",
+   "Ravi", "open from turn 6", None, True),
+  ("Institutional Investor", "the heaviest vote in the room",
+   "Nadia", "16 shares behind it", None, True),
+]
+AF_PAGE = 5
+AF_PAGES = (len(AFTER_AWARDS) + AF_PAGE - 1) // AF_PAGE
+
 def af_awards():
-    """#69 — the awards, in the flavour voice. Each is tinted by the
-    corporation it is *about* (the one that died, the one that was built); an
-    award with no corporation in it stays ink. Nothing is tinted by whose award
-    it is, because seats have no colour — see the finding at the top."""
-    items = [
-      ("Synergies Realised", "turned other people's companies into your bonus",
-       "Nadia", "3 chains folded on her tile", "energy"),
-      ("Professional Mourner", "made more money from companies dying than from any of them living",
-       "You", money(9000) + " of it in bonuses", "video"),
-      ("Sentimental Value", "still holding stock in companies that no longer exist",
-       "Ravi", "11 shares kept through a merger", "books"),
-      ("Quietly Developing The Suburbs", "placed more tiles that did nothing than anyone",
-       "June", "9 tiles, no effect", None),
-    ]
+    """#69 — all of them, five at a time.
+
+    Choosing three or four per game means ranking "interesting", which is a
+    design problem with no good answer; paging the whole earned set means the
+    table sees every one of them and nobody has to decide. Five is what fits a
+    row without the eye having to hunt, and the cycle is slow enough to read
+    aloud — the thing this screen is for."""
     out = []
-    for title, sub, who, stat, ind in items:
-        tint = CORP[ind]["color"] if ind else B_INK
+    for title, sub, who, stat, ind, _bt in AFTER_AWARDS[:AF_PAGE]:
+        tint = CORP[ind]["color"] if ind else B_RULE
+        # Three columns, not two: the name, then the line that explains the
+        # joke, then who won it. A title left and a winner hard right leaves a
+        # hole across the middle of a 1312px row — the same hole the chart had.
         out.append(
-          '<div style="display:flex;gap:13px;padding:13px 0;border-bottom:1px solid %s">'
-          '<span style="flex-shrink:0;width:3px;border-radius:2px;background:%s"></span>'
-          '<div style="display:flex;flex-direction:column;gap:3px">'
-          '<span class="ser" style="font-size:16px">%s</span>'
-          '<span style="font-size:11.5px;color:%s;line-height:1.45">%s</span>'
-          '<span style="font-size:12px;margin-top:3px"><strong>%s</strong> '
-          '<span class="num" style="color:%s">· %s</span></span></div></div>'
+          '<div style="display:grid;grid-template-columns:3px 310px 1fr 250px;align-items:center;'
+          'gap:16px;padding:13px 0;border-bottom:1px solid %s">'
+          '<span style="align-self:stretch;border-radius:2px;background:%s"></span>'
+          '<span class="ser" style="font-size:17px">%s</span>'
+          '<span style="font-size:12.5px;color:%s;line-height:1.45">%s</span>'
+          '<span style="text-align:right;display:flex;flex-direction:column;gap:3px">'
+          '<span style="font-size:14px;font-weight:700">%s</span>'
+          '<span class="num" style="font-size:11.5px;color:%s">%s</span></span></div>'
           % (B_RULE, tint, title, B_MUTED, sub, who, B_MUTED, stat))
-    return af_panel("Awards", "four of eleven earned this game",
-                    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 40px">%s</div>'
-                    % "".join(out))
+
+    dots = "".join('<span style="width:%s;height:6px;border-radius:999px;background:%s"></span>'
+                   % ("20px" if i == 0 else "6px", B_ACCENT if i == 0 else B_RULE)
+                   for i in range(AF_PAGES))
+    pager = ('<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;'
+             'padding-top:12px">'
+             '<span style="display:inline-flex;align-items:center;gap:6px">%s</span>'
+             '<span style="font-size:11px;color:%s">page 1 of %d · turns over every 6 seconds · '
+             'hover or focus holds it</span></div>' % (dots, B_MUTED, AF_PAGES))
+    return af_panel("Awards", "%d earned this game · five at a time" % len(AFTER_AWARDS),
+                    "".join(out) + pager)
+
+def af_pool():
+    """The whole set on one panel — what #69 is actually asking to agree. The
+    subtitle is the joke; the line under it is the part that has to be right,
+    and it is what the fold over the command log computes."""
+    defs = [
+      ("Synergies Realised", "mergemaker on the most <code>corporation-defunct</code>"),
+      ("Professional Mourner", "largest sum of <code>bonus-paid</code>"),
+      ("Rug-Puller", "founded it, merged it away, others still holding"),
+      ("Sentimental Value", "most <code>shares-disposed.hold</code>"),
+      ("Quietly Developing The Suburbs", "most <code>tile-placed</code> with outcome <code>nothing</code>"),
+      ("Right Place, Right Collapse", "largest single <code>bonus-paid</code>"),
+      ("Fire Sale Enthusiast", "largest <code>shares-disposed.proceeds</code>"),
+      ("Money Was No Object", "largest sum of <code>shares-bought.cost</code>"),
+      ("Cash Is A Position", "least spent, most unspent at the close"),
+      ("Paper Baron", "most holdings at settlement"),
+      ("Buy High, Buy Often", "most shares bought across the game"),
+      ("All Eggs, One Basket", "most concentrated holding at the close"),
+      ("A Little Of Everything", "most diversified holding at the close"),
+      ("Too Big To Fail (Briefly)", "peak <code>corporation-grew.newSize</code>, to the placer"),
+      ("Serial Entrepreneur", "most <code>found-corporation</code> commands"),
+      ("Took The Money", "most shares sold at defunct prices"),
+      ("Strictly A Passenger", "founded nothing, finished mid-table or better"),
+      ("Zoning Issues", "most <code>dead-tiles-swept</code>"),
+      ("Called Last Orders", "the seat on <code>end-announced</code>"),
+      ("Shareholder Activist", "most <code>motion-raised</code>"),
+      ("Showed Everyone Their Hand", "in <code>books-opened</code> after a lost vote"),
+      ("Institutional Investor", "largest <code>vote-cast.weight</code>"),
+    ]
+    bt = {t for t, _s, _w, _st, _i, b in AFTER_AWARDS if b}
+    items = []
+    for title, rule in defs:
+        items.append(
+          '<div style="break-inside:avoid;padding:7px 0;display:flex;flex-direction:column;gap:2px">'
+          '<span style="font-size:13px">%s%s</span>'
+          '<span style="font-size:11px;color:%s;line-height:1.4">%s</span></div>'
+          % (title,
+             ('<span class="mono" style="margin-left:7px;font-size:8.5px;letter-spacing:.12em;'
+              'padding:2px 5px;border-radius:3px;border:1px solid %s;color:%s;vertical-align:2px">BT</span>'
+              % (B_RULE, B_MUTED)) if title in bt else "",
+             B_MUTED, rule))
+    return af_panel("The whole set",
+                    "22 in the pool · <span style=\"letter-spacing:.12em\">BT</span> = Boomtown tables only",
+                    '<div style="column-count:3;column-gap:40px">%s</div>' % "".join(items))
 
 def af_note(title, body):
     return ('<div style="width:430px;border:1px dashed %s;border-radius:4px;padding:15px 17px;'
@@ -2071,20 +2235,20 @@ def build_after():
     )
     row = lambda inner: ('<div style="width:1440px;padding:0 44px;display:flex;gap:22px;'
                          'align-items:flex-start">%s</div>' % inner)
-    row1, row2, row3 = row(af_standings()), row(af_graph_lit()), row(af_awards())
+    rows = "".join(row(p) for p in (af_standings(), af_graph_lit(), af_awards(), af_pool()))
     notes = (
       '<div style="width:1440px;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
       % (af_note("Why the seats have no colours",
                  "#68 asks for a seat palette that is colourblind-safe <em>and</em> distinct from the seven "
                  "corporation colours. 12,000 candidates through the dataviz validator say it does not exist at "
                  "six seats — not at ΔE 15 from the board palette, not at 12, not at 10. The board already "
-                 "spends the usable space. So identity is the label and the row, never the hue."),
-         af_note("Two directions, both here",
-                 "<strong>Above:</strong> small multiples — one seat per row, one line per chart, no palette at "
-                 "all. Scales to six seats and reads as the standings list it already is. "
-                 "<strong>Below left:</strong> one pair of axes, the read seat in the accent and the rest "
-                 "recessive, every line direct-labelled. Richer for comparing, and it needs hover to give the "
-                 "other five their turn."),
+                 "spends the usable space. So identity is the label and the row, never the hue — and the colour "
+                 "you do see on the chart belongs to companies, which already own it."),
+         af_note("Why the standings are numbers",
+                 "They carried a sparkline per seat and it was the chart below at a tenth the resolution. What "
+                 "a standings table is <em>for</em> is the figures, so the width goes on splitting net worth "
+                 "into the parts it is made of — cash, shares, stock at close — which is also the only place "
+                 "the table can check settlement's arithmetic. The shape of the game lives in one panel."),
          af_note("What the y-axis is",
                  "Net worth — cash plus stock at closing price — and it says so on the panel rather than "
                  "leaving it inferred. Cash alone would show a fully-invested player as broke. It must come from "
@@ -2092,10 +2256,10 @@ def build_after():
                  "with growth headroom priced in."))
     )
     body = (
-      '<div style="width:1440px;min-height:1500px;background:%s;color:%s;'
+      '<div style="width:1440px;min-height:%dpx;background:%s;color:%s;'
       'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:40px 0 44px;'
-      'display:flex;flex-direction:column;gap:26px;align-items:center">%s%s%s%s%s</div>'
-      % (B_BG, B_INK, header, row1, row2, row3, notes)
+      'display:flex;flex-direction:column;gap:26px;align-items:center">%s%s%s</div>'
+      % (AFTER_H, B_BG, B_INK, header, rows, notes)
     )
     write("After.dc.html", B_HELMET, body)
 
@@ -2112,7 +2276,7 @@ def build_canvas():
         {"file": "Names.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 2680, "title": "Merged names", "print": "flow", "page": "page-1"},
         {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "The pool", "print": "flow", "page": "page-1"},
         {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
-        {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 1341, "title": "After the game", "print": "flow", "page": "page-1"},
+        {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 2240, "title": "After the game", "print": "flow", "page": "page-1"},
         {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4720, "title": "Rules model",
          "print": "flow", "page": "page-2"},
         {"file": "BoardRoom.dc.html",    "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "A - Board Room", "page": "page-3"},
