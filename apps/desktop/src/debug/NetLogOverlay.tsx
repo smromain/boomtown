@@ -10,9 +10,10 @@ import { copy as strings } from '../copy/copy.js';
  * which is the whole point: the answer to "it just says waiting for the room"
  * is the frame list, and asking a player to open devtools is not a plan.
  *
- * Mounted in every build. In a packaged build the log captures nothing until
- * it is switched on (the toggle here, persisted), so this costs a release
- * nothing but a key handler.
+ * Mounted in a dev build only — `App` gates it — so the shortcut is dead in a
+ * packaged build and the capture switch below is unreachable there. A player
+ * being talked through a stuck room reads the timeline off the console
+ * instead, after setting `boomtown.netlog` to `on` in localStorage.
  */
 export function NetLogOverlay() {
   const [open, setOpen] = useState(false);

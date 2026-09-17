@@ -122,8 +122,9 @@ plays one to a ranked result — which is why that check is `humanlessRoom` rath
 ## Diagnosing it
 
 - Client side: `Ctrl`/`Cmd`+`Shift`+`L` opens the netlog on any screen — every frame in and out,
-  socket lifecycle, host resolution, lobby decisions, with a Copy button. On by default in dev; in a
-  packaged build, Settings → **Log online play**.
+  socket lifecycle, host resolution, lobby decisions, with a Copy button. Dev builds only: a
+  packaged build ships neither the overlay nor the Settings switch, and captures nothing until
+  `localStorage['boomtown.netlog']` is set to `on`, which mirrors the timeline to the console.
 - Room side: every lobby decision prints one line. `npm run server:dev` shows them locally;
   `npx partykit tail` against the deployed room.
 - `npm run test:server` boots a real `partykit dev` room and plays against it. See `testing.md`.

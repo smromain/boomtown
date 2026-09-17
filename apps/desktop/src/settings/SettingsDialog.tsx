@@ -221,26 +221,33 @@ export function SettingsDialog({
                   <span className={form.note}>{c.onlineHostNote}</span>
                 </label>
 
-                <div className={form.field}>
-                  <span>{c.logging}</span>
-                  <Choice
-                    quiet
-                    label={c.logging}
-                    value={logging ? 'on' : 'off'}
-                    options={[
-                      { value: 'on', label: c.on },
-                      { value: 'off', label: c.off },
-                    ]}
-                    onChange={(value) => {
-                      // Persisted immediately, not on Save: a player being
-                      // talked through a stuck room should not have to find
-                      // Save first.
-                      netlog.setEnabled(value === 'on', true);
-                      setLogging(value === 'on');
-                    }}
-                  />
-                  <span className={form.note}>{c.loggingNote}</span>
-                </div>
+                {/* Dev builds only. In a packaged build the log is off and
+                    there is no way to switch it on: a control whose whole
+                    purpose is diagnosing a stuck room is noise on a settings
+                    page a player reads once. The capture code still ships —
+                    it costs a release nothing — but nothing reaches it. */}
+                {import.meta.env.DEV && (
+                  <div className={form.field}>
+                    <span>{c.logging}</span>
+                    <Choice
+                      quiet
+                      label={c.logging}
+                      value={logging ? 'on' : 'off'}
+                      options={[
+                        { value: 'on', label: c.on },
+                        { value: 'off', label: c.off },
+                      ]}
+                      onChange={(value) => {
+                        // Persisted immediately, not on Save: a player being
+                        // talked through a stuck room should not have to find
+                        // Save first.
+                        netlog.setEnabled(value === 'on', true);
+                        setLogging(value === 'on');
+                      }}
+                    />
+                    <span className={form.note}>{c.loggingNote}</span>
+                  </div>
+                )}
               </section>
             </div>
 

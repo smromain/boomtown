@@ -9,10 +9,11 @@
  * It is deliberately dependency-free and DOM-free: `client-core` also runs
  * inside the PartyKit room (workerd) and inside a Web Worker.
  *
- * On by default in a dev build. In a packaged build it is off until someone
- * turns it on (Settings -> "Log online play", which writes the localStorage
- * key below), so a release pays nothing for it but a stuck player can still
- * capture a timeline.
+ * On by default in a dev build. In a packaged build it is off, and nothing in
+ * the UI arms it: the Settings switch and the on-screen reader are both dev
+ * only, so a release pays nothing for it. The storage key below is still
+ * honoured, which is the support path — setting `boomtown.netlog` to `on`
+ * from the console makes a packaged build capture and mirror the timeline.
  */
 
 export type NetLogDirection =
@@ -93,7 +94,8 @@ export const netlog = {
 
   /**
    * Turn capture on or off. `persist` writes the choice to localStorage so it
-   * survives a reload — that is how a packaged build gets logging switched on.
+   * survives a reload. The callers are dev-only UI; a packaged build is
+   * switched on by writing that key directly.
    */
   setEnabled(on: boolean, persist = false): void {
     enabled = on;

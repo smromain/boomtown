@@ -66,11 +66,14 @@ export function App() {
   }, []);
 
   // The online-play log rides along on every screen (Ctrl/Cmd+Shift+L), so a
-  // lobby that will not fill can be diagnosed without leaving it.
+  // lobby that will not fill can be diagnosed without leaving it — in a dev
+  // build. A packaged build ships neither the reader nor the Settings switch
+  // that arms it, so the shortcut does nothing there: a diagnostic panel a
+  // player can open by accident mid-game is worse than no panel at all.
   return (
     <>
       {body(screen)}
-      <NetLogOverlay />
+      {import.meta.env.DEV && <NetLogOverlay />}
     </>
   );
 

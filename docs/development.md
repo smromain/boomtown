@@ -103,8 +103,11 @@ Create the room in one window and join by its code in the other.
 ## Diagnosing online play
 
 `Ctrl`/`Cmd`+`Shift`+`L` opens the online-play log on any screen: every frame in and out, socket
-lifecycle, host resolution and lobby decisions, with a Copy button for bug reports. It captures by
-default in a dev build; in a packaged build, Settings → **Log online play** turns it on.
+lifecycle, host resolution and lobby decisions, with a Copy button for bug reports. **Dev builds
+only** — both the overlay and the Settings → **Log online play** switch are gated on
+`import.meta.env.DEV`, so a packaged build captures nothing and shows neither. To get a timeline out
+of a release, set `localStorage['boomtown.netlog'] = 'on'` and reload: capture and the console
+mirror come back, read from devtools rather than the overlay.
 
 Room-side, every lobby decision prints one line — visible in `npm run server:dev`, or
 `npx partykit tail` against the deployed room.
