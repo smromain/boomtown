@@ -74,6 +74,16 @@
       "page": "page-1"
     },
     {
+      "file": "After.dc.html",
+      "x": 4680,
+      "y": 2350,
+      "w": 1440,
+      "h": 1341,
+      "title": "After the game",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
       "file": "RulesModel.dc.html",
       "x": 0,
       "y": 0,
@@ -118,6 +128,14 @@
       "w": 660,
       "page": "page-1",
       "text": "Seven companies that were once unassailable and then got eaten - which is what happens to every corporation on this board. Parodies of defunct brands, not live ones. Nothing here has been trademark-searched, and the backwards R is trade dress rather than wordplay: swap it first if anyone gets nervous."
+    },
+    {
+      "id": "note-after",
+      "x": 4680,
+      "y": 2140,
+      "w": 700,
+      "page": "page-1",
+      "text": "The post-game screen (#68 + #69), designed as one thing because both issues asked for that. The seats deliberately have no colours: a palette that is both colourblind-safe and distinct from the seven corporation colours does not exist at six seats - 12,000 candidates through the dataviz validator say so. Identity is the label and the row."
     },
     {
       "id": "note-rules",

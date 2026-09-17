@@ -1834,6 +1834,231 @@ def build_beats():
     )
     write("Beats.dc.html", B_HELMET, body)
 
+# =============================================================== AFTER THE GAME
+# The post-game retrospective (#68 per-turn standings, #69 superlatives). Both
+# issues asked to be designed as ONE screen rather than two things bolted on,
+# and both sit *behind* the victory beat's last-to-first reveal — this is what
+# the table looks at afterwards, not the payoff itself.
+#
+# ---------------------------------------------------------------------------
+# THE COLOUR FINDING, which decided the form of the graph.
+#
+# #68 asks for "a deliberate palette for seats, legible against the cream
+# ground and distinct from the seven corporation colours". That palette was
+# searched for, not guessed at: 12,000 candidates in OKLCH through the dataviz
+# skill's own validator (lightness band, chroma floor, all-pairs CVD
+# separation, normal-vision floor, contrast). The result:
+#
+#   seats  ΔE>=15 from a corp colour   ΔE>=12        ΔE>=10
+#   6      no candidate                no candidate  no candidate
+#   5      no candidate                no candidate  passes (CVD 9.1)
+#   4      no candidate                passes        passes
+#
+# At six seats there is **no** palette that is both colourblind-safe and
+# distinct from the corporation palette. The seven board colours already
+# saturate the usable space — which is exactly why `pool.ts` had to re-space
+# them for luminance in the first place. So the graph does not encode seats by
+# hue at all, and the two directions below are the two honest ways out. The
+# same finding answers #69's "Colour, literally" question: an award is tinted
+# by the corporation it is *about*, never by whose award it is.
+# ---------------------------------------------------------------------------
+
+# Net worth per seat per turn. Illustrative, but shaped like a real game: an
+# early leader, a merger that pays somebody else, and a last-round overtake —
+# which is the whole reason to draw this rather than print the final table.
+AFTER_TURNS = list(range(0, 15))
+AFTER_SERIES = [
+  # name, per-turn net worth, final rank
+  ("Nadia", [6000,6000,6300,7100,7400,9800,10200,10600,11400,11800,12300,12900,13400,15600,16400]),
+  ("You",   [6000,6000,6200,6600,7800,8100,8600,12400,12800,13100,13600,14100,14600,15100,17300]),
+  ("June",  [6000,6100,6400,6900,7200,7600,8000,8300,8900,9400,9900,10300,11000,11600,12100]),
+  ("Ravi",  [6000,5900,6100,6300,6600,6900,7100,7000,7300,7600,7900,8100,8400,8600,8900]),
+]
+# Mergers are the storytelling — they happen *inside* a turn and are what the
+# lines are reacting to, so they are marked on the axis rather than left to be
+# inferred from a kink in a line.
+AFTER_MERGERS = [(5, "Enrun folds"), (7, "Concordia folds"), (13, "Palmistry folds")]
+
+def af_spark(values, w=176, h=34, ink=B_INK, fill=True):
+    """One seat's whole game, as its own little chart. One series per facet, so
+    identity comes from the row it sits in — no palette, nothing to confuse
+    with a corporation."""
+    lo, hi = min(values), max(values)
+    span = (hi - lo) or 1
+    pts = [(i * w / (len(values) - 1), h - 3 - (v - lo) * (h - 7) / span) for i, v in enumerate(values)]
+    d = "M" + " L".join("%.1f %.1f" % p for p in pts)
+    area = ('<path d="%s L%.1f %d L0 %d Z" fill="%s" opacity=".10"/>'
+            % (d, pts[-1][0], h, h, ink)) if fill else ""
+    return ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;overflow:visible">'
+            '%s<path d="%s" fill="none" stroke="%s" stroke-width="2" stroke-linejoin="round" '
+            'stroke-linecap="round"/><circle cx="%.1f" cy="%.1f" r="3" fill="%s"/></svg>'
+            % (w, h, w, h, area, d, ink, pts[-1][0], pts[-1][1], ink))
+
+def af_tabs(active):
+    tabs = ["Standings", "The shape of it", "Awards"]
+    out = []
+    for t in tabs:
+        on = t == active
+        out.append('<span style="padding:7px 15px;border-radius:999px;font-size:12.5px;%s">%s</span>'
+                   % ("background:%s;color:%s;font-weight:600" % (B_INK, B_BG) if on
+                      else "color:%s" % B_MUTED, t))
+    return ('<div style="display:inline-flex;gap:3px;padding:3px;border:1px solid %s;border-radius:999px;'
+            'background:%s">%s</div>' % (B_RULE, B_PANEL, "".join(out)))
+
+def af_panel(title, note, inner, w=None):
+    return ('<div style="%sbackground:%s;%sborder-radius:4px;box-shadow:%s;padding:18px 20px 20px;'
+            'display:flex;flex-direction:column;gap:14px">'
+            '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px">'
+            '<span class="ser" style="font-size:19px">%s</span>'
+            '<span style="font-size:11px;color:%s">%s</span></div>%s</div>'
+            % ("width:%dpx;" % w if w else "flex:1;", B_PANEL, L_TOP_RULE, L_ELEV[1], title, B_MUTED, note, inner))
+
+def af_standings():
+    """Direction 1 — small multiples. The standings list every game already
+    ends on, with each seat's whole game drawn in its own row. Six of these
+    stack without a single colour decision, and the eye reads shape, which is
+    the thing worth reading."""
+    rows = []
+    ranked = sorted(AFTER_SERIES, key=lambda s: -s[1][-1])
+    for i, (name, vals) in enumerate(ranked):
+        lead = i == 0
+        delta = vals[-1] - vals[0]
+        rows.append(
+          '<div style="display:grid;grid-template-columns:26px 190px 176px 1fr auto;align-items:baseline;'
+          'gap:16px;padding:11px 4px;border-bottom:1px solid %s">'
+          '<span class="ser" style="font-size:17px;color:%s">%d</span>'
+          '<span style="font-size:15px;%s">%s</span>'
+          '%s'
+          '<span class="ser num" style="font-size:20px;text-align:right">%s</span>'
+          '<span class="num" style="font-size:12px;text-align:right;color:%s;width:84px;'
+          'padding-left:14px">%s%s</span></div>'
+          % (B_RULE, B_ACCENT if lead else B_MUTED, i + 1,
+             "font-weight:700" if lead else "", name,
+             af_spark(vals, ink=B_ACCENT if lead else B_INK),
+             money(vals[-1]), B_MUTED, "+" if delta >= 0 else "−", money(abs(delta))[1:]))
+    return af_panel("Final standings", "net worth · cash + stock at closing price", "".join(rows))
+
+def af_graph_lit():
+    """Direction 2 — one chart, one line lit. Every seat on one pair of axes,
+    the seat being read in the accent and the rest in recessive ink, each
+    direct-labelled at its right end. Identity is the label; the accent only
+    says which line you are following. Hovering or tabbing promotes any line,
+    so the chart has six readings rather than one."""
+    W, H, PAD_L, PAD_B = 560, 258, 8, 38
+    allv = [v for _, vals in AFTER_SERIES for v in vals]
+    lo, hi = min(allv) * 0.96, max(allv) * 1.02
+    def xy(i, v):
+        return (PAD_L + i * (W - PAD_L - 96) / (len(AFTER_TURNS) - 1),
+                H - PAD_B - (v - lo) * (H - PAD_B - 14) / (hi - lo))
+    # recessive gridlines, one per merger — the moments the lines react to
+    # Two rows, alternating: at 14 turns across 460px two mergers three turns
+    # apart put their labels straight through each other on one line.
+    grid = "".join('<line x1="%.1f" y1="8" x2="%.1f" y2="%d" stroke="%s" stroke-width="1" stroke-dasharray="2 4"/>'
+                   '<text x="%.1f" y="%d" font-size="9" fill="%s" text-anchor="middle" '
+                   'style="letter-spacing:.08em;text-transform:uppercase">%s</text>'
+                   % (xy(t, lo)[0], xy(t, lo)[0], H - PAD_B, B_RULE,
+                      xy(t, lo)[0], H - PAD_B + (13 if i % 2 == 0 else 25), B_MUTED, lbl)
+                   for i, (t, lbl) in enumerate(AFTER_MERGERS))
+    lines = []
+    for name, vals in AFTER_SERIES:
+        lit = name == "You"
+        pts = [xy(i, v) for i, v in enumerate(vals)]
+        d = "M" + " L".join("%.1f %.1f" % p for p in pts)
+        lines.append('<path d="%s" fill="none" stroke="%s" stroke-width="%s" stroke-linejoin="round" '
+                     'stroke-linecap="round" opacity="%s"/>'
+                     '<circle cx="%.1f" cy="%.1f" r="%d" fill="%s"/>'
+                     '<text x="%.1f" y="%.1f" font-size="11.5" fill="%s" dominant-baseline="middle" '
+                     'style="%s">%s · %s</text>'
+                     % (d, B_ACCENT if lit else B_INK, "2.5" if lit else "1.5",
+                        "1" if lit else ".34",
+                        pts[-1][0], pts[-1][1], 4 if lit else 3, B_ACCENT if lit else B_INK,
+                        pts[-1][0] + 9, pts[-1][1], B_INK if lit else B_MUTED,
+                        "font-weight:700" if lit else "", name, money(vals[-1])))
+    svg = ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;overflow:visible">'
+           '<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="%s" stroke-width="1"/>%s%s</svg>'
+           % (W, H, W, H, PAD_L, H - PAD_B, W - 92, H - PAD_B, B_RULE, grid, "".join(lines)))
+    return af_panel("The shape of it", "turn 1 → 14 · mergers marked", svg)
+
+def af_awards():
+    """#69 — the awards, in the flavour voice. Each is tinted by the
+    corporation it is *about* (the one that died, the one that was built); an
+    award with no corporation in it stays ink. Nothing is tinted by whose award
+    it is, because seats have no colour — see the finding at the top."""
+    items = [
+      ("Synergies Realised", "turned other people's companies into your bonus",
+       "Nadia", "3 chains folded on her tile", "energy"),
+      ("Professional Mourner", "made more money from companies dying than from any of them living",
+       "You", money(9000) + " of it in bonuses", "video"),
+      ("Sentimental Value", "still holding stock in companies that no longer exist",
+       "Ravi", "11 shares kept through a merger", "books"),
+      ("Quietly Developing The Suburbs", "placed more tiles that did nothing than anyone",
+       "June", "9 tiles, no effect", None),
+    ]
+    out = []
+    for title, sub, who, stat, ind in items:
+        tint = CORP[ind]["color"] if ind else B_INK
+        out.append(
+          '<div style="display:flex;gap:13px;padding:13px 0;border-bottom:1px solid %s">'
+          '<span style="flex-shrink:0;width:3px;border-radius:2px;background:%s"></span>'
+          '<div style="display:flex;flex-direction:column;gap:3px">'
+          '<span class="ser" style="font-size:16px">%s</span>'
+          '<span style="font-size:11.5px;color:%s;line-height:1.45;max-width:40ch">%s</span>'
+          '<span style="font-size:12px;margin-top:3px"><strong>%s</strong> '
+          '<span class="num" style="color:%s">· %s</span></span></div></div>'
+          % (B_RULE, tint, title, B_MUTED, sub, who, B_MUTED, stat))
+    return af_panel("Awards", "four of eleven earned this game", "".join(out), w=468)
+
+def af_note(title, body):
+    return ('<div style="width:430px;border:1px dashed %s;border-radius:4px;padding:15px 17px;'
+            'display:flex;flex-direction:column;gap:7px">'
+            '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">%s</span>'
+            '<span style="font-size:11.5px;line-height:1.55;color:%s">%s</span></div>'
+            % (B_RULE, B_ACCENT, title, B_INK, body))
+
+def build_after():
+    header = (
+      '<div style="width:1440px;padding:0 44px;display:flex;flex-direction:column;gap:10px">'
+      '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">'
+      'Boomtown · after the game (#68 + #69)</span>'
+      '<span class="ser" style="font-size:34px">The shape of the game, once it is over</span>'
+      '<span style="font-size:13px;line-height:1.55;color:%s;max-width:940px">One screen, three tabs — the '
+      'standings every game already ends on, the per-turn graph, and the awards. It sits <em>behind</em> the '
+      'victory beat\'s last-to-first reveal: that is the payoff, this is what the table talks over afterwards. '
+      'Disclosure is free here — settlement already publishes every seat\'s cash and holdings — which is why '
+      'the whole-table version of the graph belongs at the end and nowhere else.</span>'
+      '<div style="margin-top:6px">%s</div></div>' % (B_MUTED, B_MUTED, af_tabs("Standings"))
+    )
+    row1 = ('<div style="width:1440px;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s</div>'
+            % af_standings())
+    row2 = ('<div style="width:1440px;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s</div>'
+            % (af_graph_lit(), af_awards()))
+    notes = (
+      '<div style="width:1440px;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
+      % (af_note("Why the seats have no colours",
+                 "#68 asks for a seat palette that is colourblind-safe <em>and</em> distinct from the seven "
+                 "corporation colours. 12,000 candidates through the dataviz validator say it does not exist at "
+                 "six seats — not at ΔE 15 from the board palette, not at 12, not at 10. The board already "
+                 "spends the usable space. So identity is the label and the row, never the hue."),
+         af_note("Two directions, both here",
+                 "<strong>Above:</strong> small multiples — one seat per row, one line per chart, no palette at "
+                 "all. Scales to six seats and reads as the standings list it already is. "
+                 "<strong>Below left:</strong> one pair of axes, the read seat in the accent and the rest "
+                 "recessive, every line direct-labelled. Richer for comparing, and it needs hover to give the "
+                 "other five their turn."),
+         af_note("What the y-axis is",
+                 "Net worth — cash plus stock at closing price — and it says so on the panel rather than "
+                 "leaving it inferred. Cash alone would show a fully-invested player as broke. It must come from "
+                 "settlement's own arithmetic, never from <code>evaluate()</code>, which is a bot's opinion "
+                 "with growth headroom priced in."))
+    )
+    body = (
+      '<div style="width:1440px;min-height:1240px;background:%s;color:%s;'
+      'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:40px 0 44px;'
+      'display:flex;flex-direction:column;gap:26px;align-items:center">%s%s%s%s</div>'
+      % (B_BG, B_INK, header, row1, row2, notes)
+    )
+    write("After.dc.html", B_HELMET, body)
+
 # ---------------------------------------------------------------- canvas
 def build_canvas():
     doc = {
@@ -1847,6 +2072,7 @@ def build_canvas():
         {"file": "Names.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 2680, "title": "Merged names", "print": "flow", "page": "page-1"},
         {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "The pool", "print": "flow", "page": "page-1"},
         {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
+        {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 1341, "title": "After the game", "print": "flow", "page": "page-1"},
         {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4720, "title": "Rules model",
          "print": "flow", "page": "page-2"},
         {"file": "BoardRoom.dc.html",    "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "A - Board Room", "page": "page-3"},
@@ -1857,6 +2083,8 @@ def build_canvas():
          "text": "Turn 14. Tile 9F is selected and Blackcurrant is about to swallow Enrun - and be renamed Blackcurrun for it.\nThe board state is rule-checked: Chapter 11 at 11 tiles and Megahit Video at 12 are both safe, which is what makes 3F a permanently dead tile. 6A and 12H each found a corporation, and two headquarters are still free."},
         {"id": "note-names", "x": 760, "y": -210, "w": 660, "page": "page-1",
          "text": "Seven companies that were once unassailable and then got eaten - which is what happens to every corporation on this board. Parodies of defunct brands, not live ones. Nothing here has been trademark-searched, and the backwards R is trade dress rather than wordplay: swap it first if anyone gets nervous."},
+        {"id": "note-after", "x": 4680, "y": 2140, "w": 700, "page": "page-1",
+         "text": "The post-game screen (#68 + #69), designed as one thing because both issues asked for that. The seats deliberately have no colours: a palette that is both colourblind-safe and distinct from the seven corporation colours does not exist at six seats - 12,000 candidates through the dataviz validator say so. Identity is the label and the row."},
         {"id": "note-rules", "x": 0, "y": -150, "w": 700, "page": "page-2",
          "text": "The sheet to argue with before any code exists. Every disagreement between the two rulebooks is listed as a config key rather than a fork."},
         {"id": "note-earlier", "x": 0, "y": -170, "w": 700, "page": "page-3",
@@ -1870,5 +2098,5 @@ def build_canvas():
 
 if __name__ == "__main__":
     build_a(); build_b(); build_c(); build_rules(); build_names(); build_pool(); build_reference()
-    build_language(); build_beats()
+    build_language(); build_beats(); build_after()
     build_canvas()
