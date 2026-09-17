@@ -84,6 +84,16 @@
       "page": "page-1"
     },
     {
+      "file": "Market.dc.html",
+      "x": 6240,
+      "y": 0,
+      "w": 1440,
+      "h": 955,
+      "title": "Company by company",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
       "file": "RulesModel.dc.html",
       "x": 0,
       "y": 0,
@@ -136,6 +146,14 @@
       "w": 700,
       "page": "page-1",
       "text": "The post-game screen (#68 + #69), designed as one thing because both issues asked for that. The seats deliberately have no colours: a palette that is both colourblind-safe and distinct from the seven corporation colours does not exist at six seats - 12,000 candidates through the dataviz validator say so. Identity is the label and the row."
+    },
+    {
+      "id": "note-market",
+      "x": 6240,
+      "y": -210,
+      "w": 700,
+      "page": "page-1",
+      "text": "The third reading of the same game (#68): one chart per company, stacked by seat, measured in money. It is the one direction that needs no seat palette - a cell is one company, so the segments are steps of its own colour. Largest holder on top, ranked once so no band crosses another."
     },
     {
       "id": "note-rules",

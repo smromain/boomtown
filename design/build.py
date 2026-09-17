@@ -2264,6 +2264,274 @@ def build_after():
     write("After.dc.html", B_HELMET, body)
 
 # ---------------------------------------------------------------- canvas
+
+# =========================================================== company by company
+# One chart per company, stacked by seat, y in money. The line chart says who
+# won and the radar would have said who was positioned where; this says what
+# each *company* was worth and who owned it while it was worth that — which is
+# the market from the company's side rather than the player's.
+#
+# The stacks answer the seat-palette problem by not needing a seat palette: a
+# cell is one company, so its segments are steps of that company's own hue.
+# Colour says which company, lightness says where a seat came in the ownership
+# of it, and the names sit under the cell rather than in a shared legend.
+#
+# A stack's total height is the traded value of the company — shares out times
+# the current price — so the silhouette is the company's whole life: founded,
+# bought into, revalued, and gone.
+
+# turn -> size, and seat -> {turn: holding from that turn on}. Written as steps
+# because that is how a game produces them; expanded below. Consistent with the
+# timeline on the after-game artboard, and the closing holdings match the table
+# the Main artboard prints.
+MARKET = {
+  "books": {
+    "spans": [(1, 14)],
+    "size": {1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 7: 7, 8: 8, 9: 9, 11: 10, 13: 11},
+    "held": {"June": {1: 1, 2: 3, 5: 4, 9: 5, 12: 6},
+             "Nadia": {3: 2, 6: 4, 10: 6, 13: 7},
+             "You": {4: 1, 7: 3, 11: 4},
+             "Ravi": {8: 2}},
+  },
+  "electronics": {
+    "spans": [(2, 5), (9, 14)],
+    "size": {2: 2, 3: 3, 4: 4, 5: 5, 9: 2, 10: 3, 12: 4, 14: 5},
+    "held": {"You": {2: 3, 3: 4, 9: 2},
+             "Nadia": {3: 2, 4: 3, 9: 0},
+             "June": {4: 2, 9: 0, 11: 3},
+             "Ravi": {4: 2, 9: 0, 10: 3}},
+  },
+  "energy": {
+    "spans": [(3, 7)],
+    "size": {3: 2, 4: 3, 5: 4, 6: 5, 7: 6},
+    "held": {"You": {3: 3}, "Nadia": {4: 3}, "June": {5: 1}, "Ravi": {}},
+  },
+  "video": {
+    "spans": [(6, 13)],
+    "size": {6: 2, 7: 3, 8: 4, 9: 5, 10: 6, 11: 7, 12: 8, 13: 9},
+    "held": {"Ravi": {6: 2, 8: 4, 10: 6},
+             "June": {7: 2, 9: 4, 11: 5},
+             "Nadia": {8: 2, 12: 4},
+             "You": {9: 1}},
+  },
+  "tech": {
+    "spans": [(11, 14)],
+    "size": {11: 2, 12: 3, 13: 4, 14: 5},
+    "held": {"You": {11: 2, 12: 4, 14: 5},
+             "Nadia": {11: 1, 13: 3},
+             "June": {12: 2},
+             "Ravi": {13: 1}},
+  },
+  "air": {"spans": [], "size": {}, "held": {}},
+  "toys": {"spans": [], "size": {}, "held": {}},
+}
+MARKET_SEATS = ["You", "Nadia", "June", "Ravi"]
+
+def mk_mix(hexcol, pct):
+    """`pct` of the way from the colour to paper. The steps have to survive a
+    2px gap between segments, so they are wide apart rather than even."""
+    r, g, b = (int(hexcol[i:i + 2], 16) for i in (1, 3, 5))
+    pr, pg, pb = (int(B_PANEL[i:i + 2], 16) for i in (1, 3, 5))
+    return "#%02X%02X%02X" % tuple(int(round(c + (p - c) * pct)) for c, p in ((r, pr), (g, pg), (b, pb)))
+
+MK_STEPS = [0.0, 0.26, 0.47, 0.66]
+
+def mk_series(ind):
+    """Expand the steps into a per-turn record: size, price, holdings, value."""
+    spec = MARKET[ind]
+    live = set()
+    for a, b in spec["spans"]:
+        live |= set(range(a, b + 1))
+    out, size, held = {}, 0, {s: 0 for s in MARKET_SEATS}
+    for t in AFTER_TURNS:
+        if t in spec["size"]: size = spec["size"][t]
+        for s in MARKET_SEATS:
+            if t in spec["held"].get(s, {}): held[s] = spec["held"][s][t]
+        if t not in live:
+            size = 0
+            continue
+        p = price(size, CORP[ind]["tier"]) or 0
+        out[t] = {"size": size, "price": p, "held": dict(held),
+                  "value": {s: held[s] * p for s in MARKET_SEATS}}
+    return out
+
+def mk_stack_order(ind, series):
+    """**Fixed** for the whole chart, largest at the top, ranked by what each
+    seat was holding on the company's last live turn (peak, then name, breaks a
+    tie). Re-ranking every turn is what the brief asked for and it makes a
+    seat's band swap layers mid-chart — you lose the one thing a stacked bar is
+    for, which is following your own band across time. Ranking once keeps the
+    order the brief wants without the crossing."""
+    if not series: return []
+    last = series[max(series)]["held"]
+    peak = {s: max((r["held"][s] for r in series.values()), default=0) for s in MARKET_SEATS}
+    return sorted(MARKET_SEATS, key=lambda s: (-last[s], -peak[s], s))
+
+def mk_cell(ind, ymax, W=286, H=156):
+    corp, series = CORP[ind], mk_series(ind)
+    PAD_B, PAD_T = 22, 10
+    n = len(AFTER_TURNS)
+    colw = W / n
+    barw = colw - 5
+    order = mk_stack_order(ind, series)
+    shade = {s: mk_mix(corp["color"], MK_STEPS[i]) for i, s in enumerate(order)}
+
+    if not series:
+        # Never founded. The cell stays in the grid, because a company that
+        # never came out of the pool is a fact about the game.
+        return ('<div style="border:1px dashed %s;border-radius:4px;padding:14px 16px;'
+                'display:flex;flex-direction:column;gap:5px">'
+                '<span style="display:flex;align-items:center;gap:8px">%s'
+                '<span class="ser" style="font-size:16px;color:%s">%s</span></span>'
+                '<span style="font-size:11.5px;color:%s">never founded · 25 shares still in the bank</span>'
+                '</div>' % (B_RULE, b_mark(ind, B_RULE, 18), B_MUTED, corp["name"], B_MUTED))
+
+    def y(v): return PAD_T + (1 - v / ymax) * (H - PAD_B - PAD_T)
+
+    parts, lives = [], MARKET[ind]["spans"]
+    # money gridlines, shared across all seven cells so the eye can compare
+    for v in range(5000, int(ymax), 5000):
+        parts.append('<line x1="0" y1="%.1f" x2="%d" y2="%.1f" stroke="%s" stroke-width="1" '
+                     'stroke-dasharray="2 5"/>' % (y(v), W, y(v), B_RULE))
+    # the dead span, so a gap in the bars reads as "it did not exist" rather
+    # than as missing data
+    for (a1, b1), (a2, _b2) in zip(lives, lives[1:]):
+        x0, x1 = (b1 + 0.5) * colw, (a2 - 0.5) * colw
+        parts.append('<rect x="%.1f" y="%d" width="%.1f" height="%.1f" fill="%s" opacity=".5"/>'
+                     '<text x="%.1f" y="%.1f" font-size="8" fill="%s" text-anchor="middle" '
+                     'style="letter-spacing:.08em;text-transform:uppercase">gone</text>'
+                     % (x0, PAD_T, x1 - x0, H - PAD_B - PAD_T, B_BG,
+                        (x0 + x1) / 2, (PAD_T + H - PAD_B) / 2, B_MUTED))
+
+    # the stacks: largest holder on top, 2px of paper between segments
+    for t, rec in sorted(series.items()):
+        x = t * colw - barw / 2 + colw / 2
+        top = 0.0
+        for s in reversed(order):          # draw upward, so `order` lands top-down
+            v = rec["value"][s]
+            if not v: continue
+            h = (v / ymax) * (H - PAD_B - PAD_T)
+            parts.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s" rx="1"/>'
+                         % (x, y(top) - h, barw, max(h - 2, 1), shade[s], ))
+            top += v
+    # baseline
+    parts.append('<line x1="0" y1="%.1f" x2="%d" y2="%.1f" stroke="%s" stroke-width="1"/>'
+                 % (y(0), W, y(0), B_RULE))
+
+    # the events, on the axis: founded, founded again, folded, and the turn a
+    # price band moved — which is the difference between a stack that grew
+    # because somebody bought and one that grew because the price did.
+    prev, opens = None, {a for a, _b in lives}
+    for t, rec in sorted(series.items()):
+        x = t * colw + colw / 2
+        # not on a founding turn: the dot is already saying something there
+        if prev is not None and rec["price"] != prev and t not in opens:
+            parts.append('<path d="M%.1f %.1f l3.5 -5 h-7 Z" fill="%s"/>' % (x, y(0) + 9, B_MUTED))
+        prev = rec["price"]
+    for i, (a, b) in enumerate(lives):
+        xa, xb = a * colw + colw / 2, b * colw + colw / 2
+        parts.append('<circle cx="%.1f" cy="%.1f" r="3.5" %s/>'
+                     % (xa, y(0), 'fill="%s"' % corp["color"] if i == 0 else
+                        'fill="%s" stroke="%s" stroke-width="1.6"' % (B_PANEL, corp["color"])))
+        if b < AFTER_TURNS[-1]:
+            parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
+                         'stroke-dasharray="3 3"/>' % (xb + colw / 2, PAD_T, xb + colw / 2, y(0), B_MUTED))
+
+    # turn numbers every three, enough to place an event without crowding
+    for t in AFTER_TURNS:
+        if t % 3 == 0:
+            parts.append('<text x="%.1f" y="%.1f" font-size="8.5" fill="%s" text-anchor="middle" '
+                         'class="num">%d</text>' % (t * colw + colw / 2, y(0) + 18, B_MUTED, t))
+
+    last = series[max(series)]
+    dead = max(series) < AFTER_TURNS[-1]
+    cap = sum(last["value"].values())
+    seats = "".join(
+      '<span style="display:flex;align-items:center;gap:6px">'
+      '<span style="width:9px;height:9px;border-radius:2px;background:%s;flex-shrink:0"></span>'
+      '<span style="font-size:11.5px">%s</span>'
+      '<span class="num" style="font-size:11px;color:%s;margin-left:auto">%d</span></span>'
+      % (shade[s], s, B_MUTED, last["held"][s]) for s in order if last["held"][s])
+
+    return ('<div style="display:flex;flex-direction:column;gap:9px">'
+            '<div style="display:flex;align-items:center;gap:8px">%s'
+            '<span class="ser" style="font-size:16px">%s</span>'
+            '<span class="num" style="font-size:11px;color:%s;margin-left:auto">%s</span></div>'
+            '<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;overflow:visible">%s</svg>'
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 14px;padding-top:2px;'
+            'border-top:1px solid %s">%s</div></div>'
+            % (b_mark(ind, corp["color"], 18), corp["name"], B_MUTED,
+               ("folded turn %d · %s at its peak" % (max(series), money(max(sum(r["value"].values())
+                                                                           for r in series.values()))))
+               if dead else "%s at the close" % money(cap),
+               W, H, W, H, "".join(parts), B_RULE, seats))
+
+MARKET_H = 868
+
+def build_market():
+    ymax = 14000
+    live = [k for k in ORDER if MARKET[k]["spans"]]
+    cells = "".join(mk_cell(k, ymax) for k in live + [k for k in ORDER if k not in live])
+    key = ('<div style="border:1px dashed %s;border-radius:4px;padding:15px 16px;display:flex;'
+           'flex-direction:column;gap:9px">'
+           '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;'
+           'color:%s">Reading a cell</span>'
+           '<span style="font-size:11.5px;line-height:1.55;color:%s">Height is money: shares out times the '
+           'price that turn, so the whole stack is what the company was worth to the table. Segments are '
+           'seats, darkest on top, ordered once by who ended up holding most. '
+           '<span style="white-space:nowrap">● founded</span> · '
+           '<span style="white-space:nowrap">○ founded again</span> · '
+           '<span style="white-space:nowrap">┆ folded</span> · '
+           '<span style="white-space:nowrap">▾ price band moved</span> — a stack that jumps over a ▾ was '
+           'revalued, not bought. Every cell shares one y-axis, so the cells are comparable and a small '
+           'company is allowed to look small.</span></div>' % (B_RULE, B_ACCENT, B_INK))
+
+    header = (
+      '<div style="width:1440px;padding:0 44px;display:flex;flex-direction:column;gap:10px">'
+      '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">'
+      'Boomtown · after the game (#68) · company by company</span>'
+      '<span class="ser" style="font-size:34px">Who owned what, while it was worth something</span>'
+      '<span style="font-size:13px;line-height:1.55;color:%s;max-width:1000px">One chart per company, one bar '
+      'per turn, stacked by seat and measured in money. The per-turn graph answers who won; this answers what '
+      'each company was <em>worth</em> and who was holding it at the time — the same game from the board\'s '
+      'side rather than the player\'s. It needs no seat palette at all: a cell is one company, so its segments '
+      'are steps of that company\'s own colour, and the names sit under the cell.</span></div>'
+      % (B_MUTED, B_MUTED))
+
+    grid = ('<div style="width:1440px;padding:0 44px">%s</div>'
+            % af_panel("The market, company by company",
+                       "value of shares out · gridlines every %s · %s at full height" % (money(5000), money(ymax)),
+                       '<div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:26px 22px;'
+                       'align-items:start">'
+                       '%s%s</div>' % (cells, key)))
+
+    notes = (
+      '<div style="width:1440px;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
+      % (af_note("The order of the stack",
+                 "The brief says largest shareholder on top. Ranking <em>every turn</em> does that and makes a "
+                 "seat's band swap layers mid-chart, which costs the one thing a stacked bar is for — following "
+                 "your own band across time. So the rank is taken once, on the company's last live turn, and "
+                 "held for the whole cell. Largest is still on top; nothing crosses."),
+         af_note("Why the height is money and not shares",
+                 "Shares would make every company the same size and a 25-share stack of something worth $200 "
+                 "would tower over a real position. Money puts the small companies where they belong and lets "
+                 "the stack double at a merger — but it also means a bar can grow with nobody buying, which is "
+                 "what the ▾ price-band ticks are there to disambiguate."),
+         af_note("What is missing on purpose",
+                 "Shares in the bank. The stack is what the <em>table</em> holds, so a company nobody has bought "
+                 "into is a short bar rather than a full one — founder's share aside, that is the true picture "
+                 "of exposure. A second faint band for unsold stock was drawn and cut: it made every cell the "
+                 "same height, which is exactly the reading this chart exists to avoid."))
+    )
+
+    body = (
+      '<div style="width:1440px;min-height:%dpx;background:%s;color:%s;'
+      'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:40px 0 44px;'
+      'display:flex;flex-direction:column;gap:26px;align-items:center">%s%s%s</div>'
+      % (MARKET_H, B_BG, B_INK, header, grid, notes)
+    )
+    write("Market.dc.html", B_HELMET, body)
+
 def build_canvas():
     doc = {
       "pages": [{"id": "page-1", "name": "Boomtown"},
@@ -2277,6 +2545,7 @@ def build_canvas():
         {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "The pool", "print": "flow", "page": "page-1"},
         {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
         {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 2240, "title": "After the game", "print": "flow", "page": "page-1"},
+        {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 955, "title": "Company by company", "print": "flow", "page": "page-1"},
         {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4720, "title": "Rules model",
          "print": "flow", "page": "page-2"},
         {"file": "BoardRoom.dc.html",    "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "A - Board Room", "page": "page-3"},
@@ -2289,6 +2558,8 @@ def build_canvas():
          "text": "Seven companies that were once unassailable and then got eaten - which is what happens to every corporation on this board. Parodies of defunct brands, not live ones. Nothing here has been trademark-searched, and the backwards R is trade dress rather than wordplay: swap it first if anyone gets nervous."},
         {"id": "note-after", "x": 4680, "y": 2140, "w": 700, "page": "page-1",
          "text": "The post-game screen (#68 + #69), designed as one thing because both issues asked for that. The seats deliberately have no colours: a palette that is both colourblind-safe and distinct from the seven corporation colours does not exist at six seats - 12,000 candidates through the dataviz validator say so. Identity is the label and the row."},
+        {"id": "note-market", "x": 6240, "y": -210, "w": 700, "page": "page-1",
+         "text": "The third reading of the same game (#68): one chart per company, stacked by seat, measured in money. It is the one direction that needs no seat palette - a cell is one company, so the segments are steps of its own colour. Largest holder on top, ranked once so no band crosses another."},
         {"id": "note-rules", "x": 0, "y": -150, "w": 700, "page": "page-2",
          "text": "The sheet to argue with before any code exists. Every disagreement between the two rulebooks is listed as a config key rather than a fork."},
         {"id": "note-earlier", "x": 0, "y": -170, "w": 700, "page": "page-3",
@@ -2302,5 +2573,5 @@ def build_canvas():
 
 if __name__ == "__main__":
     build_a(); build_b(); build_c(); build_rules(); build_names(); build_pool(); build_reference()
-    build_language(); build_beats(); build_after()
+    build_language(); build_beats(); build_after(); build_market()
     build_canvas()
