@@ -132,11 +132,12 @@ function PlayArea({
             <OutOfPlay />
             {over ? null : (
               <div className={styles.hand}>
+                {/* The rack is in both branches (#61): your hand stays on
+                    screen while somebody else is on the clock, read-only.
+                    Only the actionable half of the strip swaps. */}
+                <TileRack />
                 {localTurn ? (
-                  <>
-                    <TileRack />
-                    <ActionBar />
-                  </>
+                  <ActionBar />
                 ) : (
                   <WaitingForSeat config={config} nudge={nudgeBots} snapshot={snapshot} />
                 )}

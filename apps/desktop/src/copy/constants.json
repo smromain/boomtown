@@ -382,6 +382,8 @@
   "game": {
     "board": "Board",
     "yourTiles": "Your tiles",
+    "yourTilesNamed": "Your tiles — {name}",
+    "rackWaiting": "Not your turn",
     "story": "Story",
     "shareholders": "Shareholders",
     "outOfPlay": "Out of play",

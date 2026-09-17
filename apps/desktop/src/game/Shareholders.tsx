@@ -35,7 +35,7 @@ export function Shareholders() {
                   return (
                     <span key={industry} className={styles.chip}>
                       <span className={styles.chipBadge} style={{ background: color }}>
-                        <IndustryMark industry={industry} color={ink} size={10} />
+                        <IndustryMark industry={industry} color={ink} size={12} />
                       </span>
                       <span className="tabnum">{seat.holdings![industry]}</span>
                     </span>

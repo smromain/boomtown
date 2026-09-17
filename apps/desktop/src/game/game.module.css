@@ -405,7 +405,15 @@
 }
 
 .column {
-  flex: 0 1 26rem;
+  /*
+   * The rail yields to the board as the window narrows. It used to be a flat
+   * `26rem` basis, and since `.boardArea` is `flex: 1` with `min-width: 0` the
+   * board was always the one to give — at 990px the rail held 416px against a
+   * 498px board, which is most of the window spent on a short list (#71).
+   * A percentage basis between the two bounds keeps the panels readable while
+   * letting the game have the room.
+   */
+  flex: 0 1 clamp(20rem, 30%, 26rem);
   min-width: 20rem;
   display: flex;
   flex-direction: column;
@@ -530,7 +538,26 @@
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+}
+
+/*
+ * One seat's holding in one corporation: the industry mark on the industry's
+ * colour, then the count.
+ *
+ * This had no rule at all (#74) — an inline `<span>` carrying a background,
+ * so its box came from the line box: taller than it was wide, and the mark
+ * sat on the text baseline inside it. It reads as a chip everywhere else in
+ * the app, so it is a square here too, with the mark centred in it.
+ */
+.chipBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 19px;
+  height: 19px;
+  border-radius: 4px;
 }
 
 .dot {
@@ -754,8 +781,28 @@
   gap: 10px;
 }
 
+/* Off-turn the rack is a readout, not a control, and has to look like one —
+   "disabled buttons" alone reads as a thing that is broken rather than a thing
+   that is not yours yet (#61). */
+.rack[data-idle] {
+  opacity: 0.72;
+}
+
+.rackHeadingRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
 .rackHeading {
   font-size: 15px;
+}
+
+.rackWaiting {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .rackTiles {
