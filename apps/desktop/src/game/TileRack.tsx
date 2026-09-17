@@ -52,10 +52,7 @@ export function TileRack() {
 
   return (
     <section className={styles.rack} aria-label={copy.game.yourTiles} data-idle={!yourTurn || undefined}>
-      <div className={styles.rackHeadingRow}>
-        <span className={`serif ${styles.rackHeading}`}>{fill(copy.game.yourTilesNamed, { name })}</span>
-        {!yourTurn && <span className={styles.rackWaiting}>{copy.game.rackWaiting}</span>}
-      </div>
+      <div className={`serif ${styles.rackHeading}`}>{fill(copy.game.yourTilesNamed, { name })}</div>
       <div className={styles.rackTiles}>
         {view.handTiles.map(({ tile, effect, playable }) => (
           <button

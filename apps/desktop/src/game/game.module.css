@@ -281,6 +281,10 @@
   align-items: center;
   justify-content: center;
   background: var(--bg);
+  /* The size the plate is measured against. It used to be `.stage`, but the
+     stage now shrink-wraps the plate, and a box cannot be both the ruler and
+     the thing being measured. */
+  container-type: size;
 }
 
 /* Takes the tile rack's place in the right column while a bot / remote player
@@ -835,21 +839,8 @@
   opacity: 0.72;
 }
 
-.rackHeadingRow {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
 .rackHeading {
   font-size: 15px;
-}
-
-.rackWaiting {
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
 }
 
 .rackTiles {

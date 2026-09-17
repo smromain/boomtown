@@ -3,19 +3,25 @@
    perspective tilt and per-cell translateZ thickness — no canvas/WebGL (KTD6).
    Cells stay square via the grid's aspect-ratio, so it scales with the layout. */
 
+/*
+ * The recessed floor the plate floats above. It **hugs the plate** — sized to
+ * its contents plus `--stage-pad` — rather than filling the whole slot. Filling
+ * it was fine while the plate was always full height, but once the plate sizes
+ * to whichever axis runs out first (#71) a full-height stage left broad empty
+ * bands of tint above and below the board.
+ */
 .stage {
-  width: 100%;
-  height: 100%;
-  /* Sized container, so the plate below can be measured against both of the
-     slot's axes at once (`cqw`/`cqh`). */
-  container-type: size;
+  --stage-pad: 18px;
+  width: fit-content;
+  height: fit-content;
+  max-width: 100%;
+  max-height: 100%;
+  padding: var(--stage-pad);
   display: flex;
   align-items: center;
   justify-content: center;
   perspective: 1300px;
   perspective-origin: 50% 45%;
-  /* a recessed floor tint behind the plate, so the board reads as floating
-     above its own surface rather than sitting flush with the page. */
   background: radial-gradient(66% 60% at 50% 42%, rgba(28, 25, 23, 0.06) 0%, rgba(28, 25, 23, 0.13) 100%);
   border-radius: 14px;
 }
@@ -37,8 +43,12 @@
    * height back down — so in a narrow window the plate stayed full height
    * around a grid of small squares, acres of empty board below the last row
    * (#71). Taking the smaller of the two candidate heights is the whole fix.
+   *
+   * The container is `.boardSlot`, and the `18px` is `.stage`'s own padding on
+   * each side — the stage hugs this plate, so its padding has to come out of
+   * the space before the plate is sized, not after.
    */
-  height: min(95cqh, 100cqw / var(--ratio, 1.2857));
+  height: min(100cqh - 2 * 18px, (100cqw - 2 * 18px) / var(--ratio, 1.2857));
   width: auto;
   max-width: 100%;
   box-sizing: border-box;
