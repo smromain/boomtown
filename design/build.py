@@ -1881,7 +1881,7 @@ AFTER_SERIES = [
 # (`docs/rules.md`) — and a dashed rule for the merger that ended it. The label
 # text stays in ink; the mark carries the identity.
 # Four panels and a note row; measured from the render.
-AFTER_H = 2869
+AFTER_H = 2889
 
 AFTER_EVENTS = [
   (1,  "found",   "books"),
@@ -1927,15 +1927,36 @@ def af_tabs(active, progress=0.45):
     return ('<div style="display:inline-flex;gap:3px;padding:3px;border:1px solid %s;border-radius:999px;'
             'background:%s">%s</div>' % (B_RULE, B_PANEL, "".join(out)))
 
-def af_frame(i, inner, progress=0.45):
+def af_transport(playing=True):
+    """Back, play/pause, forward. The screen plays itself, but nobody should
+    have to wait out a frame they have finished with or lose one they were
+    still reading — and with `prefers-reduced-motion` the automatic cycle does
+    not run at all, which makes these the only way through rather than a
+    convenience on top of it. They step the *innermost* cycle: forward from the
+    last company rolls into the awards, and pausing stops both."""
+    def button(glyph):
+        return ('<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;'
+                'height:30px;border:1px solid %s;border-radius:999px;background:%s">%s</span>'
+                % (B_RULE, B_PANEL, glyph))
+    back = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M10 3 L5 8 L10 13" fill="none" stroke="%s" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' % B_INK
+    fwd = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M6 3 L11 8 L6 13" fill="none" stroke="%s" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' % B_INK
+    hold = ('<svg width="13" height="13" viewBox="0 0 14 14"><rect x="3" y="2.5" width="3" height="9" rx="1" fill="%s"/>'
+            '<rect x="8" y="2.5" width="3" height="9" rx="1" fill="%s"/></svg>' % (B_INK, B_INK)) if playing else (
+            '<svg width="13" height="13" viewBox="0 0 14 14"><path d="M4 2.5 L11.5 7 L4 11.5 Z" fill="%s"/></svg>' % B_INK)
+    return ('<span style="display:inline-flex;align-items:center;gap:4px">%s%s%s</span>'
+            % (button(back), button(hold), button(fwd)))
+
+def af_frame(i, inner, progress=0.45, playing=True):
     """One state of the screen, drawn whole: the tab row as it stands on that
-    frame, and the panel under it."""
+    frame, the transport beside it, and the panel under both."""
     label, secs, why = AF_FRAMES[i]
     return ('<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:12px">'
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:20px">%s'
-            '<span style="font-size:11px;color:%s">frame %d of %d · holds %ds · %s</span></div>'
+            '<span style="display:inline-flex;align-items:center;gap:14px">'
+            '<span style="font-size:11px;color:%s">frame %d of %d · holds %ds · %s</span>%s</span></div>'
             '<div style="display:flex;gap:22px;align-items:flex-start">%s</div></div>'
-            % (af_tabs(i, progress), B_MUTED, i + 1, len(AF_FRAMES), secs, why, inner))
+            % (af_tabs(i, progress), B_MUTED, i + 1, len(AF_FRAMES), secs, why,
+               af_transport(playing), inner))
 
 def af_panel(title, note, inner, w=None):
     return ('<div style="%sbackground:%s;%sborder-radius:4px;box-shadow:%s;padding:18px 20px 20px;'
@@ -2260,7 +2281,9 @@ def build_after():
       'this is what the table talks over afterwards, and a screen nobody has to drive is the right shape for '
       'that. Every frame is still a tab: click one and it holds. Disclosure is free here — settlement already '
       'publishes every seat\'s cash and holdings — which is why the whole-table version of any of this belongs '
-      'at the end and nowhere else.</span>'
+      'at the end and nowhere else. Back, play and forward step it by hand \u2014 and the arrow keys and space '
+      'do the same \u2014 because with <code>prefers-reduced-motion</code> nothing cycles on its own, which '
+      'makes those controls the way through rather than a convenience on top of one.</span>'
       '<div style="display:flex;align-items:baseline;gap:14px;margin-top:4px">'
       '<span class="ser num" style="font-size:20px">%d seconds</span>'
       '<span style="font-size:11.5px;color:%s">all the way round · every frame below is one state of the same '
@@ -2274,7 +2297,7 @@ def build_after():
       af_frame(2, af_panel("The market, company by company",
                            "company 2 of 5 in this frame · "
                            "<span style=\"white-space:nowrap\">◆ majority changed hands</span>",
-                           mk_stage("video", seat_max, 14000)), 0.44),
+                           mk_stage("video", seat_max, 14000)), 0.44, playing=False),
       af_frame(3, af_awards(), 0.18),
     ])
 
@@ -2866,7 +2889,7 @@ def build_canvas():
         {"file": "Names.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 2680, "title": "Merged names", "print": "flow", "page": "page-1"},
         {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "The pool", "print": "flow", "page": "page-1"},
         {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
-        {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 2956, "title": "After the game", "print": "flow", "page": "page-1"},
+        {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 2976, "title": "After the game", "print": "flow", "page": "page-1"},
         {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 1565, "title": "Company by company", "print": "flow", "page": "page-1"},
         {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4720, "title": "Rules model",
          "print": "flow", "page": "page-2"},
