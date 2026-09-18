@@ -87,6 +87,19 @@ So (1) and (3) are not independent. The AppImage is the artifact on which (1) ha
 **The fix is to ship a tarball, which this branch now does** — see *[Which Linux artifact to
 use](#which-linux-artifact-to-use)*.
 
+**Tested on the device: `APPIMAGE_EXTRACT_AND_RUN=1` did not help.** That is worth reading
+carefully, because it settles less than it looks like it does.
+
+- **libfuse2 is ruled out.** Extraction bypasses FUSE entirely. If a missing `libfuse.so.2` had
+  been the cause, this would have fixed it.
+- **`nosuid` is *not* ruled out**, and this is the trap. Extracting does not restore what the
+  AppImage took away: the files land owned by the player, not root, so `chrome-sandbox` still
+  cannot be SUID — and `/tmp` on SteamOS is tmpfs, which is itself conventionally mounted `nosuid`.
+  The extracted run had exactly the same sandbox options as the mounted one. It never tested this.
+
+So the result removes one sub-hypothesis and leaves (1) standing as the front-runner. The test that
+actually probes it is `--no-sandbox`, in step 4.
+
 ### 4. Not a hang at all — presentation and exit
 
 This part is **confirmed by reading the code**, needs no device, and is fixed here.
@@ -147,15 +160,42 @@ revisiting if Boomtown ever wants to be in Discover. It is not the answer here: 
 where a Flatpak added as a non-Steam game brings its own sandbox to argue with Steam's. Not worth
 that lift before the boot log has said what is actually wrong.
 
+## Which build the player has
+
+**This matters before any step below.** The boot log, `BOOMTOWN_ELECTRON_FLAGS`, the fullscreen fix
+and the single-instance lock all landed together and ship in no release yet. A player on
+`v2026.9.1` has **none** of them, and there is no `boot.log` on their machine to ask for. CI does
+not build packages either — only the Release workflow does, on a tag or a manual dispatch.
+
+So the steps split in two:
+
+- **Works on any build, including what is published today.** Steps 1–3 and 5, plus the direct
+  Chromium arguments — `%command% --no-sandbox`. Chromium parses its own argv, so a switch passed
+  as an argument works on a build that has never heard of `BOOMTOWN_ELECTRON_FLAGS`.
+- **Needs a build from this branch.** Reading `boot.log`, and the `BOOMTOWN_ELECTRON_FLAGS` form of
+  step 4. Cut a release, or an `-rc` tag, before asking anyone for a log.
+
 ## Confirming it on the device
 
 In **desktop mode**, add the shortcut and check Game Mode once per step. Stop at the first that
 works — that answer is the root cause.
 
-1. **Read the log from the failed launch.** `~/.config/Boomtown/logs/boot.prev.log`. If the launch
-   got as far as `app-ready` at all, (3) is ruled out and the last milestone names the rest. If the
-   file does not exist, the app never reached `app.whenReady` — suspect the AppImage or the binary
-   itself.
+1. **Get the launch's stderr, which is the evidence nothing else provides.** On a build with the
+   boot log, read `~/.config/Boomtown/logs/boot.prev.log` — if the launch reached `app-ready` at
+   all, (3) is ruled out and the last milestone names the rest.
+
+   On **any** build, including today's, wrap the launch instead. Properties → Launch Options:
+
+   ```
+   bash -c 'exec "$@" >/home/deck/boomtown.log 2>&1' -- %command%
+   ```
+
+   `bash -c` is what makes this work: Steam's launch options are not a shell, so a bare
+   `> file 2>&1` is passed to the app as arguments rather than redirecting anything. Here `--`
+   becomes `$0`, Steam's substituted command becomes `$1…`, and `exec "$@"` runs it with both
+   streams captured. Launch, let it hang, return to desktop mode and read
+   `/home/deck/boomtown.log`. A sandbox failure, a missing library and a GPU crash-loop each name
+   themselves there in one line.
 2. **Get off the AppImage.** Extract the `.tar.gz` and point the shortcut at `boomtown` inside it,
    or install from itch — both give an ordinary directory. If this alone fixes it, stop; that is the
    answer.
@@ -183,19 +223,22 @@ works — that answer is the root cause.
 3. **Check the sandbox helper.** `ls -l chrome-sandbox` beside the binary: root-owned and `4755`, or
    the sandbox cannot start. `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox`
    if not.
-4. **Bisect the flags.** Same field as step 2 — Properties → Launch Options, one flag at a time:
+4. **Bisect the flags.** Same field as step 2 — Properties → Launch Options, one flag at a time.
+
+   **On a published build, pass them as arguments** — Chromium parses its own argv, so this needs
+   no support from the app:
+
+   ```
+   %command% --no-sandbox
+   ```
+
+   **On a build from this branch**, the variable does the same job and is the better habit: it is
+   applied before `app.whenReady`, where some switches have to be set to take effect at all, and it
+   is the same incantation on the tarball and in a terminal.
 
    ```
    BOOMTOWN_ELECTRON_FLAGS=--no-sandbox %command%
    ```
-
-   Combine with step 2 where both are needed:
-   `APPIMAGE_EXTRACT_AND_RUN=1 BOOMTOWN_ELECTRON_FLAGS=--no-sandbox %command%`.
-
-   Chromium reads most of these off the command line too, so `%command% --no-sandbox` is usually
-   equivalent. Prefer the variable: it is applied before `app.whenReady` where a switch has to be
-   set to take effect at all, it reaches an AppImage's inner process without depending on argument
-   pass-through, and it is the same incantation on the tarball and in a terminal.
 
    Try them in this order — each is a diagnosis, not just a workaround:
 
@@ -207,7 +250,19 @@ works — that answer is the root cause.
    | `--in-process-gpu` | (2) — process separation rather than the driver |
    | `--ozone-platform=wayland` | (2) — gamescope's XWayland specifically; this talks to it natively |
 
-5. **Check the compat tool.** In Steam, the shortcut's properties → Compatibility. A native Linux
+5. **Run it under gamescope from desktop mode**, which separates the two things Game Mode
+   conflates:
+
+   ```
+   gamescope -W 1280 -H 800 -f -- ./Boomtown.AppImage
+   ```
+
+   A terminal, with gamescope in the loop. If it hangs here, the cause is gamescope and the stderr
+   in front of you says why. If it runs here and only Game Mode fails, gamescope is exonerated and
+   the difference is Steam's launch environment — the container and the compat tool, which is (1).
+   This is the cheapest way to cut the search space in half and it needs no new build.
+
+6. **Check the compat tool.** In Steam, the shortcut's properties → Compatibility. A native Linux
    binary should generally have **no** compat tool forced. If one is set, clear it; if none is set
    and (1) is the answer, try forcing the Steam Linux Runtime the other way.
 
@@ -218,8 +273,8 @@ launch option can fix instead.
 ## What is still unknown
 
 - Whether a compat tool is set on the shortcut. Decides whether (1) is even possible.
-- Whether libfuse2 is present on the Deck's SteamOS build. `ldconfig -p | grep libfuse` settles it,
-  and separates the two halves of (3) — but the tarball makes the question moot either way.
+- Whether the renderer sandbox is the cause. `--no-sandbox` answers it in one launch and is the
+  next thing to try; nothing attempted so far has actually probed it.
 - Whether the window paints and is invisible, or never paints. `boot.log` answers this now.
 - Whether anything is wrong *after* launch — every hypothesis here is about startup, because that is
   what was reported. If the app reaches `first-paint` and then stops, none of this applies and the
