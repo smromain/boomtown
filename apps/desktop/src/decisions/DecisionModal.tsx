@@ -105,12 +105,16 @@ export function DecisionModal() {
     );
   }
 
+  const founding = !decision && needsFound && view.pendingFound != null;
+
   return (
     <Dialog.Root open={open}>
       <Dialog.Portal>
         <Dialog.Overlay className={handoff ? styles.overlayOpaque : styles.overlay} />
         <Dialog.Content
-          className={styles.content}
+          // The founding modal is three tier columns wide (#65); every other
+          // decision is one column and keeps the standard width.
+          className={founding ? `${styles.content} ${styles.foundContent}` : styles.content}
           aria-describedby={undefined}
           onEscapeKeyDown={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}

@@ -296,7 +296,7 @@ describe('DecisionModal', () => {
     expect(within(dialog).getAllByRole('button').length).toBeGreaterThanOrEqual(7);
   });
 
-  it('each founding option shows its tier and opening value by default', async () => {
+  it('lays the founding candidates out in three tier columns (#65)', async () => {
     const { client } = await renderPanel(<DecisionModal />, {
       craft: (state) => {
         state.cells['6F'] = { kind: 'unincorporated' };
@@ -306,9 +306,66 @@ describe('DecisionModal', () => {
     await place(client, '6E');
     const dialog = screen.getByRole('dialog');
 
-    // a tier-3 corp opens at $400/share, bonus from $4,000 — shown without a toggle
-    expect(dialog).toHaveTextContent(/tier 3 · \$400\/share · bonus from \$4,000/);
-    expect(dialog).toHaveTextContent(/tier 1 · \$200\/share/);
+    for (const tier of [1, 2, 3]) {
+      expect(within(dialog).getByRole('group', { name: `Tier ${tier}` })).toBeInTheDocument();
+    }
+    // each tier's opening terms are stated once, in its heading
+    expect(within(dialog).getByText('$200 a share · bonus from $2,000')).toBeInTheDocument();
+    expect(within(dialog).getByText('$300 a share · bonus from $3,000')).toBeInTheDocument();
+    expect(within(dialog).getByText('$400 a share · bonus from $4,000')).toBeInTheDocument();
+  });
+
+  it('puts each candidate in its own tier column', async () => {
+    const { client } = await renderPanel(<DecisionModal />, {
+      craft: (state) => {
+        state.cells['6F'] = { kind: 'unincorporated' };
+        state.hands[0] = ['6E'];
+      },
+    });
+    await place(client, '6E');
+
+    // the harness forces candidate 0 for every industry; books is tier 1, air tier 2, video tier 3
+    const tier1 = screen.getByRole('group', { name: 'Tier 1' });
+    expect(within(tier1).getByRole('button', { name: NAMES.books })).toBeInTheDocument();
+    expect(within(tier1).queryByRole('button', { name: NAMES.air })).not.toBeInTheDocument();
+
+    const tier2 = screen.getByRole('group', { name: 'Tier 2' });
+    expect(within(tier2).getByRole('button', { name: NAMES.air })).toBeInTheDocument();
+
+    const tier3 = screen.getByRole('group', { name: 'Tier 3' });
+    expect(within(tier3).getByRole('button', { name: NAMES.video })).toBeInTheDocument();
+  });
+
+  it('a tier with nothing left to found keeps its column and says so', async () => {
+    const { client } = await renderPanel(<DecisionModal />, {
+      craft: (state) => {
+        state.cells['6F'] = { kind: 'unincorporated' };
+        state.hands[0] = ['6E'];
+        // both tier-1 corporations already on the board
+        seedCorp(state, 'books', ['1A', '2A']);
+        seedCorp(state, 'electronics', ['1C', '2C']);
+      },
+    });
+    await place(client, '6E');
+
+    const tier1 = screen.getByRole('group', { name: 'Tier 1' });
+    expect(within(tier1).getByText('All founded')).toBeInTheDocument();
+    expect(within(tier1).queryAllByRole('button')).toHaveLength(0);
+    // …and the column is still there, with its terms, so nothing reflows
+    expect(within(tier1).getByText('$200 a share · bonus from $2,000')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Tier 2' })).toBeInTheDocument();
+  });
+
+  it('holds no sentence of its own — the terms come from the copy file', async () => {
+    const { client } = await renderPanel(<DecisionModal />, {
+      craft: (state) => {
+        state.cells['6F'] = { kind: 'unincorporated' };
+        state.hands[0] = ['6E'];
+      },
+    });
+    await place(client, '6E');
+    // the old inline run-on, gone: it repeated the tier's terms on every button
+    expect(screen.getByRole('dialog')).not.toHaveTextContent(/tier \d · \$\d+\/share/);
   });
 
   it('the founding modal minimizes to a pill and restores', async () => {
