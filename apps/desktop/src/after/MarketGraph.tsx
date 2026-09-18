@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { INDUSTRY_INFO, type CorpView, type Industry, type Retrospective, type Seat } from '@boomtown/engine';
+import { CHIP, ChipKey, EventChip } from './EventChip.js';
 import { dashFor, linePath, moneyAxis, netWorthSeries, placeLabels } from './series.js';
 import styles from './after.module.css';
 import { copy } from '../copy/copy.js';
@@ -8,8 +9,9 @@ const W = 1000;
 const H = 330;
 const PAD_L = 62;
 const PAD_R = 10;
-const PAD_T = 44;
-const PAD_B = 34;
+const PAD_T = 16;
+// Room under the axis for the turn numbers and two rows of company marks.
+const PAD_B = 78;
 
 const money = (n: number): string => `$${n.toLocaleString()}`;
 
@@ -72,10 +74,11 @@ export const MarketGraph = memo(function MarketGraph({
     kind === 'folded' ? after.folded : kind === 'refounded' ? after.refounded : after.founded;
   const nameOf = (industry: Industry): string =>
     corporations?.[industry]?.baseName ?? corporations?.[industry]?.displayName ?? '';
-  // A label near the right edge is drawn back towards the plot instead of off it.
-  const endLabel = (at: number): boolean => at > W - PAD_R - 70;
+  // Marks are a fixed width, so the layout is exact rather than an estimate of
+  // how wide a word will render.
   const placed = placeLabels(
-    events.map((event) => ({ x: x(event.turn), width: 9 + 5.4 * labelFor(event.kind).length })),
+    events.map((event) => ({ x: x(event.turn), width: CHIP })),
+    2,
     3,
   );
 
@@ -121,51 +124,37 @@ export const MarketGraph = memo(function MarketGraph({
             ) : null,
           )}
 
-          {/* The company timeline: colour is which company, the glyph is what
-              happened to it. Labels take the first row they clear, and one
-              that clears none keeps its marker and its hover text. */}
+          {/* The company timeline, on the axis: one mark per event, laid out
+              exactly and stacked into a second row when two land together. A
+              mark that fits in neither keeps its rule and its hover text. */}
           {events.map((event, index) => {
             const info = INDUSTRY_INFO[event.industry];
             const at = x(event.turn);
-            const label = placed.find((entry) => entry.index === index);
+            const slot = placed.find((entry) => entry.index === index);
             return (
               <g key={`${event.industry}-${event.kind}-${event.turn}-${index}`}>
                 <line
                   x1={at}
-                  y1={PAD_T - 6}
+                  y1={PAD_T}
                   x2={at}
-                  y2={y(axis.floor)}
+                  y2={y(axis.floor) + (slot ? 4 + slot.row * (CHIP + 4) : 0)}
                   stroke={event.kind === 'folded' ? 'var(--muted)' : info.color}
                   strokeDasharray={event.kind === 'folded' ? '3 3' : '1 4'}
-                  opacity="0.65"
+                  opacity="0.55"
                 />
-                {event.kind === 'folded' ? null : (
-                  <circle
-                    cx={at}
-                    cy={y(axis.floor)}
-                    r="4"
-                    fill={event.kind === 'refounded' ? 'var(--surface)' : info.color}
-                    stroke={info.color}
-                    strokeWidth="1.8"
+                {slot ? (
+                  <EventChip
+                    industry={event.industry}
+                    kind={event.kind}
+                    x={at}
+                    y={y(axis.floor) + 26 + slot.row * (CHIP + 4)}
+                    label={`${nameOf(event.industry)} — ${labelFor(event.kind)}, turn ${event.turn}`}
                   />
+                ) : (
+                  <circle cx={at} cy={y(axis.floor)} r="3.5" fill={info.color}>
+                    <title>{`${nameOf(event.industry)} — ${labelFor(event.kind)}, turn ${event.turn}`}</title>
+                  </circle>
                 )}
-                {label ? (
-                  <g transform={`translate(0 ${label.row * 12})`}>
-                    <rect x={at - 3} y={2} width="6" height="6" rx="1.5" fill={info.color} />
-                    <text
-                      x={at + (endLabel(at) ? -6 : 6)}
-                      textAnchor={endLabel(at) ? 'end' : 'start'}
-                      y={7.5}
-                      fontSize="8.5"
-                      fill="var(--muted)"
-                      dominantBaseline="middle"
-                      style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}
-                    >
-                      {labelFor(event.kind)}
-                    </text>
-                  </g>
-                ) : null}
-                <title>{`${nameOf(event.industry)} — ${labelFor(event.kind)}, turn ${event.turn}`}</title>
               </g>
             );
           })}
@@ -209,6 +198,7 @@ export const MarketGraph = memo(function MarketGraph({
             <span className={`tabnum ${styles.legendValue}`}>{money(row.total)}</span>
           </div>
         ))}
+        {events.length > 0 ? <ChipKey industry={events[0]!.industry} /> : null}
         <span className={styles.sideNote}>{record.settled ? after.settledNote : ''}</span>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { INDUSTRY_INFO, type CorpView, type Industry, type Retrospective } from '@boomtown/engine';
 import { IndustryMark } from '../game/marks.js';
+import { CHIP, EventChip } from './EventChip.js';
 import {
   companyValueSeries,
   dashFor,
@@ -15,13 +16,15 @@ import styles from './after.module.css';
 import { copy, fill } from '../copy/copy.js';
 
 const W = 1000;
-const H = 360;
+const H = 396;
 const PAD_L = 56;
 const PAD_R = 12;
 const STRIP_Y = 30;
 const STRIP_H = 46;
 const PLOT_Y = STRIP_Y + STRIP_H + 38;
-const PLOT_B = 92;
+// Room under the axis for the turn numbers, the company's own marks, and the
+// two holder lanes.
+const PLOT_B = 116;
 
 const money = (n: number): string => `$${n.toLocaleString()}`;
 
@@ -58,6 +61,7 @@ export const CompanyFrame = memo(function CompanyFrame({
   names: readonly string[];
 }) {
   const after = copy.game.after.companies;
+  const market = copy.game.after.market;
   const info = INDUSTRY_INFO[industry];
   const seats = record.turns[0]?.seats.map((_, seat) => seat) ?? [];
   const spans = liveSpans(record, industry);
@@ -173,24 +177,24 @@ export const CompanyFrame = memo(function CompanyFrame({
 
           {spans.map((span, index) => (
             <g key={`mark-${span.from}`}>
-              <line x1={x(span.from)} y1={STRIP_Y} x2={x(span.from)} y2={y(0)} stroke={info.color} strokeDasharray="1 4" opacity="0.75" />
-              <circle
-                cx={x(span.from)}
-                cy={ys(0)}
-                r="4.5"
-                fill={index === 0 ? info.color : 'var(--surface)'}
-                stroke={info.color}
-                strokeWidth="2"
+              <line x1={x(span.from)} y1={STRIP_Y} x2={x(span.from)} y2={y(0) + 26} stroke={info.color} strokeDasharray="1 4" opacity="0.7" />
+              <EventChip
+                industry={industry}
+                kind={index === 0 ? 'founded' : 'refounded'}
+                x={x(span.from)}
+                y={y(0) + 26}
+                label={`${corp?.displayName ?? ''} — ${index === 0 ? market.founded : market.refounded}, turn ${span.from}`}
               />
-              <text x={x(span.from)} y={STRIP_Y - 26} fontSize="9" fill="var(--muted)" textAnchor="middle" style={{ letterSpacing: '0.09em', textTransform: 'uppercase' }}>
-                {index === 0 ? copy.game.after.market.founded : copy.game.after.market.refounded}
-              </text>
               {span.to < lastTurn ? (
                 <g>
-                  <line x1={x(span.to)} y1={STRIP_Y} x2={x(span.to)} y2={y(0)} stroke="var(--muted)" strokeDasharray="3 3" />
-                  <text x={x(span.to)} y={STRIP_Y - 26} fontSize="9" fill="var(--muted)" textAnchor="middle" style={{ letterSpacing: '0.09em', textTransform: 'uppercase' }}>
-                    {copy.game.after.market.folded}
-                  </text>
+                  <line x1={x(span.to)} y1={STRIP_Y} x2={x(span.to)} y2={y(0) + 26} stroke="var(--muted)" strokeDasharray="3 3" />
+                  <EventChip
+                    industry={industry}
+                    kind="folded"
+                    x={x(span.to)}
+                    y={y(0) + 26}
+                    label={`${corp?.displayName ?? ''} — ${market.folded}, turn ${span.to}`}
+                  />
                 </g>
               ) : null}
             </g>
@@ -206,7 +210,7 @@ export const CompanyFrame = memo(function CompanyFrame({
 
           {/* who the bonuses would pay, turn by turn, as runs */}
           {([0, 1] as const).map((lane) => {
-            const top = y(0) + 34 + lane * 23;
+            const top = y(0) + 26 + CHIP + 10 + lane * 23;
             const half = lastTurn <= 0 ? 0 : (W - PAD_L - PAD_R) / lastTurn / 2;
             return (
               <g key={`lane-${lane}`}>

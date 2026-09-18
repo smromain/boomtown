@@ -279,6 +279,23 @@
   text-align: right;
 }
 
+/* The key for the axis marks: what founded, founded again and folded look
+   like, now that the words are off the axis. */
+.chipKey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding-top: 4px;
+}
+
+.chipKeyItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
 .empty {
   display: flex;
   align-items: center;
