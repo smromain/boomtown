@@ -284,9 +284,17 @@
 /* Separators as borders, not as "·" characters in the copy: the pieces stay
    three independent strings for translation, and they wrap cleanly. */
 .buyPurseCash,
+.buyPurseLeft,
 .buyPursePicked {
   padding-left: 0.55rem;
   border-left: 1px solid var(--rule);
+}
+
+/* Spent to the penny is the answer to "why is every + dead", so it steps
+   forward out of the muted line rather than sitting in it. */
+.buyPurseSpent {
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .buyList {

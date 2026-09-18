@@ -110,6 +110,34 @@ describe('BuyControls', () => {
     expect(screen.getByText('25 in bank · 0 held')).toBeInTheDocument();
   });
 
+  it('accounts for the cash a pick has committed, so a dead + is never unexplained', async () => {
+    // The standing note is pick-independent by design, so the purse line is
+    // the only thing that can answer "I have $1,000 and every + is grey".
+    await renderPanel(<BuyControls />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['5H', '5I', '4I']); // $500 a share
+        state.step = 'buy';
+        state.hands[0] = [];
+        state.seats[0]!.cash = 1000;
+      },
+    });
+    // Nothing picked: no remainder to report, because none is committed.
+    expect(screen.getByText('$1,000 in hand')).toBeInTheDocument();
+    expect(screen.queryByText(/left$/)).not.toBeInTheDocument();
+
+    const more = screen.getByRole('button', { name: `one more ${NAMES.video} share` });
+    await userEvent.click(more);
+    expect(screen.getByText('$500 left')).toBeInTheDocument();
+    // What is actually in hand is untouched until the buy resolves.
+    expect(screen.getByText('$1,000 in hand')).toBeInTheDocument();
+
+    await userEvent.click(more);
+    expect(more).toBeDisabled();
+    expect(screen.getByText('$0 left')).toBeInTheDocument();
+    // Two of three picked — the cap is not what stopped it, the money is.
+    expect(screen.getByText('2 of 3 picked')).toBeInTheDocument();
+  });
+
   it('draws the industry mark decoratively, never as another name for the row', async () => {
     // The steppers are driven through their aria labels by these tests and by
     // decisions.test.tsx; a mark that announced itself would put a second
@@ -174,7 +202,7 @@ describe('rowStanding', () => {
     expect(rowStanding(await view(() => {}), 'video')).toBe('available');
   });
 
-  it('is sold-out before it is too-dear, when it is both', async () => {
+  it('is sold-out before it is unaffordable, when it is both', async () => {
     // An empty bank is the harder fact: no amount of money buys a share that
     // does not exist, so that is the one worth naming.
     const v = await view((state) => {
@@ -184,8 +212,8 @@ describe('rowStanding', () => {
     expect(rowStanding(v, 'video')).toBe('sold-out');
   });
 
-  it('is too-dear when the price is above the seat\'s cash', async () => {
-    expect(rowStanding(await view((state) => (state.seats[0]!.cash = 499)), 'video')).toBe('too-dear');
+  it('is unaffordable when the price is above the seat\'s cash', async () => {
+    expect(rowStanding(await view((state) => (state.seats[0]!.cash = 499)), 'video')).toBe('unaffordable');
   });
 
   it('is available when the seat has exactly the price', async () => {

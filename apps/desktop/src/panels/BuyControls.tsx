@@ -54,6 +54,7 @@ export function BuyControls() {
   const corps = buyableCorporations(view);
   const total = buyTotal(picks);
   const cost = buyCost(view, picks);
+  const left = view.yourCash - cost;
   const bump = (industry: Industry, delta: number) =>
     setPicks((current) => ({ ...current, [industry]: Math.max(0, (current[industry] ?? 0) + delta) }));
 
@@ -64,12 +65,27 @@ export function BuyControls() {
       <h2 className={`serif ${styles.buyTitle}`}>{copy.buy.title}</h2>
       {/* The table's own statement of where you stand, not a form's subtitle:
           who is spending, what they have, and how much of the allowance is
-          committed. */}
+          committed.
+
+          Once something is picked the line also carries what would be *left*.
+          A row's standing note is deliberately pick-independent (`rowStanding`),
+          so when picks exhaust the purse every `+` goes dead with nothing on
+          screen accounting for it — the greyed-out control #58 set out to stop
+          being the only explanation. The running remainder is that account, and
+          it belongs here rather than on the rows, where it would rewrite three
+          standing notes on every press. */}
       <p className={styles.buyPurse}>
         <span className={styles.buyPurseWho}>{you}</span>
         <span className={`tabnum ${styles.buyPurseCash}`}>
           {fill(copy.buy.cashInHand, { cash: view.yourCash.toLocaleString() })}
         </span>
+        {cost > 0 && (
+          <span
+            className={`tabnum ${styles.buyPurseLeft} ${left === 0 ? styles.buyPurseSpent : ''}`}
+          >
+            {fill(copy.buy.cashLeft, { cash: left.toLocaleString() })}
+          </span>
+        )}
         <span className={`tabnum ${styles.buyPursePicked}`}>
           {fill(copy.buy.pickedOf, { n: total, max: RULES.maxStockPurchasesPerTurn })}
         </span>
@@ -153,7 +169,7 @@ function BuyRow({
         <span className={`tabnum ${styles.buyFloat}`}>
           {blocked ? (
             <span className={styles.buyStanding}>
-              {standing === 'sold-out' ? copy.buy.soldOut : copy.buy.tooDear}
+              {standing === 'sold-out' ? copy.buy.soldOut : copy.buy.notEnoughCash}
             </span>
           ) : (
             fill(copy.buy.inBankHeld, { inBank, held })
