@@ -733,7 +733,7 @@
     "buyTotal": "Buy {n} for ${cost}",
     "inBankHeld": "{inBank} in bank · {held} held",
     "soldOut": "Bank sold out",
-    "tooDear": "More than you hold",
+    "tooDear": "Not enough cash",
     "oneFewer": "one fewer {name} share",
     "oneMore": "one more {name} share",
     "sharesToBuy": "{name} shares to buy"

@@ -93,7 +93,7 @@ describe('BuyControls', () => {
         state.seats[0]!.cash = 100;
       },
     });
-    expect(screen.getByText('More than you hold')).toBeInTheDocument();
+    expect(screen.getByText('Not enough cash')).toBeInTheDocument();
   });
 
   it('keeps the standing note off a row that is merely at the three-share cap', async () => {
@@ -106,7 +106,7 @@ describe('BuyControls', () => {
     await userEvent.click(more);
     expect(more).toBeDisabled();
     expect(screen.queryByText('Bank sold out')).not.toBeInTheDocument();
-    expect(screen.queryByText('More than you hold')).not.toBeInTheDocument();
+    expect(screen.queryByText('Not enough cash')).not.toBeInTheDocument();
     expect(screen.getByText('25 in bank · 0 held')).toBeInTheDocument();
   });
 
