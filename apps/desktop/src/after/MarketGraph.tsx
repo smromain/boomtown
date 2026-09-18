@@ -11,7 +11,7 @@ const PAD_L = 62;
 const PAD_R = 10;
 const PAD_T = 16;
 // Room under the axis for the turn numbers and two rows of company marks.
-const PAD_B = 78;
+const PAD_B = 86;
 
 const money = (n: number): string => `$${n.toLocaleString()}`;
 
@@ -113,7 +113,7 @@ export const MarketGraph = memo(function MarketGraph({
               <text
                 key={turn.turn}
                 x={x(turn.turn)}
-                y={y(axis.floor) + 16}
+                y={y(axis.floor) + 17}
                 fontSize="10"
                 fill="var(--muted)"
                 textAnchor="middle"
@@ -137,7 +137,7 @@ export const MarketGraph = memo(function MarketGraph({
                   x1={at}
                   y1={PAD_T}
                   x2={at}
-                  y2={y(axis.floor) + (slot ? 4 + slot.row * (CHIP + 4) : 0)}
+                  y2={y(axis.floor) + (slot ? 8 + slot.row * (CHIP + 6) : 0)}
                   stroke={event.kind === 'folded' ? 'var(--muted)' : info.color}
                   strokeDasharray={event.kind === 'folded' ? '3 3' : '1 4'}
                   opacity="0.55"
@@ -147,7 +147,7 @@ export const MarketGraph = memo(function MarketGraph({
                     industry={event.industry}
                     kind={event.kind}
                     x={at}
-                    y={y(axis.floor) + 26 + slot.row * (CHIP + 4)}
+                    y={y(axis.floor) + 30 + slot.row * (CHIP + 6)}
                     label={`${nameOf(event.industry)} — ${labelFor(event.kind)}, turn ${event.turn}`}
                   />
                 ) : (

@@ -24,7 +24,7 @@ const STRIP_H = 46;
 const PLOT_Y = STRIP_Y + STRIP_H + 38;
 // Room under the axis for the turn numbers, the company's own marks, and the
 // two holder lanes.
-const PLOT_B = 116;
+const PLOT_B = 122;
 
 const money = (n: number): string => `$${n.toLocaleString()}`;
 
@@ -177,22 +177,22 @@ export const CompanyFrame = memo(function CompanyFrame({
 
           {spans.map((span, index) => (
             <g key={`mark-${span.from}`}>
-              <line x1={x(span.from)} y1={STRIP_Y} x2={x(span.from)} y2={y(0) + 26} stroke={info.color} strokeDasharray="1 4" opacity="0.7" />
+              <line x1={x(span.from)} y1={STRIP_Y} x2={x(span.from)} y2={y(0) + 30} stroke={info.color} strokeDasharray="1 4" opacity="0.7" />
               <EventChip
                 industry={industry}
                 kind={index === 0 ? 'founded' : 'refounded'}
                 x={x(span.from)}
-                y={y(0) + 26}
+                y={y(0) + 30}
                 label={`${corp?.displayName ?? ''} — ${index === 0 ? market.founded : market.refounded}, turn ${span.from}`}
               />
               {span.to < lastTurn ? (
                 <g>
-                  <line x1={x(span.to)} y1={STRIP_Y} x2={x(span.to)} y2={y(0) + 26} stroke="var(--muted)" strokeDasharray="3 3" />
+                  <line x1={x(span.to)} y1={STRIP_Y} x2={x(span.to)} y2={y(0) + 30} stroke="var(--muted)" strokeDasharray="3 3" />
                   <EventChip
                     industry={industry}
                     kind="folded"
                     x={x(span.to)}
-                    y={y(0) + 26}
+                    y={y(0) + 30}
                     label={`${corp?.displayName ?? ''} — ${market.folded}, turn ${span.to}`}
                   />
                 </g>
@@ -202,7 +202,7 @@ export const CompanyFrame = memo(function CompanyFrame({
 
           {record.turns.map((turn) =>
             turn.turn % step === 0 ? (
-              <text key={turn.turn} x={x(turn.turn)} y={y(0) + 22} fontSize="10" fill="var(--muted)" textAnchor="middle" className="tabnum">
+              <text key={turn.turn} x={x(turn.turn)} y={y(0) + 17} fontSize="10" fill="var(--muted)" textAnchor="middle" className="tabnum">
                 {turn.turn}
               </text>
             ) : null,
@@ -210,7 +210,7 @@ export const CompanyFrame = memo(function CompanyFrame({
 
           {/* who the bonuses would pay, turn by turn, as runs */}
           {([0, 1] as const).map((lane) => {
-            const top = y(0) + 26 + CHIP + 10 + lane * 23;
+            const top = y(0) + 30 + CHIP + 12 + lane * 23;
             const half = lastTurn <= 0 ? 0 : (W - PAD_L - PAD_R) / lastTurn / 2;
             return (
               <g key={`lane-${lane}`}>
