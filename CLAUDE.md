@@ -5,7 +5,7 @@ with a variant of our own.
 
 **Where it stands.** Built and shipping. `v2026.9.1` is published with macOS, Windows and Linux
 installers; the release workflow also pushes the unpacked builds to itch.io and deploys the online
-room from the same commit. Hot-seat, bots and online play all work; 887 unit tests and 23
+room from the same commit. Hot-seat, bots and online play all work; 974 unit tests and 23
 integration tests are green. Builds are **unsigned**, so macOS needs one `xattr` command on first
 launch. The work now is refinement, not construction.
 
@@ -36,7 +36,8 @@ packages/
   client-core/   GameSession, GameTransport (local / worker / socket), store, bot driver, netlog
   server/        the authoritative PartyKit room — seats, admission, command log, server-side bots
 apps/
-  desktop/       Electron app — hardened shell, board, panels, decision modals, beats, sound, lobby
+  desktop/       Electron app — hardened shell, board, panels, decision modals, beats, sound, lobby,
+                 and the after-game carousel (`src/after/`)
 docs/            the documentation set above, plus plans/, history/ and screenshots/
 design/          build.py (design canvas + reference naming implementation), make_icon.py,
                  make_skyline.py (recolours skyline.psd into the launch backdrop)
@@ -117,6 +118,15 @@ getting them wrong once.
   defers the hand-off and anything that does not, does not — a light beat that got this wrong leaked
   the next player's hand for a second every turn.
 
+- **The end-of-game record is a fold over the command log, built where the log is.**
+  `retrospective(initial, commands)` replays the log to produce the per-turn series, the company
+  timeline and the 22 superlatives (#68, #69). It needs no stored state and replays identically —
+  and it must be built by the *authority*: the room from its own log, the local session from its
+  own. Folding it client-side out of the event stream would hand a closed table a different history
+  per reader, which is the bug #60 closed. It goes out whole and unredacted at settlement, which is
+  the one moment that costs nothing, because settlement already publishes every seat's cash and
+  holdings.
+
 - **Copy lives in one file.** `apps/desktop/src/copy/constants.json` holds every word the app says.
   Components import from `copy/copy.ts` and hold no sentences of their own.
 
@@ -128,7 +138,7 @@ getting them wrong once.
 
 ```bash
 npm install            # workspaces; ELECTRON_SKIP_BINARY_DOWNLOAD=1 where there is no display
-npm test               # 887 unit tests, both projects
+npm test               # 974 unit tests, both projects
 npm run typecheck      # both tsconfigs
 npm run lint           # eslint flat config
 npm run test:server    # 23 integration tests against a real partykit dev room

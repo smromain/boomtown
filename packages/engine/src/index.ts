@@ -139,4 +139,15 @@ export {
   PHANTOM_SEAT,
 } from './reducer/merge/bonuses.js';
 export { legalMoves, legalMovesForSeat } from './queries/legalMoves.js';
+export {
+  type Retrospective,
+  type TurnRecord,
+  type SeatTurn,
+  type CorpTurn,
+  type CompanyEvent,
+  type CompanyEventKind,
+  holderRanks,
+  retrospective,
+} from './retrospective.js';
+export { type Award, type AwardId } from './awards.js';
 export { evaluate } from './queries/evaluate.js';

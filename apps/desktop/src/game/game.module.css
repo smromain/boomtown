@@ -343,17 +343,28 @@
 /* End screen — shown in the board slot when the game is over. Carries the
    R13 victory illustration (U13), composing with the VictoryBeat that plays
    just before this settles in. */
+/* The slot the end screen gets: the whole width of the table, since the four
+   frames it holds are charts rather than a standings card. It scrolls on its
+   own so the band above and the tray below stay put. */
+.afterSlot {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: auto;
+  padding: 10px 16px 16px;
+}
+
 .gameOver {
   position: relative;
-  overflow: hidden;
-  height: 100%;
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   text-align: center;
   gap: 10px;
-  padding: 24px;
+  padding: 18px 8px 8px;
 }
 
 .gameOverArt {

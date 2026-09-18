@@ -1,5 +1,5 @@
 import type { Command, Seat } from '@boomtown/engine';
-import type { ClientViewDTO, EngineEventDTO } from './dto.js';
+import type { ClientViewDTO, EngineEventDTO, RetrospectiveDTO } from './dto.js';
 import type { WireError } from './errors.js';
 
 /**
@@ -132,6 +132,8 @@ export interface Update {
   readonly view: ClientViewDTO;
   readonly events: readonly EngineEventDTO[];
   readonly rejection?: { readonly command: Command; readonly error: WireError };
+  /** Set once, on the update that ends the game (#68, #69). */
+  readonly retrospective?: RetrospectiveDTO;
 }
 
 export interface ErrorMessage {

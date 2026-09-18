@@ -66,6 +66,10 @@ landed.
 | Hot-seat privacy | An opaque hand-off card, **by construction** | The turn advances the instant a buy resolves, so anything that covers the screen defers the hand-off and anything that does not, does not. A light beat that got this wrong leaked the next player's hand for a second every turn |
 | Copy | One file, `copy/constants.json` | Revising the writing is a pass through one file rather than a hunt across fifty components, and a phrase used twice cannot drift into two versions of itself |
 | Launch backdrop | The **pixel-art town at night**, recoloured from `design/skyline.psd` | Replaced the drifting vector skyline. Four layers so the ranks can drift at different speeds while the moon and stars hold still; every colour mapped onto the palette by `design/make_skyline.py`, which fails rather than passing an unmapped colour through |
+| The end screen | A **carousel of four frames** — standings, the per-turn graph, company by company, the awards — with back / play-pause / forward | It sits behind the victory beat's reveal and is what the table talks over, so it plays itself rather than waiting to be driven. A frame with an inner cycle holds for all of it: both cycles are one cursor, so the only thing moving is the innermost thing, and under `prefers-reduced-motion` nothing moves until somebody asks |
+| Seats have no colour | Identity is the **name, the row and the dash pattern** | A palette that is both colourblind-safe and distinct from the seven corporation colours does not exist at six seats — 12,000 candidates through the dataviz validator say so at ΔE 15, 12 and 10. The colour on these charts belongs to companies, which already own it |
+| Ownership over time | A **line per seat**, never a stacked bar | A stack has to be ordered and every order is a lie for some part of the game: order by the final holding and a seat who led for twenty turns is drawn in the wrong step throughout; order it turn by turn and the bands cross every time the majority moves, which at six seats is most turns. Lines have nothing to order, and the crossing that broke the stack is the thing worth seeing |
+| Settlement on the graph | **Off the line, in the legend** | The bank buys every share back and pays every bonus at once, which at a long table is more money than the whole game before it. Drawn as a data point it triples the axis and flattens forty turns into a line along the bottom with a spike on the end |
 | Electron hardening | Isolation on, node off, sandbox on, strict CSP, fuses flipped | A narrow frozen `window.boomtown` bridge; CSP applied as a response header so it covers both the packaged `file://` load and the dev server; no `unsafe-eval` |
 
 ## Superseded
@@ -116,6 +120,11 @@ landed.
 
 ### Technical
 
+- **The end-of-game record is rebuilt by replaying the whole log.** `retrospective()` runs
+  `reduce` once per command at settlement, which is one pass over a few hundred commands and has
+  never been measurable — but it is O(log) on a thread that also has to paint the end screen. If a
+  very long game ever stutters there, the answer is to fold it forward as the game is played rather
+  than to store it: the log stays the substrate either way.
 - **The room's bots are handed authoritative state.** `runBots` calls
   `policy.chooseMove(this.state, …)` where the local driver passes
   `beliefState(options.snapshot(), …)`. So online bots can read hidden holdings — `bonusExposure` in

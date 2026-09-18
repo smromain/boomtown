@@ -34,5 +34,8 @@ export function reconcile(state: GameClientState, message: TransportMessage): Ga
     inFlight: null,
     lastError: null,
     log: message.events.length > 0 ? [...state.log, ...message.events] : state.log,
+    // It arrives once, on the update that ends the game, and is never replaced
+    // by a later update that does not carry one.
+    retrospective: message.retrospective ?? state.retrospective,
   };
 }

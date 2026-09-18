@@ -467,7 +467,183 @@
     },
     "resumeBuying": "Resume buying stock ↑",
     "resumeEnding": "Resume ending your turn ↑",
-    "endOfGameTitle": "End of game"
+    "endOfGameTitle": "End of game",
+    "after": {
+      "label": "After the game",
+      "frames": {
+        "standings": "Standings",
+        "market": "Tracking the market",
+        "companies": "Company by company",
+        "awards": "Awards"
+      },
+      "controls": {
+        "label": "Move through the frames",
+        "previous": "Back",
+        "play": "Play",
+        "pause": "Pause",
+        "next": "Forward",
+        "hint": "Back, play and forward — or the arrow keys, and space to hold it"
+      },
+      "standings": {
+        "title": "Final standings",
+        "note": "net worth · cash + stock at closing price",
+        "seat": "Seat",
+        "cash": "Cash",
+        "shares": "Shares",
+        "stock": "Stock at close",
+        "total": "Net worth",
+        "change": "vs start"
+      },
+      "market": {
+        "title": "Tracking the market",
+        "note": "net worth per turn, while it was being played",
+        "founded": "founded",
+        "refounded": "founded again",
+        "folded": "folded",
+        "turns": "turn",
+        "settledNote": "The figures are what each seat settled for — the bank buying every share back and paying every bonus at once, which is a different number from anything the game was worth while it ran."
+      },
+      "companies": {
+        "title": "The market, company by company",
+        "note": "value of shares out · ◆ the majority changed hands",
+        "counter": "Company {n} of {total}",
+        "theCompany": "The company · {peak} at its peak",
+        "eachSeat": "Each seat's holding",
+        "held": "held by the table",
+        "largest": "Largest",
+        "second": "Second",
+        "shares": "{n} sh",
+        "neverFounded": "Never founded — every share of it still in the bank",
+        "folded": "Founded turn {founded} · folded turn {folded}",
+        "trading": "Founded turn {founded} · {n} shares still in the bank",
+        "leadNever": "The majority never changed hands",
+        "leadOnce": "The majority changed hands once",
+        "leadMany": "The majority changed hands {n} times",
+        "leadMarker": "The majority changed hands here",
+        "gone": "gone",
+        "none": "Nothing was ever founded. A quiet game."
+      },
+      "awards": {
+        "title": "Awards",
+        "note": "{n} earned this game · five at a time",
+        "counter": "Page {n} of {total}",
+        "shared": "shared",
+        "none": "Nobody earned one. It happens, and it is its own kind of game.",
+        "items": {
+          "synergies-realised": {
+            "title": "Synergies Realised",
+            "sub": "turned other people's companies into your bonus",
+            "stat": "{value} chains folded on their tile"
+          },
+          "right-place-right-collapse": {
+            "title": "Right Place, Right Collapse",
+            "sub": "was holding the most of it when it went under",
+            "stat": "{value} from {company}"
+          },
+          "professional-mourner": {
+            "title": "Professional Mourner",
+            "sub": "made more money from companies dying than from any of them living",
+            "stat": "{value} in bonuses"
+          },
+          "fire-sale-enthusiast": {
+            "title": "Fire Sale Enthusiast",
+            "sub": "sold up the moment the floor went",
+            "stat": "{value} out of {company}"
+          },
+          "money-was-no-object": {
+            "title": "Money Was No Object",
+            "sub": "spent it as fast as the bank could count it",
+            "stat": "{value} across the game"
+          },
+          "cash-is-a-position": {
+            "title": "Cash Is A Position",
+            "sub": "spent the game waiting for a bargain that never came",
+            "stat": "{value} spent, all game"
+          },
+          "paper-baron": {
+            "title": "Paper Baron",
+            "sub": "most shares held when the music stopped",
+            "stat": "{value} certificates"
+          },
+          "buy-high-buy-often": {
+            "title": "Buy High, Buy Often",
+            "sub": "never once let a price put them off",
+            "stat": "{value} shares bought"
+          },
+          "all-eggs-one-basket": {
+            "title": "All Eggs, One Basket",
+            "sub": "one company, total conviction",
+            "stat": "{value} of {of} shares in {company}"
+          },
+          "a-little-of-everything": {
+            "title": "A Little Of Everything",
+            "sub": "a stake in everything, a position in nothing",
+            "stat": "{value} companies at the close"
+          },
+          "rug-puller": {
+            "title": "Rug-Puller",
+            "sub": "founded it, let everyone buy in, then pulled the floor out",
+            "stat": "{company} · {value} shares left with the others"
+          },
+          "too-big-to-fail": {
+            "title": "Too Big To Fail (Briefly)",
+            "sub": "built the biggest thing on the board",
+            "stat": "{company} at {value} tiles"
+          },
+          "serial-entrepreneur": {
+            "title": "Serial Entrepreneur",
+            "sub": "founded the most corporations",
+            "stat": "{value} of them"
+          },
+          "sentimental-value": {
+            "title": "Sentimental Value",
+            "sub": "still holding stock in companies that no longer exist",
+            "stat": "{value} shares kept through a merger"
+          },
+          "took-the-money": {
+            "title": "Took The Money",
+            "sub": "sold at defunct prices and never looked back",
+            "stat": "{value} shares sold off"
+          },
+          "strictly-a-passenger": {
+            "title": "Strictly A Passenger",
+            "sub": "never founded a thing, somehow still here",
+            "stat": "nothing founded, and still finished {value}"
+          },
+          "zoning-issues": {
+            "title": "Zoning Issues",
+            "sub": "left more of the board unbuildable than anyone",
+            "stat": "{value} dead tiles swept"
+          },
+          "quietly-developing-the-suburbs": {
+            "title": "Quietly Developing The Suburbs",
+            "sub": "placed more tiles that did nothing than anyone",
+            "stat": "{value} tiles, no effect"
+          },
+          "called-last-orders": {
+            "title": "Called Last Orders",
+            "sub": "ended it while they were ahead",
+            "stat": "the end was theirs to call"
+          },
+          "shareholder-activist": {
+            "title": "Shareholder Activist",
+            "sub": "would rather put it to the table",
+            "stat": "{value} motions raised"
+          },
+          "showed-everyone-their-hand": {
+            "title": "Showed Everyone Their Hand",
+            "sub": "backed a motion, lost the vote, played on with the books open",
+            "stat": "open books from then on"
+          },
+          "institutional-investor": {
+            "title": "Institutional Investor",
+            "sub": "the heaviest vote in the room",
+            "stat": "{value} shares behind it"
+          }
+        }
+      },
+      "noRecord": "The table's history could not be rebuilt, so this is the standings alone."
+    }
   },
   "story": {
     "label": "Story",

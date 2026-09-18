@@ -1,4 +1,4 @@
-import type { Command, EngineEvent, PlayerView, TileId } from '@boomtown/engine';
+import type { Command, EngineEvent, PlayerView, Retrospective, TileId } from '@boomtown/engine';
 
 /**
  * The serialized shape of one seat's view. `PlayerView` is already a pure
@@ -11,6 +11,15 @@ export type PlayerViewDTO = PlayerView;
 
 /** Events are likewise plain data (KTD2); this is their wire name. */
 export type EngineEventDTO = EngineEvent;
+
+/**
+ * The end-of-game record (#68, #69). Plain data for the same reason the view
+ * is — numbers, arrays and plain records all the way down — so it crosses the
+ * wire as-is. It is sent **only** with the update that ends the game: before
+ * that it would be a per-turn history of a table whose books may be closed,
+ * and the whole point of it is that settlement makes the disclosure free.
+ */
+export type RetrospectiveDTO = Retrospective;
 
 /** What placing a hand tile would do this turn. `blocked` = would found an eighth corporation. */
 export type HandTileEffect = 'nothing' | 'found' | 'grow' | 'merge' | 'dead' | 'blocked';

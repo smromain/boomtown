@@ -26,6 +26,7 @@ export {
   isLocalTurn,
   anyView,
   gameResult,
+  endRecord,
   decidingSeat,
 } from './store.js';
 export { reconcile } from './reconcile.js';

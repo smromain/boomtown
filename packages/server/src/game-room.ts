@@ -3,10 +3,12 @@ import {
   createGame,
   reduce,
   replay,
+  retrospective,
   type Command,
   type EngineEvent,
   type GameState,
   redactEventsFor,
+  type Retrospective,
   type Rng,
   type Seat,
 } from '@boomtown/engine';
@@ -417,7 +419,10 @@ export class GameRoom {
       return null;
     }
     this.state = nextState;
-    if (nextState.status === 'over') this.phase = 'over';
+    if (nextState.status === 'over') {
+      this.phase = 'over';
+      return this.seatUpdates(events, await this.endRecord());
+    }
     return this.seatUpdates(events);
   }
 
@@ -480,7 +485,7 @@ export class GameRoom {
    * (#60). `redactEventsFor` is the same helper the local transport uses, so
    * hot-seat and online hide the same things.
    */
-  private seatUpdates(events: readonly EngineEvent[]): Outbound[] {
+  private seatUpdates(events: readonly EngineEvent[], record?: Retrospective): Outbound[] {
     if (!this.state) return [];
     const state = this.state;
     return this.seats.liveConnections().map(({ seat }) => ({
@@ -490,8 +495,31 @@ export class GameRoom {
         type: 'update' as const,
         view: clientView(state, seat),
         events: redactEventsFor(state, events, seat),
+        ...(record ? { retrospective: record } : {}),
       },
     }));
+  }
+
+  /**
+   * The end-of-game record (#68, #69), rebuilt here because here is where the
+   * authoritative command log lives. It goes out **unredacted and identical to
+   * every seat**, which is the one moment that is right: settlement already
+   * publishes every seat's cash and holdings, so the disclosure costs nothing
+   * — and a per-seat record would hand a closed table a different history each,
+   * which is the bug #60 closed rather than a feature.
+   *
+   * A log that will not replay comes back `complete: false` and the end screen
+   * falls back to the standings. Nothing here throws: this runs inside the
+   * PartyKit lifecycle, where a throw takes the room with it.
+   */
+  private async endRecord(): Promise<Retrospective | undefined> {
+    try {
+      const base = createGame(setupOptionsFor(this.config, this.seats.displayNames()));
+      return retrospective(base, await this.log.loadAll());
+    } catch (error) {
+      roomWarn(this.code, 'could not build the end-of-game record', { error: String(error) });
+      return undefined;
+    }
   }
 
   currentUpdateFor(seat: Seat): RoomMessage | null {

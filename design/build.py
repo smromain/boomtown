@@ -1834,7 +1834,1067 @@ def build_beats():
     )
     write("Beats.dc.html", B_HELMET, body)
 
+# =============================================================== AFTER THE GAME
+# The post-game retrospective (#68 per-turn standings, #69 superlatives). Both
+# issues asked to be designed as ONE screen rather than two things bolted on,
+# and both sit *behind* the victory beat's last-to-first reveal — this is what
+# the table looks at afterwards, not the payoff itself.
+#
+# ---------------------------------------------------------------------------
+# THE COLOUR FINDING, which decided the form of the graph.
+#
+# #68 asks for "a deliberate palette for seats, legible against the cream
+# ground and distinct from the seven corporation colours". That palette was
+# searched for, not guessed at: 12,000 candidates in OKLCH through the dataviz
+# skill's own validator (lightness band, chroma floor, all-pairs CVD
+# separation, normal-vision floor, contrast). The result:
+#
+#   seats  ΔE>=15 from a corp colour   ΔE>=12        ΔE>=10
+#   6      no candidate                no candidate  no candidate
+#   5      no candidate                no candidate  passes (CVD 9.1)
+#   4      no candidate                passes        passes
+#
+# At six seats there is **no** palette that is both colourblind-safe and
+# distinct from the corporation palette. The seven board colours already
+# saturate the usable space — which is exactly why `pool.ts` had to re-space
+# them for luminance in the first place. So the graph does not encode seats by
+# hue at all, and the two directions below are the two honest ways out. The
+# same finding answers #69's "Colour, literally" question: an award is tinted
+# by the corporation it is *about*, never by whose award it is.
+# ---------------------------------------------------------------------------
+
+# Net worth per seat per turn. Illustrative, but shaped like a real game: an
+# early leader, a merger that pays somebody else, and a last-round overtake —
+# which is the whole reason to draw this rather than print the final table.
+AFTER_TURNS = list(range(0, 15))
+AFTER_SERIES = [
+  # name, per-turn net worth, final rank
+  ("Nadia", [6000,6000,6300,7100,7400,9800,10200,10600,11400,11800,12300,12900,13400,15600,16400]),
+  ("You",   [6000,6000,6200,6600,7800,8100,8600,12400,12800,13100,13600,14100,14600,15100,17300]),
+  ("June",  [6000,6100,6400,6900,7200,7600,8000,8300,8900,9400,9900,10300,11000,11600,12100]),
+  ("Ravi",  [6000,5900,6100,6300,6600,6900,7100,7000,7300,7600,7900,8100,8400,8600,8900]),
+]
+# The company timeline. Colour on this artboard belongs to corporations and to
+# nothing else, so every marker below is tinted by the company it names and the
+# *glyph* says what happened to it: a filled dot for a founding, a hollow one
+# for a refounding — a name can come back, and held stock in it goes live again
+# (`docs/rules.md`) — and a dashed rule for the merger that ended it. The label
+# text stays in ink; the mark carries the identity.
+# Four panels and a note row; measured from the render.
+AFTER_H = 2889
+
+AFTER_EVENTS = [
+  (1,  "found",   "books"),
+  (2,  "found",   "electronics"),
+  (3,  "found",   "energy"),
+  (5,  "fold",    "electronics"),
+  (6,  "found",   "video"),
+  (7,  "fold",    "energy"),
+  (9,  "refound", "electronics"),
+  (11, "found",   "tech"),
+  (13, "fold",    "video"),
+]
+
+# Cash comes from the same table the Main artboard prints, so the two agree.
+AFTER_CASH = {name: cash for name, cash, _ in PLAYERS}
+AFTER_SHARES = {name: sum(h.values()) for name, _, h in PLAYERS}
+
+AF_FRAMES = [
+  # tab label, how long it holds, why it holds that long
+  ("Standings", 8, "one read"),
+  ("Tracking the market", 10, "one read"),
+  ("Company by company", 30, "5 companies at 6s"),
+  ("Awards", 30, "5 pages at 6s"),
+]
+
+def b_chip(key, kind, x, y, size=18):
+    """A company event on a chart's axis: the corporation's own mark, in a chip
+    whose treatment says what happened to it. Words along a time axis cannot be
+    made not to collide — three companies folding within a turn of each other
+    printed "FOLDEDOLDED" on a fifty-turn game, and a label's rendered width is
+    a guess, so the layout reserving room for it is a guess too. A chip is a
+    fixed 18px and can be laid out exactly."""
+    corp = CORP[key]
+    solid = kind == "found"
+    inset = (size - 12) / 2.0
+    strike = ('<line x1="2.5" y1="%.1f" x2="%.1f" y2="2.5" stroke="%s" stroke-width="1.5" opacity=".7"/>'
+              % (size - 2.5, size - 2.5, B_INK)) if kind == "fold" else ""
+    return ('<g transform="translate(%.1f %.1f)">'
+            '<rect width="%d" height="%d" rx="4" fill="%s" stroke="%s" stroke-width="1.5" opacity="%s"/>'
+            '<g transform="translate(%.1f %.1f)" opacity="%s">%s</g>%s</g>'
+            % (x - size / 2.0, y, size, size,
+               corp["color"] if solid else B_PANEL, corp["color"],
+               ".5" if kind == "fold" else "1",
+               inset, inset, ".55" if kind == "fold" else "1",
+               b_mark(key, corp["ink"] if solid else corp["color"], 12), strike))
+
+def b_chipkey(key):
+    """What the three treatments mean, since the words came off the axis."""
+    items = [("found", "founded"), ("refound", "founded again"), ("fold", "folded")]
+    out = []
+    for kind, label in items:
+        out.append('<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:%s">'
+                   '<svg width="18" height="18">%s</svg>%s</span>'
+                   % (B_MUTED, b_chip(key, kind, 9, 0), label))
+    return '<span style="display:inline-flex;flex-wrap:wrap;gap:4px 14px">%s</span>' % "".join(out)
+
+
+def af_tabs(active, progress=0.45):
+    """The tab row doubles as the carousel's position. A tab is still a tab —
+    clicking one goes there and holds it — but left alone the row advances on
+    its own, and the sliver under the live pill says how much of this frame is
+    left. Nothing here is a control the table has to operate to see everything;
+    the screen plays itself."""
+    out = []
+    for i, (t, _secs, _why) in enumerate(AF_FRAMES):
+        on = i == active
+        bar = ('<span style="position:absolute;left:3px;right:3px;bottom:3px;height:2px;'
+               'border-radius:999px;background:%s;opacity:.35">'
+               '<span style="position:absolute;left:0;top:0;bottom:0;width:%d%%;border-radius:999px;'
+               'background:%s"></span></span>' % (B_BG, int(progress * 100), B_BG)) if on else ""
+        out.append('<span style="position:relative;padding:7px 15px 9px;border-radius:999px;'
+                   'font-size:12.5px;%s">%s%s</span>'
+                   % ("background:%s;color:%s;font-weight:600" % (B_INK, B_BG) if on
+                      else "color:%s" % B_MUTED, t, bar))
+    return ('<div style="display:inline-flex;gap:3px;padding:3px;border:1px solid %s;border-radius:999px;'
+            'background:%s">%s</div>' % (B_RULE, B_PANEL, "".join(out)))
+
+def af_transport(playing=True):
+    """Back, play/pause, forward. The screen plays itself, but nobody should
+    have to wait out a frame they have finished with or lose one they were
+    still reading — and with `prefers-reduced-motion` the automatic cycle does
+    not run at all, which makes these the only way through rather than a
+    convenience on top of it. They step the *innermost* cycle: forward from the
+    last company rolls into the awards, and pausing stops both."""
+    def button(glyph):
+        return ('<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;'
+                'height:30px;border:1px solid %s;border-radius:999px;background:%s">%s</span>'
+                % (B_RULE, B_PANEL, glyph))
+    back = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M10 3 L5 8 L10 13" fill="none" stroke="%s" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' % B_INK
+    fwd = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M6 3 L11 8 L6 13" fill="none" stroke="%s" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' % B_INK
+    hold = ('<svg width="13" height="13" viewBox="0 0 14 14"><rect x="3" y="2.5" width="3" height="9" rx="1" fill="%s"/>'
+            '<rect x="8" y="2.5" width="3" height="9" rx="1" fill="%s"/></svg>' % (B_INK, B_INK)) if playing else (
+            '<svg width="13" height="13" viewBox="0 0 14 14"><path d="M4 2.5 L11.5 7 L4 11.5 Z" fill="%s"/></svg>' % B_INK)
+    return ('<span style="display:inline-flex;align-items:center;gap:4px">%s%s%s</span>'
+            % (button(back), button(hold), button(fwd)))
+
+def af_frame(i, inner, progress=0.45, playing=True):
+    """One state of the screen, drawn whole: the tab row as it stands on that
+    frame, the transport beside it, and the panel under both."""
+    label, secs, why = AF_FRAMES[i]
+    return ('<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:12px">'
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:20px">%s'
+            '<span style="display:inline-flex;align-items:center;gap:14px">'
+            '<span style="font-size:11px;color:%s">frame %d of %d · holds %ds · %s</span>%s</span></div>'
+            '<div style="display:flex;gap:22px;align-items:flex-start">%s</div></div>'
+            % (af_tabs(i, progress), B_MUTED, i + 1, len(AF_FRAMES), secs, why,
+               af_transport(playing), inner))
+
+def af_panel(title, note, inner, w=None):
+    return ('<div style="%sbackground:%s;%sborder-radius:4px;box-shadow:%s;padding:18px 20px 20px;'
+            'display:flex;flex-direction:column;gap:14px">'
+            '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px">'
+            '<span class="ser" style="font-size:19px">%s</span>'
+            '<span style="font-size:11px;color:%s">%s</span></div>%s</div>'
+            % ("width:%dpx;" % w if w else "flex:1;", B_PANEL, L_TOP_RULE, L_ELEV[1], title, B_MUTED, note, inner))
+
+AF_COLS = "40px 1fr 150px 110px 180px 200px 118px"
+
+def af_standings():
+    """The standings, as numbers.
+
+    This row used to carry a sparkline per seat, and it was the graph below at
+    a tenth the resolution — the useful thing in a standings table is the
+    figures. The width is better spent splitting net worth into the parts it is
+    made of, which is also the only place the reader can check the arithmetic:
+    cash plus stock at closing price, published by settlement.
+    """
+    head = ('<div style="display:grid;grid-template-columns:%s;gap:18px;padding:0 4px 8px;'
+            'border-bottom:1px solid %s;font-size:10px;letter-spacing:.14em;text-transform:uppercase;'
+            'color:%s" class="mono">%s</div>'
+            % (AF_COLS, B_RULE, B_MUTED,
+               "".join('<span style="%s">%s</span>' % ("text-align:right" if i >= 2 else "", h)
+                       for i, h in enumerate(["", "seat", "cash", "shares", "stock at close",
+                                              "net worth", "vs start"]))))
+    rows = []
+    ranked = sorted(AFTER_SERIES, key=lambda s: -s[1][-1])
+    for i, (name, vals) in enumerate(ranked):
+        lead = i == 0
+        cash = AFTER_CASH[name]
+        stock = vals[-1] - cash
+        delta = vals[-1] - vals[0]
+        rows.append(
+          '<div style="display:grid;grid-template-columns:%s;align-items:baseline;gap:18px;'
+          'padding:13px 4px;border-bottom:1px solid %s">'
+          '<span class="ser" style="font-size:19px;color:%s">%d</span>'
+          '<span style="font-size:16px;%s">%s</span>'
+          '<span class="num" style="font-size:15px;text-align:right;color:%s">%s</span>'
+          '<span class="num" style="font-size:15px;text-align:right;color:%s">%d</span>'
+          '<span class="num" style="font-size:15px;text-align:right;color:%s">%s</span>'
+          '<span class="ser num" style="font-size:24px;text-align:right;%s">%s</span>'
+          '<span class="num" style="font-size:12.5px;text-align:right;color:%s">%s%s</span></div>'
+          % (AF_COLS, B_RULE, B_ACCENT if lead else B_MUTED, i + 1,
+             "font-weight:700" if lead else "", name,
+             B_MUTED, money(cash), B_MUTED, AFTER_SHARES[name], B_MUTED, money(stock),
+             "color:%s" % B_ACCENT if lead else "", money(vals[-1]),
+             B_MUTED, "+" if delta >= 0 else "−", money(abs(delta))[1:]))
+    return af_panel("Final standings", "net worth · cash + stock at closing price", head + "".join(rows))
+
+def af_key():
+    """The marker key, in the panel's own note slot: a glyph and a word each."""
+    def glyph(inner):
+        return '<svg width="14" height="12" style="display:block;overflow:visible">%s</svg>' % inner
+    items = [
+      (glyph('<circle cx="7" cy="6" r="4" fill="%s"/>' % B_INK), "founded"),
+      (glyph('<circle cx="7" cy="6" r="3.5" fill="%s" stroke="%s" stroke-width="1.6"/>' % (B_PANEL, B_INK)),
+       "founded again"),
+      (glyph('<line x1="7" y1="0" x2="7" y2="12" stroke="%s" stroke-width="1.5" stroke-dasharray="3 3"/>' % B_MUTED),
+       "folded"),
+    ]
+    return ('<span style="display:inline-flex;align-items:center;gap:14px;color:%s">'
+            '<span>net worth per turn</span>%s</span>'
+            % (B_MUTED, "".join('<span style="display:inline-flex;align-items:center;gap:5px">%s%s</span>' % it
+                                for it in items)))
+
+def af_graph_lit(W=1050, H=330):
+    """One chart across the full width, the way the Mario Party end screen does
+    it: the plot takes the room and a legend sits down the right with each
+    seat's final figure.
+
+    The seat being read is in the accent and the rest are recessive ink, every
+    line direct-labelled at the legend. Identity is the label; the accent only
+    says which line you are following, and hovering or tabbing promotes any of
+    them — so the chart has as many readings as there are seats.
+
+    The company timeline rides the x-axis underneath it, because a line that
+    doubles in a turn is answering something: a founding, a refounding, or the
+    merger that ended a company somebody was holding.
+    """
+    PAD_L, PAD_B, PAD_R, PAD_T = 40, 74, 8, 14
+    allv = [v for _, vals in AFTER_SERIES for v in vals]
+    lo, hi = min(allv) * 0.96, max(allv) * 1.02
+    n = len(AFTER_TURNS)
+    def xy(i, v):
+        return (PAD_L + i * (W - PAD_L - PAD_R) / (n - 1),
+                H - PAD_B - (v - lo) * (H - PAD_B - PAD_T) / (hi - lo))
+
+    # One faint rule per turn, a number every other one — the reference's own
+    # x-axis. At this width every turn gets its own column without crowding.
+    ticks = []
+    for i in AFTER_TURNS:
+        x = xy(i, lo)[0]
+        ticks.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="1"/>'
+                     % (x, PAD_T - 6, x, H - PAD_B, B_RULE if i % 2 == 0 else B_BG))
+        if i % 2 == 0:
+            ticks.append('<text x="%.1f" y="%d" font-size="10" fill="%s" text-anchor="middle" '
+                         'class="num">%d</text>' % (x, H - PAD_B + 15, B_MUTED, i))
+    # money gridlines, so a reader can price the gap between two lines
+    for v in range(5000, int(hi), 5000):
+        y = xy(0, v)[1]
+        ticks.append('<line x1="%d" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
+                     'stroke-dasharray="2 5"/>'
+                     '<text x="%d" y="%.1f" font-size="9" fill="%s" text-anchor="end" '
+                     'dominant-baseline="middle" class="num">%s</text>'
+                     % (PAD_L, y, xy(n - 1, lo)[0], y, B_RULE, PAD_L - 7, y, B_MUTED, money(v)))
+
+    # The company timeline, on the axis: one mark per event, each in a chip
+    # whose treatment says what happened. It replaced a coloured square and a
+    # word — words along a time axis cannot be made not to collide, and the
+    # mark says *which* company, which the word never did.
+    marks = []
+    for t, kind, ind in AFTER_EVENTS:
+        x, y = xy(t, lo)[0], H - PAD_B
+        marks.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
+                     'stroke-dasharray="%s" opacity=".55"/>'
+                     % (x, PAD_T - 6, x, y + 26, B_MUTED if kind == "fold" else CORP[ind]["color"],
+                        "3 3" if kind == "fold" else "1 4"))
+        marks.append(b_chip(ind, kind, x, y + 26))
+
+    lines = []
+    for name, vals in AFTER_SERIES:
+        lit = name == "You"
+        pts = [xy(i, v) for i, v in enumerate(vals)]
+        d = "M" + " L".join("%.1f %.1f" % p for p in pts)
+        lines.append('<path d="%s" fill="none" stroke="%s" stroke-width="%s" stroke-linejoin="round" '
+                     'stroke-linecap="round" opacity="%s"/><circle cx="%.1f" cy="%.1f" r="%d" fill="%s"/>'
+                     % (d, B_ACCENT if lit else B_INK, "2.5" if lit else "1.5", "1" if lit else ".32",
+                        pts[-1][0], pts[-1][1], 4 if lit else 3, B_ACCENT if lit else B_INK))
+    svg = ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;overflow:visible">'
+           '<line x1="%d" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="1"/>%s%s%s</svg>'
+           % (W, H, W, H, PAD_L, H - PAD_B, xy(n - 1, lo)[0], H - PAD_B, B_RULE,
+              "".join(ticks), "".join(marks), "".join(lines)))
+
+    # The legend — the reference's right-hand column: who, where they finished,
+    # and a swatch of their own line so the two read as one thing.
+    legend = []
+    for i, (name, vals) in enumerate(sorted(AFTER_SERIES, key=lambda s: -s[1][-1])):
+        lit = name == "You"
+        legend.append(
+          '<div style="display:grid;grid-template-columns:16px 26px 1fr auto;align-items:center;gap:9px;'
+          'padding:9px 0;border-bottom:1px solid %s">'
+          '<svg width="16" height="8" style="display:block"><line x1="0" y1="4" x2="16" y2="4" '
+          'stroke="%s" stroke-width="%s" opacity="%s" stroke-linecap="round"/></svg>'
+          '<span class="ser" style="font-size:14px;color:%s">%d</span>'
+          '<span style="font-size:13.5px;%s">%s</span>'
+          '<span class="ser num" style="font-size:16px">%s</span></div>'
+          % (B_RULE, B_ACCENT if lit else B_INK, "2.5" if lit else "1.5", "1" if lit else ".4",
+             B_ACCENT if lit else B_MUTED, i + 1, "font-weight:700" if lit else "", name,
+             money(vals[-1])))
+    return af_panel("Tracking the market",
+                    '<span style="display:inline-flex;align-items:center;gap:14px;color:%s">'
+                    '<span>net worth per turn</span>%s</span>' % (B_MUTED, b_chipkey("books")),
+                    '<div style="display:flex;gap:26px;align-items:flex-start">'
+                    '<div style="flex:1;min-width:0">%s</div>'
+                    '<div style="width:236px;flex-shrink:0;padding-top:4px">%s</div></div>'
+                    % (svg, "".join(legend)))
+
+# Every candidate from #69, kept — the set is not trimmed, it is *paged*. Each
+# is tinted by the corporation it is genuinely about (the one that died, the one
+# that was built) and left neutral otherwise, which is the answer the seat-colour
+# finding forces on "Colour, literally".
+#   title, subtitle, winner, the number, corporation it is about, Boomtown-only
+AFTER_AWARDS = [
+  ("Synergies Realised", "turned other people's companies into your bonus",
+   "Nadia", "3 chains folded on her tile", "electronics", False),
+  ("Professional Mourner", "made more money from companies dying than from any of them living",
+   "You", money(9000) + " of it in bonuses", "energy", False),
+  ("Rug-Puller", "founded it, let everyone buy in, then pulled the floor out",
+   "You", "Radio Hut · 9 shares left with the others", "electronics", False),
+  ("Sentimental Value", "still holding stock in companies that no longer exist",
+   "Ravi", "11 shares kept through a merger", "books", False),
+  ("Quietly Developing The Suburbs", "placed more tiles that did nothing than anyone",
+   "June", "9 tiles, no effect", None, False),
+  ("Right Place, Right Collapse", "was holding the most of it when it went under",
+   "You", money(4000) + " on Radio Hut", "electronics", False),
+  ("Fire Sale Enthusiast", "sold up the moment the floor went",
+   "June", money(6300) + " in disposals", "video", False),
+  ("Money Was No Object", "spent it as fast as the bank could count it",
+   "Nadia", money(31400) + " across 14 turns", None, False),
+  ("Cash Is A Position", "spent the game waiting for a bargain that never came",
+   "Nadia", money(8200) + " still in hand", None, False),
+  ("Paper Baron", "most shares held when the music stopped",
+   "Nadia", "16 certificates", None, False),
+  ("Buy High, Buy Often", "never once let a price put them off",
+   "You", "34 shares bought", None, False),
+  ("All Eggs, One Basket", "one company, total conviction",
+   "Ravi", "6 of 12 shares in Megahit Video", "video", False),
+  ("A Little Of Everything", "a stake in everything, a position in nothing",
+   "You", "5 companies, none above 5 shares", None, False),
+  ("Too Big To Fail (Briefly)", "built the biggest thing on the board",
+   "June", "Chapter Eleven at 11 tiles", "books", False),
+  ("Serial Entrepreneur", "founded the most corporations",
+   "You", "3 of them, one of them twice", None, False),
+  ("Took The Money", "sold at defunct prices and never looked back",
+   "June", "14 shares at the close", None, False),
+  ("Strictly A Passenger", "never founded a thing, somehow still here",
+   "Nadia", "0 foundings, 2nd place", None, False),
+  ("Zoning Issues", "left more of the board unbuildable than anyone",
+   "June", "5 dead tiles swept", None, False),
+  ("Called Last Orders", "ended it while they were ahead",
+   "You", "end announced on turn 14", None, True),
+  ("Shareholder Activist", "would rather put it to the table",
+   "Ravi", "2 motions raised", None, True),
+  ("Showed Everyone Their Hand", "backed a motion, lost the vote, played on with the books open",
+   "Ravi", "open from turn 6", None, True),
+  ("Institutional Investor", "the heaviest vote in the room",
+   "Nadia", "16 shares behind it", None, True),
+]
+AF_PAGE = 5
+AF_PAGES = (len(AFTER_AWARDS) + AF_PAGE - 1) // AF_PAGE
+
+def af_awards():
+    """#69 — all of them, five at a time.
+
+    Choosing three or four per game means ranking "interesting", which is a
+    design problem with no good answer; paging the whole earned set means the
+    table sees every one of them and nobody has to decide. Five is what fits a
+    row without the eye having to hunt, and the cycle is slow enough to read
+    aloud — the thing this screen is for."""
+    out = []
+    for title, sub, who, stat, ind, _bt in AFTER_AWARDS[:AF_PAGE]:
+        tint = CORP[ind]["color"] if ind else B_RULE
+        # Three columns, not two: the name, then the line that explains the
+        # joke, then who won it. A title left and a winner hard right leaves a
+        # hole across the middle of a 1312px row — the same hole the chart had.
+        out.append(
+          '<div style="display:grid;grid-template-columns:3px 310px 1fr 250px;align-items:center;'
+          'gap:16px;padding:13px 0;border-bottom:1px solid %s">'
+          '<span style="align-self:stretch;border-radius:2px;background:%s"></span>'
+          '<span class="ser" style="font-size:17px">%s</span>'
+          '<span style="font-size:12.5px;color:%s;line-height:1.45">%s</span>'
+          '<span style="text-align:right;display:flex;flex-direction:column;gap:3px">'
+          '<span style="font-size:14px;font-weight:700">%s</span>'
+          '<span class="num" style="font-size:11.5px;color:%s">%s</span></span></div>'
+          % (B_RULE, tint, title, B_MUTED, sub, who, B_MUTED, stat))
+
+    dots = "".join('<span style="width:%s;height:6px;border-radius:999px;background:%s"></span>'
+                   % ("20px" if i == 0 else "6px", B_ACCENT if i == 0 else B_RULE)
+                   for i in range(AF_PAGES))
+    pager = ('<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;'
+             'padding-top:12px">'
+             '<span style="display:inline-flex;align-items:center;gap:6px">%s</span>'
+             '<span style="font-size:11px;color:%s">page 1 of %d · turns over every 6 seconds · '
+             'hover or focus holds it</span></div>' % (dots, B_MUTED, AF_PAGES))
+    return af_panel("Awards", "%d earned this game · five at a time" % len(AFTER_AWARDS),
+                    "".join(out) + pager)
+
+def af_pool():
+    """The whole set on one panel — what #69 is actually asking to agree. The
+    subtitle is the joke; the line under it is the part that has to be right,
+    and it is what the fold over the command log computes."""
+    defs = [
+      ("Synergies Realised", "mergemaker on the most <code>corporation-defunct</code>"),
+      ("Professional Mourner", "largest sum of <code>bonus-paid</code>"),
+      ("Rug-Puller", "founded it, merged it away, others still holding"),
+      ("Sentimental Value", "most <code>shares-disposed.hold</code>"),
+      ("Quietly Developing The Suburbs", "most <code>tile-placed</code> with outcome <code>nothing</code>"),
+      ("Right Place, Right Collapse", "largest single <code>bonus-paid</code>"),
+      ("Fire Sale Enthusiast", "largest <code>shares-disposed.proceeds</code>"),
+      ("Money Was No Object", "largest sum of <code>shares-bought.cost</code>"),
+      ("Cash Is A Position", "least spent, most unspent at the close"),
+      ("Paper Baron", "most holdings at settlement"),
+      ("Buy High, Buy Often", "most shares bought across the game"),
+      ("All Eggs, One Basket", "most concentrated holding at the close"),
+      ("A Little Of Everything", "most diversified holding at the close"),
+      ("Too Big To Fail (Briefly)", "peak <code>corporation-grew.newSize</code>, to the placer"),
+      ("Serial Entrepreneur", "most <code>found-corporation</code> commands"),
+      ("Took The Money", "most shares sold at defunct prices"),
+      ("Strictly A Passenger", "founded nothing, finished mid-table or better"),
+      ("Zoning Issues", "most <code>dead-tiles-swept</code>"),
+      ("Called Last Orders", "the seat on <code>end-announced</code>"),
+      ("Shareholder Activist", "most <code>motion-raised</code>"),
+      ("Showed Everyone Their Hand", "in <code>books-opened</code> after a lost vote"),
+      ("Institutional Investor", "largest <code>vote-cast.weight</code>"),
+    ]
+    bt = {t for t, _s, _w, _st, _i, b in AFTER_AWARDS if b}
+    items = []
+    for title, rule in defs:
+        items.append(
+          '<div style="break-inside:avoid;padding:7px 0;display:flex;flex-direction:column;gap:2px">'
+          '<span style="font-size:13px">%s%s</span>'
+          '<span style="font-size:11px;color:%s;line-height:1.4">%s</span></div>'
+          % (title,
+             ('<span class="mono" style="margin-left:7px;font-size:8.5px;letter-spacing:.12em;'
+              'padding:2px 5px;border-radius:3px;border:1px solid %s;color:%s;vertical-align:2px">BT</span>'
+              % (B_RULE, B_MUTED)) if title in bt else "",
+             B_MUTED, rule))
+    return af_panel("The whole set",
+                    "22 in the pool · <span style=\"letter-spacing:.12em\">BT</span> = Boomtown tables only",
+                    '<div style="column-count:3;column-gap:40px">%s</div>' % "".join(items))
+
+def af_note(title, body):
+    return ('<div style="width:430px;border:1px dashed %s;border-radius:4px;padding:15px 17px;'
+            'display:flex;flex-direction:column;gap:7px">'
+            '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">%s</span>'
+            '<span style="font-size:11.5px;line-height:1.55;color:%s">%s</span></div>'
+            % (B_RULE, B_ACCENT, title, B_INK, body))
+
+def build_after():
+    total = sum(s for _t, s, _w in AF_FRAMES)
+    header = (
+      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:10px">'
+      '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">'
+      'Boomtown · after the game (#68 + #69)</span>'
+      '<span class="ser" style="font-size:34px">The shape of the game, once it is over</span>'
+      '<span style="font-size:13px;line-height:1.55;color:%s;max-width:1000px">Four frames, turning over on '
+      'their own: the standings every game already ends on, the per-turn graph, the market company by company, '
+      'and the awards. It sits <em>behind</em> the victory beat\'s last-to-first reveal — that is the payoff, '
+      'this is what the table talks over afterwards, and a screen nobody has to drive is the right shape for '
+      'that. Every frame is still a tab: click one and it holds. Disclosure is free here — settlement already '
+      'publishes every seat\'s cash and holdings — which is why the whole-table version of any of this belongs '
+      'at the end and nowhere else. Back, play and forward step it by hand \u2014 and the arrow keys and space '
+      'do the same \u2014 because with <code>prefers-reduced-motion</code> nothing cycles on its own, which '
+      'makes those controls the way through rather than a convenience on top of one.</span>'
+      '<div style="display:flex;align-items:baseline;gap:14px;margin-top:4px">'
+      '<span class="ser num" style="font-size:20px">%d seconds</span>'
+      '<span style="font-size:11.5px;color:%s">all the way round · every frame below is one state of the same '
+      'screen</span></div></div>' % (B_MUTED, B_MUTED, total, B_MUTED)
+    )
+
+    seat_max = mk_seat_max([mk_market_series(k) for k in ORDER if MARKET[k]["spans"]])
+    frames = "".join([
+      af_frame(0, af_standings(), 0.62),
+      af_frame(1, af_graph_lit(), 0.30),
+      af_frame(2, af_panel("The market, company by company",
+                           "company 2 of 5 in this frame · "
+                           "<span style=\"white-space:nowrap\">◆ majority changed hands</span>",
+                           mk_stage("video", seat_max, 14000)), 0.44, playing=False),
+      af_frame(3, af_awards(), 0.18),
+    ])
+
+    pool = ('<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:12px">'
+            '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;'
+            'color:%s">not a frame — the set behind the awards frame, for reference</span>%s</div>'
+            % (B_MUTED, af_pool()))
+
+    notes = (
+      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
+      % (af_note("A frame that cycles holds for all of it",
+                 "Two of the four have a carousel of their own — five companies, five pages of awards — "
+                 "and two cycles running at different rates is how a screen stops being readable. So the outer "
+                 "one waits: a frame with an inner cycle holds until the inner cycle has been all the way "
+                 "round, which is why those two hold 30 seconds and the flat ones hold 8 and 10. One thing "
+                 "moves at a time, and it is always the innermost."),
+         af_note("Why the seats have no colours",
+                 "#68 asks for a seat palette that is colourblind-safe <em>and</em> distinct from the seven "
+                 "corporation colours. 12,000 candidates through the dataviz validator say it does not exist at "
+                 "six seats — not at ΔE 15 from the board palette, not at 12, not at 10. The board already "
+                 "spends the usable space. So identity is the label, the row and the dash, never the hue — and "
+                 "the colour you do see belongs to companies, which already own it."),
+         af_note("What the y-axis is",
+                 "Net worth — cash plus stock at closing price — and it says so on the panel rather than "
+                 "leaving it inferred. Cash alone would show a fully-invested player as broke. It must come from "
+                 "settlement's own arithmetic, never from <code>evaluate()</code>, which is a bot's opinion "
+                 "with growth headroom priced in."))
+    )
+    body = (
+      '<div style="width:1440px;min-height:%dpx;background:%s;color:%s;'
+      'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:40px 0 44px;'
+      'display:flex;flex-direction:column;gap:30px;align-items:center">%s%s%s%s</div>'
+      % (AFTER_H, B_BG, B_INK, header, frames, pool, notes)
+    )
+    write("After.dc.html", B_HELMET, body)
+
 # ---------------------------------------------------------------- canvas
+
+# =========================================================== company by company
+# One chart per company, stacked by seat, y in money. The line chart says who
+# won and the radar would have said who was positioned where; this says what
+# each *company* was worth and who owned it while it was worth that — which is
+# the market from the company's side rather than the player's.
+#
+# The stacks answer the seat-palette problem by not needing a seat palette: a
+# cell is one company, so its segments are steps of that company's own hue.
+# Colour says which company, lightness says where a seat came in the ownership
+# of it, and the names sit under the cell rather than in a shared legend.
+#
+# A stack's total height is the traded value of the company — shares out times
+# the current price — so the silhouette is the company's whole life: founded,
+# bought into, revalued, and gone.
+
+# turn -> size, and seat -> {turn: holding from that turn on}. Written as steps
+# because that is how a game produces them; expanded below. Consistent with the
+# timeline on the after-game artboard, and the closing holdings match the table
+# the Main artboard prints.
+MARKET = {
+  "books": {
+    "spans": [(1, 14)],
+    "size": {1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 7: 7, 8: 8, 9: 9, 11: 10, 13: 11},
+    "held": {"June": {1: 1, 2: 3, 5: 4, 9: 5, 12: 6},
+             "Nadia": {3: 2, 6: 4, 10: 6, 13: 7},
+             "You": {4: 1, 7: 3, 11: 4},
+             "Ravi": {8: 2}},
+  },
+  "electronics": {
+    "spans": [(2, 5), (9, 14)],
+    "size": {2: 2, 3: 3, 4: 4, 5: 5, 9: 2, 10: 3, 12: 4, 14: 5},
+    "held": {"You": {2: 3, 3: 4, 9: 2},
+             "Nadia": {3: 2, 4: 3, 9: 0},
+             "June": {4: 2, 9: 0, 11: 3},
+             "Ravi": {4: 2, 9: 0, 10: 3}},
+  },
+  "energy": {
+    "spans": [(3, 7)],
+    "size": {3: 2, 4: 3, 5: 4, 6: 5, 7: 6},
+    "held": {"You": {3: 3}, "Nadia": {4: 3}, "June": {5: 1}, "Ravi": {}},
+  },
+  "video": {
+    "spans": [(6, 13)],
+    "size": {6: 2, 7: 3, 8: 4, 9: 5, 10: 6, 11: 7, 12: 8, 13: 9},
+    "held": {"Ravi": {6: 2, 8: 4, 10: 6},
+             "June": {7: 2, 9: 4, 11: 5},
+             "Nadia": {8: 2, 12: 4},
+             "You": {9: 1}},
+  },
+  "tech": {
+    "spans": [(11, 14)],
+    "size": {11: 2, 12: 3, 13: 4, 14: 5},
+    "held": {"You": {11: 2, 12: 4, 14: 5},
+             "Nadia": {11: 1, 13: 3},
+             "June": {12: 2},
+             "Ravi": {13: 1}},
+  },
+  "air": {"spans": [], "size": {}, "held": {}},
+  "toys": {"spans": [], "size": {}, "held": {}},
+}
+MARKET_SEATS = ["You", "Nadia", "June", "Ravi"]
+
+def mk_mix(hexcol, pct):
+    """`pct` of the way from the colour to paper. The steps have to survive a
+    2px gap between segments, so they are wide apart rather than even."""
+    r, g, b = (int(hexcol[i:i + 2], 16) for i in (1, 3, 5))
+    pr, pg, pb = (int(B_PANEL[i:i + 2], 16) for i in (1, 3, 5))
+    return "#%02X%02X%02X" % tuple(min(255, max(0, int(round(c + (p - c) * pct))))
+                                  for c, p in ((r, pr), (g, pg), (b, pb)))
+
+MK_DASH = ["", "7 4", "1.5 3.5", "10 3.5 1.5 3.5", "16 5", "1.5 3.5 7 3.5"]
+
+# A six-handed table over forty-six turns — the case the stacked version could
+# not survive, kept as a frame on the artboard so the claim can be checked
+# rather than believed. The majority changes hands four times in it.
+STRESS_SEATS = ["You", "Nadia", "June", "Ravi", "Otto", "Mara"]
+STRESS_TURNS = list(range(0, 47))
+STRESS = {
+  "spans": [(3, 46)],
+  "size": {3: 2, 5: 3, 7: 4, 9: 5, 11: 6, 14: 8, 17: 11, 20: 14, 24: 18, 28: 22,
+           33: 26, 38: 30, 43: 34},
+  "held": {"You":   {4: 1, 9: 2, 15: 3, 22: 4, 31: 6, 39: 7},
+           "Nadia": {5: 2, 12: 3, 20: 5, 27: 6},
+           "June":  {6: 1, 14: 3, 19: 4, 29: 5},
+           "Ravi":  {7: 1, 18: 2, 35: 3},
+           "Otto":  {11: 1, 24: 2},
+           "Mara":  {13: 1, 33: 2}},
+}
+
+def mk_series(spec, seats, turns, tier):
+    """Expand the steps into a per-turn record: size, price, holdings, value."""
+    live = set()
+    for a, b in spec["spans"]:
+        live |= set(range(a, b + 1))
+    out, size, held = {}, 0, {s: 0 for s in seats}
+    for t in turns:
+        if t in spec["size"]: size = spec["size"][t]
+        for s in seats:
+            if t in spec["held"].get(s, {}): held[s] = spec["held"][s][t]
+        if t not in live:
+            size = 0
+            continue
+        p = price(size, tier) or 0
+        out[t] = {"size": size, "price": p, "held": dict(held),
+                  "value": {s: held[s] * p for s in seats}}
+    return out
+
+def mk_market_series(ind):
+    return mk_series(MARKET[ind], MARKET_SEATS, AFTER_TURNS, CORP[ind]["tier"])
+
+def mk_rank(series, seats):
+    """Order for the side table and the labels: who ended up holding most,
+    peak then name breaking a tie. It orders a *list*, not a stack — nothing
+    on the chart depends on it any more."""
+    if not series: return list(seats)
+    last = series[max(series)]["held"]
+    peak = {s: max((r["held"][s] for r in series.values()), default=0) for s in seats}
+    return sorted(seats, key=lambda s: (-last[s], -peak[s], s))
+
+def mk_leads(series, seats):
+    """The turns the majority changed hands. A tie holds the incumbent, which
+    is not the rule for a bonus but is the right reading of "changed hands" —
+    nobody took it off anyone."""
+    out, cur = [], None
+    for t in sorted(series):
+        held = series[t]["held"]
+        top = max(held.values())
+        if top == 0: continue
+        winners = [s for s in seats if held[s] == top]
+        if cur in winners: continue
+        if len(winners) > 1: continue
+        if cur is not None: out.append((t, winners[0]))
+        cur = winners[0]
+    return out
+
+def mk_holder_runs(series, seats):
+    """Who the two bonuses would pay, turn by turn, collapsed into runs.
+
+    Ranked by shares held, ties kept together rather than broken — a tie for
+    largest is a real position in the rules (`docs/rules.md`, *Bonus ties*: the
+    primary and secondary bonuses combine and halve, and the next holder down
+    becomes secondary), so the lane says "Nadia · June" and means it. Consecutive
+    turns with the same answer become one block, which is the whole point: a
+    reader wants the tenure, not forty-six repetitions of a name.
+    """
+    rows = [[], []]
+    for t in sorted(series):
+        held = series[t]["held"]
+        levels = sorted({v for v in held.values() if v > 0}, reverse=True)
+        for lane in (0, 1):
+            who = ([s for s in seats if held[s] == levels[lane]]
+                   if lane < len(levels) else [])
+            label = " · ".join(who)
+            if rows[lane] and rows[lane][-1][2] == label and rows[lane][-1][1] == t - 1:
+                rows[lane][-1][1] = t
+            else:
+                rows[lane].append([t, t, label])
+    return rows
+
+def mk_chart(ind, series, seats, W, H, turns, spans, seat_max, total_max,
+             big=False, strip_only=False, demo_turn=None):
+    """One company: a line per seat, under a strip of what the company itself
+    was worth.
+
+    The stacked version this replaces could not answer two questions from the
+    table — six seats, and a company that lives forty turns — and both had the
+    same root. A stack has to be ordered, and every order is a lie for some
+    part of the game: order by the end and the seat who led for twenty turns is
+    drawn in the wrong step throughout; order turn by turn and the bands cross
+    every time the lead moves, which at six seats is most turns.
+
+    Lines have no order to get wrong. The lead changing hands *is* the picture
+    — two lines crossing, marked with a ◆ — rather than something the drawing
+    has to survive, and forty-six turns is a longer line rather than forty-six
+    shoved bars.
+
+    The two readings get their own heights rather than one shared axis. The
+    company's total is six times any one seat's line at a six-handed table, so
+    a common scale would flatten the fight into the bottom sixth of the plot.
+    The strip is the company; the plot under it is whose.
+    """
+    corp = CORP[ind]
+    PAD_B, PAD_R = (116, 100) if big else (6, 0)
+    STRIP_Y, STRIP_H = (30, 44) if big else (0, H - PAD_B)
+    PLOT_Y = STRIP_Y + STRIP_H + 38
+    n = len(turns)
+    def x(t): return t * (W - PAD_R) / (n - 1)
+    def ys(v): return STRIP_Y + STRIP_H - (v / total_max) * STRIP_H     # the strip
+    def y(v): return H - PAD_B - (v / seat_max) * (H - PAD_B - PLOT_Y)  # the seats
+    if not series:
+        return ""
+
+    ink = mk_mix(corp["color"], -0.24)     # the hue, darkened enough to draw with
+    parts = []
+
+    # --- the company: its whole worth, as one band ---------------------------
+    for a, b in spans:
+        span = [t for t in sorted(series) if a <= t <= b]
+        if len(span) < 2: continue
+        pts = [(x(t), ys(sum(series[t]["value"].values()))) for t in span]
+        d = "M" + " L".join("%.1f %.1f" % p for p in pts)
+        base = ys(0)
+        parts.append('<path d="%s L%.1f %.1f L%.1f %.1f Z" fill="%s" opacity=".18"/>'
+                     '<path d="%s" fill="none" stroke="%s" stroke-width="1.5" opacity=".55"/>'
+                     % (d, pts[-1][0], base, pts[0][0], base, corp["color"], d, ink))
+    parts.append('<line x1="0" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1"/>'
+                 % (ys(0), x(turns[-1]), ys(0), B_RULE))
+    if big:
+        peak = max(sum(r["value"].values()) for r in series.values())
+        parts.append('<text x="0" y="%d" font-size="9" fill="%s" '
+                     'style="letter-spacing:.11em;text-transform:uppercase">the company · %s at its '
+                     'peak</text>' % (STRIP_Y - 20, B_MUTED, money(peak)))
+        parts.append('<text x="%.1f" y="%.1f" font-size="9" fill="%s" dominant-baseline="middle" '
+                     'class="num">%s</text>' % (x(turns[-1]) + 8, ys(total_max) + 5, B_MUTED,
+                                                money(total_max)))
+
+    if strip_only:
+        return ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;'
+                'overflow:visible">%s</svg>' % (W, H, W, H, "".join(parts)))
+
+    # --- the seats: one line each, on their own scale ------------------------
+    step = 2000 if seat_max <= 9000 else 5000
+    for v in range(step, int(seat_max) + 1, step):
+        parts.append('<line x1="0" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
+                     'stroke-dasharray="2 5"/>'
+                     '<text x="2" y="%.1f" font-size="9" fill="%s" dominant-baseline="after-edge" '
+                     'class="num">%s</text>'
+                     % (y(v), x(turns[-1]), y(v), B_RULE, y(v) - 2, B_MUTED, money(v)))
+    parts.append('<text x="0" y="%.1f" font-size="9" fill="%s" '
+                 'style="letter-spacing:.11em;text-transform:uppercase">each seat\'s holding</text>'
+                 % (PLOT_Y - 20, B_MUTED))
+
+    for i, s in enumerate(seats):
+        dash = MK_DASH[i % len(MK_DASH)]
+        for a, b in spans:
+            span, seen = [], False
+            for t in sorted(series):
+                if not a <= t <= b: continue
+                seen = seen or series[t]["held"][s] > 0
+                if seen: span.append(t)
+            if len(span) < 2: continue
+            parts.append('<path d="M%s" fill="none" stroke="%s" stroke-width="2" '
+                         'stroke-linejoin="round" stroke-linecap="round"%s><title>%s</title></path>'
+                         % (" L".join("%.1f %.1f" % (x(t), y(series[t]["value"][s])) for t in span),
+                            ink, ' stroke-dasharray="%s"' % dash if dash else "",
+                            "%s \u2014 %d shares at turn %d, %s"
+                            % (s, series[span[-1]]["held"][s], span[-1],
+                               money(series[span[-1]]["value"][s]))))
+
+    parts.append('<line x1="0" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1"/>'
+                 % (y(0), x(turns[-1]), y(0), B_RULE))
+
+    # The majority changing hands: the event the table asked about, marked
+    # where it happens rather than left to be inferred from a crossing —
+    # straddling the axis like a tick rather than sitting in the row the turn
+    # numbers use, where it printed over them.
+    for t, _who in mk_leads(series, seats):
+        parts.append('<path d="M%.1f %.1f l4.5 5.5 l-4.5 5.5 l-4.5 -5.5 Z" fill="%s"/>'
+                     % (x(t), y(0) - 6, B_ACCENT))
+
+    # founded / founded again / folded, ruled through both plots so the
+    # company's turn and the seats' turn are the same turn
+    # The company's own history, on the axis: the mark in a chip whose
+    # treatment says founded, founded again or folded. The words that used to
+    # sit along the top collided with the panel's own caption.
+    for i, (a, b) in enumerate(spans):
+        parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
+                     'stroke-dasharray="1 4" opacity=".75"/>'
+                     % (x(a), STRIP_Y, x(a), y(0) + 26, corp["color"]))
+        parts.append(b_chip(ind, "found" if i == 0 else "refound", x(a), y(0) + 26))
+        if b < turns[-1]:
+            parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
+                         'stroke-dasharray="3 3"/>' % (x(b), STRIP_Y, x(b), y(0) + 26, B_MUTED))
+            parts.append(b_chip(ind, "fold", x(b), y(0) + 26))
+
+    tick = 1 if n <= 16 else (2 if n <= 26 else 5)
+    for t in turns:
+        if t % tick == 0:
+            parts.append('<text x="%.1f" y="%.1f" font-size="10" fill="%s" text-anchor="middle" '
+                         'class="num">%d</text>' % (x(t), y(0) + 18, B_MUTED, t))
+
+    # Under the turns, who the bonuses would pay. The lines say how close it
+    # was; this says who was actually holding the position, which is the thing
+    # the money keys off and the one question a line chart makes you squint at.
+    half = (W - PAD_R) / (n - 1) / 2
+    lanes = mk_holder_runs(series, seats)
+    for lane, runs in enumerate(lanes):
+        top = y(0) + 54 + lane * 23
+        parts.append('<text x="%.1f" y="%.1f" font-size="8.5" fill="%s" dominant-baseline="middle" '
+                     'style="letter-spacing:.09em;text-transform:uppercase">%s</text>'
+                     % (x(turns[-1]) + 10, top + 9, B_MUTED,
+                        "largest holder" if lane == 0 else "second largest"))
+        for i, (a, b, label) in enumerate(runs):
+            if not label: continue
+            x0 = max(0.0, x(a) - half) + 1
+            x1 = min(x(turns[-1]), x(b) + half) - 1
+            wide = x1 - x0
+            # Every block is hoverable, the unlabelled ones most of all — an
+            # abbreviation is only honest if the whole name is one hover away,
+            # and a block with no room for any text at all still has to be
+            # able to say what it is.
+            tip = "%s \u2014 %s, turn%s %s" % (
+                label, "largest holder" if lane == 0 else "second largest",
+                "" if a == b else "s", a if a == b else "%d\u2013%d" % (a, b))
+            parts.append('<rect x="%.1f" y="%.1f" width="%.1f" height="18" rx="2.5" fill="%s" '
+                         'opacity="%s"><title>%s</title></rect>'
+                         % (x0, top, wide, corp["color"], ".26" if lane == 0 else ".13", tip))
+            # A block too narrow for its name gets an initial, and a *tie* too
+            # narrow for both names gets nothing at all — "YJR" is not a
+            # shorter way of saying anything. The block itself still shows that
+            # the position turned over, which at that width is the reading.
+            text = (label if wide >= 7.2 * len(label) + 8
+                    else label[0] if " · " not in label and wide >= 15 else "")
+            if text:
+                parts.append('<text x="%.1f" y="%.1f" font-size="9.5" fill="%s" text-anchor="middle" '
+                             'dominant-baseline="middle">%s</text>'
+                             % ((x0 + x1) / 2, top + 10, B_INK, text))
+
+
+    # The readout, drawn in place at one turn so the hover state is part of
+    # the artboard rather than a promise in a caption. Live, it follows the
+    # pointer or the arrow keys, and the lanes hand over the names the blocks
+    # are too narrow to print.
+    if demo_turn is not None and demo_turn in series:
+        t = demo_turn
+        rec = series[t]
+        rows = sorted(((rec["held"][s], s) for s in seats if rec["held"][s]), reverse=True)
+        levels = sorted({h for h, _s in rows}, reverse=True)
+        cw, ch = 168, 34 + 17 * len(rows)
+        cx0 = min(x(t) + 14, W - PAD_R - cw)
+        cy0 = PLOT_Y + 6
+        parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1"/>'
+                     % (x(t), STRIP_Y, x(t), y(0) + 34 + 23 + 18, B_INK))
+        for h, seat in rows:
+            parts.append('<circle cx="%.1f" cy="%.1f" r="3.5" fill="%s"/>'
+                         % (x(t), y(rec["value"][seat]), ink))
+        parts.append('<rect x="%.1f" y="%.1f" width="%d" height="%d" rx="4" fill="%s" stroke="%s" '
+                     'stroke-width="1"/>' % (cx0, cy0, cw, ch, B_PANEL, B_RULE))
+        parts.append('<text x="%.1f" y="%.1f" font-size="9" fill="%s" '
+                     'style="letter-spacing:.11em;text-transform:uppercase">turn %d · %s</text>'
+                     % (cx0 + 11, cy0 + 17, B_MUTED, t, money(sum(rec["value"].values()))))
+        for i, (h, seat) in enumerate(rows):
+            yy = cy0 + 34 + i * 17
+            tag = ("largest" if h == levels[0] else
+                   "second" if len(levels) > 1 and h == levels[1] else "")
+            parts.append('<text x="%.1f" y="%.1f" font-size="10.5" fill="%s">%s</text>'
+                         '<text x="%.1f" y="%.1f" font-size="10" fill="%s" text-anchor="end" '
+                         'class="num">%d sh</text>'
+                         % (cx0 + 11, yy, B_INK, seat, cx0 + cw - 11, yy,
+                            B_ACCENT if tag == "largest" else B_MUTED, h))
+            if tag:
+                parts.append('<text x="%.1f" y="%.1f" font-size="8" fill="%s" '
+                             'style="letter-spacing:.09em;text-transform:uppercase">%s</text>'
+                             % (cx0 + 58, yy, B_MUTED, tag))
+
+    # Direct labels at the end of every line — the thing that makes six of them
+    # readable. Pushed apart where they would collide, with a leader back to
+    # the line each belongs to.
+    tlast = max(series)
+    want = sorted(((series[tlast]["value"][s], s) for s in seats), key=lambda p: -p[0])
+    prev = -1e9
+    for v, s in want:
+        yy = max(y(v), prev + 14)
+        prev = yy
+        parts.append('<path d="M%.1f %.1f L%.1f %.1f" stroke="%s" stroke-width="1" fill="none" '
+                     'opacity=".55"/>'
+                     '<text x="%.1f" y="%.1f" font-size="10.5" fill="%s" dominant-baseline="middle">'
+                     '%s</text>'
+                     '<text x="%.1f" y="%.1f" font-size="10" fill="%s" dominant-baseline="middle" '
+                     'text-anchor="end" class="num">%s</text>'
+                     % (x(tlast), y(v), x(tlast) + 9, yy, B_RULE,
+                        x(tlast) + 14, yy, B_INK, s, W, yy, B_MUTED, money(v)))
+
+    return ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;overflow:visible">'
+            '%s</svg>' % (W, H, W, H, "".join(parts)))
+
+def mk_dashswatch(i, ink, w=22):
+    dash = MK_DASH[i % len(MK_DASH)]
+    return ('<svg width="%d" height="8" style="display:block;flex-shrink:0">'
+            '<line x1="0" y1="4" x2="%d" y2="4" stroke="%s" stroke-width="2" stroke-linecap="round"%s/></svg>'
+            % (w, w, ink, ' stroke-dasharray="%s"' % dash if dash else ""))
+
+def mk_side(ind, series, seats, note):
+    corp = CORP[ind]
+    ink = mk_mix(corp["color"], -0.24)
+    last = series[max(series)]
+    rows = []
+    for s in mk_rank(series, seats):
+        if not last["held"][s]: continue
+        rows.append(
+          '<div style="display:grid;grid-template-columns:24px 1fr auto auto;align-items:center;gap:10px;'
+          'padding:8px 0;border-bottom:1px solid %s">%s'
+          '<span style="font-size:13.5px">%s</span>'
+          '<span class="num" style="font-size:12px;color:%s">%d sh</span>'
+          '<span class="ser num" style="font-size:15px;min-width:64px;text-align:right">%s</span></div>'
+          % (B_RULE, mk_dashswatch(seats.index(s), ink), s, B_MUTED, last["held"][s],
+             money(last["value"][s])))
+    return ('<div style="width:326px;flex-shrink:0;display:flex;flex-direction:column;gap:9px">'
+            '<div style="display:flex;align-items:center;gap:10px">%s'
+            '<span class="ser" style="font-size:23px">%s</span></div>'
+            '<span style="font-size:12px;color:%s;font-style:italic">%s</span>'
+            '<div style="display:flex;align-items:baseline;gap:10px;padding:6px 0 2px">'
+            '<span class="ser num" style="font-size:29px">%s</span>'
+            '<span style="font-size:11.5px;color:%s">held by the table</span></div>'
+            '<div style="border-top:1px solid %s">%s</div>'
+            '<span style="font-size:11px;color:%s;padding-top:2px;line-height:1.5">%s</span></div>'
+            % (b_mark(ind, corp["color"], 25), corp["name"], B_MUTED, corp["flavor"],
+               money(sum(last["value"].values())), B_MUTED, B_RULE, "".join(rows), B_MUTED, note))
+
+# One seat scale for every frame of a game, so a seat's line means the same
+# thing whichever company is on the stage.
+def mk_seat_max(gseries):
+    peak = max((max(r["value"].values()) for s in gseries for r in s.values()), default=0)
+    return int(-(-peak // 2000)) * 2000
+
+def mk_stage(ind, seat_max, total_max):
+    series = mk_market_series(ind)
+    svg = mk_chart(ind, series, MARKET_SEATS, 900, 360, AFTER_TURNS, MARKET[ind]["spans"],
+                   seat_max, total_max, big=True)
+    leads = mk_leads(series, MARKET_SEATS)
+    note = "founded turn %d · %d shares still in the bank · the majority changed hands %d %s" % (
+        MARKET[ind]["spans"][0][0], 25 - sum(series[max(series)]["held"].values()),
+        len(leads), "time" if len(leads) == 1 else "times")
+    return ('<div style="display:flex;gap:30px;align-items:flex-start">'
+            '<div style="flex:1;min-width:0">%s</div>%s</div>'
+            % (svg, mk_side(ind, series, MARKET_SEATS, note)))
+
+def mk_thumb(ind, total_max, active):
+    """One frame of the filmstrip: the company's own band and nothing else. Six
+    lines at this size would be a smudge, and what a filmstrip is for is
+    telling you which company you are about to see."""
+    corp = CORP[ind]
+    series = mk_market_series(ind)
+    svg = mk_chart(ind, series, MARKET_SEATS, 152, 50, AFTER_TURNS,
+                   MARKET[ind]["spans"], 1, total_max, strip_only=True) if series else ""
+    return ('<div style="display:flex;flex-direction:column;gap:6px;padding:9px 10px 10px;'
+            'border-radius:4px;%s">'
+            '<div style="display:flex;align-items:center;gap:6px">%s'
+            '<span style="font-size:11.5px;%s;white-space:nowrap;overflow:hidden;'
+            'text-overflow:ellipsis">%s</span></div>%s</div>'
+            % ("background:%s;box-shadow:inset 0 0 0 1px %s" % (B_BG, B_RULE) if active
+               else "opacity:.62",
+               b_mark(ind, corp["color"] if svg else B_RULE, 15),
+               "font-weight:700" if active else "color:%s" % B_MUTED, corp["name"],
+               svg or '<div style="height:50px;display:flex;align-items:center;font-size:10px;color:%s">'
+                      'never founded</div>' % B_MUTED))
+
+def mk_stress():
+    """The frame the objections asked for: six seats, forty-six turns, the
+    majority moving four times. Its own pair of scales, because a company that
+    trades this long is worth twice what a short one is and borrowing the short
+    game's axis would flatter it."""
+    ind = "tech"
+    series = mk_series(STRESS, STRESS_SEATS, STRESS_TURNS, CORP[ind]["tier"])
+    svg = mk_chart(ind, series, STRESS_SEATS, 900, 360, STRESS_TURNS, STRESS["spans"],
+                   mk_seat_max([series]), 26000, big=True, demo_turn=13)
+    leads = mk_leads(series, STRESS_SEATS)
+    note = ("founded turn 3 · still trading at turn 46 · the majority changed hands %d times — %s"
+            % (len(leads), ", ".join("%s on turn %d" % (w, t) for t, w in leads)))
+    return af_panel("The same frame at the far end of the table",
+                    "six seats · forty-six turns · drawn with the hover readout open at turn 13",
+                    '<div style="display:flex;gap:30px;align-items:flex-start">'
+                    '<div style="flex:1;min-width:0">%s</div>%s</div>'
+                    % (svg, mk_side(ind, series, STRESS_SEATS, note)))
+
+MARKET_H = 1479
+
+def build_market():
+    feature = "books"
+    gseries = [mk_market_series(k) for k in ORDER if MARKET[k]["spans"]]
+    seat_max = mk_seat_max(gseries)
+    total_max = 14000
+    strip = ('<div style="display:grid;grid-template-columns:repeat(7, 1fr);gap:10px;'
+             'border-top:1px solid %s;padding-top:14px">%s</div>'
+             % (B_RULE, "".join(mk_thumb(k, total_max, k == feature) for k in ORDER)))
+    pager = ('<div style="display:flex;align-items:center;justify-content:space-between;gap:16px">'
+             '<span style="font-size:11px;color:%s">company 1 of 7 · turns over every 6 seconds · '
+             'hover, focus or click a frame to hold it</span>'
+             '<span style="font-size:11px;color:%s">every frame of a game shares both scales — '
+             '%s across the strip, %s across the seats</span></div>'
+             % (B_MUTED, B_MUTED, money(total_max), money(seat_max)))
+
+    header = (
+      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:10px">'
+      '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">'
+      'Boomtown · after the game (#68) · company by company</span>'
+      '<span class="ser" style="font-size:34px">Who owned what, while it was worth something</span>'
+      '<span style="font-size:13px;line-height:1.55;color:%s;max-width:1000px">One company at a time: a band '
+      'for what the company was worth, and under it a line per seat for whose it was. The stacked version this '
+      'replaces could not answer two questions from the table — six seats, and a company that lives forty '
+      'turns — and both had the same root: a stack has to be ordered, and every order is a lie for some part '
+      'of the game. Lines have no order to get wrong, and the majority changing hands becomes the picture '
+      'rather than a problem the drawing has to survive. Under the turns, two lanes say plainly who the '
+      'two bonuses would pay — a tie kept as a tie, because the rules pay it as one.</span></div>'
+      % (B_MUTED, B_MUTED))
+
+    panel = ('<div style="width:1440px;box-sizing:border-box;padding:0 44px">%s</div>'
+             % af_panel("The market, company by company",
+                        '<span style="display:inline-flex;align-items:center;gap:14px">%s'
+                        '<span style="white-space:nowrap">◆ majority changed hands</span>'
+                        '<span style="white-space:nowrap">hover a lane block for the whole name</span>'
+                        '</span>' % b_chipkey("books"),
+                        '<div style="display:flex;flex-direction:column;gap:18px">%s%s%s</div>'
+                        % (mk_stage(feature, seat_max, total_max), strip, pager)))
+    stress = '<div style="width:1440px;box-sizing:border-box;padding:0 44px">%s</div>' % mk_stress()
+
+    notes = (
+      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
+      % (af_note("Why the stacks went",
+                 "Two objections, one root. Order the stack by the final holding and a seat who led for twenty "
+                 "turns is drawn in the wrong step the whole way; order it turn by turn and the bands cross "
+                 "every time the lead moves, which at six seats is most turns. There is no third order. A line "
+                 "per seat has nothing to order — and the crossing that broke the stack is the thing worth "
+                 "seeing, so it is marked with a ◆ on the axis and counted in the panel. An abbreviation is "
+                 "only honest when the whole name is one hover away, so every lane block answers with its own "
+                 "— the unlabelled ones most of all — and the readout drawn open below gives the whole "
+                 "table at that turn."),
+         af_note("Two heights, not one axis",
+                 "The company's total is six times any one seat's line at a six-handed table, so drawing both "
+                 "against one scale flattens the fight into the bottom sixth of the plot. The band up top is "
+                 "the company on its own scale; the plot under it is the seats on theirs. They share the turn "
+                 "axis and every rule — founded, folded, the majority moving — is drawn through both, so the "
+                 "company's turn and the seats' turn are visibly the same turn."),
+         af_note("Why the height is money and not shares",
+                 "Inside one company the two rank identically — everybody pays the same price — so money costs "
+                 "nothing in fidelity and adds the company's own rise and fall. It also means every line steps "
+                 "together when the price band moves, which is honest: each position really did revalue at "
+                 "once. The bank's unsold shares stay out; they would flatten every frame to one height."))
+    )
+
+    body = (
+      '<div style="width:1440px;min-height:%dpx;background:%s;color:%s;'
+      'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:40px 0 44px;'
+      'display:flex;flex-direction:column;gap:26px;align-items:center">%s%s%s%s</div>'
+      % (MARKET_H, B_BG, B_INK, header, panel, stress, notes)
+    )
+    write("Market.dc.html", B_HELMET, body)
+
 def build_canvas():
     doc = {
       "pages": [{"id": "page-1", "name": "Boomtown"},
@@ -1847,6 +2907,8 @@ def build_canvas():
         {"file": "Names.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 2680, "title": "Merged names", "print": "flow", "page": "page-1"},
         {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "The pool", "print": "flow", "page": "page-1"},
         {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
+        {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 2976, "title": "After the game", "print": "flow", "page": "page-1"},
+        {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 1566, "title": "Company by company", "print": "flow", "page": "page-1"},
         {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4720, "title": "Rules model",
          "print": "flow", "page": "page-2"},
         {"file": "BoardRoom.dc.html",    "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "A - Board Room", "page": "page-3"},
@@ -1857,6 +2919,10 @@ def build_canvas():
          "text": "Turn 14. Tile 9F is selected and Blackcurrant is about to swallow Enrun - and be renamed Blackcurrun for it.\nThe board state is rule-checked: Chapter 11 at 11 tiles and Megahit Video at 12 are both safe, which is what makes 3F a permanently dead tile. 6A and 12H each found a corporation, and two headquarters are still free."},
         {"id": "note-names", "x": 760, "y": -210, "w": 660, "page": "page-1",
          "text": "Seven companies that were once unassailable and then got eaten - which is what happens to every corporation on this board. Parodies of defunct brands, not live ones. Nothing here has been trademark-searched, and the backwards R is trade dress rather than wordplay: swap it first if anyone gets nervous."},
+        {"id": "note-after", "x": 4680, "y": 2140, "w": 700, "page": "page-1",
+         "text": "The post-game screen (#68 + #69), designed as one thing because both issues asked for that. It is a carousel now, not a page: four frames that turn over on their own, 78 seconds all the way round, each still a tab you can click to hold. Every block below is one state of the same screen. The seats deliberately have no colours - a palette both colourblind-safe and distinct from the seven corporation colours does not exist at six seats, and 12,000 candidates through the dataviz validator say so."},
+        {"id": "note-market", "x": 6240, "y": -210, "w": 700, "page": "page-1",
+         "text": "The third reading of the same game (#68): one company at a time, a band for what it was worth and a line per seat for whose it was. It started as stacked bars and the table killed them - a stack has to be ordered, and no order survives six seats trading the majority back and forth over forty turns. The second frame is that worst case, drawn, so the claim can be checked."},
         {"id": "note-rules", "x": 0, "y": -150, "w": 700, "page": "page-2",
          "text": "The sheet to argue with before any code exists. Every disagreement between the two rulebooks is listed as a config key rather than a fork."},
         {"id": "note-earlier", "x": 0, "y": -170, "w": 700, "page": "page-3",
@@ -1870,5 +2936,5 @@ def build_canvas():
 
 if __name__ == "__main__":
     build_a(); build_b(); build_c(); build_rules(); build_names(); build_pool(); build_reference()
-    build_language(); build_beats()
+    build_language(); build_beats(); build_market(); build_after()
     build_canvas()

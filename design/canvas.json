@@ -74,6 +74,26 @@
       "page": "page-1"
     },
     {
+      "file": "After.dc.html",
+      "x": 4680,
+      "y": 2350,
+      "w": 1440,
+      "h": 2976,
+      "title": "After the game",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
+      "file": "Market.dc.html",
+      "x": 6240,
+      "y": 0,
+      "w": 1440,
+      "h": 1566,
+      "title": "Company by company",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
       "file": "RulesModel.dc.html",
       "x": 0,
       "y": 0,
@@ -118,6 +138,22 @@
       "w": 660,
       "page": "page-1",
       "text": "Seven companies that were once unassailable and then got eaten - which is what happens to every corporation on this board. Parodies of defunct brands, not live ones. Nothing here has been trademark-searched, and the backwards R is trade dress rather than wordplay: swap it first if anyone gets nervous."
+    },
+    {
+      "id": "note-after",
+      "x": 4680,
+      "y": 2140,
+      "w": 700,
+      "page": "page-1",
+      "text": "The post-game screen (#68 + #69), designed as one thing because both issues asked for that. It is a carousel now, not a page: four frames that turn over on their own, 78 seconds all the way round, each still a tab you can click to hold. Every block below is one state of the same screen. The seats deliberately have no colours - a palette both colourblind-safe and distinct from the seven corporation colours does not exist at six seats, and 12,000 candidates through the dataviz validator say so."
+    },
+    {
+      "id": "note-market",
+      "x": 6240,
+      "y": -210,
+      "w": 700,
+      "page": "page-1",
+      "text": "The third reading of the same game (#68): one company at a time, a band for what it was worth and a line per seat for whose it was. It started as stacked bars and the table killed them - a stack has to be ordered, and no order survives six seats trading the majority back and forth over forty turns. The second frame is that worst case, drawn, so the claim can be checked."
     },
     {
       "id": "note-rules",

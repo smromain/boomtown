@@ -34,6 +34,7 @@ export {
 export type {
   PlayerViewDTO,
   EngineEventDTO,
+  RetrospectiveDTO,
   ClientViewDTO,
   HandTile,
   HandTileEffect,

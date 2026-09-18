@@ -180,9 +180,11 @@ export function socketTransport(
     view: ClientView,
     events: TransportMessage['events'],
     rejection?: TransportMessage['rejection'],
+    retrospective?: TransportMessage['retrospective'],
   ): TransportMessage => {
     const views: Record<Seat, ClientView> = { [view.you]: view };
-    return rejection ? { events: [], views, rejection } : { events, views };
+    if (rejection) return { events: [], views, rejection };
+    return retrospective ? { events, views, retrospective } : { events, views };
   };
 
   const onRoomMessage = (message: RoomMessage) => {
@@ -225,7 +227,9 @@ export function socketTransport(
         } else {
           // A clean update confirms whatever command was outstanding.
           outstandingCommand = null;
-          for (const h of handlers) h(toTransportMessage(view, message.events));
+          for (const h of handlers) {
+            h(toTransportMessage(view, message.events, undefined, message.retrospective));
+          }
         }
         return;
       }
