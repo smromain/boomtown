@@ -156,15 +156,48 @@ works — that answer is the root cause.
    got as far as `app-ready` at all, (3) is ruled out and the last milestone names the rest. If the
    file does not exist, the app never reached `app.whenReady` — suspect the AppImage or the binary
    itself.
-2. **Get off the AppImage.** Extract the `.tar.gz` and point the shortcut at `boomtown` inside it.
-   With no tarball to hand, `./Boomtown.AppImage --appimage-extract-and-run` or the itch install
-   both give the same thing. If this alone fixes it, stop — that is the answer.
+2. **Get off the AppImage.** Extract the `.tar.gz` and point the shortcut at `boomtown` inside it,
+   or install from itch — both give an ordinary directory. If this alone fixes it, stop; that is the
+   answer.
+
+   To test it *without* a new artifact, make the existing AppImage extract itself first. In the
+   shortcut's **Properties → Launch Options**:
+
+   ```
+   APPIMAGE_EXTRACT_AND_RUN=1 %command%
+   ```
+
+   The environment-variable form is the one to use. The equivalent
+   `%command% --appimage-extract-and-run` also works, but only because the AppImage runtime reads
+   that flag out of the first argument position — anything that shifts it breaks it silently, and
+   Steam is free to put things on that command line. The variable has no position to get wrong.
+   `%command%` is required either way: it is the token Steam substitutes the real command into, and
+   without it the assignment is passed to the app as an argument instead of being set in its
+   environment.
+
+   This is a **diagnostic, not a setup to keep**. It extracts the whole app — north of 200 MB with
+   the Electron runtime — into `/tmp` on every launch, and `/tmp` on SteamOS is RAM. Expect the
+   first frame to take noticeably longer, which on a device that has been hanging is easy to
+   misread as the bug still being there: give it a minute before calling it a failure. If it works,
+   move to the tarball rather than living on this.
 3. **Check the sandbox helper.** `ls -l chrome-sandbox` beside the binary: root-owned and `4755`, or
    the sandbox cannot start. `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox`
    if not.
-4. **Bisect the flags.** Set `BOOMTOWN_ELECTRON_FLAGS` in the shortcut's launch options
-   (`BOOMTOWN_ELECTRON_FLAGS=--no-sandbox %command%`), one at a time and in this order — each is
-   also a diagnosis, not just a workaround:
+4. **Bisect the flags.** Same field as step 2 — Properties → Launch Options, one flag at a time:
+
+   ```
+   BOOMTOWN_ELECTRON_FLAGS=--no-sandbox %command%
+   ```
+
+   Combine with step 2 where both are needed:
+   `APPIMAGE_EXTRACT_AND_RUN=1 BOOMTOWN_ELECTRON_FLAGS=--no-sandbox %command%`.
+
+   Chromium reads most of these off the command line too, so `%command% --no-sandbox` is usually
+   equivalent. Prefer the variable: it is applied before `app.whenReady` where a switch has to be
+   set to take effect at all, it reaches an AppImage's inner process without depending on argument
+   pass-through, and it is the same incantation on the tarball and in a terminal.
+
+   Try them in this order — each is a diagnosis, not just a workaround:
 
    | Flag | If this fixes it, the cause is |
    |---|---|
