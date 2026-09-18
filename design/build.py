@@ -1907,6 +1907,38 @@ AF_FRAMES = [
   ("Awards", 30, "5 pages at 6s"),
 ]
 
+def b_chip(key, kind, x, y, size=18):
+    """A company event on a chart's axis: the corporation's own mark, in a chip
+    whose treatment says what happened to it. Words along a time axis cannot be
+    made not to collide — three companies folding within a turn of each other
+    printed "FOLDEDOLDED" on a fifty-turn game, and a label's rendered width is
+    a guess, so the layout reserving room for it is a guess too. A chip is a
+    fixed 18px and can be laid out exactly."""
+    corp = CORP[key]
+    solid = kind == "found"
+    inset = (size - 12) / 2.0
+    strike = ('<line x1="2.5" y1="%.1f" x2="%.1f" y2="2.5" stroke="%s" stroke-width="1.5" opacity=".7"/>'
+              % (size - 2.5, size - 2.5, B_INK)) if kind == "fold" else ""
+    return ('<g transform="translate(%.1f %.1f)">'
+            '<rect width="%d" height="%d" rx="4" fill="%s" stroke="%s" stroke-width="1.5" opacity="%s"/>'
+            '<g transform="translate(%.1f %.1f)" opacity="%s">%s</g>%s</g>'
+            % (x - size / 2.0, y, size, size,
+               corp["color"] if solid else B_PANEL, corp["color"],
+               ".5" if kind == "fold" else "1",
+               inset, inset, ".55" if kind == "fold" else "1",
+               b_mark(key, corp["ink"] if solid else corp["color"], 12), strike))
+
+def b_chipkey(key):
+    """What the three treatments mean, since the words came off the axis."""
+    items = [("found", "founded"), ("refound", "founded again"), ("fold", "folded")]
+    out = []
+    for kind, label in items:
+        out.append('<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:%s">'
+                   '<svg width="18" height="18">%s</svg>%s</span>'
+                   % (B_MUTED, b_chip(key, kind, 9, 0), label))
+    return '<span style="display:inline-flex;flex-wrap:wrap;gap:4px 14px">%s</span>' % "".join(out)
+
+
 def af_tabs(active, progress=0.45):
     """The tab row doubles as the carousel's position. A tab is still a tab —
     clicking one goes there and holds it — but left alone the row advances on
@@ -2038,7 +2070,7 @@ def af_graph_lit(W=1050, H=330):
     doubles in a turn is answering something: a founding, a refounding, or the
     merger that ended a company somebody was holding.
     """
-    PAD_L, PAD_B, PAD_R, PAD_T = 40, 62, 8, 14
+    PAD_L, PAD_B, PAD_R, PAD_T = 40, 74, 8, 14
     allv = [v for _, vals in AFTER_SERIES for v in vals]
     lo, hi = min(allv) * 0.96, max(allv) * 1.02
     n = len(AFTER_TURNS)
@@ -2065,31 +2097,18 @@ def af_graph_lit(W=1050, H=330):
                      'dominant-baseline="middle" class="num">%s</text>'
                      % (PAD_L, y, xy(n - 1, lo)[0], y, B_RULE, PAD_L - 7, y, B_MUTED, money(v)))
 
-    # The company timeline. Foldings are dashed rules labelled along the top,
-    # because they are what the lines are reacting to and the kink is up there;
-    # foundings sit on the axis itself, where the reader is already reading
-    # turn numbers. Two label rows, alternating, so neighbouring turns never
-    # collide.
-    marks, folds = [], [e for e in AFTER_EVENTS if e[1] == "fold"]
-    for i, (t, _, ind) in enumerate(folds):
-        x = xy(t, lo)[0]
-        marks.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="1" '
-                     'stroke-dasharray="3 3"/>'
-                     '<rect x="%.1f" y="%d" width="7" height="7" rx="1.5" fill="%s"/>'
-                     '<text x="%.1f" y="%d" font-size="9" fill="%s" text-anchor="start" '
-                     'style="letter-spacing:.08em;text-transform:uppercase">%s folds</text>'
-                     % (x, PAD_T - 6, x, H - PAD_B, B_MUTED, x - 3.5, PAD_T - 17, CORP[ind]["color"],
-                        x + 7, PAD_T - 11, B_MUTED, CORP[ind]["name"]))
-    for i, (t, kind, ind) in enumerate([e for e in AFTER_EVENTS if e[1] != "fold"]):
+    # The company timeline, on the axis: one mark per event, each in a chip
+    # whose treatment says what happened. It replaced a coloured square and a
+    # word — words along a time axis cannot be made not to collide, and the
+    # mark says *which* company, which the word never did.
+    marks = []
+    for t, kind, ind in AFTER_EVENTS:
         x, y = xy(t, lo)[0], H - PAD_B
-        col = CORP[ind]["color"]
-        dot = ('<circle cx="%.1f" cy="%d" r="4" fill="%s"/>' % (x, y, col) if kind == "found"
-               else '<circle cx="%.1f" cy="%d" r="3.6" fill="%s" stroke="%s" stroke-width="1.8"/>'
-                    % (x, y, B_PANEL, col))
-        label = CORP[ind]["name"] + (" again" if kind == "refound" else "")
-        marks.append('%s<text x="%.1f" y="%d" font-size="8.5" fill="%s" text-anchor="middle" '
-                     'style="letter-spacing:.07em;text-transform:uppercase">%s</text>'
-                     % (dot, x, y + (32 if i % 2 == 0 else 45), B_MUTED, label))
+        marks.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
+                     'stroke-dasharray="%s" opacity=".55"/>'
+                     % (x, PAD_T - 6, x, y + 26, B_MUTED if kind == "fold" else CORP[ind]["color"],
+                        "3 3" if kind == "fold" else "1 4"))
+        marks.append(b_chip(ind, kind, x, y + 26))
 
     lines = []
     for name, vals in AFTER_SERIES:
@@ -2121,7 +2140,9 @@ def af_graph_lit(W=1050, H=330):
           % (B_RULE, B_ACCENT if lit else B_INK, "2.5" if lit else "1.5", "1" if lit else ".4",
              B_ACCENT if lit else B_MUTED, i + 1, "font-weight:700" if lit else "", name,
              money(vals[-1])))
-    return af_panel("Tracking the market", af_key(),
+    return af_panel("Tracking the market",
+                    '<span style="display:inline-flex;align-items:center;gap:14px;color:%s">'
+                    '<span>net worth per turn</span>%s</span>' % (B_MUTED, b_chipkey("books")),
                     '<div style="display:flex;gap:26px;align-items:flex-start">'
                     '<div style="flex:1;min-width:0">%s</div>'
                     '<div style="width:236px;flex-shrink:0;padding-top:4px">%s</div></div>'
@@ -2518,7 +2539,7 @@ def mk_chart(ind, series, seats, W, H, turns, spans, seat_max, total_max,
     The strip is the company; the plot under it is whose.
     """
     corp = CORP[ind]
-    PAD_B, PAD_R = (90, 100) if big else (6, 0)
+    PAD_B, PAD_R = (116, 100) if big else (6, 0)
     STRIP_Y, STRIP_H = (30, 44) if big else (0, H - PAD_B)
     PLOT_Y = STRIP_Y + STRIP_H + 38
     n = len(turns)
@@ -2596,28 +2617,24 @@ def mk_chart(ind, series, seats, W, H, turns, spans, seat_max, total_max,
 
     # founded / founded again / folded, ruled through both plots so the
     # company's turn and the seats' turn are the same turn
+    # The company's own history, on the axis: the mark in a chip whose
+    # treatment says founded, founded again or folded. The words that used to
+    # sit along the top collided with the panel's own caption.
     for i, (a, b) in enumerate(spans):
         parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
                      'stroke-dasharray="1 4" opacity=".75"/>'
-                     '<circle cx="%.1f" cy="%.1f" r="4.5" %s/>'
-                     % (x(a), STRIP_Y, x(a), y(0), corp["color"], x(a), ys(0),
-                        'fill="%s"' % corp["color"] if i == 0 else
-                        'fill="%s" stroke="%s" stroke-width="2"' % (B_PANEL, corp["color"])))
-        parts.append('<text x="%.1f" y="%d" font-size="9" fill="%s" text-anchor="middle" '
-                     'style="letter-spacing:.09em;text-transform:uppercase">%s</text>'
-                     % (x(a), STRIP_Y - 6, B_MUTED, "founded" if i == 0 else "founded again"))
+                     % (x(a), STRIP_Y, x(a), y(0) + 26, corp["color"]))
+        parts.append(b_chip(ind, "found" if i == 0 else "refound", x(a), y(0) + 26))
         if b < turns[-1]:
             parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
-                         'stroke-dasharray="3 3"/>'
-                         '<text x="%.1f" y="%d" font-size="9" fill="%s" text-anchor="middle" '
-                         'style="letter-spacing:.09em;text-transform:uppercase">folded</text>'
-                         % (x(b), STRIP_Y, x(b), y(0), B_MUTED, x(b), STRIP_Y - 6, B_MUTED))
+                         'stroke-dasharray="3 3"/>' % (x(b), STRIP_Y, x(b), y(0) + 26, B_MUTED))
+            parts.append(b_chip(ind, "fold", x(b), y(0) + 26))
 
     tick = 1 if n <= 16 else (2 if n <= 26 else 5)
     for t in turns:
         if t % tick == 0:
             parts.append('<text x="%.1f" y="%.1f" font-size="10" fill="%s" text-anchor="middle" '
-                         'class="num">%d</text>' % (x(t), y(0) + 22, B_MUTED, t))
+                         'class="num">%d</text>' % (x(t), y(0) + 18, B_MUTED, t))
 
     # Under the turns, who the bonuses would pay. The lines say how close it
     # was; this says who was actually holding the position, which is the thing
@@ -2625,7 +2642,7 @@ def mk_chart(ind, series, seats, W, H, turns, spans, seat_max, total_max,
     half = (W - PAD_R) / (n - 1) / 2
     lanes = mk_holder_runs(series, seats)
     for lane, runs in enumerate(lanes):
-        top = y(0) + 34 + lane * 23
+        top = y(0) + 54 + lane * 23
         parts.append('<text x="%.1f" y="%.1f" font-size="8.5" fill="%s" dominant-baseline="middle" '
                      'style="letter-spacing:.09em;text-transform:uppercase">%s</text>'
                      % (x(turns[-1]) + 10, top + 9, B_MUTED,
@@ -2803,7 +2820,7 @@ def mk_stress():
                     '<div style="flex:1;min-width:0">%s</div>%s</div>'
                     % (svg, mk_side(ind, series, STRESS_SEATS, note)))
 
-MARKET_H = 1478
+MARKET_H = 1479
 
 def build_market():
     feature = "books"
@@ -2836,11 +2853,10 @@ def build_market():
 
     panel = ('<div style="width:1440px;box-sizing:border-box;padding:0 44px">%s</div>'
              % af_panel("The market, company by company",
-                        "<span style=\"white-space:nowrap\">● founded</span> · "
-                        "<span style=\"white-space:nowrap\">○ founded again</span> · "
-                        "<span style=\"white-space:nowrap\">┆ folded</span> · "
-                        "<span style=\"white-space:nowrap\">◆ majority changed hands</span> · "
-                        "hover a lane block for the whole name",
+                        '<span style="display:inline-flex;align-items:center;gap:14px">%s'
+                        '<span style="white-space:nowrap">◆ majority changed hands</span>'
+                        '<span style="white-space:nowrap">hover a lane block for the whole name</span>'
+                        '</span>' % b_chipkey("books"),
                         '<div style="display:flex;flex-direction:column;gap:18px">%s%s%s</div>'
                         % (mk_stage(feature, seat_max, total_max), strip, pager)))
     stress = '<div style="width:1440px;box-sizing:border-box;padding:0 44px">%s</div>' % mk_stress()
@@ -2890,7 +2906,7 @@ def build_canvas():
         {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "The pool", "print": "flow", "page": "page-1"},
         {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
         {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 2976, "title": "After the game", "print": "flow", "page": "page-1"},
-        {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 1565, "title": "Company by company", "print": "flow", "page": "page-1"},
+        {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 1566, "title": "Company by company", "print": "flow", "page": "page-1"},
         {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4720, "title": "Rules model",
          "print": "flow", "page": "page-2"},
         {"file": "BoardRoom.dc.html",    "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "A - Board Room", "page": "page-3"},
