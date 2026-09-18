@@ -2609,11 +2609,13 @@ def mk_chart(ind, series, seats, W, H, turns, spans, seat_max, total_max,
     parts.append('<line x1="0" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1"/>'
                  % (y(0), x(turns[-1]), y(0), B_RULE))
 
-    # the majority changing hands: the event the table asked about, marked
-    # where it happens rather than left to be inferred from a crossing
+    # The majority changing hands: the event the table asked about, marked
+    # where it happens rather than left to be inferred from a crossing —
+    # straddling the axis like a tick rather than sitting in the row the turn
+    # numbers use, where it printed over them.
     for t, _who in mk_leads(series, seats):
         parts.append('<path d="M%.1f %.1f l4.5 5.5 l-4.5 5.5 l-4.5 -5.5 Z" fill="%s"/>'
-                     % (x(t), y(0) + 4, B_ACCENT))
+                     % (x(t), y(0) - 6, B_ACCENT))
 
     # founded / founded again / folded, ruled through both plots so the
     # company's turn and the seats' turn are the same turn

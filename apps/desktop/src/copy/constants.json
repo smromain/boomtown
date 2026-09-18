@@ -519,6 +519,7 @@
         "leadNever": "The majority never changed hands",
         "leadOnce": "The majority changed hands once",
         "leadMany": "The majority changed hands {n} times",
+        "leadMarker": "The majority changed hands here",
         "gone": "gone",
         "none": "Nothing was ever founded. A quiet game."
       },

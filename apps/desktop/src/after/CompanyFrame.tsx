@@ -167,12 +167,17 @@ export const CompanyFrame = memo(function CompanyFrame({
 
           <line x1={PAD_L} y1={y(0)} x2={W - PAD_R} y2={y(0)} stroke="var(--rule)" />
 
+          {/* The majority changing hands, straddling the axis like a tick
+              rather than sitting in the row the turn numbers use — at +4 it
+              was printing over them. */}
           {changes.map((turn) => (
             <path
               key={`lead-${turn}`}
-              d={`M${x(turn)} ${y(0) + 4} l4.5 5.5 l-4.5 5.5 l-4.5 -5.5 Z`}
+              d={`M${x(turn)} ${y(0) - 6} l4.5 5.5 l-4.5 5.5 l-4.5 -5.5 Z`}
               fill="var(--accent)"
-            />
+            >
+              <title>{after.leadMarker}</title>
+            </path>
           ))}
 
           {spans.map((span, index) => (
