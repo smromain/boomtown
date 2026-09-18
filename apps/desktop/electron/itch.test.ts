@@ -112,6 +112,18 @@ describe('the packaged targets', () => {
     expect(builder).toMatch(/target: AppImage/);
   });
 
+  it('pins the Linux artifact name, so an archive target does not bury itself', () => {
+    // `${name}` is the package name `@boomtown/desktop`, and an archive target
+    // does not sanitise it the way the installer targets do. The slash survived
+    // as a path separator, so the tarball was written to
+    // `dist/@boomtown/desktop-<version>.tar.gz` — one directory below every
+    // glob that looks for it. The build passed and the release shipped without
+    // a Linux tarball at all. Same root cause as `executableName` below.
+    const builder = readFileSync(at('../electron-builder.yml'), 'utf8');
+    expect(builder).toMatch(/artifactName: \$\{productName\}/);
+    expect(builder).not.toMatch(/artifactName: \$\{name\}/);
+  });
+
   it('ships a Linux tarball beside the AppImage, which is not the same as a zip', () => {
     // The one archive target that earns its place. An AppImage is a FUSE-mounted
     // squashfs: it cannot run without libfuse2, and being mounted `nosuid` it

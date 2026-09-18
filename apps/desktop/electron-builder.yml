@@ -113,6 +113,22 @@ linux:
     - target: tar.gz
       arch:
         - x64
+  # The same bug as `executableName` above, one code path over.
+  #
+  # An archive target takes its filename from `${name}-${version}-${arch}.${ext}`
+  # by default, and `${name}` is the *package* name — `@boomtown/desktop`. The
+  # installer targets sanitise that; the archive targets do not, so the slash
+  # survived into the path and electron-builder wrote
+  # `dist/@boomtown/desktop-<version>.tar.gz`: a real tarball, one directory
+  # deeper than anything looks for it, under a folder named `@boomtown`. The
+  # build passed, the release published, and the Linux download was simply
+  # missing.
+  #
+  # `${productName}` is the name that is actually ours to choose. Naming it here
+  # covers every Linux target at once rather than the one that happened to bite.
+  # `${arch}` resolves to empty for x64 and drops its separator with it, so the
+  # AppImage keeps the filename it has always had.
+  artifactName: ${productName}-${version}-${arch}.${ext}
   category: Game
 
 # Auto-update is wired in code (electron/updater.ts) but has no feed yet — that

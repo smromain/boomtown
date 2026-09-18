@@ -161,6 +161,15 @@ landed.
 
 ## Things that bit — worth not rediscovering
 
+- **The scoped package name leaks into filenames twice, by two different routes.** `executableName`
+  was the first: without it electron-builder sanitises `@boomtown/desktop` to `@boomtowndesktop` and
+  ships a binary with an `@` in its name. `linux.artifactName` is the second, and it is worse,
+  because an *archive* target does not sanitise at all — the slash survives as a path separator, so
+  `tar.gz` was written to `dist/@boomtown/desktop-<version>.tar.gz`. A real tarball, one directory
+  below every glob looking for it. The build passed, the release published, and the Linux tarball
+  was simply absent from it. Both are now pinned in `electron-builder.yml` with a test each. Anything
+  new that derives a name from the package name is guilty until checked.
+
 - **The 2015 secondary bonus column is not a formula.** Primary is 10× share price and tertiary is
   5×, but secondary (1500, 2200, 3000, 3700, 4200, 5000, 5700, 6200, 7000, 7700, 8200) fits no
   multiplier. It ships as a lookup table, verified against the rulebook's worked example.

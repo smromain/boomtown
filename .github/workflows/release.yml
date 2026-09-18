@@ -238,15 +238,21 @@ jobs:
           # the changed chunks of an installer, and this app has no update feed
           # yet (see the `publish:` note in electron-builder.yml). Until it does,
           # they are two more files on the release page that nobody can use.
+          #
+          # The Linux tarball ships alongside the AppImage rather than replacing
+          # it: an AppImage needs FUSE and is mounted `nosuid`, so it cannot run
+          # at all on a machine without libfuse2 and has no SUID-sandbox
+          # fallback on one that restricts user namespaces — SteamOS is both.
+          # See docs/steamos-game-mode.md. It lands at the top of `dist` only
+          # because `linux.artifactName` pins the name; without that it is
+          # written a directory deeper and silently matches nothing here.
+          #
+          # These globs are a literal block scalar, not YAML — a `#` line inside
+          # it is a *pattern*, not a comment, which is why the note sits up here.
           path: |
             apps/desktop/dist/*.dmg
             apps/desktop/dist/*.exe
             apps/desktop/dist/*.AppImage
-            # The Linux tarball ships alongside the AppImage rather than
-            # replacing it: an AppImage needs FUSE and is mounted `nosuid`, so
-            # it cannot run at all on a machine without libfuse2 and has no
-            # SUID-sandbox fallback on one that restricts user namespaces —
-            # SteamOS is both. See docs/steamos-game-mode.md.
             apps/desktop/dist/*.tar.gz
           if-no-files-found: warn
 
