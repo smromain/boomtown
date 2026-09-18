@@ -154,7 +154,18 @@ extra to produce.
 
 The AppImage is skipped for the same reason the DMG and the NSIS installer are:
 one opaque file butler cannot patch well, which additionally needs FUSE on the
-player's machine. It stays the Linux download on the GitHub release page.
+player's machine. It stays *a* Linux download on the GitHub release page.
+
+**Linux ships two downloads, not one.** The AppImage is the better desktop
+download and keeps that job. Beside it goes a `.tar.gz` of the same build, for
+SteamOS and for anything added to Steam: an AppImage is a FUSE-mounted squashfs,
+so it cannot run where libfuse2 is absent, and being mounted `nosuid` it can
+never carry a SUID `chrome-sandbox` — which on a machine that also restricts
+user namespaces leaves an Electron renderer with no way to start at all. An
+extracted tarball is an ordinary directory where that helper can be restored.
+See [`steamos-game-mode.md`](steamos-game-mode.md). This costs one more target
+in `electron-builder.yml` and one more glob in the release workflow; the
+unpacked directory butler gets is untouched.
 
 **Symlinks and permissions are not our problem, as long as we push a
 directory.** butler manages symlinks and fixes file permissions on push, and the

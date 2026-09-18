@@ -85,13 +85,32 @@ nsis:
   allowToChangeInstallationDirectory: true
 
 linux:
-  # AppImage for the GitHub release page. itch.io gets `dist/linux-unpacked/`
-  # instead (`electron/itch.mjs`): itch's Linux guidance is to make a portable
-  # build and push it with butler, and a folder is something butler can patch
-  # and the itch app can fix permissions on — where an AppImage is one opaque
-  # file that also needs FUSE on the player's machine.
+  # Two downloads on the GitHub release page, because one artifact cannot serve
+  # both Linux audiences.
+  #
+  # AppImage is the better *desktop* download: one file, double-click, no
+  # install step, works across distros. It stays the default.
+  #
+  # `tar.gz` is for SteamOS, and for anywhere else an AppImage cannot run. An
+  # AppImage is a squashfs mounted through FUSE, which fails outright where
+  # libfuse2 is absent — SteamOS has not reliably shipped it — and is mounted
+  # `nosuid`, which is the part that matters for a game added to Steam. Electron
+  # sandboxes a renderer with either the SUID `chrome-sandbox` helper or
+  # unprivileged user namespaces; inside an AppImage the first is structurally
+  # impossible, so a Game Mode session that cannot give it the second has no
+  # fallback and the renderer never starts. An extracted tarball is an ordinary
+  # directory on an ordinary filesystem, where `chrome-sandbox` can be made
+  # root-owned and 4755 — so it keeps a way to run that the AppImage cannot.
+  # See `docs/steamos-game-mode.md`.
+  #
+  # itch.io gets neither: it gets `dist/linux-unpacked/` pushed with butler
+  # (`electron/itch.mjs`), because itch's Linux guidance is a portable build and
+  # a folder is what butler can patch and the itch app can fix permissions on.
   target:
     - target: AppImage
+      arch:
+        - x64
+    - target: tar.gz
       arch:
         - x64
   category: Game

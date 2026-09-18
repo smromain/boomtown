@@ -64,16 +64,28 @@ swap. Same visible result: a composited window with nothing in it.
 says so in the log, a renderer that never spawns leaves the log stopping after
 `renderer-load-started`.
 
-### 3. AppImage, not the app
+### 3. The AppImage — confirmed to be what was added
 
-If what was added to Steam is the **AppImage** from the releases page, it may never execute at all.
-Type-2 AppImages need `libfuse.so.2`, which SteamOS has not reliably shipped. A failure to mount
-prints to stderr — invisible in Game Mode — and exits, leaving Steam's spinner up with nothing
-behind it.
+**This is what is on the Deck.** It does not prove the AppImage is the cause, but it puts two
+failure modes in play that no other artifact has, and it is the cheapest thing to change.
 
-This one is worth ruling out *first* because it costs nothing: it is a different file, not a
-different build. Use the unpacked build (`dist/linux-unpacked/`, which is what goes to itch.io) or
-run the AppImage with `--appimage-extract-and-run`.
+An AppImage is a squashfs image mounted through FUSE at launch. Two consequences:
+
+- **It needs `libfuse.so.2`.** SteamOS has not reliably shipped libfuse2. Without it the image never
+  mounts: a message to stderr — invisible in Game Mode — and an exit, leaving Steam's spinner up
+  with nothing behind it. This would also mean no `boot.log`, because the app never reaches
+  `app.whenReady`.
+- **It is mounted `nosuid`, and that is the part that ties this to (1).** Electron sandboxes a
+  renderer with either the SUID `chrome-sandbox` helper or unprivileged user namespaces. Inside an
+  AppImage the helper can never be SUID, so the namespace path is the *only* path. A Game Mode
+  session that cannot grant it — a pressure-vessel container that has already spent its namespace
+  budget, most plausibly — leaves the renderer with no way to start and no fallback. An ordinary
+  extracted directory has one: `chrome-sandbox` can be made root-owned and 4755 there.
+
+So (1) and (3) are not independent. The AppImage is the artifact on which (1) has no escape hatch.
+
+**The fix is to ship a tarball, which this branch now does** — see *[Which Linux artifact to
+use](#which-linux-artifact-to-use)*.
 
 ### 4. Not a hang at all — presentation and exit
 
@@ -114,6 +126,27 @@ security or performance for every Linux player, and none can be confirmed anywhe
 device. Shipping a guess as a default makes the app permanently worse to maybe fix one machine; the
 env var makes the same guess testable in thirty seconds, one flag at a time.
 
+## Which Linux artifact to use
+
+The release page now carries **two** Linux downloads, and they are not interchangeable.
+
+| Artifact | For | Why |
+|---|---|---|
+| `.AppImage` | An ordinary Linux desktop | One file, double-click, no install step, portable across distros. Still the default download |
+| `.tar.gz` | **SteamOS, Steam Deck, and anything added to Steam** | An ordinary directory on an ordinary filesystem: no FUSE to fail, and `chrome-sandbox` can be restored to root-owned 4755 when user namespaces are unavailable |
+| `dist/linux-unpacked/` via butler | itch.io | Unchanged. itch's own guidance, and what butler can patch |
+
+Adding the tarball rather than replacing the AppImage is deliberate. The AppImage is genuinely the
+better desktop download and nothing about it is broken there; it is specifically wrong for a machine
+that mounts it `nosuid` and may lack libfuse2. Dropping it to fix SteamOS would trade a real
+audience for a smaller one.
+
+A Flatpak would be SteamOS's own preferred answer for a *desktop-mode* install, and it is worth
+revisiting if Boomtown ever wants to be in Discover. It is not the answer here: it needs
+`flatpak-builder` in CI and a runtime manifest to maintain, and it does not obviously fix Game Mode,
+where a Flatpak added as a non-Steam game brings its own sandbox to argue with Steam's. Not worth
+that lift before the boot log has said what is actually wrong.
+
 ## Confirming it on the device
 
 In **desktop mode**, add the shortcut and check Game Mode once per step. Stop at the first that
@@ -123,8 +156,9 @@ works — that answer is the root cause.
    got as far as `app-ready` at all, (3) is ruled out and the last milestone names the rest. If the
    file does not exist, the app never reached `app.whenReady` — suspect the AppImage or the binary
    itself.
-2. **Rule out the AppImage.** Point the shortcut at `linux-unpacked/boomtown` (or the itch install)
-   rather than the `.AppImage`.
+2. **Get off the AppImage.** Extract the `.tar.gz` and point the shortcut at `boomtown` inside it.
+   With no tarball to hand, `./Boomtown.AppImage --appimage-extract-and-run` or the itch install
+   both give the same thing. If this alone fixes it, stop — that is the answer.
 3. **Check the sandbox helper.** `ls -l chrome-sandbox` beside the binary: root-owned and `4755`, or
    the sandbox cannot start. `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox`
    if not.
@@ -150,8 +184,9 @@ launch option can fix instead.
 
 ## What is still unknown
 
-- Whether the Deck is running the AppImage or the unpacked build. Different first suspects.
 - Whether a compat tool is set on the shortcut. Decides whether (1) is even possible.
+- Whether libfuse2 is present on the Deck's SteamOS build. `ldconfig -p | grep libfuse` settles it,
+  and separates the two halves of (3) — but the tarball makes the question moot either way.
 - Whether the window paints and is invisible, or never paints. `boot.log` answers this now.
 - Whether anything is wrong *after* launch — every hypothesis here is about startup, because that is
   what was reported. If the app reaches `first-paint` and then stops, none of this applies and the

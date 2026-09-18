@@ -208,7 +208,8 @@ jobs:
             *)              PLATFORM=linux ;;
           esac
           # Stages the .itch.toml manifest and prints what to push: the unpacked
-          # build directory on macOS and Windows, the AppImage on Linux.
+          # build directory on every platform (`dist/linux-unpacked` included —
+          # itch never gets the AppImage).
           PUSH_PATH="$(node electron/itch.mjs "$PLATFORM")"
           CHANNEL="$(node -e "import('./electron/itch.mjs').then((m) => process.stdout.write(m.CHANNELS['$PLATFORM']))")"
           # itch recommends wiring this into CI, and it is the only check that
@@ -231,6 +232,12 @@ jobs:
             apps/desktop/dist/*.dmg
             apps/desktop/dist/*.exe
             apps/desktop/dist/*.AppImage
+            # The Linux tarball ships alongside the AppImage rather than
+            # replacing it: an AppImage needs FUSE and is mounted `nosuid`, so
+            # it cannot run at all on a machine without libfuse2 and has no
+            # SUID-sandbox fallback on one that restricts user namespaces —
+            # SteamOS is both. See docs/steamos-game-mode.md.
+            apps/desktop/dist/*.tar.gz
           if-no-files-found: warn
 
   release:

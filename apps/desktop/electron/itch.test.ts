@@ -103,13 +103,27 @@ describe('the manifests in the repo', () => {
 describe('the packaged targets', () => {
   const builder = readFileSync(at('../electron-builder.yml'), 'utf8');
 
-  it('build only the release-page installers — itch gets the unpacked dirs', () => {
+  it('build only the release-page downloads — itch gets the unpacked dirs', () => {
     // A zip target would be dead weight: electron-builder leaves the unpacked
     // directory beside every installer, and that directory is what butler gets.
     expect(builder).not.toMatch(/target: zip/);
     expect(builder).toMatch(/target: dmg/);
     expect(builder).toMatch(/target: nsis/);
     expect(builder).toMatch(/target: AppImage/);
+  });
+
+  it('ships a Linux tarball beside the AppImage, which is not the same as a zip', () => {
+    // The one archive target that earns its place. An AppImage is a FUSE-mounted
+    // squashfs: it cannot run without libfuse2, and being mounted `nosuid` it
+    // can never carry a SUID `chrome-sandbox` — so on a machine that also
+    // restricts user namespaces, the renderer has no way to start and no
+    // fallback. SteamOS in Game Mode is that machine. An extracted tarball is an
+    // ordinary directory where the SUID helper can be restored.
+    //
+    // This is *not* the dead-weight zip above: that one would have duplicated
+    // the unpacked directory butler already gets, where this is the only Linux
+    // download on the release page that a Steam Deck can be pointed at.
+    expect(builder).toMatch(/target: tar\.gz/);
   });
 });
 
