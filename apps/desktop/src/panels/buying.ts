@@ -29,9 +29,9 @@ export function buyCost(view: ClientView, picks: BuyPicks): number {
  * picks and can be shown as a standing note rather than inferred from a
  * greyed-out `+` (#58).
  */
-export function rowStanding(view: ClientView, industry: Industry): 'available' | 'sold-out' | 'too-dear' {
+export function rowStanding(view: ClientView, industry: Industry): 'available' | 'sold-out' | 'unaffordable' {
   if (view.corporations[industry].bankShares === 0) return 'sold-out';
-  if ((view.corporations[industry].sharePrice ?? 0) > view.yourCash) return 'too-dear';
+  if ((view.corporations[industry].sharePrice ?? 0) > view.yourCash) return 'unaffordable';
   return 'available';
 }
 
