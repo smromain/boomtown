@@ -126,8 +126,14 @@ linux:
   #
   # `${productName}` is the name that is actually ours to choose. Naming it here
   # covers every Linux target at once rather than the one that happened to bite.
-  # `${arch}` resolves to empty for x64 and drops its separator with it, so the
-  # AppImage keeps the filename it has always had.
+  #
+  # `${arch}` is spelled per target, not uniformly: the AppImage takes the
+  # `x86_64` its own convention uses and the tarball takes `x64`. So this does
+  # rename the AppImage — `Boomtown-<version>.AppImage` becomes
+  # `Boomtown-<version>-x86_64.AppImage`. Nothing points at that filename (the
+  # itch manifests name the executable, and itch never gets the AppImage), and
+  # carrying the arch is worth the one-time rename: the moment a second Linux
+  # arch is built, two targets without it would write to the same path.
   artifactName: ${productName}-${version}-${arch}.${ext}
   category: Game
 
