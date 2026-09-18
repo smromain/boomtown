@@ -167,8 +167,18 @@ jobs:
           # first attempt. Taking either costs nothing and removes a failure
           # whose only symptom is a skipped step.
           ITCH_TARGET: ${{ vars.ITCH_TARGET || secrets.ITCH_TARGET }}
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
-          if [ -z "${BUTLER_API_KEY:-}" ]; then
+          # A release candidate is a rehearsal, and itch.io is not a rehearsal
+          # space: butler pushes to the live `osx`/`windows`/`linux` channels,
+          # so an rc would reach every player the itch app updates — without
+          # ever appearing to be a prerelease, because a channel has no such
+          # concept. The GitHub Release marks itself prerelease and can be
+          # deleted; an itch push cannot be taken back. So rc builds stop here
+          # and are collected from the release page instead.
+          if printf '%s' "$VERSION" | grep -q -- '-'; then
+            echo "$VERSION is a prerelease — skipping the itch.io push"
+          elif [ -z "${BUTLER_API_KEY:-}" ]; then
             echo "no BUTLER_API_KEY secret — skipping the itch.io push"
           elif [ -z "${ITCH_TARGET:-}" ]; then
             echo "::warning::BUTLER_API_KEY is set but ITCH_TARGET is not — skipping the itch.io push"
@@ -265,6 +275,11 @@ jobs:
 
   deploy-party:
     needs: [prepare, build]
+    # Same reason the itch push is gated: the PartyKit room is the one every
+    # online game runs in, and `partykit deploy` replaces it in place. A
+    # rehearsal release must not put branch code under live tables — and an rc
+    # is usually cut from a branch, which is exactly when it would.
+    if: ${{ !contains(needs.prepare.outputs.version, '-') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

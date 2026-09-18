@@ -96,6 +96,16 @@ rc and the real thing share an `N` on purpose. The auto-increment ignores rc tag
 for the same reason — cutting `rc1` must not burn the number its release wants —
 and the GitHub Release is marked as a prerelease.
 
+**An rc builds and publishes the GitHub Release, and stops there.** The itch.io
+push and the PartyKit deploy are both skipped for any version carrying a `-`.
+That is not a nicety. butler pushes to the live `osx`/`windows`/`linux`
+channels, which have no notion of a prerelease, so an rc would reach every
+player the itch app updates and could not be taken back; and `partykit deploy`
+replaces the one room every online game runs in, which an rc — usually cut from
+a branch — must not put branch code under. A GitHub prerelease is the one
+artifact here that is both clearly marked and deletable, so it is the only one
+an rc produces. Collect rc builds from the release page.
+
 `apps/desktop/package.json` stays at its placeholder `0.0.0` permanently. The
 release version is stamped into the manifest for the build only and never
 committed, so there is no version to bump by hand and no chance of the repo and
