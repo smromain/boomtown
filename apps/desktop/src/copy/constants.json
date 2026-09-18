@@ -687,7 +687,9 @@
     },
     "found": {
       "title": "Found a corporation",
-      "seat": "{name} · new group of {n} tiles"
+      "seat": "{name} · new group of {n} tiles",
+      "terms": "{price} a share · bonus from {bonus}",
+      "allFounded": "All founded"
     },
     "disposal": {
       "title": "Dispose of {name} stock",

@@ -65,8 +65,12 @@ export interface FoundingOption {
 }
 
 /**
- * The unfounded corporations, richest tier first, with the opening share price
- * and bonus each would carry — the "which is best to found" reference.
+ * The unfounded corporations, with the opening share price and bonus each
+ * would carry — the "which is best to found" reference.
+ *
+ * Ordered richest tier first. The founding modal groups them into tier columns
+ * and no longer depends on that order (#65), but it stays: it is a stable,
+ * meaningful order for any caller that takes the list flat.
  */
 export function foundingOptions(view: ClientView): FoundingOption[] {
   return INDUSTRIES.filter((industry) => !view.corporations[industry].founded)
@@ -83,6 +87,18 @@ export function foundingOptions(view: ClientView): FoundingOption[] {
       };
     })
     .sort((a, b) => b.tier - a.tier || b.openingPrice - a.openingPrice);
+}
+
+/**
+ * A tier's opening terms — the size-2 rung of its ladder.
+ *
+ * Separate from `foundingOptions` because the founding modal states these once
+ * per tier column, and a tier with nothing left to found still has a column:
+ * the options list is empty there, so the price cannot be read off it.
+ */
+export function tierOpening(view: ClientView, tier: 1 | 2 | 3): { price: number; primary: number } {
+  const opening = priceLadder(tier, view.ruleset)[0]!;
+  return { price: opening.price, primary: opening.bonus.primary };
 }
 
 /**
