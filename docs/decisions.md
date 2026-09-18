@@ -146,6 +146,18 @@ landed.
   names.
 - **Two orphan release-candidate tags** (`v2026.9.1-rc1`, `v2026.9.1-rc2`) are still on the remote;
   deleting a ref is blocked from the agent environment.
+- **The Linux build hangs on launch in SteamOS Game Mode**, where desktop mode is fine. Narrowed to
+  a shortlist — the renderer sandbox against a Steam Linux Runtime container, the GPU process under
+  gamescope's nested XWayland, or an AppImage that never mounts for want of libfuse2 — and not yet
+  reproduced, because nothing here can run a Steam Deck. What has landed is a boot log that names
+  the milestone a stalled launch never reached, a `BOOMTOWN_ELECTRON_FLAGS` escape hatch for
+  bisecting Chromium switches on the device, and the two things that were wrong for Game Mode
+  regardless: the window opened maximized rather than fullscreen, which under a compositor that
+  draws no title bar left a healthy app with no visible way to quit it, and the app took no
+  single-instance lock, so a relaunch against a wedged instance stacked a second one. No Chromium
+  switch is applied by default: each candidate trades away the KTD9 sandbox or the GPU for every
+  Linux player, and none can be confirmed off-device. See `steamos-game-mode.md` for the procedure
+  and the flag-to-cause table.
 
 ## Things that bit — worth not rediscovering
 

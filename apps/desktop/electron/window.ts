@@ -1,4 +1,5 @@
 import type { BrowserWindowConstructorOptions } from 'electron';
+import type { SessionShape } from './session.js';
 
 /**
  * The renderer's security posture (KTD9). Exported as a pure factory so U9's
@@ -57,6 +58,26 @@ export function openingBounds(work: WorkArea): { width: number; height: number }
 }
 
 /**
+ * Constructor bounds for a gamescope session.
+ *
+ * Two departures from `openingBounds`. It asks for `fullscreen` up front, so
+ * the surface gamescope composites is fullscreen from its first frame rather
+ * than resized into place afterwards. And it does **not** floor the size at
+ * `MIN_WIDTH`/`MIN_HEIGHT`: those minimums protect a layout the player could
+ * otherwise drag too small, and under gamescope there is nothing to drag — the
+ * output is whatever gamescope says it is. Flooring there would instead make
+ * the window larger than the screen on any Game Mode resolution below
+ * 1024x700, with the board's edges cropped off and no way to scroll to them.
+ * The Deck's own 1280x800 clears the floor, but an external display, a
+ * streamed session and gamescope's `-w/-h` do not have to.
+ */
+export function compositorBounds(work: WorkArea): BrowserWindowConstructorOptions {
+  const width = Math.max(1, Math.round(work.width));
+  const height = Math.max(1, Math.round(work.height));
+  return { width, height, minWidth: Math.min(MIN_WIDTH, width), minHeight: Math.min(MIN_HEIGHT, height), fullscreen: true };
+}
+
+/**
  * The slice of `BrowserWindow` that `openMaximized` touches. Structural, so
  * the ordering below is a unit test instead of something only a packaged
  * build would reveal.
@@ -82,6 +103,44 @@ export interface Maximizable {
 export function openMaximized(win: Maximizable): void {
   win.maximize();
   win.once('ready-to-show', () => win.show());
+}
+
+/**
+ * The slice of `BrowserWindow` a fullscreen open touches.
+ */
+export interface Fullscreenable {
+  setFullScreen(flag: boolean): void;
+  show(): void;
+  once(event: 'ready-to-show', listener: () => void): unknown;
+}
+
+/**
+ * Open the window the way the session it landed in can actually present it.
+ *
+ * On a desktop that is `openMaximized` — a normal window filling the work area,
+ * with the title bar and the OS controls the player expects.
+ *
+ * Under gamescope it is true fullscreen, and the difference is not cosmetic.
+ * gamescope draws no decorations and has no taskbar, so a *maximized* Boomtown
+ * in Steam Deck Game Mode is a window with no close button, nothing to switch
+ * to, and no way to restore or move it — the player's only exit is Steam's own
+ * force-quit. Worse, a window that is not fullscreen is not reliably the
+ * surface gamescope chooses to show, which is one way a running, healthy app
+ * presents as a black screen that never finishes loading. Asking for fullscreen
+ * states the intent in the one term gamescope is built around.
+ *
+ * `fullscreen` is also set in the constructor options (`compositorBounds`);
+ * this is the same belt-and-braces as `openMaximized`, for the same reason —
+ * a compositor is free to ignore a constructor hint and honour the later
+ * request, or the reverse.
+ */
+export function openForSession(win: Maximizable & Fullscreenable, session: Pick<SessionShape, 'gamescope'>): void {
+  if (session.gamescope) {
+    win.setFullScreen(true);
+    win.once('ready-to-show', () => win.show());
+    return;
+  }
+  openMaximized(win);
 }
 
 /**

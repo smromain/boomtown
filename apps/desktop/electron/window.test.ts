@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   MIN_HEIGHT,
   MIN_WIDTH,
+  compositorBounds,
+  openForSession,
   openMaximized,
   openingBounds,
   windowOptions,
@@ -73,5 +75,62 @@ describe('openingBounds', () => {
 
   it('rounds a fractional work area to whole pixels', () => {
     expect(openingBounds({ width: 1512.5, height: 944.4 })).toEqual({ width: 1513, height: 944 });
+  });
+});
+
+describe('compositorBounds', () => {
+  it('fills the compositor output exactly and asks for fullscreen up front', () => {
+    // The Steam Deck's own Game Mode output.
+    expect(compositorBounds({ width: 1280, height: 800 })).toEqual({
+      width: 1280,
+      height: 800,
+      minWidth: 1024,
+      minHeight: 700,
+      fullscreen: true,
+    });
+  });
+
+  it('never floors the window above the screen it has to fit on', () => {
+    // `openingBounds` would hand back 1024x700 here and crop the board's edges
+    // off an output nothing can scroll or resize.
+    const small = compositorBounds({ width: 800, height: 480 });
+    expect(small.width).toBe(800);
+    expect(small.height).toBe(480);
+    expect(small.minWidth).toBe(800);
+    expect(small.minHeight).toBe(480);
+  });
+});
+
+describe('openForSession', () => {
+  function fakeWindow() {
+    const calls: string[] = [];
+    let readyToShow: (() => void) | null = null;
+    const win = {
+      maximize: () => calls.push('maximize'),
+      setFullScreen: (flag: boolean) => calls.push(`setFullScreen(${flag})`),
+      show: () => calls.push('show'),
+      once: (_event: 'ready-to-show', listener: () => void) => {
+        readyToShow = listener;
+        return win;
+      },
+    };
+    return { win, calls, ready: () => readyToShow?.() };
+  }
+
+  it('goes true fullscreen under gamescope, never merely maximized', () => {
+    // A maximized window in Game Mode has no title bar to close it with and is
+    // not reliably the surface gamescope chooses to show.
+    const { win, calls, ready } = fakeWindow();
+    openForSession(win, { gamescope: true });
+    ready();
+    expect(calls).toEqual(['setFullScreen(true)', 'show']);
+    expect(calls).not.toContain('maximize');
+  });
+
+  it('opens maximized on a desktop, where the window chrome is worth keeping', () => {
+    const { win, calls, ready } = fakeWindow();
+    openForSession(win, { gamescope: false });
+    ready();
+    expect(calls).toEqual(['maximize', 'show']);
   });
 });

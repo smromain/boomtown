@@ -96,6 +96,7 @@ Create the room in one window and join by its code in the other.
 | `BOOMTOWN_SMOKE` | main | Run the smoke assertions and exit |
 | `BOOMTOWN_SMOKE_SHOT` | main | Where the smoke run writes its screenshot |
 | `BOOMTOWN_DISTRIBUTION` | build (`electron.vite.config.ts`) | Stamped into the main bundle; `itch` means updates are store-managed and the updater stands down |
+| `BOOMTOWN_ELECTRON_FLAGS` | main (`electron/session.ts`) | Comma- or space-separated Chromium switches appended before `app.whenReady`, e.g. `--no-sandbox --disable-gpu`. Unset in normal use; it exists to bisect a launch failure on a machine that cannot be rebuilt on — see [`steamos-game-mode.md`](steamos-game-mode.md) for the order to try them in and what each one would prove |
 | `ELECTRON_SKIP_BINARY_DOWNLOAD` | npm install | Skip the Electron binary |
 
 `BOOMTOWN_DEV_PORT` and `BOOMTOWN_DEV_USER_DATA` are unset in normal use and in CI.

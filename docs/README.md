@@ -1,6 +1,6 @@
 # Boomtown documentation
 
-The state of the world, in nine documents. Everything here describes the code as it is; where a
+The state of the world, in ten documents. Everything here describes the code as it is; where a
 document records history instead, it says so and lives under `history/`.
 
 ## Current
@@ -14,6 +14,7 @@ document records history instead, it says so and lives under `history/`.
 | [`development.md`](development.md) | How to run it, drive it and diagnose it, and every environment variable |
 | [`testing.md`](testing.md) | What is actually verified, by which suite, and what tests cannot catch |
 | [`deploying.md`](deploying.md) | Cutting a release, the PartyKit deploy, itch.io channels, versioning |
+| [`steamos-game-mode.md`](steamos-game-mode.md) | Why the Linux build hangs on launch in SteamOS Game Mode, the shortlist of causes, and the procedure that settles it on the device |
 | [`decisions.md`](decisions.md) | What was chosen and why, what was reversed, what is still open |
 | [`screenshots/`](screenshots/) | Seventeen frames from one real game, in play order, and how to retake them |
 

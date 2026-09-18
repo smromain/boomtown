@@ -4,7 +4,9 @@ import { app, BrowserWindow, Menu, ipcMain, screen, session, shell } from 'elect
 import { buildCsp } from './csp.js';
 import { menuTemplate } from './menu.js';
 import { checkForUpdates } from './updater.js';
-import { iconPath, openMaximized, openingBounds, windowOptions } from './window.js';
+import { compositorBounds, iconPath, openForSession, openingBounds, windowOptions } from './window.js';
+import { describeSession, extraSwitches, sessionShape } from './session.js';
+import { boot } from './boot.js';
 
 /** electron-vite sets this to the dev-server URL; absent in a packaged build. */
 const rendererUrl = process.env['ELECTRON_RENDERER_URL'];
@@ -19,6 +21,55 @@ const smoke = process.env['BOOMTOWN_SMOKE'] === '1';
 // `app.whenReady`. See "Two dev instances" in the README.
 if (isDev && process.env['BOOMTOWN_DEV_USER_DATA']) {
   app.setPath('userData', process.env['BOOMTOWN_DEV_USER_DATA']);
+}
+
+/**
+ * The Linux session the app was launched into. Read once, before anything
+ * else: the Chromium switches below have to be appended before `app.whenReady`,
+ * and every later decision about how to present the window keys off it.
+ */
+const shape = sessionShape();
+
+/**
+ * Chromium switches from `BOOMTOWN_ELECTRON_FLAGS`, for bisecting a launch
+ * failure on a machine that cannot be rebuilt on — a Steam Deck, mainly. Empty
+ * unless the variable is set; see `session.ts` for why there are no defaults
+ * and `docs/steamos-game-mode.md` for what to try.
+ */
+for (const { name, value } of extraSwitches()) {
+  app.commandLine.appendSwitch(name, value);
+  boot.note(`switch from BOOMTOWN_ELECTRON_FLAGS: --${name}${value ? `=${value}` : ''}`);
+}
+
+/**
+ * One Boomtown at a time.
+ *
+ * Without this, a launch that hangs before it paints leaves a live process
+ * holding the window, and every attempt to start the game again adds another —
+ * which in Steam Deck Game Mode is precisely the state the player gets stuck
+ * in: the app neither runs nor restarts, and Steam keeps showing it as
+ * launching. A second launch now hands the first one the focus instead. If the
+ * first is genuinely wedged, Steam's force-quit is still the way out, but
+ * nothing is being made worse in the meantime.
+ *
+ * Not taken in development, where two instances against separate
+ * `BOOMTOWN_DEV_USER_DATA` profiles is a supported workflow (see "Two dev
+ * instances" in the README) and the lock would only be one more thing to get
+ * right before an online game can be tested.
+ */
+const soleInstance = isDev || app.requestSingleInstanceLock();
+
+if (!soleInstance) {
+  // Nothing else in this file should run: `whenReady` is guarded below too, so
+  // a `quit` that loses the race to `ready` still cannot open a second window.
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    const [existing] = BrowserWindow.getAllWindows();
+    if (!existing) return;
+    if (existing.isMinimized()) existing.restore();
+    existing.focus();
+  });
 }
 
 function applyCsp(): void {
@@ -152,17 +203,23 @@ function createWindow(): void {
     resourcesPath: process.resourcesPath,
     mainDir: import.meta.dirname,
   });
+  const work = screen.getPrimaryDisplay().workAreaSize;
   const win = new BrowserWindow({
     ...windowOptions(join(import.meta.dirname, '../preload/preload.cjs')),
-    ...openingBounds(screen.getPrimaryDisplay().workAreaSize),
+    // gamescope is not a desktop: it decorates nothing and composites one
+    // surface, so Game Mode opens fullscreen at the compositor's own size
+    // rather than maximized within a work area that has no taskbar to clear.
+    ...(shape.gamescope ? compositorBounds(work) : openingBounds(work)),
     // Electron logs a warning for a missing icon path; skip it rather than
     // assume a layout that a future packaging change could invalidate.
     ...(existsSync(icon) ? { icon } : {}),
     show: !smoke,
   });
+  boot.reach('window-created');
 
   registerWindowControls(win);
-  openMaximized(win);
+  openForSession(win, shape);
+  boot.watch(win);
   if (smoke) runSmokeChecks(win);
 
   // external links go to the OS browser; nothing opens a second in-app window
@@ -171,6 +228,7 @@ function createWindow(): void {
     return { action: 'deny' };
   });
 
+  boot.reach('renderer-load-started');
   if (rendererUrl) {
     void win.loadURL(rendererUrl);
   } else {
@@ -179,6 +237,9 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  if (!soleInstance) return;
+  boot.open({ session: describeSession(shape), appName: app.name, version: app.getVersion(), logDir: app.getPath('logs') });
+  boot.reach('app-ready');
   applyCsp();
   Menu.setApplicationMenu(
     Menu.buildFromTemplate(menuTemplate({ platform: process.platform, dev: isDev, appName: app.name })),
