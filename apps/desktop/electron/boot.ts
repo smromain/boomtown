@@ -1,4 +1,5 @@
 import { appendFileSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { app, type BrowserWindow } from 'electron';
 import { MILESTONES, WATCHDOG_MS, header, line, stallReport, type Milestone } from './bootLog.js';
@@ -50,44 +51,67 @@ class BootLog {
    * back to a state where you could read anything.
    */
   open(info: { session: string; appName: string; version: string; logDir: string }): void {
-    try {
-      mkdirSync(info.logDir, { recursive: true });
-      const current = join(info.logDir, 'boot.log');
-      const previous = join(info.logDir, 'boot.prev.log');
-      rmSync(previous, { force: true });
+    // Candidates in order of where a person would look first. A single
+    // unwritable directory used to mean no log at all — and "no log at all" is
+    // indistinguishable from "the app never started", which is the one
+    // distinction this whole file exists to make.
+    const candidates = [
+      info.logDir,
+      join(homedir(), '.config', info.appName, 'logs'),
+      join(homedir(), `.${info.appName.toLowerCase()}-logs`),
+      join(tmpdir(), `${info.appName.toLowerCase()}-logs`),
+    ];
+
+    for (const dir of candidates) {
       try {
-        renameSync(current, previous);
+        mkdirSync(dir, { recursive: true });
+        const current = join(dir, 'boot.log');
+        const previous = join(dir, 'boot.prev.log');
+        rmSync(previous, { force: true });
+        try {
+          renameSync(current, previous);
+        } catch {
+          // no previous launch to keep — first run, or the log was cleared
+        }
+        this.file = current;
+        this.append(
+          header({
+            app: info.appName,
+            version: info.version,
+            session: info.session,
+            platform: `${process.platform}/${process.arch}`,
+            electron: process.versions['electron'] ?? 'unknown',
+            chrome: process.versions['chrome'] ?? 'unknown',
+            at: new Date(),
+          }),
+        );
+        const buffered = this.pending;
+        this.pending = [];
+        for (const text of buffered) this.append(text);
+        break;
       } catch {
-        // no previous launch to keep — first run, or the log was cleared
+        this.file = null; // try the next candidate
       }
-      this.file = current;
-      this.append(
-        header({
-          app: info.appName,
-          version: info.version,
-          session: info.session,
-          platform: `${process.platform}/${process.arch}`,
-          electron: process.versions['electron'] ?? 'unknown',
-          chrome: process.versions['chrome'] ?? 'unknown',
-          at: new Date(),
-        }),
-      );
-      const buffered = this.pending;
-      this.pending = [];
-      for (const text of buffered) this.append(text);
-    } catch {
-      // A log we cannot write is not a reason to fail a launch.
-      this.file = null;
     }
+
+    // Also to stdout, so a launch wrapped to capture its output says where the
+    // file is even when the file is somewhere unexpected — and says *something*
+    // even when every candidate was unwritable.
+    console.log(`[boot] log: ${this.file ?? 'NOWHERE WRITABLE'}`);
+
+    try {
 
     // A GPU process that dies is the single most likely cause of a window that
     // is up and composited but never shows a frame — which is what a nested
     // compositor like gamescope can provoke where a desktop session does not.
     // Chromium recovers from a few of these silently, so without this the only
     // symptom is the hang itself.
-    app.on('child-process-gone', (_event, details) => {
-      this.note(`child process gone: ${details.type} (${details.reason}, exit ${details.exitCode})`);
-    });
+      app.on('child-process-gone', (_event, details) => {
+        this.note(`child process gone: ${details.type} (${details.reason}, exit ${details.exitCode})`);
+      });
+    } catch {
+      // `app` not ready enough to take listeners — the log still stands
+    }
   }
 
   /** Watch a window through the rest of its launch, and time it out if it stalls. */

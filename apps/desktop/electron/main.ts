@@ -30,6 +30,34 @@ if (isDev && process.env['BOOMTOWN_DEV_USER_DATA']) {
  */
 const shape = sessionShape();
 
+// Open the log FIRST — before the switches, before the single-instance check,
+// before `whenReady`. It used to open inside `whenReady` and behind the lock,
+// which meant the two most interesting failures wrote nothing at all: a launch
+// that never reached `whenReady`, and a launch the lock turned away because a
+// wedged instance still held it. Both then looked exactly like "the app never
+// ran", which is the one distinction the log exists to make. Nothing above this
+// line may fail, so nothing above this line does anything.
+boot.open({
+  session: describeSession(shape),
+  appName: app.name,
+  version: app.getVersion(),
+  logDir: logDir(),
+});
+
+/**
+ * Electron's own log directory, or nothing if it cannot say — `boot.open` has
+ * its own fallbacks and this is only the first of them. `getPath('logs')` is
+ * documented for every platform but is still a call that can throw before the
+ * app is ready, and throwing here would lose the log to save a path.
+ */
+function logDir(): string {
+  try {
+    return app.getPath('logs');
+  } catch {
+    return '';
+  }
+}
+
 /**
  * Chromium switches from `BOOMTOWN_ELECTRON_FLAGS`, for bisecting a launch
  * failure on a machine that cannot be rebuilt on — a Steam Deck, mainly. Empty
@@ -60,6 +88,11 @@ for (const { name, value } of extraSwitches()) {
 const soleInstance = isDev || app.requestSingleInstanceLock();
 
 if (!soleInstance) {
+  // Say so. A silent quit here is indistinguishable from a crash, and while a
+  // launch hang is unresolved this is a prime suspect in its own right: the
+  // instance holding the lock may be a wedged one the player cannot kill, in
+  // which case every relaunch lands here and the game simply never opens.
+  boot.note('ANOTHER INSTANCE HOLDS THE SINGLE-INSTANCE LOCK — quitting without opening a window.');
   // Nothing else in this file should run: `whenReady` is guarded below too, so
   // a `quit` that loses the race to `ready` still cannot open a second window.
   app.quit();
@@ -238,7 +271,6 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   if (!soleInstance) return;
-  boot.open({ session: describeSession(shape), appName: app.name, version: app.getVersion(), logDir: app.getPath('logs') });
   boot.reach('app-ready');
   applyCsp();
   Menu.setApplicationMenu(

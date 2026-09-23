@@ -196,9 +196,25 @@ one of those rather than a README that opens with `sudo`.
 In **desktop mode**, add the shortcut and check Game Mode once per step. Stop at the first that
 works — that answer is the root cause.
 
+0. **Run it outside Steam first.** In desktop mode, from a terminal, run the extracted `boomtown`
+   directly. Ten seconds, and it splits the search in half: if the game comes up and writes a log,
+   the build is sound and the fault is in how Steam launches it; if it fails here, Steam was never
+   involved and the terminal is already showing you why.
+
 1. **Get the launch's stderr, which is the evidence nothing else provides.** On a build with the
    boot log, read `~/.config/Boomtown/logs/boot.prev.log` — if the launch reached `app-ready` at
    all, (3) is ruled out and the last milestone names the rest.
+
+   **No log file at all** is itself a reading, and from `v2026.9.4-rc3` on it is a sharp one: the
+   log opens at module scope, before the switches, before the single-instance check and before
+   `whenReady`, and falls back through four directories. So no file means Electron never ran the
+   main script — a binary that did not execute, not an app that failed later. Find it with
+   `find ~ /tmp -name boot.log 2>/dev/null` rather than trusting the path.
+
+   On **rc1 and rc2 this reading does not hold**: there the log opened inside `whenReady` and behind
+   the single-instance lock, so a launch that never reached `whenReady` — and, worse, a launch the
+   lock turned away because a wedged instance still held it — wrote nothing and looked identical to
+   never having started.
 
    On **any** build, including today's, wrap the launch instead. Properties → Launch Options:
 
