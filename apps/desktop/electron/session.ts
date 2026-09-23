@@ -128,3 +128,45 @@ export function describeSession(shape: SessionShape): string {
   ].filter(Boolean);
   return facts.join(', ');
 }
+
+/**
+ * The launch environment, for the boot log.
+ *
+ * Steam does not merely start a process — it injects into one. `LD_PRELOAD`
+ * carries the Steam overlay (`gameoverlayrenderer.so`), which hooks GL and
+ * Vulkan inside the app and is a long-standing source of hangs in Electron
+ * apps; `LD_LIBRARY_PATH` points at Steam's own bundled runtime libraries,
+ * which an app built against the system ones can load and choke on. A binary
+ * that runs from a terminal and fails under Steam has almost always met one of
+ * those two, and neither leaves any other trace.
+ *
+ * A named allowlist rather than the whole environment, on purpose: this text
+ * goes in a file people paste into issues, and an environment dump is a good
+ * way to publish a token by accident. Long paths are truncated for the same
+ * reason they are printed at all — the question is *whether* something was
+ * injected, not the whole of it.
+ */
+const REPORTED = [
+  'LD_PRELOAD',
+  'LD_LIBRARY_PATH',
+  'STEAM_COMPAT_CLIENT_INSTALL_PATH',
+  'SteamGameId',
+  'SteamDeck',
+  'SteamClientLaunch',
+  'PRESSURE_VESSEL_RUNTIME',
+  'STEAM_RUNTIME',
+  'container',
+  'XDG_CURRENT_DESKTOP',
+  'GAMESCOPE_WAYLAND_DISPLAY',
+  'WAYLAND_DISPLAY',
+  'DISPLAY',
+] as const;
+
+export function launchEnvironment(env: Env = process.env, limit = 200): string[] {
+  return REPORTED.map((key) => {
+    const value = env[key];
+    if (value == null || value === '') return `${key}=`;
+    const shown = value.length > limit ? `${value.slice(0, limit)}… (${value.length} chars)` : value;
+    return `${key}=${shown}`;
+  });
+}

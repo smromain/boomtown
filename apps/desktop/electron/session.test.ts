@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeSession, extraSwitches, sessionShape } from './session.js';
+import { describeSession, extraSwitches, launchEnvironment, sessionShape } from './session.js';
 
 /** The environment a Steam Deck in Game Mode actually hands a non-Steam shortcut. */
 const gameMode = {
@@ -80,5 +80,38 @@ describe('describeSession', () => {
 
   it('says so plainly on a desktop', () => {
     expect(describeSession(sessionShape({}))).toBe('desktop compositor');
+  });
+});
+
+describe('launchEnvironment', () => {
+  it('reports the two things Steam injects that break an Electron app', () => {
+    // The overlay hooks GL/Vulkan inside the process; the library path points at
+    // Steam's own bundled runtime. A binary that runs from a terminal and fails
+    // under Steam has almost always met one of these, and neither leaves any
+    // other trace.
+    const lines = launchEnvironment({
+      LD_PRELOAD: '/home/deck/.steam/root/ubuntu12_32/gameoverlayrenderer.so',
+      LD_LIBRARY_PATH: '/home/deck/.steam/root/ubuntu12_32/steam-runtime/lib',
+    });
+    expect(lines).toContain('LD_PRELOAD=/home/deck/.steam/root/ubuntu12_32/gameoverlayrenderer.so');
+    expect(lines).toContain('LD_LIBRARY_PATH=/home/deck/.steam/root/ubuntu12_32/steam-runtime/lib');
+  });
+
+  it('shows an unset variable as empty rather than omitting it', () => {
+    // "LD_PRELOAD=" is a finding; a missing line is ambiguous with a version
+    // that never looked.
+    expect(launchEnvironment({})).toContain('LD_PRELOAD=');
+  });
+
+  it('truncates a long value, because this file gets pasted into issues', () => {
+    const lines = launchEnvironment({ LD_LIBRARY_PATH: 'x'.repeat(500) }, 20);
+    const line = lines.find((l) => l.startsWith('LD_LIBRARY_PATH='));
+    expect(line).toBe(`LD_LIBRARY_PATH=${'x'.repeat(20)}… (500 chars)`);
+  });
+
+  it('reports only a named allowlist, never the whole environment', () => {
+    // An environment dump is a good way to publish a token by accident.
+    const lines = launchEnvironment({ AWS_SECRET_ACCESS_KEY: 'hunter2', GITHUB_TOKEN: 'ghp_x' });
+    expect(lines.join('\n')).not.toMatch(/hunter2|ghp_x|AWS_SECRET|GITHUB_TOKEN/);
   });
 });

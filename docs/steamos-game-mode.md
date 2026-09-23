@@ -38,6 +38,42 @@ Electron app.
 
 ## The shortlist, most likely first
 
+### 0. Steam's injected environment — the front-runner
+
+**Confirmed on the device: the extracted tarball's `boomtown` launches and plays from a terminal in
+desktop mode, and fails when Steam launches it.** Same binary, same machine, same user. That
+exonerates almost everything below — the sandbox works, the GPU works, FUSE was never involved —
+and leaves what Steam does to a process it starts.
+
+Steam does not merely start a process, it injects into one:
+
+- **`LD_PRELOAD` carries the Steam overlay** (`gameoverlayrenderer.so`), which hooks GL and Vulkan
+  from inside the app. It is a long-standing source of hangs in Electron apps specifically, and it
+  is injected into non-Steam shortcuts exactly as it is into Steam games.
+- **`LD_LIBRARY_PATH` points at Steam's own bundled runtime libraries.** An Electron binary built
+  against the system's libraries can load Steam's older ones instead and choke — usually before it
+  gets far enough to say anything.
+
+Both are testable with no new build and no command line, and both are also *diagnoses*:
+
+1. **Turn the overlay off.** The shortcut's Properties → General → uncheck *Enable the Steam Overlay
+   while in-game*. One checkbox, no launch options.
+2. **Strip the injection.** Properties → Launch Options:
+
+   ```
+   env -u LD_PRELOAD -u LD_LIBRARY_PATH %command%
+   ```
+
+If either fixes it, the cause is named and the fix belongs in the shipped launcher rather than in
+the player's launch options — see *[What a player should have to
+do](#what-a-player-should-have-to-do)*.
+
+**The test that narrows this furthest costs thirty seconds:** add the shortcut and launch it from
+Steam in **desktop mode**. Steam injects the same environment there, but gamescope is not involved.
+If it fails in desktop-mode Steam too, gamescope is exonerated outright and this is purely the
+launch environment. If it only fails in Game Mode, the two are interacting and the list below is
+back in play.
+
 ### 1. The renderer process never starts — sandbox against container
 
 Electron's renderer sandbox needs either the SUID helper (`chrome-sandbox`, root-owned, mode 4755)

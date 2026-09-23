@@ -50,7 +50,13 @@ class BootLog {
    * the failure was bad enough that you had to power-cycle the device to get
    * back to a state where you could read anything.
    */
-  open(info: { session: string; appName: string; version: string; logDir: string }): void {
+  open(info: {
+    session: string;
+    appName: string;
+    version: string;
+    logDir: string;
+    environment?: readonly string[];
+  }): void {
     // Candidates in order of where a person would look first. A single
     // unwritable directory used to mean no log at all — and "no log at all" is
     // indistinguishable from "the app never started", which is the one
@@ -83,6 +89,7 @@ class BootLog {
             electron: process.versions['electron'] ?? 'unknown',
             chrome: process.versions['chrome'] ?? 'unknown',
             at: new Date(),
+            ...(info.environment ? { environment: info.environment } : {}),
           }),
         );
         const buffered = this.pending;

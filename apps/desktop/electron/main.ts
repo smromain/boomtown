@@ -5,7 +5,7 @@ import { buildCsp } from './csp.js';
 import { menuTemplate } from './menu.js';
 import { checkForUpdates } from './updater.js';
 import { compositorBounds, iconPath, openForSession, openingBounds, windowOptions } from './window.js';
-import { describeSession, extraSwitches, sessionShape } from './session.js';
+import { describeSession, extraSwitches, launchEnvironment, sessionShape } from './session.js';
 import { boot } from './boot.js';
 
 /** electron-vite sets this to the dev-server URL; absent in a packaged build. */
@@ -42,6 +42,7 @@ boot.open({
   appName: app.name,
   version: app.getVersion(),
   logDir: logDir(),
+  environment: launchEnvironment(),
 });
 
 /**

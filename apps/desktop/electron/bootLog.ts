@@ -54,11 +54,14 @@ export function header(info: {
   readonly electron: string;
   readonly chrome: string;
   readonly at: Date;
+  /** The injected-environment lines from `session.launchEnvironment`. */
+  readonly environment?: readonly string[];
 }): string {
   return [
     `--- ${info.app} ${info.version} — ${info.at.toISOString()}`,
     `    platform: ${info.platform}, electron ${info.electron}, chrome ${info.chrome}`,
     `    session: ${info.session}`,
+    ...(info.environment ?? []).map((line) => `    env ${line}`),
   ].join('\n');
 }
 
