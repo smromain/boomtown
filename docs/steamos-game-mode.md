@@ -175,6 +175,22 @@ So the steps split in two:
 - **Needs a build from this branch.** Reading `boot.log`, and the `BOOMTOWN_ELECTRON_FLAGS` form of
   step 4. Cut a release, or an `-rc` tag, before asking anyone for a log.
 
+## What a player should have to do
+
+**Download the `.tar.gz`, extract it, point Steam at `boomtown` inside it.** That is the whole
+install, and if anything below ever becomes part of it, the fix went in the wrong place.
+
+Worth stating because it was briefly got wrong: an earlier version of these notes told a player to
+`chown root:root` and `chmod 4755` the sandbox helper before first launch. That is a hypothesis
+test, not an install step, and it should never have been written as one. It is also very probably
+unnecessary — SteamOS is Arch-based and ships unprivileged user namespaces enabled, which is the
+sandbox path Electron prefers anyway, so the SUID helper is not what the renderer reaches for.
+
+If the sandbox does turn out to be the cause, **the fix belongs in the package or the app**, not in
+the player's filesystem: a `.deb`/`.rpm` sets the SUID bit at install time because the installer is
+already root, and a Flatpak sidesteps the question entirely by bringing its own sandbox. Reach for
+one of those rather than a README that opens with `sudo`.
+
 ## Confirming it on the device
 
 In **desktop mode**, add the shortcut and check Game Mode once per step. Stop at the first that
@@ -220,9 +236,17 @@ works — that answer is the root cause.
    first frame to take noticeably longer, which on a device that has been hanging is easy to
    misread as the bug still being there: give it a minute before calling it a failure. If it works,
    move to the tarball rather than living on this.
-3. **Check the sandbox helper.** `ls -l chrome-sandbox` beside the binary: root-owned and `4755`, or
-   the sandbox cannot start. `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox`
-   if not.
+3. **Only if step 4 shows `--no-sandbox` fixes it: check the sandbox helper.** `ls -l
+   chrome-sandbox` beside the binary. Root-owned and `4755` means the SUID path is available;
+   anything else means the renderer is relying on user namespaces alone, which
+   `cat /proc/sys/kernel/unprivileged_userns_clone` (or `.../user/max_user_namespaces`) will
+   confirm are enabled.
+
+   `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox` restores the SUID path
+   and is a legitimate *experiment*. It is not an instruction to pass on: if this is what makes the
+   difference, the answer is to ship a package that sets the bit at install time, not to ask players
+   for a root shell. See *[What a player should have to
+   do](#what-a-player-should-have-to-do)*.
 4. **Bisect the flags.** Same field as step 2 — Properties → Launch Options, one flag at a time.
 
    **On a published build, pass them as arguments** — Chromium parses its own argv, so this needs
