@@ -10,6 +10,7 @@ disagrees with the current documents, the current documents are right.
 | [`2026-09-07-0631-refactor-online-multiplayer-substrate-plan.md`](2026-09-07-0631-refactor-online-multiplayer-substrate-plan.md) | 2026-09-07 | **Delivered.** Why PartyKit over a hand-rolled `ws` server, Colyseus or boardgame.io; the room-per-game shape; hibernation and command-log replay |
 | [`2026-09-07-2020-feat-game-feel-presentation-plan.md`](2026-09-07-2020-feat-game-feel-presentation-plan.md) | 2026-09-07 | **Delivered.** The beats, the sound, the hand-off card, the corporation band, and the canvas work that went with them |
 | [`2026-09-14-feat-web-deployment-plan.md`](2026-09-14-feat-web-deployment-plan.md) | 2026-09-14 | **Partially delivered.** R1–R25, KTD14–22, U21–U33 and a threat model for a room reachable from a public URL. Its security units **U26–U30 shipped** (seat tokens, addresses and tickets, host admission, frame validation and rate limits, room ceilings and expiry). The hosted web build itself has not been built |
+| [`2026-09-24-feat-streaming-mode-design.md`](2026-09-24-feat-streaming-mode-design.md) | 2026-09-24 | **Proposed.** Streaming mode for #62: the main window becomes a spectator's view and a second, private window carries the hand, the decisions and the room code |
 
 The architecture plan's own authority hierarchy still holds: `../rules.md` and `../naming.md` are
 the rules authority; a plan owns architecture and sequencing within its own scope.
