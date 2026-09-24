@@ -23,7 +23,7 @@ more, inline, all tuned for a near-black ground:
 | `rgba(0,0,0,.55–.7)` | Founding, Merger | drop shadows under the certificate and chips |
 | `color-mix(…, #1c1917)` | Founding, Merger | the dark side of each chip's bevel |
 
-So swapping the curtain's background alone would put `#d8cfc3` text on cream (about 1.3:1, unreadable)
+So swapping the curtain's background alone would put `#d8cfc3` text on cream (about 1.4:1, unreadable)
 and a black shadow under every certificate. **A is a re-ink of five components, not a one-line CSS
 change.** That is still small, but it is why the first step has to be a pure refactor.
 
