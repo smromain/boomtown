@@ -15,7 +15,7 @@ beside the CSS board rather than instead of it. Steve's comment on the issue set
 to do: **3D buildings that grow with company size**, and **a switch available in the game as well as in
 Settings**.
 
-This plan is the design, and it is now built (see `docs/decisions.md`, *Board rendering*). Where the build departed from it: Skyline has no design-canvas artboard (the decision records the option as outside the canvas), and a software renderer is detected by name as well as by `failIfMajorPerformanceCaveat`, which headless Chromium ignores. Not built yet: the industry glyph as a roof decal, and the dust puff on a demolition (the tower sinks without one). A clickable sketch of the look and of the overlay
+This plan is the design, and it is now built (see `docs/decisions.md`, *Board rendering*). Where the build departed from it: Skyline has no design-canvas artboard (the decision records the option as outside the canvas), and a software renderer is detected by name as well as by `failIfMajorPerformanceCaveat`, which headless Chromium ignores. The industry glyph is on the roof (on a safe chain, on its crown), kept upright as the board turns. Not built yet: the dust puff on a demolition (the tower sinks without one). A clickable sketch of the look and of the overlay
 trick lives at https://claude.ai/artifact/UHDu3csUWzzckrERKqgdKS (plain three.js, made-up table, real
 company colours).
 
