@@ -61,7 +61,7 @@ landed.
 | Decision | Choice | Why |
 |---|---|---|
 | Visual direction | **Saxon City**, now simply "Boomtown" | Picked from three: Board Room (the board is the subject), Saxon City (the corporations are), Trading Floor (the money is). The other two are on the canvas's "Earlier directions" page |
-| Board rendering | **2D CSS grid** | See **Superseded** — this reverses the original 3D call |
+| Board rendering | **Board View** (the tilted CSS grid) by default; **Skyline** (plain three.js) as a per-machine option | Skyline draws what the CSS board can't: every chain a district, its headquarters a tower that grows with the chain's size band, a crown when it is safe, a stripe for every company it has eaten. Both painters render one cell model and one DOM grid (`board/boardModel.ts`, `board/BoardGrid.tsx`); Skyline lays that grid transparent over its canvas with one CSS matrix, which an orthographic camera makes exact, so tests, the run-app driver and screen readers see the same board either way. The ~0.5 MB of three.js loads only when Skyline is picked, and anything that cannot draw it falls back to Board View. See **Superseded** for how this reverses a reversal ([#70](https://github.com/smromain/boomtown/issues/70)) |
 | Moments | Six **beats**, driven off engine events | Founding, buy, merger, motion, endgame, victory, as timed skippable overlays with sound, rather than animation sprinkled through components. Five drop an opaque curtain; the buy flourish is deliberately light and never pauses play |
 | Hot-seat privacy | An opaque hand-off card, **by construction** | The turn advances the instant a buy resolves, so anything that covers the screen defers the hand-off and anything that does not, does not. A light beat that got this wrong leaked the next player's hand for a second every turn |
 | Copy | One file, `copy/constants.json` | Revising the writing is a pass through one file rather than a hunt across fifty components, and a phrase used twice cannot drift into two versions of itself |
@@ -79,6 +79,13 @@ landed.
   React Three Fiber. The design canvas always drew a flat grid, and reproducing it in R3F added a
   fixed-zoom camera, a font pipeline (troika) and ~2.2 MB of bundle. The grid fills its container
   via `aspect-ratio`, so it scales with the space. R3F, three and troika were removed.
+  *Reversed in part (#70):* three.js is back, without R3F, drei or troika, as **Skyline**, an option
+  beside the CSS board rather than instead of it. What changed is the job. The first 3D board
+  reproduced a flat design at 2.2 MB; Skyline draws something the CSS board cannot (a city whose
+  heights encode size, safety and lineage) at about a quarter of the weight, behind a lazy import.
+  The coordinates are painted into a canvas texture with the app's own font, so there is no font
+  pipeline. The design canvas has no Skyline artboard: the option is deliberately outside it, and the
+  look lives in `board/skyline/scene.ts`.
 - **The vote's notice period.** Designed as a turn's delay between raising a motion and voting on
   it; did not ship at any seat count. At three seats it hands the table a free turn to gerrymander
   the register against a mover who has just published it — a fourth cost on one action, when the

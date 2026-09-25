@@ -19,6 +19,9 @@
  *   --max <seconds>    hard stop, default 600
  *   --out <dir>        screenshots + samples.json, default ./run-out
  *   --headed           run with a visible window (needs a display)
+ *   --board <style>    board-view | skyline (default: whatever the settings remember).
+ *                      Skyline also passes forceSkyline=1, because headless Chromium
+ *                      draws WebGL in software and Skyline refuses a software renderer.
  *
  * Prints a timeline of overlay windows and exits non-zero if it never got into
  * a game, so a caller can tell "nothing happened" from "nothing went wrong".
@@ -40,6 +43,7 @@ const EDITION = arg('edition', null);
 const UNTIL = arg('until', 'game-over');
 const MAX_MS = Number(arg('max', 600)) * 1000;
 const OUT = path.resolve(arg('out', 'run-out'));
+const BOARD = arg('board', null);
 
 // Playwright is installed globally in this environment, not in the repo — the
 // app itself has no browser-automation dependency and shouldn't grow one.
@@ -50,13 +54,18 @@ const EXECUTABLE = process.env['CHROMIUM_PATH'] ?? '/opt/pw-browsers/chromium-11
 
 fs.mkdirSync(OUT, { recursive: true });
 
-const browser = await chromium.launch({ headless: !flag('headed'), executablePath: EXECUTABLE });
+// Chromium no longer falls back to SwiftShader for WebGL on its own; Skyline needs it asked for.
+const gpuArgs = BOARD === 'skyline' ? ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] : [];
+const browser = await chromium.launch({ headless: !flag('headed'), executablePath: EXECUTABLE, args: gpuArgs });
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 const pageErrors = [];
 page.on('pageerror', (e) => pageErrors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error') pageErrors.push(`console: ${m.text()}`); });
 
-await page.goto(URL_, { waitUntil: 'domcontentloaded' });
+const target = new URL(URL_);
+if (BOARD) target.searchParams.set('board', BOARD);
+if (BOARD === 'skyline') target.searchParams.set('forceSkyline', '1');
+await page.goto(target.toString(), { waitUntil: 'domcontentloaded' });
 await page.getByRole('button', { name: 'Local game' }).click();
 await page.waitForTimeout(400);
 
