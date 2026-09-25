@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type { Industry, PlayerView } from '@boomtown/engine';
-import { INDUSTRY_INFO } from '@boomtown/engine';
 import { IndustryMark } from '../../game/marks.js';
+import { industryTheme } from '../../game/industryTheme.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
@@ -21,7 +21,7 @@ export function FoundingBeat({
 }) {
   const reduced = useReducedMotion();
   const corp = view.corporations[industry];
-  const { color, ink } = INDUSTRY_INFO[industry];
+  const { color, ink } = industryTheme(industry);
 
   useEffect(() => {
     soundManager.play('founding');

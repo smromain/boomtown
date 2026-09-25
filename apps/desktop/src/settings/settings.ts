@@ -45,6 +45,14 @@ export interface Settings {
    */
   readonly playerName: string;
   /**
+   * Draw a texture per industry over the board's cells, the corporation caps
+   * and the merger discs, so a chain is told by shape as well as colour (#19).
+   * Off by default: most players are served by the glyphs and the re-spaced
+   * palette, and a texture on every tile is noise to them. Per machine, like
+   * every setting here, so two players at one online table can differ.
+   */
+  readonly industryPatterns: boolean;
+  /**
    * Schema version of the stored blob. Absent on anything written before
    * migrations existed; see `migrate`.
    */
@@ -68,6 +76,7 @@ export const DEFAULT_SETTINGS: Settings = {
   musicMuted: false,
   musicTrack: 'pleasant-creek',
   playerName: '',
+  industryPatterns: false,
   version: SETTINGS_VERSION,
 };
 
@@ -136,10 +145,18 @@ export function loadSettings(): Settings {
   }
 }
 
+/**
+ * Fired on `window` after every save. Most settings are read once, when a
+ * table is set up; this is for the few that change what is already on screen
+ * (see `useSetting`), which have to hear about a save to redraw.
+ */
+export const SETTINGS_CHANGED = 'boomtown:settings-changed';
+
 export function saveSettings(settings: Settings): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(settings));
   } catch {
     // a session without localStorage just keeps defaults
   }
+  window.dispatchEvent(new Event(SETTINGS_CHANGED));
 }

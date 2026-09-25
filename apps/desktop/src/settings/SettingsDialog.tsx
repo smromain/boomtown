@@ -225,6 +225,21 @@ export function SettingsDialog({
                   <span className={form.note}>{c.onlineHostNote}</span>
                 </label>
 
+                <div className={form.field}>
+                  <span>{c.patterns}</span>
+                  <Choice
+                    quiet
+                    label={c.patterns}
+                    value={draft.industryPatterns ? 'on' : 'off'}
+                    options={[
+                      { value: 'on', label: c.on },
+                      { value: 'off', label: c.off },
+                    ]}
+                    onChange={(value) => patch({ industryPatterns: value === 'on' })}
+                  />
+                  <span className={form.note}>{c.patternsNote}</span>
+                </div>
+
                 {/* Dev builds only. In a packaged build the log is off and
                     there is no way to switch it on: a control whose whole
                     purpose is diagnosing a stuck room is noise on a settings

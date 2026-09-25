@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { INDUSTRY_INFO, RULES, type Industry } from '@boomtown/engine';
+import { RULES, type Industry } from '@boomtown/engine';
 import { useGameClient, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import { IndustryMark } from '../game/marks.js';
+import { industryTheme } from '../game/industryTheme.js';
 import { Marquee } from '../game/Marquee.js';
 import { Button } from '../ui/Button.js';
 import {
@@ -150,7 +151,7 @@ function BuyRow({
   onLess: () => void;
   onMore: () => void;
 }) {
-  const { color, ink } = INDUSTRY_INFO[industry];
+  const { color, ink } = industryTheme(industry);
   const blocked = standing !== 'available';
   const classes = [styles.buyRow, qty > 0 && styles.buyRowPicked, blocked && styles.buyRowBlocked]
     .filter(Boolean)
