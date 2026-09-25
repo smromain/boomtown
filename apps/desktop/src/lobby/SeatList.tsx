@@ -7,6 +7,8 @@ import { useConnectionStatus, useLobbyError } from './useConnectionStatus.js';
 import { Button } from '../ui/Button.js';
 import { copyText } from '../ui/clipboard.js';
 import { copy } from '../copy/copy.js';
+import { loadSettings } from '../settings/settings.js';
+import { useHoldToReveal } from './useHoldToReveal.js';
 import form from '../setup/form.module.css';
 import styles from './lobby.module.css';
 
@@ -58,7 +60,8 @@ export function SeatList({
     }
     // A clipboard the shell refuses is not worth an error banner: the code is
     // on screen, and selecting it and pressing Cmd/Ctrl+C still works — the
-    // app menu carries the edit roles so that those keys do something.
+    // app menu carries the edit roles so that those keys do something. Masked
+    // in streaming mode, holding to show it is the fallback, and a deliberate one.
     netlog.log('lobby', 'warn', 'could not copy the room code');
   };
   // The confirmation is a label change, so it has to go back on its own.
@@ -69,6 +72,12 @@ export function SeatList({
   }, [copied]);
 
   const ticket = roomState?.ticket ?? null;
+  // Streaming mode (#62) masks the code from the first frame. Read from the
+  // setting on every render rather than held in state, so a remount — the
+  // reconnect banner, a seat joining — cannot hand back an unmasked code.
+  const streaming = loadSettings().streamingMode;
+  const reveal = useHoldToReveal();
+  const masked = streaming && !reveal.held;
   const seats = roomState?.seats ?? [];
   // `[].every()` is vacuously true — without the length guard an empty seat
   // list reads as "full" and offers Start for a room we know nothing about.
@@ -113,13 +122,25 @@ export function SeatList({
               URL this client connected to. A retired or expired ticket shows
               as nothing rather than as a code that no longer works. */}
           <div className={styles.codeBlock}>
+            {/* Masked means the characters are replaced, not blurred: a blur
+                leaves the code in the DOM and in the capture, and a light one
+                on eight characters is not much of a barrier. */}
             <span className={styles.code} aria-label={copy.lobby.roomCode}>
-              {ticket ? formatTicket(ticket) : copy.lobby.ticketExpired}
+              {!ticket ? copy.lobby.ticketExpired : masked ? copy.lobby.codeMasked : formatTicket(ticket)}
             </span>
             {ticket && (
-              <Button variant="ghost" aria-label={copy.lobby.copyCodeLabel} onClick={() => void copyCode(ticket)}>
-                {copied ? copy.lobby.copied : copy.lobby.copyCode}
-              </Button>
+              <div className={styles.codeActions}>
+                {/* Copy works masked — that is the point. The clipboard is how
+                    the code travels, so hiding it costs the host nothing. */}
+                <Button variant="ghost" aria-label={copy.lobby.copyCodeLabel} onClick={() => void copyCode(ticket)}>
+                  {copied ? copy.lobby.copied : copy.lobby.copyCode}
+                </Button>
+                {streaming && (
+                  <Button variant="ghost" aria-label={copy.lobby.holdToShowLabel} {...reveal.props}>
+                    {copy.lobby.holdToShow}
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </header>

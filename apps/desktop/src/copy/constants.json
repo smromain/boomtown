@@ -28,6 +28,8 @@
     "roomCode": "Room code",
     "roomCodePlaceholder": "ABCD-1234",
     "roomCodeNote": "Eight characters, from whoever set the room up. It stops working after about fifteen minutes.",
+    "holdToShow": "Hold to show",
+    "holdToShowLabel": "Hold to show the room code",
     "table": "The table",
     "tableNote": "Humans join by code and bring their own names. Set a seat to a bot to fill it now.",
     "seats": "Seats",
@@ -71,7 +73,10 @@
     "eject": "Hand to a bot",
     "copyCode": "Copy",
     "copied": "Copied",
-    "copyCodeLabel": "Copy the code"
+    "copyCodeLabel": "Copy the code",
+    "codeMasked": "••••-••••",
+    "holdToShow": "Hold to show",
+    "holdToShowLabel": "Hold to show the room code"
   },
   "setup": {
     "screenLabel": "New game",
@@ -195,6 +200,8 @@
     "onlineHostNote": "Blank uses the server the app ships with.",
     "logging": "Log online play",
     "loggingNote": "Ctrl/Cmd+Shift+L reads the log back.",
+    "streaming": "Streaming mode",
+    "streamingNote": "Hides the room code on screen. Copy still works, and you can hold to show it.",
     "on": "On",
     "off": "Off",
     "musicCredits": "Music credits",

@@ -263,6 +263,18 @@ await userEvent.click(
     void onClose;
   });
 
+  it('streaming mode ships off and is saved per machine (#62)', async () => {
+    expect(loadSettings().streamingMode).toBe(false);
+    render(<SettingsDialog open onClose={() => {}} />);
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Streaming mode' })).getByRole('radio', { name: 'On' }),
+    );
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    });
+    expect(loadSettings().streamingMode).toBe(true);
+  });
+
   it('Reset restores the defaults in the form', async () => {
     saveSettings({ ...DEFAULT_SETTINGS, partykitHost: 'stale.example.dev' });
     render(<SettingsDialog open onClose={() => {}} />);

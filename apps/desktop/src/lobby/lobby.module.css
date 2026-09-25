@@ -278,6 +278,18 @@
   gap: 0.35rem;
 }
 
+.codeActions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+/* The hold-to-show control, while held. */
+.codeActions [aria-pressed='true'],
+.nameRow button[aria-pressed='true'] {
+  color: var(--ink);
+  border-color: var(--cell-ring);
+}
+
 .hint {
   font-size: 0.85rem;
   color: var(--muted);

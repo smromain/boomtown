@@ -14,6 +14,7 @@ import { Button } from '../ui/Button.js';
 import { copy, fill } from '../copy/copy.js';
 import form from '../setup/form.module.css';
 import styles from './lobby.module.css';
+import { useHoldToReveal } from './useHoldToReveal.js';
 
 /**
  * Create a room (with the same seat/edition/visibility options as a local
@@ -33,6 +34,10 @@ export function CreateJoin({
   // the same name (#16).
   const [name, setName] = useState(() => loadSettings().playerName.trim() || randomName());
   const [joinCode, setJoinCode] = useState('');
+  // Streaming mode (#62): someone joining on stream would otherwise reveal the
+  // code by typing it. The field reads as a password until held to show.
+  const streaming = loadSettings().streamingMode;
+  const reveal = useHoldToReveal();
   const [config, setConfig] = useState<GameConfig>(() => ({
     ...defaultConfig(),
     seats: [
@@ -158,17 +163,25 @@ export function CreateJoin({
                     ourselves, and all of that has to land as eight characters.
                     `normaliseTicket` is the same function the submit path used
                     to run alone, so what you see is now what is sent. */}
-                <input
-                  className={`${form.input} ${styles.codeInput}`}
-                  value={joinCode}
-                  onChange={(e) =>
-                    setJoinCode(formatTicket(normaliseTicket(e.target.value).slice(0, TICKET_LENGTH)))
-                  }
-                  aria-label={copy.online.roomCode}
-                  placeholder={copy.online.roomCodePlaceholder}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
+                <div className={styles.nameRow}>
+                  <input
+                    className={`${form.input} ${styles.codeInput}`}
+                    type={streaming && !reveal.held ? 'password' : 'text'}
+                    value={joinCode}
+                    onChange={(e) =>
+                      setJoinCode(formatTicket(normaliseTicket(e.target.value).slice(0, TICKET_LENGTH)))
+                    }
+                    aria-label={copy.online.roomCode}
+                    placeholder={copy.online.roomCodePlaceholder}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  {streaming && (
+                    <button type="button" aria-label={copy.online.holdToShowLabel} {...reveal.props}>
+                      {copy.online.holdToShow}
+                    </button>
+                  )}
+                </div>
                 <span className={form.note}>{copy.online.roomCodeNote}</span>
               </label>
               {nameField}

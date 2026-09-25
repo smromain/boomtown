@@ -1,6 +1,6 @@
 # Streaming mode — design (#62)
 
-**Status: proposed, not built.** For review. Nothing here is decided until it moves to
+**Status: proposed. Phase 1 (the lobby) is being built.** For review. Nothing here is decided until it moves to
 `docs/decisions.md`.
 
 ## The problem, in one paragraph
@@ -162,11 +162,40 @@ This ships first and stands alone.
   main page at every step of a merger and a buy, asserting that no hand tile coordinate and no own
   cash figure appears in its text. Playwright drives the private window as the `popup` page.
 
-## Questions for Steve
+## Hot-seat and the private window
 
-1. **Phase 1 alone first?** Recommended: yes. It closes the issue as written and is independent of
-   the window work.
-2. **Hot-seat with more than one human.** The private window can host the hand-off card, so it
-   works, but streaming a hot-seat table is an odd case. Recommended: allow it, don't design for it.
-3. **Always-on-top for the private window?** Handy on one monitor, annoying on two. Recommended:
-   off by default, a pin button in the private window's own corner.
+A private window works because one person is behind it. Hot-seat breaks that: two or more people
+share one machine, and today their privacy is the opaque hand-off card, which works because
+everyone takes turns looking at the same screen. Three ways to square it:
+
+1. **One human per machine only.** The private window is offered when this machine plays exactly
+   one human seat: online, or a local table against bots. That covers almost every stream. With two
+   or more local humans the option is greyed out with a one-line reason, the hand-off card stays
+   the privacy mechanism, and streaming mode still masks the room code. Cheapest, and nothing new
+   to explain.
+2. **A shared private window.** The single private window hosts the hand-off card and then the
+   claimed seat's hand, exactly as the main window does today. The main window stays a spectator
+   view for the stream. It works mechanically (`HotSeatProvider` already tracks who holds the
+   machine), but it means the people in the room take turns at a second monitor, which is the
+   confusing part.
+3. **Phones as private windows ("couch mode").** Every player at the table opens their hand on
+   their own phone by scanning a code; the main window becomes a pure table view for the TV or the
+   stream. This is the real answer to private information with several people in one room, and it
+   reuses online play: the table is an online room, each phone is a seat admitted by the host, and
+   `viewFor` already redacts per seat. It needs things that do not exist yet: a seat-less spectator
+   connection for the main window, and a phone-sized web client (the hosted web build is still
+   unbuilt). It is its own feature, not part of streaming mode.
+
+**Recommendation:** 1 now; 3 as its own issue if couch play matters. 2 is the one to avoid.
+
+## Decided
+
+- **Phase 1 ships on its own** (Steve, 2026-09-25).
+- **The private window is off by default** (Steve, 2026-09-25). It is its own setting, separate
+  from streaming mode: streaming mode masks the room code, and the private window is an opt-in on
+  top of it.
+
+## Still open
+
+1. Hot-seat, above.
+2. **Always-on-top for the private window.** Recommended: off, with a pin button in its corner.
