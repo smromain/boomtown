@@ -141,6 +141,12 @@ covering beat is up. The table idles at zero GPU.
 
 - **Setting:** `boardStyle: 'flat' | 'skyline'` on `Settings`, default `'flat'`. `loadSettings` merges
   stored over defaults, so an added key needs no migration and no version bump.
+- **Lighting (decided 2026-09-25: both):** `skylineLighting: 'day' | 'night'`, default `'night'`. Day is
+  the paper palette the Flat board uses; night is a dark board with lit windows that matches the launch
+  screen's skyline (`assets/night`). It is one uniform switch in the scene (background, two lights, the
+  ground palette and the windows' emissive intensity), not a second renderer, so the cost is a second
+  look to keep polished rather than a second code path. It sits beside `boardStyle` in Settings and
+  shows only when Skyline is selected; the in-game toggle stays the single Flat/Skyline switch.
 - **In Settings:** under *This machine*, beside the volumes. It is a preference about this screen, never a
   table rule, so it never travels to the room and online opponents can each pick their own.
 - **In the game:** a small icon toggle in the Header's brand region, next to the speaker, for the same
@@ -211,7 +217,7 @@ and the Skyline reads the same `spectating`-aware view the Flat board does.
 ## Build order
 
 1. Extract `boardModel.ts` and `BoardGrid.tsx`; Flat board unchanged, all tests green. (Mergeable alone.)
-2. `boardStyle` setting and both switches, wired to a placeholder painter.
+2. `boardStyle` and `skylineLighting` settings and both switches, wired to a placeholder painter.
 3. `skylineModel.ts` with tests.
 4. `scene.ts`: static skyline, overlay matrix, quarter turns, fallback.
 5. Moments: rise, grow, demolish, crown, held behind covering beats; reduced motion.
@@ -221,7 +227,5 @@ and the Skyline reads the same `spectating`-aware view the Flat board does.
 
 1. **Height by size band or by share price?** The plan says band (it is "company size", and compares
    fairly across tiers). Price would make a tier-3 chain tower over a same-size tier-1 chain.
-2. **Day or night?** The board is lit paper by day, but the launch screen has a night skyline
-   (`assets/night`). A night Skyline with lit windows would tie the two together, and could be the
-   Skyline's look while Flat stays daylight.
+2. ~~**Day or night?**~~ Decided 2026-09-25: both, as a setting, defaulting to night. See *The switch*.
 3. **Name.** *Skyline* and *Flat* are working names for the switch.
