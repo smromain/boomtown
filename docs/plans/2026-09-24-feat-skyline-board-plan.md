@@ -42,8 +42,9 @@ default is the **Flat** board (it isn't flat, but it is the one without building
 | playable (your turn) | pulsing ring | a glowing survey outline on the lot, and a floating marker above rooftop height so a tower in front can never hide it |
 | dead | struck through | a red "condemned" cross on the lot |
 
-**The tower.** Height steps with the chain's price band, not its raw tile count, so it tracks exactly
-the number players care about and a 41-tile chain doesn't pierce the ceiling. With classic's
+**The tower.** Height follows chain size (decided 2026-09-25), stepped by the size bands of the price
+table rather than by raw tile count, so a 41-tile chain doesn't pierce the ceiling. Share price is not
+used: it would make a tier-3 chain tower over a same-size tier-1 chain. With classic's
 `bandCuts: [2, 3, 4, 5, 10, 20, 30, 40]` that is nine heights, from two storeys at size 2 to roughly
 eleven at 41+. Two extra touches carry information the flat board shows elsewhere:
 
@@ -89,9 +90,26 @@ focus and hover states from the DOM's own state.
 
 Towers stand up out of that plane, so a click on a tower's facade lands on the lot behind it. That is
 harmless by construction: playable lots are always empty (a tile can only be placed on an empty cell),
-the non-HQ blocks are low, and the floating marker sits above rooftop height. The camera also turns in
-90° steps (two small buttons at the board's corner, like SimCity), and the overlay matrix is recomputed
-from the camera on each turn.
+the non-HQ blocks are low, and the floating marker sits above rooftop height.
+
+**The camera rotates freely (decided 2026-09-25).** Drag sideways to spin the board, and drag up or down
+to tilt it, clamped between a low three-quarter view and nearly top-down. Buttons at the board's corner
+turn it to the next quarter from wherever the drag left it, and a third button resets the view. Every
+orthographic camera maps the ground by an affine transform, so free rotation keeps the overlay trick:
+the matrix is simply recomputed on each rendered frame. The sketch shows the click grid staying on its
+lots through a drag.
+
+- **Click versus drag.** A press that moves under 5 px is a click on the cell under it. A real drag
+  swallows the click it ends in, so spinning the board can never place a tile.
+- **Coordinates stay readable.** The ground labels are repainted upright whenever the camera crosses
+  into another quarter.
+- **Rendering stays on demand.** Frames render only while a drag or a swing is in progress.
+- **Reduced motion.** The buttons snap instead of swinging and there is no inertia. Dragging still works,
+  because the player is the one moving the camera.
+- **Keyboard.** `[` and `]` turn by a quarter and `0` resets the view, unless a text field has focus
+  (the same guard the Header uses for `?` and F1).
+- **The view is per-session UI state, not a setting.** Every game opens at the default angle. The
+  `run-app` driver resets the view before it screenshots, so captures stay reproducible.
 
 **The refactor**, worth doing regardless:
 
@@ -210,22 +228,20 @@ and the Skyline reads the same `spectating`-aware view the Flat board does.
   complexity, and it re-imports the text pipeline the first attempt paid for.
 - **Raycast picking with a hidden DOM mirror.** What the issue anticipated. Unnecessary with an
   orthographic camera, and a hidden mirror is a second source of truth that can drift from what is drawn.
-- **A free orbit camera.** Pretty, but it makes the overlay matrix per-frame, makes screenshots
-  non-reproducible and makes "which lot did I click" worse. Quarter turns get the occlusion benefit
-  without the cost.
+- **Quarter turns only.** This was the first draft. Steve asked for free rotation as well, and it costs
+  little: the overlay matrix is recomputed per frame, and the reset view keeps screenshots reproducible.
 
 ## Build order
 
 1. Extract `boardModel.ts` and `BoardGrid.tsx`; Flat board unchanged, all tests green. (Mergeable alone.)
 2. `boardStyle` and `skylineLighting` settings and both switches, wired to a placeholder painter.
 3. `skylineModel.ts` with tests.
-4. `scene.ts`: static skyline, overlay matrix, quarter turns, fallback.
+4. `scene.ts`: static skyline, overlay matrix, free rotation with drag/click separation, quarter-turn and reset buttons, fallback.
 5. Moments: rise, grow, demolish, crown, held behind covering beats; reduced motion.
 6. Canvas artboard, `decisions.md`, `run-app` force flag, verification on both painters.
 
 ## Open questions for Steve
 
-1. **Height by size band or by share price?** The plan says band (it is "company size", and compares
-   fairly across tiers). Price would make a tier-3 chain tower over a same-size tier-1 chain.
+1. ~~**Height by size band or by share price?**~~ Decided 2026-09-25: chain size.
 2. ~~**Day or night?**~~ Decided 2026-09-25: both, as a setting, defaulting to night. See *The switch*.
 3. **Name.** *Skyline* and *Flat* are working names for the switch.
