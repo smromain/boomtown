@@ -1,6 +1,7 @@
-import { INDUSTRIES, INDUSTRY_INFO } from '@boomtown/engine';
+import { INDUSTRIES } from '@boomtown/engine';
 import { useOwnView } from '../client/ownView.js';
 import { IndustryMark } from './marks.js';
+import { industryTheme } from './industryTheme.js';
 import { Panel } from '../ui/Panel.js';
 import styles from './game.module.css';
 import { copy } from '../copy/copy.js';
@@ -31,7 +32,7 @@ export function Shareholders() {
             {seat.holdings == null
               ? '—'
               : INDUSTRIES.filter((industry) => seat.holdings![industry] > 0).map((industry) => {
-                  const { color, ink } = INDUSTRY_INFO[industry];
+                  const { color, ink } = industryTheme(industry);
                   return (
                     <span key={industry} className={styles.chip}>
                       <span className={styles.chipBadge} style={{ background: color }}>

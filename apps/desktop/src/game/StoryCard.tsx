@@ -1,7 +1,7 @@
-import { INDUSTRY_INFO } from '@boomtown/engine';
 import { useAnyView, useGameState } from '../client/GameClientProvider.js';
 import { describeEvent } from '../panels/eventText.js';
 import { IndustryMark } from './marks.js';
+import { industryTheme } from './industryTheme.js';
 import { Marquee } from './Marquee.js';
 import { Panel } from '../ui/Panel.js';
 import { Skyline } from '../art/Skyline.js';
@@ -58,8 +58,16 @@ export function StoryCard() {
                 <li
                   key={index}
                   className={turn ? styles.logTurn : headline ? styles.logHeadline : styles.logLine}
-                  style={headline && industry ? { color: INDUSTRY_INFO[industry].color } : undefined}
+                  style={headline && industry ? { color: industryTheme(industry).onPaper } : undefined}
                 >
+                  {/* A tinted line never names its chain by colour alone: the
+                      shade that reads on paper is too close to its neighbours
+                      under colourblindness to carry identity (#19). */}
+                  {headline && industry && (
+                    <span className={styles.logMark}>
+                      <IndustryMark industry={industry} color={industryTheme(industry).onPaper} size={12} />
+                    </span>
+                  )}
                   {describeEvent(event, view)}
                 </li>
               );
@@ -71,13 +79,13 @@ export function StoryCard() {
   }
 
   const survivorName = merger.survivor ? view.corporations[merger.survivor].displayName : '…';
-  const survivorColor = merger.survivor ? INDUSTRY_INFO[merger.survivor].color : 'var(--ink)';
+  const survivorColor = merger.survivor ? industryTheme(merger.survivor).onPaper : 'var(--ink)';
   const names = merger.corporations.map((industry) => tradingNameIn(merger, view, industry));
   const eaten = beingAbsorbed(merger);
   const eatenNames = eaten.map((industry) => tradingNameIn(merger, view, industry));
   // One doomed corporation is named in its own colour, the way the log tints a
   // headline; several have no single colour between them, so they read as ink.
-  const eatenColor = eaten.length === 1 ? INDUSTRY_INFO[eaten[0]!].color : 'var(--ink)';
+  const eatenColor = eaten.length === 1 ? industryTheme(eaten[0]!).onPaper : 'var(--ink)';
   const prose = mergerProse(merger, view);
   // The name it is trading under going in, which is not the joint name it takes
   // when the merger completes.

@@ -1,6 +1,8 @@
 import { memo } from 'react';
-import { INDUSTRY_INFO, type CorpView, type Industry, type Retrospective, type Seat } from '@boomtown/engine';
+import { type CorpView, type Industry, type Retrospective, type Seat } from '@boomtown/engine';
 import { CHIP, ChipKey, EventChip } from './EventChip.js';
+import { IndustryMark } from '../game/marks.js';
+import { industryTheme } from '../game/industryTheme.js';
 import { dashFor, linePath, moneyAxis, netWorthSeries, placeLabels } from './series.js';
 import styles from './after.module.css';
 import { copy } from '../copy/copy.js';
@@ -128,7 +130,7 @@ export const MarketGraph = memo(function MarketGraph({
               exactly and stacked into a second row when two land together. A
               mark that fits in neither keeps its rule and its hover text. */}
           {events.map((event, index) => {
-            const info = INDUSTRY_INFO[event.industry];
+            const info = industryTheme(event.industry);
             const at = x(event.turn);
             const slot = placed.find((entry) => entry.index === index);
             return (
@@ -138,7 +140,7 @@ export const MarketGraph = memo(function MarketGraph({
                   y1={PAD_T}
                   x2={at}
                   y2={y(axis.floor) + (slot ? 8 + slot.row * (CHIP + 6) : 0)}
-                  stroke={event.kind === 'folded' ? 'var(--muted)' : info.color}
+                  stroke={event.kind === 'folded' ? 'var(--muted)' : info.onPaper}
                   strokeDasharray={event.kind === 'folded' ? '3 3' : '1 4'}
                   opacity="0.55"
                 />
@@ -151,9 +153,13 @@ export const MarketGraph = memo(function MarketGraph({
                     label={`${nameOf(event.industry)} — ${labelFor(event.kind)}, turn ${event.turn}`}
                   />
                 ) : (
-                  <circle cx={at} cy={y(axis.floor)} r="3.5" fill={info.color}>
+                  // Not a bare dot: a coloured dot this small is one no
+                  // colourblind player can place (#19), so the overflow mark
+                  // is the industry's glyph, in the shade that reads on paper.
+                  <g data-overflow-mark={event.industry} transform={`translate(${(at - 7).toFixed(1)} ${(y(axis.floor) - 7).toFixed(1)})`}>
                     <title>{`${nameOf(event.industry)} — ${labelFor(event.kind)}, turn ${event.turn}`}</title>
-                  </circle>
+                    <IndustryMark industry={event.industry} color={info.onPaper} size={10} />
+                  </g>
                 )}
               </g>
             );

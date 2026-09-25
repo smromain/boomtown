@@ -4,6 +4,8 @@ import { editionLabel } from '../setup/editionLabel.js';
 import { Rich } from '../copy/Rich.js';
 import { copy, fill } from '../copy/copy.js';
 import { corpsByTier, fullChart } from './priceReference.js';
+import { IndustryMark } from '../game/marks.js';
+import { industryTheme } from '../game/industryTheme.js';
 import styles from './reference.module.css';
 
 /**
@@ -53,7 +55,7 @@ export function StockReference({ open, onClose }: { open: boolean; onClose: () =
                         {byTier[tier].map((c) => (
                           <span
                             key={c.industry}
-                            style={{ color: c.size > 0 ? c.color : undefined }}
+                            style={{ color: c.size > 0 ? industryTheme(c.industry).onPaper : undefined }}
                             className={c.size > 0 ? undefined : styles.dim}
                           >
                             {c.name}
@@ -80,8 +82,9 @@ export function StockReference({ open, onClose }: { open: boolean; onClose: () =
                             <span
                               key={m.industry}
                               className={styles.chip}
-                              style={{ background: m.color }}
+                              style={{ background: m.color, color: industryTheme(m.industry).ink }}
                             >
+                              <IndustryMark industry={m.industry} color={industryTheme(m.industry).ink} size={11} />
                               {m.name} <span className="tabnum">{m.size}</span>
                             </span>
                           ))}

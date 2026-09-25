@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
-import { INDUSTRIES, INDUSTRY_INFO, type Industry, type PlayerView, type Seat } from '@boomtown/engine';
+import { INDUSTRIES, type Industry, type PlayerView, type Seat } from '@boomtown/engine';
 import { IndustryMark } from '../../game/marks.js';
+import { industryTheme } from '../../game/industryTheme.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
@@ -62,7 +63,7 @@ export function BuyStockBeat({
         aria-label={fill(copy.beats.buyStock.dismiss, { name })}
       >
         {INDUSTRIES.filter((industry) => industry in picks).map((industry) => (
-          <IndustryMark key={industry} industry={industry} color={INDUSTRY_INFO[industry].color} size={16} />
+          <IndustryMark key={industry} industry={industry} color={industryTheme(industry).onNight} size={16} />
         ))}
         <span className="serif tabnum" style={{ fontSize: 15 }}>
           {cost === null
