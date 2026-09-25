@@ -56,6 +56,7 @@ const roomState = (over: Partial<RoomState> = {}): RoomState => ({
   ticket: 'ROOM0123',
   phase: 'lobby',
   hostSeat: 0,
+  table: false,
   knocks: [],
   locked: false,
   config,

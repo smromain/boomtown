@@ -411,6 +411,8 @@ function summariseRoom(message: RoomMessage): Record<string, unknown> {
   switch (message.type) {
     case 'welcome':
       return { seat: message.seat };
+    case 'table-welcome':
+      return { table: true };
     case 'waiting':
       return {};
     case 'room-state':
@@ -426,6 +428,8 @@ function summariseRoom(message: RoomMessage): Record<string, unknown> {
         events: message.events.length,
         ...(message.rejection ? { rejected: message.rejection.command.type } : {}),
       };
+    case 'table-update':
+      return { table: true, status: message.view.status, events: message.events.length };
     case 'error':
       return { code: errorCode(message.error), message: errorText(message.error) };
   }

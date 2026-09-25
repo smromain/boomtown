@@ -1,4 +1,4 @@
-import type { Command, EngineEvent, PlayerView, Retrospective, TileId } from '@boomtown/engine';
+import type { Command, EngineEvent, PlayerView, Retrospective, TableView, TileId } from '@boomtown/engine';
 
 /**
  * The serialized shape of one seat's view. `PlayerView` is already a pure
@@ -8,6 +8,9 @@ import type { Command, EngineEvent, PlayerView, Retrospective, TileId } from '@b
  * round-trip test in `test/roundtrip.test.ts` pins that it stays JSON-safe.
  */
 export type PlayerViewDTO = PlayerView;
+
+/** The couch table's view (#62): the public projection, the same plain data. */
+export type TableViewDTO = TableView;
 
 /** Events are likewise plain data (KTD2); this is their wire name. */
 export type EngineEventDTO = EngineEvent;
@@ -64,3 +67,4 @@ type DeepJsonSafe<T> = T extends JsonPrimitive
 type _PlayerViewIsJson = PlayerViewDTO extends DeepJsonSafe<PlayerViewDTO> ? true : never;
 type _EngineEventIsJson = EngineEventDTO extends DeepJsonSafe<EngineEventDTO> ? true : never;
 type _ClientViewIsJson = ClientViewDTO extends DeepJsonSafe<ClientViewDTO> ? true : never;
+type _TableViewIsJson = TableViewDTO extends DeepJsonSafe<TableViewDTO> ? true : never;

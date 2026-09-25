@@ -7,10 +7,10 @@ current `main`.
 
 | Command | What runs | Count |
 |---|---|---|
-| `npm test` | Both Vitest projects | **977** |
-| `npm run test:engine` | The `engine` project (node): `packages/*/test/**` — engine, protocol, ai, client-core, and the room's own logic | 521 |
-| `npm run test:desktop` | The `desktop` project (jsdom): `apps/desktop/**/*.test.{ts,tsx}` — components through `@testing-library/react`, plus the Electron main-process modules | 456 |
-| `npm run test:server` | Integration: a real `partykit dev` room (workerd) | 23 |
+| `npm test` | Both Vitest projects | **997** |
+| `npm run test:engine` | The `engine` project (node): `packages/*/test/**` — engine, protocol, ai, client-core, and the room's own logic | 532 |
+| `npm run test:desktop` | The `desktop` project (jsdom): `apps/desktop/**/*.test.{ts,tsx}` — components through `@testing-library/react`, plus the Electron main-process modules | 465 |
+| `npm run test:server` | Integration: a real `partykit dev` room (workerd) | 27 |
 | `npm run typecheck` | `tsc --noEmit` for both tsconfigs | — |
 | `npm run lint` | eslint, flat config (including the no-`Math.random`/`Date.now` rule in the engine) | — |
 | `npm run smoke` | Builds and boots the real Electron app | — |

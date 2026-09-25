@@ -5,7 +5,7 @@ with a variant of our own.
 
 **Where it stands.** Built and shipping. `v2026.9.1` is published with macOS, Windows and Linux
 installers; the release workflow also pushes the unpacked builds to itch.io and deploys the online
-room from the same commit. Hot-seat, bots and online play all work; 977 unit tests and 23
+room from the same commit. Hot-seat, bots and online play all work; 997 unit tests and 27
 integration tests are green. Builds are **unsigned**, so macOS needs one `xattr` command on first
 launch. The work now is refinement, not construction.
 
@@ -138,10 +138,10 @@ getting them wrong once.
 
 ```bash
 npm install            # workspaces; ELECTRON_SKIP_BINARY_DOWNLOAD=1 where there is no display
-npm test               # 977 unit tests, both projects
+npm test               # 997 unit tests, both projects
 npm run typecheck      # both tsconfigs
 npm run lint           # eslint flat config
-npm run test:server    # 23 integration tests against a real partykit dev room
+npm run test:server    # 27 integration tests against a real partykit dev room
 npm run dev            # the Electron app
 npm run server:dev     # the room on :1999, which a dev build talks to by default
 ```

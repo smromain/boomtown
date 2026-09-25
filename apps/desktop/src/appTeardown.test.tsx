@@ -73,6 +73,7 @@ describe('App — online lobby to game transition', () => {
     const playing: RoomState = {
       ticket: 'ROOM01',
       hostSeat: 0,
+      table: false,
       knocks: [],
       locked: false,
       phase: 'playing',

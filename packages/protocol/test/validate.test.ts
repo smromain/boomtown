@@ -30,6 +30,13 @@ describe('what gets through', () => {
     }
   });
 
+  it('carries a couch table flag on create-room, and nothing else it did not ask for (#62)', () => {
+    const parsed = parseClientMessage(frame({ type: 'create-room', config: goodConfig, table: true, extra: 1 }));
+    expect(parsed.ok && parsed.message).toEqual({ type: 'create-room', config: goodConfig, table: true });
+    const plain = parseClientMessage(frame({ type: 'create-room', config: goodConfig, table: false }));
+    expect(plain.ok && plain.message).toEqual({ type: 'create-room', config: goodConfig });
+  });
+
   it('passes a command through structurally, leaving legality to the engine', () => {
     // A command with a type but nonsense payload is the engine's to refuse —
     // duplicating its union here would be a second definition to keep in step.
@@ -48,6 +55,10 @@ describe('what does not', () => {
   it('refuses a frame over the size cap without parsing it', () => {
     const huge = frame({ type: 'command', command: { type: 'x', pad: 'a'.repeat(MAX_MESSAGE_BYTES) } });
     expect(refused(huge)?.code).toBe('message-too-large');
+  });
+
+  it('refuses a table flag that is not a boolean', () => {
+    expect(refused(frame({ type: 'create-room', config: goodConfig, table: 'yes' }))?.code).toBe('malformed-message');
   });
 
   it('refuses non-JSON', () => {

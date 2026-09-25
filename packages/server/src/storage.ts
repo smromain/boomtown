@@ -15,20 +15,24 @@ export interface KeyValueStore {
 
 /** The lobby facts one room persists outside its config and command log. */
 export interface LobbyRecord {
-  readonly hostSeat: number;
+  /** Null when a couch table hosts (#62), which is not a seat. */
+  readonly hostSeat: number | null;
   readonly locked: boolean;
   readonly ejected: number[];
   readonly started: boolean;
+  /** Whether a couch table created this room (#62). */
+  readonly table: boolean;
 }
 
 /**
- * The same record as read back. `ejected` and `started` are optional because
- * rooms written before those fields existed are still on disk; both default to
- * the pre-existing behaviour (nothing ejected, not started).
+ * The same record as read back. `ejected`, `started` and `table` are optional
+ * because rooms written before those fields existed are still on disk; each
+ * defaults to the pre-existing behaviour (nothing ejected, not started, no table).
  */
-export type StoredLobbyRecord = Omit<LobbyRecord, 'ejected' | 'started'> & {
+export type StoredLobbyRecord = Omit<LobbyRecord, 'ejected' | 'started' | 'table'> & {
   readonly ejected?: number[];
   readonly started?: boolean;
+  readonly table?: boolean;
 };
 
 const CONFIG_KEY = 'config';

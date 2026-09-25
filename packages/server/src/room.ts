@@ -11,6 +11,14 @@ import type { KeyValueStore } from './storage.js';
 import { configError, humanlessRoom } from './seats.js';
 
 /**
+ * What a connection keeps in PartyKit's persisted per-connection state, which
+ * survives hibernation: a seat and its token, or the couch table's token (#62).
+ */
+type ConnectionState =
+  | { readonly seat: Seat; readonly token: string; readonly name?: string }
+  | { readonly table: true; readonly token: string };
+
+/**
  * The PartyKit adapter. One instance per room (`room.id` is the room code).
  * All game logic lives in `GameRoom`; this class only wires PartyKit's
  * `storage`, connections, and lifecycle into it (KTD6). It is verified by
@@ -42,9 +50,13 @@ export default class BoomtownRoom implements Party.Server {
       connections: [...this.room.getConnections()].length,
     });
     this.seatByConnection.clear();
-    for (const connection of this.room.getConnections<{ seat: Seat; token: string; name?: string }>()) {
+    for (const connection of this.room.getConnections<ConnectionState>()) {
       const state = connection.state;
-      if (state && typeof state.seat === 'number' && typeof state.token === 'string') {
+      if (state && 'table' in state && state.table === true && typeof state.token === 'string') {
+        this.game?.restoreTable(state.token, connection.id);
+        continue;
+      }
+      if (state && 'seat' in state && typeof state.seat === 'number' && typeof state.token === 'string') {
         this.seatByConnection.set(connection.id, state.seat);
         this.game?.restoreSeat(state.seat, state.token, state.name ?? '', connection.id);
       }
@@ -103,6 +115,30 @@ export default class BoomtownRoom implements Party.Server {
       this.sendTo(connection, { type: 'error', error: versionError });
       connection.close();
       return;
+    }
+
+    // The couch table coming back (#62). Tried before the seats: the two token
+    // spaces never overlap, and the table is the one connection that must
+    // never be mistaken for a player.
+    if (this.game && token) {
+      const previous = this.game.tableConnection();
+      const rotated = this.game.reconnectTable(token, connection.id);
+      if (rotated) {
+        roomLog(this.room.id, 'reconnected the table by token', { connection: connection.id });
+        // A socket the table left behind (a sleeping laptop's) still carries
+        // the old token in its state. Close it, so a wake cannot re-bind it.
+        const stale = previous && previous !== connection.id ? this.room.getConnection(previous) : undefined;
+        if (stale) {
+          stale.setState(null);
+          stale.close();
+        }
+        connection.setState({ table: true, token: rotated } satisfies ConnectionState);
+        this.sendTo(connection, { type: 'table-welcome', token: rotated });
+        const view = this.game.currentTableUpdate();
+        if (view) this.sendTo(connection, view);
+        this.broadcastRoomState();
+        return;
+      }
     }
 
     // A reconnect: the room already exists and the token matches a seat.
@@ -220,6 +256,15 @@ export default class BoomtownRoom implements Party.Server {
         this.game = new GameRoom(this.room.id, message.config, this.room.storage as unknown as KeyValueStore);
         await this.game.persistConfig();
         this.game.ticket = await this.claimTicket();
+        // Couch mode (#62): the creator is the table. It takes no seat — every
+        // seat is filled by a phone knocking — and hosts in its own right.
+        if (message.table) {
+          const tableToken = await this.game.becomeTable(sender.id);
+          sender.setState({ table: true, token: tableToken } satisfies ConnectionState);
+          this.sendTo(sender, { type: 'table-welcome', token: tableToken });
+          this.broadcastRoomState();
+          return;
+        }
         // The creator is the host, and takes the first seat without knocking —
         // there is nobody to admit them. Whichever seat that turns out to be
         // (seat 0 may be configured as a bot) is persisted as the host seat.
@@ -234,6 +279,12 @@ export default class BoomtownRoom implements Party.Server {
       case 'knock': {
         if (!this.game) {
           this.sendTo(sender, { type: 'error', error: protocolError('not-in-room', 'no such room') });
+          return;
+        }
+        // The table is the room's host, not a player; a knock from it would
+        // end with the shared screen holding a hand.
+        if (this.isTableConnection(sender)) {
+          this.sendTo(sender, { type: 'error', error: protocolError('not-in-room', 'the table cannot take a seat') });
           return;
         }
         const name = new URL(sender.uri).searchParams.get('name') ?? '';
@@ -345,6 +396,9 @@ export default class BoomtownRoom implements Party.Server {
           roomWarn(this.room.id, 'start ignored — no game in this room');
           return;
         }
+        // Only the host starts: the lobby never offered anyone else the
+        // control, and at a couch table the table is the only thing that should.
+        if (!this.requireHost(sender)) return;
         const result = await this.game.start();
         if ('error' in result) {
           roomWarn(this.room.id, 'start refused', { error: result.error });
@@ -452,9 +506,7 @@ export default class BoomtownRoom implements Party.Server {
       seats: forGuests.seats.map((s) => `${s.index}:${s.kind}${s.connected ? '' : ' (off)'}`),
     });
     for (const connection of this.room.getConnections()) {
-      const seat = this.seatByConnection.get(connection.id);
-      const state = seat === this.game.hostSeat ? forHost : forGuests;
-      this.sendTo(connection, { type: 'room-state', state });
+      this.sendTo(connection, { type: 'room-state', state: this.isHost(connection) ? forHost : forGuests });
     }
   }
 
@@ -462,6 +514,14 @@ export default class BoomtownRoom implements Party.Server {
     for (const out of updates) {
       if (out.kind === 'broadcast') {
         this.room.broadcast(JSON.stringify(out.message));
+        continue;
+      }
+      if (out.kind === 'to-table') {
+        // A table that is away misses nothing it cannot get back: a reconnect
+        // is sent the current table view.
+        const id = this.game?.tableConnection();
+        const conn = id ? this.room.getConnection(id) : undefined;
+        if (conn) this.sendTo(conn, out.message);
         continue;
       }
       // to-seat: find every connection bound to that seat
@@ -535,21 +595,48 @@ export default class BoomtownRoom implements Party.Server {
   }
 
   /**
-   * Only the host seat may admit, decline or lock. Anyone else asking is told
-   * plainly rather than ignored — a client that thinks it is the host is a bug
-   * worth seeing, not a silence to debug later.
+   * Whether this connection is the couch table (#62). The in-memory binding
+   * first; after a wake, the connection's persisted state, which is re-bound so
+   * the next check is a comparison again.
+   */
+  private isTableConnection(connection: Party.Connection): boolean {
+    if (!this.game?.tableHosted) return false;
+    if (this.game.isTable(connection.id)) return true;
+    const state = connection.state as Partial<{ table: true; token: string }> | null;
+    if (state?.table === true && typeof state.token === 'string') {
+      this.game.restoreTable(state.token, connection.id);
+      return this.game.isTable(connection.id);
+    }
+    return false;
+  }
+
+  /**
+   * Whether this connection holds host authority: the table at a couch table,
+   * the host seat otherwise. Never both — a table-hosted room has no host seat.
+   */
+  private isHost(connection: Party.Connection): boolean {
+    if (!this.game) return false;
+    if (this.game.tableHosted) return this.isTableConnection(connection);
+    const seat = this.seatByConnection.get(connection.id) ?? this.seatFromState(connection);
+    return seat !== undefined && seat === this.game.hostSeat;
+  }
+
+  /**
+   * Only the host may admit, decline, lock, eject or start. Anyone else asking
+   * is told plainly rather than ignored — a client that thinks it is the host
+   * is a bug worth seeing, not a silence to debug later.
    */
   private requireHost(sender: Party.Connection): boolean {
     if (!this.game) {
       this.sendTo(sender, { type: 'error', error: protocolError('not-in-room', 'no such room') });
       return false;
     }
-    const seat = this.seatByConnection.get(sender.id) ?? this.seatFromState(sender);
-    if (seat !== this.game.hostSeat) {
+    if (!this.isHost(sender)) {
       roomWarn(this.room.id, 'refused a host-only message', {
         connection: sender.id,
-        seat: seat ?? null,
+        seat: this.seatByConnection.get(sender.id) ?? null,
         hostSeat: this.game.hostSeat,
+        table: this.game.tableHosted,
       });
       this.sendTo(sender, {
         type: 'error',
