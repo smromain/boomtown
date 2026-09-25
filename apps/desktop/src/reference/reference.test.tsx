@@ -93,6 +93,19 @@ describe('StockReference modal', () => {
     expect(within(dialog).getAllByText(NAMES.books).length).toBeGreaterThan(0);
   });
 
+  it('chips a corporation in its own ink with its glyph, not white on a light fill (#19)', async () => {
+    await renderPanel(<StockReference open onClose={() => {}} />, {
+      craft: (state) => seedCorp(state, 'books', Array.from({ length: 6 }, (_, i) => `${i + 1}A`)),
+    });
+    const chip = within(screen.getByRole('dialog'))
+      .getAllByText(NAMES.books)
+      .map((el) => el.closest('span[style*="background"]'))
+      .find((el): el is HTMLElement => el != null)!;
+    // books is a light gold: white on it was 2.1:1
+    expect(chip.style.color).toBe('rgb(34, 30, 18)');
+    expect(chip.querySelector('svg')).toBeTruthy();
+  });
+
   it('shows a secondary bonus column under the 2015 edition', async () => {
     const { client } = await renderPanel(<StockReference open onClose={() => {}} />, {});
     void client;

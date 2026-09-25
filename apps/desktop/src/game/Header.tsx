@@ -6,6 +6,7 @@ import {
   NoSymbolIcon,
   SpeakerWaveIcon,
   SpeakerXMarkIcon,
+  SwatchIcon,
 } from '@heroicons/react/24/solid';
 import type { TurnStep } from '@boomtown/engine';
 import { useAnyView, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
@@ -13,6 +14,8 @@ import { useReference } from '../reference/ReferenceContext.js';
 import { editionLabel } from '../setup/editionLabel.js';
 import { soundManager } from '../audio/soundManager.js';
 import { musicManager } from '../audio/musicManager.js';
+import { loadSettings, saveSettings } from '../settings/settings.js';
+import { useIndustryPatterns } from '../settings/useSetting.js';
 import { copy, fill } from '../copy/copy.js';
 import { Button } from '../ui/Button.js';
 import { ExitGame } from './ExitGame.js';
@@ -95,6 +98,13 @@ export function Header({ onExit, online = false }: { onExit?: (() => void) | und
     musicManager.setMuted(next);
     setMusicMuted(next);
   };
+
+  // Industry patterns (#19) switch here as well as in Settings, because
+  // Settings is only reachable from the menu: a player who finds mid-game that
+  // they cannot separate two chains should not have to leave the table to fix
+  // it. It is the same stored setting, so the dialog shows what was set here.
+  const patterns = useIndustryPatterns();
+  const togglePatterns = () => saveSettings({ ...loadSettings(), industryPatterns: !patterns });
 
   // "?" opens the stock reference and F1 the rules, unless a text field has
   // focus. F1 rather than a letter: the play surface has no text input to
@@ -194,6 +204,16 @@ export function Header({ onExit, online = false }: { onExit?: (() => void) | und
             <ForwardIcon width={14} height={14} />
           </button>
         </span>
+        <button
+          type="button"
+          className={styles.muteButton}
+          onClick={togglePatterns}
+          aria-label={copy.header.patterns}
+          aria-pressed={patterns}
+          title={copy.header.patterns}
+        >
+          <SwatchIcon width={16} height={16} />
+        </button>
         {announcing && (
           <span className={styles.trackName} aria-hidden>
             {track.title}

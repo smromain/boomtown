@@ -380,6 +380,13 @@ describe('StoryCard', () => {
     // never the raw key or "Seat 0"
     expect(within(story).queryByText(/\bvideo founded\b/)).not.toBeInTheDocument();
     expect(within(story).queryByText(/^Seat 0 placed/)).not.toBeInTheDocument();
+
+    // A tinted headline leads with its glyph, and is tinted in the shade that
+    // reads on paper rather than the fill (#19); a plain line has neither.
+    const headline = within(story).getByText(new RegExp(`${NAMES.video} founded at 6E`));
+    expect(headline.querySelector('svg')).toBeTruthy();
+    expect(headline.style.color).toBe('rgb(151, 29, 80)');
+    expect(within(story).getByText(/^Ana placed 6E/).querySelector('svg')).toBeNull();
   });
 });
 
