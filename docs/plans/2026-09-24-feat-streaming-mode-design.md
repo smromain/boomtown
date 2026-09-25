@@ -164,38 +164,140 @@ This ships first and stands alone.
 
 ## Hot-seat and the private window
 
-A private window works because one person is behind it. Hot-seat breaks that: two or more people
-share one machine, and today their privacy is the opaque hand-off card, which works because
-everyone takes turns looking at the same screen. Three ways to square it:
+A private window works because one person sits behind it. Hot-seat breaks that: two or more people
+share one machine, and today the opaque hand-off card is what keeps them private, because everyone
+takes turns looking at the same screen. Three options were weighed:
 
-1. **One human per machine only.** The private window is offered when this machine plays exactly
-   one human seat: online, or a local table against bots. That covers almost every stream. With two
-   or more local humans the option is greyed out with a one-line reason, the hand-off card stays
-   the privacy mechanism, and streaming mode still masks the room code. Cheapest, and nothing new
-   to explain.
-2. **A shared private window.** The single private window hosts the hand-off card and then the
-   claimed seat's hand, exactly as the main window does today. The main window stays a spectator
-   view for the stream. It works mechanically (`HotSeatProvider` already tracks who holds the
-   machine), but it means the people in the room take turns at a second monitor, which is the
-   confusing part.
-3. **Phones as private windows ("couch mode").** Every player at the table opens their hand on
-   their own phone by scanning a code; the main window becomes a pure table view for the TV or the
-   stream. This is the real answer to private information with several people in one room, and it
-   reuses online play: the table is an online room, each phone is a seat admitted by the host, and
-   `viewFor` already redacts per seat. It needs things that do not exist yet: a seat-less spectator
-   connection for the main window, and a phone-sized web client (the hosted web build is still
-   unbuilt). It is its own feature, not part of streaming mode.
+1. **One human per machine only.** Offer the private window only when this machine plays one human
+   seat, and keep the hand-off card at hot-seat.
+2. **A shared private window.** One private window hosts the hand-off card and then the claimed
+   seat's hand. The people in the room take turns at a second monitor, which is the confusing part.
+3. **Phones as private windows ("couch mode").** Every player holds their hand on their own phone,
+   and the main window becomes a pure table view.
 
-**Recommendation:** 1 now; 3 as its own issue if couch play matters. 2 is the one to avoid.
+**Steve chose 3** (2026-09-25). It is specified below.
+
+## Couch mode
+
+> **The desktop app becomes the table: a board everyone watches, on a TV or a stream. Each player
+> holds their hand on their own phone.** Nobody's private information is ever on the shared screen,
+> so there is no hand-off card and nothing to cover.
+
+### It is an online room with a table in it
+
+Couch mode is not a new transport. It is an ordinary PartyKit room, the same one online play uses,
+with two differences:
+
+- **The desktop connects as the table, not as a seat.** It holds the host's authority (admit,
+  decline, lock, start) but sits in no seat, and it receives the **public view**: what a spectator
+  at that table is entitled to.
+- **Every human seat is a phone.** A phone knocks, the table admits it, and the phone gets `welcome`
+  with a seat and a token, exactly as a desktop joiner does today. Bot seats work as they do now.
+
+So everything the room already guarantees carries over unchanged: `viewFor(seat)` per phone,
+`redactEventsFor` per reader, knock/admit, rotating seat tokens, rate limits, expiry. A couch table
+can also mix in remote players: a friend across town joins by code from their own desktop as usual.
+
+**The room lives in the cloud, not on the local network.** Phones and the table all reach the
+deployed PartyKit room over the internet, the way Jackbox works. The alternative, a server inside
+the Electron app on the LAN, would put a listening socket on the player's machine, a new security
+surface and firewall prompts on every platform, to save a dependency on internet access that online
+play already has.
+
+### Joining from a phone
+
+1. The desktop picks **Couch game** from the menu and sets the table up (seats, bots, edition).
+2. The table screen shows a **QR code** and the eight-character code beside it. The QR encodes a
+   link to the hosted web build carrying the **ticket**, not the room's address: the ticket expires
+   in about fifteen minutes and is retired when the last seat fills, so a QR photographed off a
+   stream is worth a knock for a few minutes at most.
+3. The phone opens the link, picks a name, and knocks. The knock appears on the TV; whoever holds
+   the mouse lets it in.
+4. When every seat is filled, Start deals. The phone switches to the hand screen, and the TV to the
+   board.
+
+Under **streaming mode** the QR and the code are masked the same way the lobby code is now: replaced
+rather than blurred, with hold-to-show. The room has to be joinable without the stream seeing it, so
+the players in the room can hold the button while scanning.
+
+### What the phone shows
+
+The **private surface**, the same one the private window was going to render, now at phone size:
+
+- Your rack, live on your turn: tap a tile to place it. Effect labels (found, grow, merge, dead)
+  carry what the board would tell you, and the board itself is on the TV.
+- Your cash and holdings.
+- On your turn, the buy step and the end-of-turn choice.
+- Every decision you owe: founding, survivor, defunct order, disposal, and the vote.
+- Off-turn, a quiet "watching" state naming whose turn it is.
+
+That means splitting each of `DecisionModal`'s prompts and `TurnModal`'s steps into a **body**
+(the prompt) and a **shell** (the Radix dialog). The desktop keeps the shell; the phone renders the
+bodies as full-screen pages. It is the same split the private window needed, so none of that work is
+lost.
+
+The phone never shows the board, the beats or the story; those are the table's job. A mini-board may
+earn a place later, but the first version bets that people look up at the TV.
+
+### What the table shows
+
+The existing `GameScreen` with **no local seats**, the spectator path described above: the board
+read-only, no rack, no prompts, `WaitingForSeat` in the hand strip, and every beat on the big
+screen. Sound plays here and not on the phones.
+
+### What has to be built
+
+| Piece | Where | Size |
+|---|---|---|
+| A **public view**: `viewFor` with no seat, so the table can be sent state with every private field removed | `packages/engine` | Small. `redactEventsFor` already takes `reader: null` |
+| A **table connection**: `create-room` with `table: true` seats nobody, holds host authority by a table token, and is sent the public view | `packages/server`, `packages/protocol` | Medium. Today authority is `hostSeat`; it becomes "the host connection", which may or may not hold a seat |
+| **The couch lobby** on desktop: QR, code, knock queue, start | `apps/desktop/src/lobby` | Medium |
+| **Prompt bodies split from their shells** | `apps/desktop/src/decisions`, `game/TurnModal` | Medium, and shared with any future private window |
+| **The phone client**: a route in the web build that knocks by ticket and renders the private surface at phone width | `apps/desktop` web build | Large. Needs artboards on the design canvas first |
+| **The hosted web build** | Web-deployment plan, U21 to U25 | Large, and already planned. Couch mode cannot ship before it |
+
+### Consequences worth deciding on purpose
+
+- **It depends on the web build being deployed.** Everything up to the phone client can be built
+  and tested against a local room and the browser build, which `run-app` already drives. Phones
+  can't join until the web origin exists.
+- **The web plan's small-screen gate has to give way.** R5 of that plan says "Boomtown needs a wider
+  window" on a phone. The phone client needs an exception: the private surface is designed for a
+  phone, and the rest of the game stays gated.
+- **Every human needs a phone.** A player without one could be given a seat played on the table
+  screen behind the old hand-off card, but that brings back the problem this solves. First version:
+  no, a seat is a phone or a bot.
+- **Room bots and beats.** Locally, bots pause while a beat covers the screen (`BotHold`). A room's
+  bots don't wait for anyone's beats, so on a TV the table would play on behind a merger. The room
+  needs to learn to hold its bots while the table has a covering beat up.
+- **Room bots still read authoritative state** (the open item in `docs/decisions.md`). Couch mode
+  does not make that worse, but it makes online bots more visible, so it is a good moment to close.
+
+### Does couch mode replace the private window?
+
+Probably. A streamer playing alone could open a couch table on the desktop and play their own hand
+from their phone, which is everything the private window offered, with one mechanism instead of
+two. The private window's remaining advantage is that it needs no phone and no internet. The
+recommendation is to **build couch mode and drop the private window**, keeping phases 2 and 3 above
+only as the body/shell split both of them need.
+
+### Couch mode phasing
+
+1. **Public view and table connection** (engine, protocol, server), with integration tests against
+   a real `partykit dev` room: a table connection admits, starts, and is never sent a hand.
+2. **Body/shell split** of the prompts. No behaviour change on desktop.
+3. **Couch lobby and table screen** on desktop, driven by a browser page standing in for a phone.
+4. **Phone client** on the design canvas, then built.
+5. **Ship** once the web build is deployed.
 
 ## Decided
 
 - **Phase 1 ships on its own** (Steve, 2026-09-25).
-- **The private window is off by default** (Steve, 2026-09-25). It is its own setting, separate
-  from streaming mode: streaming mode masks the room code, and the private window is an opt-in on
-  top of it.
+- **The private window is off by default** (Steve, 2026-09-25), as its own setting separate from
+  streaming mode.
+- **Hot-seat privacy goes to phones: couch mode** (Steve, 2026-09-25).
 
 ## Still open
 
-1. Hot-seat, above.
-2. **Always-on-top for the private window.** Recommended: off, with a pin button in its corner.
+1. **Build couch mode and drop the private window?** Recommended: yes.
+2. **Always-on-top for the private window**, if it survives. Recommended: off, with a pin button.
