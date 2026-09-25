@@ -208,7 +208,7 @@ play already has.
 
 1. The desktop picks **Couch game** from the menu and sets the table up (seats, bots, edition).
 2. The table screen shows a **QR code** and the eight-character code beside it. The QR encodes a
-   link to the hosted web build carrying the **ticket**, not the room's address: the ticket expires
+   link to the phone page (served by the room's deploy) carrying the **ticket**, not the room's address: the ticket expires
    in about fifteen minutes and is retired when the last seat fills, so a QR photographed off a
    stream is worth a knock for a few minutes at most.
 3. The phone opens the link, picks a name, and knocks. The knock appears on the TV; whoever holds
@@ -253,17 +253,11 @@ screen. Sound plays here and not on the phones.
 | A **table connection**: `create-room` with `table: true` seats nobody, holds host authority by a table token, and is sent the public view | `packages/server`, `packages/protocol` | Medium. Today authority is `hostSeat`; it becomes "the host connection", which may or may not hold a seat |
 | **The couch lobby** on desktop: QR, code, knock queue, start | `apps/desktop/src/lobby` | Medium |
 | **Prompt bodies split from their shells** | `apps/desktop/src/decisions`, `game/TurnModal` | Medium, and shared with any future private window |
-| **The phone client**: a route in the web build that knocks by ticket and renders the private surface at phone width | `apps/desktop` web build | Large. Needs artboards on the design canvas first |
-| **The hosted web build** | Web-deployment plan, U21 to U25 | Large, and already planned. Couch mode cannot ship before it |
+| **The phone client**: a small standalone page that knocks by ticket, renders the options the room sends, and sends back the chosen command | New, served by the PartyKit deploy | Medium. See *A thin phone client* below |
 
 ### Consequences worth deciding on purpose
 
-- **It depends on the web build being deployed.** Everything up to the phone client can be built
-  and tested against a local room and the browser build, which `run-app` already drives. Phones
-  can't join until the web origin exists.
-- **The web plan's small-screen gate has to give way.** R5 of that plan says "Boomtown needs a wider
-  window" on a phone. The phone client needs an exception: the private surface is designed for a
-  phone, and the rest of the game stays gated.
+- **It does not need the web build** (Steve's question, 2026-09-25). See below.
 - **Every human needs a phone.** A player without one could be given a seat played on the table
   screen behind the old hand-off card, but that brings back the problem this solves. First version:
   no, a seat is a phone or a bot.
@@ -272,6 +266,36 @@ screen. Sound plays here and not on the phones.
   needs to learn to hold its bots while the table has a covering beat up.
 - **Room bots still read authoritative state** (the open item in `docs/decisions.md`). Couch mode
   does not make that worse, but it makes online bots more visible, so it is a good moment to close.
+
+### A thin phone client, not the web build
+
+The phone does not need the game. The room already sends each seat an `update` carrying a
+`ClientViewDTO`: that seat's view, its hand with each tile's effect (`handTiles`), and every legal
+command it may send (`legalMoves`). **The options already arrive over the wire.** A phone page only
+has to draw them, send back the one the player picks, and let `reduce` on the room reject anything
+wrong, which it already does.
+
+So the phone client is a small standalone page, not a build of `apps/desktop`:
+
+- **Served by the room's own deploy.** PartyKit can serve static assets from the same project
+  (`serve` in `partykit.json`; to verify on our PartyKit version), so the page ships in the same
+  release step as the room, on the room's origin. There is no separate web host, no CORS for the
+  directory lookup, and the web plan's hosting, headers and small-screen gate stay out of it.
+- **No engine and no React game code on the phone.** The page connects with the protocol's
+  messages, validates frames with the same `@boomtown/protocol` code, and keeps the seat token in
+  `sessionStorage` so a locked phone resumes its seat.
+- **Its words come from `constants.json`**, imported at build time, so copy still lives in one file.
+- **A strict CSP of its own**: its own scripts only, and `connect-src` to the room.
+
+The cost is that prompts exist twice: the desktop's React prompts and the phone's simpler ones.
+Picking one option (place a tile, survivor, defunct order, found, vote, end or continue) maps
+straight onto `legalMoves`. **Buying and disposal are steppers**, not a pick-one: up to three shares
+across chains within your cash, and a sell/trade/keep split with trades at two for one. The phone
+builds those from the view and the ruleset and lets the room judge. That is where the phone client
+takes real care, and where it needs its own tests.
+
+The one thing a thin client gives up is the full web build's other uses (a hosted desktop-style
+game in a browser), which it was never meant to cover.
 
 ### Couch mode and the private window both stay
 
@@ -286,8 +310,9 @@ prompts, so whichever is built second reuses that work.
    a real `partykit dev` room: a table connection admits, starts, and is never sent a hand.
 2. **Body/shell split** of the prompts. No behaviour change on desktop.
 3. **Couch lobby and table screen** on desktop, driven by a browser page standing in for a phone.
-4. **Phone client** on the design canvas, then built.
-5. **Ship** once the web build is deployed.
+4. **Phone client**: artboards on the design canvas, then the thin page, tested against a local
+   room from a phone-sized browser.
+5. **Ship** with the next release: the phone page deploys with the room.
 
 ## Decided
 
@@ -300,6 +325,6 @@ prompts, so whichever is built second reuses that work.
 
 ## Still open
 
-1. **Which comes first**, the private window or couch mode. Recommended: the private window. It
-   needs nothing that isn't built, while couch mode waits on the web build.
+1. **Which comes first**, the private window or couch mode. Neither waits on anything now; the
+   private window is smaller, so it is the natural first.
 2. **Always-on-top for the private window.** Recommended: off, with a pin button.
