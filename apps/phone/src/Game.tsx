@@ -81,7 +81,7 @@ export function Game({ client, seat, children }: { client: GameClient; seat: Sea
       {/* The rack stays on screen whoever's turn it is — you plan a turn you
           can see (#61) — but it is only ever tappable on the place step. */}
       {view.status === 'playing' && !(mine && view.step === 'place' && !decision) && <Rack view={view} />}
-      <Shares view={view} />
+      {view.status !== 'over' && <Shares view={view} />}
     </main>
   );
 }
@@ -152,7 +152,7 @@ function PlaceTile({ view, busy, send }: { view: ClientView; busy: boolean; send
   return (
     <section className="card turn" aria-label={p.yourTurn}>
       <span className="kicker accent">{p.yourTurn}</span>
-      <h2 className="serif">{copy.game.waiting.steps.place}</h2>
+      <h2 className="serif">{copy.header.phase.place}</h2>
       <Rack view={view} picked={picked} onPick={(tile) => setPicked(tile)} playable={playable} />
       {playable.length === 0 ? (
         <>

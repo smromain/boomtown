@@ -1,6 +1,7 @@
 # Couch mode: the technical plan (#62)
 
-**Status:** In progress. U34–U36 are built in this branch; U37 onwards are not started.
+**Status:** Built. U34–U38 and U40–U42 are in this branch and a full couch game has been played in a
+browser (one table, two phones, one bot). U39 turned out not to be needed; see KTD31.
 **Design:** [`2026-09-24-feat-streaming-mode-design.md`](2026-09-24-feat-streaming-mode-design.md),
 section *Couch mode*, and the **Couch mode - the phone** board on the design canvas.
 **Numbering:** units continue from the web-deployment plan (U34 on), decisions from KTD23.
@@ -90,17 +91,20 @@ join-by-code does, then connects and knocks. The table admits. The phone keeps i
 rather than knocking again.
 
 **KTD31. The phone client is React, built by Vite into the server package.** It is small, but not
-from scratch: it reuses the prompt *bodies* the desktop already renders (the body/shell split in
-U39), the copy file, `formatTicket`/`normaliseTicket`, and the socket transport. A second UI
-stack would mean a second copy of every decision's wording and a second place for them to
-diverge. It builds to `packages/server/public/phone/`, which is gitignored and produced by the
+from scratch: it reuses the copy file, the desktop's pure decision arithmetic
+(`panels/buying`, `decisions/disposal`, `game/motion`, `reference/priceReference`) through an
+`@desktop` alias, `formatTicket`/`normaliseTicket`, and the socket transport. A second UI stack
+would mean a second copy of every decision's wording and a second place for them to diverge.
+*As built:* the desktop's prompt components turned out to be mostly modal layout, and the phone's
+sheets are thin over the same copy and arithmetic, so the body/shell split (U39) was dropped. It builds to `packages/server/public/phone/`, which is gitignored and produced by the
 release workflow before `partykit deploy`.
 
 **KTD32. Room bots wait for the table's beats.** Online today, `runBots` plays every consecutive bot
 move inline, and the table would receive them in one burst. A couch table is a shared screen
 whose beats are the show, so the table tells the room when a covering beat starts and ends
 (`{ type: 'pace', holding }`), and the room parks the bot loop while it is held. The hold is
-capped server-side: a table that never releases stalls nothing for more than a few seconds. Seat
+capped server-side (`LIMITS.tableHoldMs`, 20s, longer than the ~18s merger beat), after which one
+bot move is forced. Seat
 commands are never held, only bots. This is the one change that alters an existing loop, so it
 is its own unit (U38) and ships with a test that a dropped table cannot stall a game.
 
@@ -111,12 +115,12 @@ is its own unit (U38) and ships with a test that a dropped table cannot stall a 
 | **U34** | `TableView` and `tableView(state)`; `viewFor` rebuilt on the shared public projection | `packages/engine` | Built |
 | **U35** | Protocol v3: `create-room.table`, `table-welcome`, `table-update`, nullable `hostSeat`, `RoomState.table`, validator | `packages/protocol` | Built |
 | **U36** | Table connection in the room: create, token, reconnect, host authority, `table-update` fan-out, persisted `table`, `start` host-only | `packages/server` | Built |
-| U37 | Client side of the table: a socket transport mode with no seat, a store slice for the table view, `SeatList` for a table host | `packages/client-core`, `apps/desktop` | Not started |
-| U38 | Bot pacing: `pace` message, parked bot loop, server-side cap | `packages/protocol`, `packages/server` | Not started |
-| U39 | Prompt body/shell split: each decision's body renders without the modal chrome | `apps/desktop/src/prompts` | Not started |
-| U40 | The table screen: GameScreen with no local seats, the couch lobby with the QR code, the waiting-on line for decisions | `apps/desktop` | Not started |
-| U41 | The phone client: `apps/phone`, Vite build into `packages/server/public/phone`, `serve` in `partykit.json` | new package | Not started |
-| U42 | Release wiring: build the phone page before `partykit deploy`; the dev scripts serve it locally | `.github/workflows`, root scripts | Not started |
+| **U37** | Client side of the table: a socket transport mode with no seat, a store slice for the table view, `SeatList` for a table host | `packages/client-core`, `apps/desktop` | Built |
+| **U38** | Bot pacing: `pace` message, parked bot loop, server-side cap | `packages/protocol`, `packages/server` | Built |
+| U39 | Prompt body/shell split: each decision's body renders without the modal chrome | `apps/desktop/src/prompts` | Not needed |
+| **U40** | The table screen: GameScreen with no local seats, the couch lobby with the QR code, the waiting-on line for decisions | `apps/desktop` | Built |
+| **U41** | The phone client: `apps/phone`, Vite build into `packages/server/public/phone`, `serve` in `partykit.json` | new package | Built |
+| **U42** | Release wiring: build the phone page before `partykit deploy`; the dev scripts serve it locally | `.github/workflows`, root scripts | Built |
 
 ### U34. The table's view
 
@@ -178,6 +182,11 @@ back to it, so the existing spectator-safe reads work unchanged. `SeatList` alre
 
 ### U38. Bot pacing
 
+*As built:* pacing is opt-in and step-wise. A table that has sent `pace` is paced: the room plays
+one bot move per `pace(false)` (the table sends it once the screen has settled after each change),
+holds while `pace(true)`, forces one move after `LIMITS.tableHoldMs`, and stops pacing the moment the
+table disconnects. The original sketch follows.
+
 `{ type: 'pace', holding: boolean }` comes from the table only. While holding, `runBots` returns
 before the next bot move and the room arms a release deadline (a few seconds, one constant). Release
 or the deadline resumes the loop. The hold lives in memory only: a woken room is never holding, which
@@ -207,7 +216,7 @@ canvas's phone board is the reference for the phone layout.
   - join: name, then knock;
   - waiting to be admitted;
   - your turn: hand, cash and holdings, the tile to play, buy;
-  - the decision sheet, using the U39 bodies.
+  - the decision sheet (buy, dispose, vote, found, survivor, defunct order, end of turn).
 - Buying and disposal are steppers built from `legalMoves` and the ruleset, not free inputs, so
   the phone can never compose an illegal command.
 - `partykit.json` gains `"serve": "public"`, and `partykit dev` serves it the same way.

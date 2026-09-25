@@ -84,6 +84,18 @@ env -u ELECTRON_RUN_AS_NODE \
 
 Create the room in one window and join by its code in the other.
 
+### A couch game
+
+"Couch game" opens a table (#62): this screen shows the board, and each seat is a phone. `npm run
+server:dev` builds `apps/phone` first and the room serves it at `http://localhost:1999/phone/`, which
+is where the table's QR code points. For a real phone on the same network, the QR has to name the
+machine rather than `localhost`: set Settings → **Online host** to `<lan-ip>:1999` on the table.
+
+`npm run phone:dev` serves the phone page from Vite on `:5174` with hot reload, talking to the room on
+`localhost:1999` (or `VITE_PARTYKIT_HOST`). Open it as `http://localhost:5174/phone/#t=<CODE>`. In a
+desktop browser, use the device toolbar and a separate profile per phone: the seat token lives in
+`localStorage`.
+
 ## Environment variables
 
 | Variable | Read by | Effect |

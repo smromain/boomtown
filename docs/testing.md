@@ -7,16 +7,17 @@ current `main`.
 
 | Command | What runs | Count |
 |---|---|---|
-| `npm test` | Both Vitest projects | **997** |
-| `npm run test:engine` | The `engine` project (node): `packages/*/test/**` — engine, protocol, ai, client-core, and the room's own logic | 532 |
-| `npm run test:desktop` | The `desktop` project (jsdom): `apps/desktop/**/*.test.{ts,tsx}` — components through `@testing-library/react`, plus the Electron main-process modules | 465 |
-| `npm run test:server` | Integration: a real `partykit dev` room (workerd) | 27 |
-| `npm run typecheck` | `tsc --noEmit` for both tsconfigs | — |
+| `npm test` | All three Vitest projects | **1016** |
+| `npm run test:engine` | The `engine` project (node): `packages/*/test/**` — engine, protocol, ai, client-core, and the room's own logic | 540 |
+| `npm run test:desktop` | The `desktop` project (jsdom): `apps/desktop/**/*.test.{ts,tsx}` — components through `@testing-library/react`, plus the Electron main-process modules | 468 |
+| `npm run test:phone` | The `phone` project (jsdom): `apps/phone/src/**/*.test.{ts,tsx}` — the couch-mode phone page's join, resume and decision sheets against a real engine | 8 |
+| `npm run test:server` | Integration: a real `partykit dev` room (workerd) | 29 |
+| `npm run typecheck` | `tsc --noEmit` for all three tsconfigs | — |
 | `npm run lint` | eslint, flat config (including the no-`Math.random`/`Date.now` rule in the engine) | — |
 | `npm run smoke` | Builds and boots the real Electron app | — |
 
 The integration suite lives outside both projects because it boots a server and is too slow for the
-default run. CI (`.github/workflows/ci.yml`) runs lint, typecheck and `npm test`; the release
+default run. CI (`.github/workflows/ci.yml`) runs lint, typecheck, `npm test` and `npm run phone:build`; the release
 workflow runs typecheck and `npm test` on all three operating systems before it packages anything,
 so a red suite fails the release. There is no flag to skip that.
 

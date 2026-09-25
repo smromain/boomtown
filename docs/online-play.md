@@ -139,7 +139,18 @@ constant-time comparison, rotated on every resume, kept in the connection's pers
 seat is then filled by knocking, and `RoomState` reports `hostSeat: null` and `table: true`. The
 table is sent `table-update`: the engine's `tableView`, with events redacted for a reader holding no
 seat. The table cannot knock, and no seat can admit, lock, eject or start. `start` is host-only in
-every room. The phone client and the desktop's table screen are not built yet. See
+every room.
+
+**Pacing.** A table can send `pace {holding}`. Once it has, the room plays bots one move at a time:
+one move per `pace(false)`, which the table sends when its screen has settled after each change,
+none while `pace(true)` holds a covering beat, and one forced move after `LIMITS.tableHoldMs` (20s)
+so a stuck table cannot stall a game. A table that disconnects stops being paced, and a client that
+never sends `pace` gets the old loop. Seat commands are never held.
+
+**The phone page.** `apps/phone` is served by the room itself at `/phone/` (`"serve": "public"` in
+`partykit.json`). The table's QR code is `https://<room host>/phone/#t=<ticket>`: the ticket rides in
+the fragment, which never reaches a server log. The page resolves the ticket, knocks, and keeps the
+seat token in `localStorage` so a locked phone or a reload resumes the seat. See
 `docs/plans/2026-09-25-feat-couch-mode-plan.md`.
 
 ## Diagnosing it
