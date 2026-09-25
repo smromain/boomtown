@@ -805,6 +805,12 @@
   font-weight: 600;
 }
 
+/* The industry glyph that leads a tinted headline (#19). */
+.logMark {
+  display: inline-flex;
+  vertical-align: -4px;
+}
+
 .logTurn {
   padding: 6px 0 3px;
   font-size: 10px;

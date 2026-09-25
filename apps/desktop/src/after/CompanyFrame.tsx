@@ -1,6 +1,7 @@
 import { memo } from 'react';
-import { INDUSTRY_INFO, type CorpView, type Industry, type Retrospective } from '@boomtown/engine';
+import { type CorpView, type Industry, type Retrospective } from '@boomtown/engine';
 import { IndustryMark } from '../game/marks.js';
+import { industryTheme } from '../game/industryTheme.js';
 import { CHIP, EventChip } from './EventChip.js';
 import {
   companyValueSeries,
@@ -62,7 +63,9 @@ export const CompanyFrame = memo(function CompanyFrame({
 }) {
   const after = copy.game.after.companies;
   const market = copy.game.after.market;
-  const info = INDUSTRY_INFO[industry];
+  // Areas take the fill; lines and the mark are drawn *in* the colour on
+  // paper, so they take the shade that reads there (#19).
+  const info = industryTheme(industry);
   const seats = record.turns[0]?.seats.map((_, seat) => seat) ?? [];
   const spans = liveSpans(record, industry);
   const lastTurn = record.turns.length - 1;
@@ -123,7 +126,7 @@ export const CompanyFrame = memo(function CompanyFrame({
                   fill={info.color}
                   opacity="0.18"
                 />
-                <path d={path} fill="none" stroke={info.color} strokeWidth="1.5" />
+                <path d={path} fill="none" stroke={info.onPaper} strokeWidth="1.5" />
               </g>
             );
           })}
@@ -153,7 +156,7 @@ export const CompanyFrame = memo(function CompanyFrame({
                   key={`${seat}-${span.from}`}
                   d={linePath(points)}
                   fill="none"
-                  stroke={info.color}
+                  stroke={info.onPaper}
                   strokeWidth="2"
                   strokeDasharray={dashFor(seat)}
                   strokeLinejoin="round"
@@ -182,7 +185,7 @@ export const CompanyFrame = memo(function CompanyFrame({
 
           {spans.map((span, index) => (
             <g key={`mark-${span.from}`}>
-              <line x1={x(span.from)} y1={STRIP_Y} x2={x(span.from)} y2={y(0) + 30} stroke={info.color} strokeDasharray="1 4" opacity="0.7" />
+              <line x1={x(span.from)} y1={STRIP_Y} x2={x(span.from)} y2={y(0) + 30} stroke={info.onPaper} strokeDasharray="1 4" opacity="0.7" />
               <EventChip
                 industry={industry}
                 kind={index === 0 ? 'founded' : 'refounded'}
@@ -253,7 +256,7 @@ export const CompanyFrame = memo(function CompanyFrame({
 
       <div className={styles.side}>
         <div className={styles.sideHead}>
-          <IndustryMark industry={industry} color={info.color} size={24} />
+          <IndustryMark industry={industry} color={info.onPaper} size={24} />
           <span className={`serif ${styles.sideName}`}>{corp?.displayName ?? corp?.baseName ?? ''}</span>
         </div>
         {corp?.flavour ? <span className={styles.sideFlavour}>{corp.flavour}</span> : null}
@@ -264,7 +267,7 @@ export const CompanyFrame = memo(function CompanyFrame({
         {ranked.map((row) => (
           <div key={row.seat} className={styles.legendRow}>
             <svg width="24" height="8" aria-hidden="true">
-              <line x1="0" y1="4" x2="24" y2="4" stroke={info.color} strokeWidth="2" strokeDasharray={dashFor(row.seat)} strokeLinecap="round" />
+              <line x1="0" y1="4" x2="24" y2="4" stroke={info.onPaper} strokeWidth="2" strokeDasharray={dashFor(row.seat)} strokeLinecap="round" />
             </svg>
             <span />
             <span className={styles.legendName}>{names[row.seat] ?? ''}</span>

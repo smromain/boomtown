@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Industry, PlayerView } from '@boomtown/engine';
-import { INDUSTRY_INFO } from '@boomtown/engine';
 import { survivorNameBefore, tierWord, tradingNameIn, type MergerStory } from '../../game/story.js';
 import { soundManager } from '../../audio/soundManager.js';
+import { IndustryMark } from '../../game/marks.js';
+import { industryTheme, patternedBackground } from '../../game/industryTheme.js';
+import { useIndustryPatterns } from '../../settings/useSetting.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
 import { copy, fill } from '../../copy/copy.js';
@@ -81,12 +83,23 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
   const past = (kind: StageKind): boolean => reduced || firstIndexOf(kind) <= index;
 
   const survivor = merger.survivor ? view.corporations[merger.survivor] : null;
-  const survivorColor = merger.survivor ? INDUSTRY_INFO[merger.survivor].color : '#faf6f0';
+  const survivorColor = merger.survivor ? industryTheme(merger.survivor).color : '#faf6f0';
+  // The fill is for the discs and the glow; words on the night ground take the
+  // shade that reads there (#19) — air and video are too dark as they are.
+  const survivorText = merger.survivor ? industryTheme(merger.survivor).onNight : '#faf6f0';
 
   const chain = at.chain ?? merger.chains.length - 1;
   const defunctOf = (k: number): Industry | null => merger.chains[k]?.defunct ?? null;
   const activeDefunct = defunctOf(chain);
-  const defunctColor = activeDefunct ? INDUSTRY_INFO[activeDefunct].color : survivorColor;
+  const defunctColor = activeDefunct ? industryTheme(activeDefunct).color : survivorColor;
+  // Each disc and block carries its glyph (and, with patterns on, its
+  // texture), so the takeover is one mark swallowing another rather than two
+  // colours that some players cannot tell apart (#19).
+  const patterns = useIndustryPatterns();
+  const fillFor = (industry: Industry | null, base: string) =>
+    industry ? patternedBackground(industry, base, patterns) : { background: base };
+  const markFor = (industry: Industry | null, size: number) =>
+    industry ? <IndustryMark industry={industry} color={industryTheme(industry).ink} size={size} /> : null;
 
   /**
    * The survivor's name as it stood *before* absorption `k`, and the name each
@@ -163,10 +176,10 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
             transition: 'all 420ms ease',
           }}
         >
-          <span className="serif" style={{ fontSize: 30, color: survivorColor }}>
+          <span className="serif" style={{ fontSize: 30, color: survivorText }}>
             {nameBefore(chain)}
           </span>
-          <span style={{ fontSize: 22, color: survivorColor }}>+</span>
+          <span style={{ fontSize: 22, color: survivorText }}>+</span>
           <span className="serif" style={{ fontSize: 30, color: '#9c9086' }}>
             {activeDefunct ? nameOfDefunct(activeDefunct) : ''}
           </span>
@@ -187,23 +200,35 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
           }}
         >
           <div
-            style={{ width: 68, height: 68, borderRadius: '50%', marginRight: -18, background: survivorColor, boxShadow: '0 14px 26px -8px rgba(0,0,0,.55)', animation: at.kind === 'blend' ? `${styles.blendSlideL} 1200ms ease-in-out both` : undefined }}
-          />
+            data-disc={merger.survivor ?? undefined}
+            style={{ width: 68, height: 68, borderRadius: '50%', marginRight: -18, display: 'grid', placeItems: 'center', fontSize: 16, ...fillFor(merger.survivor, survivorColor), boxShadow: '0 14px 26px -8px rgba(0,0,0,.55)', animation: at.kind === 'blend' ? `${styles.blendSlideL} 1200ms ease-in-out both` : undefined }}
+          >
+            {markFor(merger.survivor, 28)}
+          </div>
           <div
-            style={{ width: 68, height: 68, borderRadius: '50%', marginLeft: -18, background: defunctColor, boxShadow: '0 14px 26px -8px rgba(0,0,0,.55)', animation: at.kind === 'blend' ? `${styles.blendSlideR} 1200ms ease-in-out both` : undefined }}
-          />
+            data-disc={activeDefunct ?? undefined}
+            style={{ width: 68, height: 68, borderRadius: '50%', marginLeft: -18, display: 'grid', placeItems: 'center', fontSize: 16, ...fillFor(activeDefunct, defunctColor), boxShadow: '0 14px 26px -8px rgba(0,0,0,.55)', animation: at.kind === 'blend' ? `${styles.blendSlideR} 1200ms ease-in-out both` : undefined }}
+          >
+            {markFor(activeDefunct, 28)}
+          </div>
           <div
             style={{
               position: 'absolute',
               width: 76,
               height: 76,
               borderRadius: '50%',
+              display: 'grid',
+              placeItems: 'center',
               background: `color-mix(in srgb, ${survivorColor} 58%, ${defunctColor})`,
               boxShadow: `0 0 46px color-mix(in srgb, ${survivorColor} 45%, transparent)`,
               opacity: at.kind === 'blend' ? undefined : 0,
               animation: at.kind === 'blend' ? `${styles.blendPulse} 1200ms cubic-bezier(0.2,0.9,0.2,1) 260ms both` : undefined,
             }}
-          />
+          >
+            {/* What the two discs become carries the survivor's mark, so the
+                blend reads as the survivor winning, not as a new colour. */}
+            {markFor(merger.survivor, 30)}
+          </div>
         </div>
 
         {/* bonus: what *this* chain paid, and to how many seats. */}
@@ -306,15 +331,20 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
             style={{
               width: past('mass') ? 240 : 150,
               height: 54,
-              background: `linear-gradient(160deg, color-mix(in srgb, ${survivorColor} 84%, #fff), ${survivorColor})`,
+              display: 'grid',
+              placeItems: 'center',
+              fontSize: 16,
+              ...fillFor(merger.survivor, `linear-gradient(160deg, color-mix(in srgb, ${survivorColor} 84%, #fff), ${survivorColor})`),
               boxShadow: `0 8px 0 color-mix(in srgb, ${survivorColor} 46%, #1c1917), 0 20px 30px -10px rgba(0,0,0,.7)`,
               transition: 'width 700ms cubic-bezier(0.16,0.9,0.2,1) 180ms',
             }}
-          />
+          >
+            {markFor(merger.survivor, 24)}
+          </div>
           {/* One block per absorption, so the count in the caption is something
               you watched happen rather than something you are told. */}
           {merger.chains.map((absorbed, k) => {
-            const color = INDUSTRY_INFO[absorbed.defunct].color;
+            const color = industryTheme(absorbed.defunct).color;
             return (
               <div
                 key={absorbed.defunct}
@@ -322,12 +352,18 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
                 style={{
                   width: past('settle') ? 0 : 120 / Math.max(1, merger.chains.length),
                   height: 44,
-                  background: `linear-gradient(160deg, ${color}, color-mix(in srgb, ${color} 50%, #1c1917))`,
+                  display: 'grid',
+                  placeItems: 'center',
+                  overflow: 'hidden',
+                  fontSize: 16,
+                  ...fillFor(absorbed.defunct, `linear-gradient(160deg, ${color}, color-mix(in srgb, ${color} 50%, #1c1917))`),
                   opacity: past('settle') ? 0 : 0.55,
                   boxShadow: `0 6px 0 color-mix(in srgb, ${color} 40%, #1c1917)`,
                   transition: `all 700ms cubic-bezier(0.16,0.9,0.2,1) ${260 + k * 120}ms`,
                 }}
-              />
+              >
+                {markFor(absorbed.defunct, 18)}
+              </div>
             );
           })}
         </div>

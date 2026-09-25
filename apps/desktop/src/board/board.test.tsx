@@ -10,6 +10,7 @@ import { Board } from './Board.js';
 import { resetBoardPrefsForTests, setBoardStyle, type BoardStyle } from './boardPrefs.js';
 import { createSkylineScene } from './skyline/scene.js';
 import { NAMES, flush, renderPanel, seedCorp } from '../testing/harness.js';
+import { loadSettings, saveSettings } from '../settings/settings.js';
 
 // jsdom has no WebGL. Skyline's painter is replaced with one that draws
 // nothing, which leaves exactly what these tests are about: the grid laid over
@@ -155,6 +156,51 @@ describe('Board View', () => {
     }
     // an empty cell stays bare — the glyph means "this belongs to someone"
     expect(screen.getByRole('gridcell', { name: '1A' }).querySelector('svg')).toBeNull();
+  });
+
+  describe('industry patterns (#19)', () => {
+    afterEach(() => localStorage.clear());
+
+    const corpCells = () => screen.getAllByRole('gridcell', { name: / — / });
+    const texture = (cell: HTMLElement) => cell.style.getPropertyValue('--industry-pattern');
+
+    it('draws no texture by default', async () => {
+      await renderPanel(<Board />, {
+        craft: (state) => seedCorp(state, 'video', ['6E', '7E', '8E']),
+      });
+      for (const cell of corpCells()) {
+        expect(texture(cell)).toBe('');
+        expect(cell.style.background).not.toContain('var(--industry-pattern)');
+      }
+    });
+
+    it('textures every corporation cell when on, and keeps the glyph and the accessible name', async () => {
+      saveSettings({ ...loadSettings(), industryPatterns: true });
+      await renderPanel(<Board />, {
+        craft: (state) => seedCorp(state, 'video', ['6E', '7E', '8E']),
+      });
+      const cells = corpCells();
+      expect(cells).toHaveLength(3);
+      for (const cell of cells) {
+        // video's vertical rules, layered in front of the fill it already had
+        expect(texture(cell)).toMatch(/repeating-linear-gradient\(90deg/);
+        expect(cell.style.background).toMatch(/^var\(--industry-pattern\), linear-gradient/);
+        expect(cell.style.background).toContain(INDUSTRY_INFO.video.color);
+        expect(cell.querySelector('svg')).toBeTruthy();
+      }
+      // an empty cell stays bare
+      expect(texture(screen.getByRole('gridcell', { name: '1A' }))).toBe('');
+    });
+
+    it('takes effect on a board already on screen', async () => {
+      await renderPanel(<Board />, {
+        craft: (state) => seedCorp(state, 'video', ['6E', '7E', '8E']),
+      });
+      act(() => saveSettings({ ...loadSettings(), industryPatterns: true }));
+      for (const cell of corpCells()) expect(texture(cell)).not.toBe('');
+      act(() => saveSettings({ ...loadSettings(), industryPatterns: false }));
+      for (const cell of corpCells()) expect(texture(cell)).toBe('');
+    });
   });
 
   it('transitions cell colour so a merger recolour is visible, and stands down for reduced motion', () => {

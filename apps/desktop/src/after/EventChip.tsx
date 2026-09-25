@@ -1,5 +1,6 @@
-import { INDUSTRY_INFO, type CompanyEventKind, type Industry } from '@boomtown/engine';
+import { type CompanyEventKind, type Industry } from '@boomtown/engine';
 import { IndustryMark } from '../game/marks.js';
+import { industryTheme } from '../game/industryTheme.js';
 import styles from './after.module.css';
 import { copy } from '../copy/copy.js';
 
@@ -40,7 +41,7 @@ export function EventChip({
   y: number;
   label: string;
 }) {
-  const info = INDUSTRY_INFO[industry];
+  const info = industryTheme(industry);
   const solid = kind === 'founded';
   const inset = (CHIP - 12) / 2;
 
@@ -51,12 +52,12 @@ export function EventChip({
         height={CHIP}
         rx="4"
         fill={solid ? info.color : 'var(--surface)'}
-        stroke={info.color}
+        stroke={solid ? info.color : info.onPaper}
         strokeWidth="1.5"
         opacity={kind === 'folded' ? 0.5 : 1}
       />
       <g transform={`translate(${inset} ${inset})`} opacity={kind === 'folded' ? 0.55 : 1}>
-        <IndustryMark industry={industry} color={solid ? info.ink : info.color} size={12} />
+        <IndustryMark industry={industry} color={solid ? info.ink : info.onPaper} size={12} />
       </g>
       {kind === 'folded' ? (
         <line x1="2.5" y1={CHIP - 2.5} x2={CHIP - 2.5} y2="2.5" stroke="var(--ink)" strokeWidth="1.5" opacity="0.7" />

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { loadSettings, saveSettings, type Settings } from '../settings/settings.js';
+import { SETTINGS_CHANGED, loadSettings, saveSettings, type Settings } from '../settings/settings.js';
 
 export type BoardStyle = Settings['boardStyle'];
 export type Lighting = Settings['lighting'];
@@ -69,6 +69,14 @@ const listeners = new Set<() => void>();
 function publish(): void {
   current = read();
   for (const listener of listeners) listener();
+}
+
+// Every save lands here too, so a choice made anywhere (the settings dialog,
+// the header, another toggle writing the same blob) reaches a board already on screen.
+try {
+  window.addEventListener(SETTINGS_CHANGED, publish);
+} catch {
+  // no window (a worker, or a test environment without one): nothing to hear
 }
 
 export function getBoardPrefs(): BoardPrefs {

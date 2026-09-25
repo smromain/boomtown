@@ -127,6 +127,21 @@ describe('Header music controls', () => {
     expect(loadSettings().musicMuted).toBe(false);
   });
 
+  it('switches industry patterns mid-game, as the same stored setting the dialog shows (#19)', async () => {
+    const user = userEvent.setup();
+    await renderPanel(<Header />);
+    const toggle = screen.getByRole('button', { name: 'Industry patterns' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(loadSettings().industryPatterns).toBe(true);
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(loadSettings().industryPatterns).toBe(false);
+  });
+
   it('swaps the note for heroicons\' no-symbol when the music is off, the way the speaker swaps too', async () => {
     const user = userEvent.setup();
     await renderPanel(<Header />);

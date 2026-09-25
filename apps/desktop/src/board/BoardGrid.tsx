@@ -1,7 +1,9 @@
 import type { CSSProperties, Ref } from 'react';
-import { INDUSTRY_INFO, parseTile, type TileId } from '@boomtown/engine';
+import { parseTile, type TileId } from '@boomtown/engine';
 import type { ClientView } from '@boomtown/client-core';
 import { IndustryMark } from '../game/marks.js';
+import { industryTheme, patternedBackground } from '../game/industryTheme.js';
+import { useIndustryPatterns } from '../settings/useSetting.js';
 import { sweepDelay, type BoardModel, type RenderCell } from './boardModel.js';
 import styles from './board.module.css';
 import { copy, fill } from '../copy/copy.js';
@@ -28,6 +30,7 @@ function cellLabel(cell: RenderCell, view: ClientView): string {
  */
 export function BoardGrid({ model }: { model: BoardModel }) {
   const { cols, rows, cells, view, busy, spectating, mergedAt, pick } = model;
+  const patterns = useIndustryPatterns();
   return (
     <div className={styles.stage}>
       <div
@@ -75,6 +78,7 @@ export function BoardGrid({ model }: { model: BoardModel }) {
                   onPick={pick}
                   view={view}
                   sweepMs={sweepDelay(c.tile, mergedAt)}
+                  patterns={patterns}
                 />
               ))}
           </RowFragment>
@@ -95,12 +99,14 @@ function BoardCell({
   onPick,
   view,
   sweepMs,
+  patterns,
 }: {
   cell: RenderCell;
   disabled: boolean;
   onPick: (tile: TileId) => void;
   view: ClientView;
   sweepMs: number;
+  patterns: boolean;
 }) {
   const industry = cell.industry;
   // The tilted board's lit-paper cell treatment (U8): a per-industry gradient
@@ -110,12 +116,15 @@ function BoardCell({
   const style =
     cell.kind === 'corp' && industry
       ? (() => {
-          const { color, ink } = INDUSTRY_INFO[industry];
+          const { color, ink } = industryTheme(industry);
           const lift = cell.isHq ? 2.3 : 2;
           const shade1 = `color-mix(in srgb, ${color} 74%, #1c1917)`;
           const shade2 = `color-mix(in srgb, ${color} 56%, #1c1917)`;
+          const base = `linear-gradient(170deg, color-mix(in srgb, ${color} 88%, #fff) 0%, ${color} 62%, ${shade1} 100%)`;
           return {
-            background: `linear-gradient(170deg, color-mix(in srgb, ${color} 88%, #fff) 0%, ${color} 62%, ${shade1} 100%)`,
+            // The texture (#19) is a layer in the same `background`, so a
+            // merger's sweep swaps pattern and colour in the same frame.
+            ...patternedBackground(industry, base, patterns),
             color: ink,
             boxShadow: `0 ${lift}px 0 ${shade1}, 0 ${lift * 2}px 0 ${shade2}, 0 ${lift * 2 + 4}px 10px -4px rgba(60, 45, 30, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3)`,
             transform: `translateZ(${lift * 3}px)`,
@@ -132,14 +141,14 @@ function BoardCell({
   const content =
     cell.isHq && industry ? (
       <span className={styles.hq}>
-        <span className={styles.hqBadge} style={{ background: INDUSTRY_INFO[industry].ink }}>
-          <IndustryMark industry={industry} color={INDUSTRY_INFO[industry].color} size={16} />
+        <span className={styles.hqBadge} style={{ background: industryTheme(industry).ink }}>
+          <IndustryMark industry={industry} color={industryTheme(industry).color} size={16} />
         </span>
         <span className={styles.hqCoord}>{cell.tile}</span>
       </span>
     ) : cell.kind === 'corp' && industry ? (
       <span className={styles.corpCell}>
-        <IndustryMark industry={industry} color={INDUSTRY_INFO[industry].ink} size={13} />
+        <IndustryMark industry={industry} color={industryTheme(industry).ink} size={13} />
         <span className={styles.corpCoord}>{cell.tile}</span>
       </span>
     ) : (

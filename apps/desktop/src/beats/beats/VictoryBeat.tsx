@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CorpSettlement, PlayerView } from '@boomtown/engine';
-import { INDUSTRY_INFO } from '@boomtown/engine';
 import { IndustryMark } from '../../game/marks.js';
+import { industryTheme } from '../../game/industryTheme.js';
 import { Skyline } from '../../art/Skyline.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
@@ -285,7 +285,7 @@ function renderLine(line: Line, corpName: (industry: CorpSettlement['industry'])
       const shareWord = line.shares === 1 ? 'share' : 'shares';
       return (
         <>
-          <IndustryMark industry={line.industry} color={INDUSTRY_INFO[line.industry].color} size={20} />
+          <IndustryMark industry={line.industry} color={industryTheme(line.industry).onNight} size={20} />
           <span>
             {line.shares} {shareWord} of {corpName(line.industry)} at ${line.price.toLocaleString()} each = $
             {line.saleValue.toLocaleString()}

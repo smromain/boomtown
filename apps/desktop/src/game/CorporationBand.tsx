@@ -1,6 +1,8 @@
-import { INDUSTRIES, INDUSTRY_INFO, type CorpView, type Industry } from '@boomtown/engine';
+import { INDUSTRIES, tierOf, type CorpView, type Industry } from '@boomtown/engine';
 import { useOwnView } from '../client/ownView.js';
 import { IndustryMark } from './marks.js';
+import { industryTheme, patternedBackground } from './industryTheme.js';
+import { useIndustryPatterns } from '../settings/useSetting.js';
 import { Marquee } from './Marquee.js';
 import { Skyline } from '../art/Skyline.js';
 import { useReference } from '../reference/ReferenceContext.js';
@@ -27,8 +29,8 @@ export function CorporationBand() {
         <Skyline tone="ink" className={styles.bandEmptyArt} />
         <div className={styles.bandEmptyMarks}>
           {INDUSTRIES.map((industry) => (
-            <span key={industry} className={styles.bandEmptyMark} style={{ color: INDUSTRY_INFO[industry].color }}>
-              <IndustryMark industry={industry} color={INDUSTRY_INFO[industry].color} size={13} />
+            <span key={industry} className={styles.bandEmptyMark} style={{ color: industryTheme(industry).onPaper }}>
+              <IndustryMark industry={industry} color={industryTheme(industry).onPaper} size={13} />
             </span>
           ))}
         </div>
@@ -72,7 +74,7 @@ export function TrayStrip() {
       <span className={styles.trayTitle}>{copy.game.inTray}</span>
       {tray.map((industry) => (
         <span key={industry} className={styles.trayItem}>
-          <IndustryMark industry={industry} color={INDUSTRY_INFO[industry].color} size={15} />
+          <IndustryMark industry={industry} color={industryTheme(industry).onPaper} size={15} />
           <span className="serif">{view.corporations[industry].baseName}</span>
         </span>
       ))}
@@ -82,7 +84,10 @@ export function TrayStrip() {
 }
 
 function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView; mine: number }) {
-  const { color, ink, tier } = INDUSTRY_INFO[industry];
+  const { color, ink } = industryTheme(industry);
+  const tier = tierOf(industry);
+  const patterns = useIndustryPatterns();
+  const capFill = `linear-gradient(160deg, color-mix(in srgb, ${color} 88%, #fff), ${color})`;
   const issued = 25 - corp.bankShares;
   const pct = issued > 0 ? Math.round((mine / issued) * 100) : 0;
   const { openCorp } = useReference();
@@ -97,7 +102,7 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
     >
       {/* Cap band (U1 framing device): a colour-filled strip holding the
           ink-on-colour mark and the tier — not just a border-top hairline. */}
-      <div className={styles.cap} style={{ background: `linear-gradient(160deg, color-mix(in srgb, ${color} 88%, #fff), ${color})`, color: ink }}>
+      <div className={styles.cap} style={{ ...patternedBackground(industry, capFill, patterns), color: ink }}>
         <IndustryMark industry={industry} color={ink} size={22} />
         <span className={styles.capTier}>
           {fill(copy.game.tier, { n: tier })}
@@ -122,7 +127,7 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
                 <IndustryMark
                   key={`${eatenIndustry}-${index}`}
                   industry={eatenIndustry}
-                  color={INDUSTRY_INFO[eatenIndustry].color}
+                  color={industryTheme(eatenIndustry).onPaper}
                   size={15}
                 />
               ))}
