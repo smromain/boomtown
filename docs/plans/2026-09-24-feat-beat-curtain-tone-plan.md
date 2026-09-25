@@ -105,17 +105,28 @@ a second code path. This follows it exactly, one level up.
 - **Night beat values** are Step 1's column, which is today's curtain, so night is where the existing
   artboards stay true. `--beat-accent` is the only token whose value differs by more than the ground:
   the ember `#d98a4e` at night, `--accent` by day. That settles what was decision 2.
-- **Default: day.** It is the app everyone has today, and it keeps a merged Step 3 from changing
-  anyone's screen until they ask. The Skyline board defaults to night; if the two settings merge into
-  one, the defaults have to agree, which is decision 1 below.
-- **No in-game toggle.** The header's single icon stays the Flat/Skyline switch, as the Skyline plan
-  has it. Lighting lives in Settings only.
+- **Default: day** (decided by Steve 2026-09-25). It is the app everyone has today, so shipping
+  Step 3 changes nobody's screen until they ask. With one shared setting, the Skyline board also
+  starts in day, which reverses that plan's night default; see *One setting, not two*.
+- **Switching is one click** (decided by Steve 2026-09-25). A sun/moon icon button in the Header's
+  brand region, beside the speaker, flips `lighting` and persists it immediately. It is a plain
+  toggle, not a menu or a popover: one press, the whole app changes, press again to go back. It sits
+  beside the Skyline plan's Flat/Skyline icon, and both are there for the same reason the volume is:
+  they are properties of this screen, not the table. The launch screen and lobby get the same button
+  in the same corner so the switch is reachable before a game starts. Settings shows it too, as a
+  two-way Day/Night control under *This machine*, bound to the same key.
+- **The flip is instant, not animated.** The whole app changing tone is the one moment a transition
+  would be tempting; it is also the moment a 300ms cross-fade over every surface costs the most and
+  shows the least. Tokens change, the frame repaints, done. A beat on screen when the toggle is
+  pressed recolours with everything else, since it reads the same tokens.
 - **No `prefers-color-scheme` yet.** Following the OS would be a third value (`'system'`) and is cheap
   to add later; the Skyline pattern has two values, so this starts with two.
 
 What Step 3 still has to do is the issue's list for B, unchanged: the board tokens, a dark elevation
 scale (the top-lit inset highlight has to go), `--grain`, the modal scrim, and a contrast check of the
-seven industry `ink` pairs in `packages/engine/src/pool.ts` against the night ground. The launch
+seven industry `ink` pairs in `packages/engine/src/pool.ts` against the night ground. The
+colourblind design (#19) already plans per-industry type shades for paper and night grounds through a
+renderer-side `industryTheme.ts`; the night palette should read from that resolver, not add its own. The launch
 skyline already has both tones (`Skyline.tsx`'s `tone`), and `assets/night` is already the night art.
 `TurnHandoff`'s card sits on `--bg`, so it goes dark at night and stays fully opaque in both.
 
@@ -155,10 +166,7 @@ Per `CLAUDE.md`, the canvas is the source of truth, so this ships with:
 
 ## Decisions for Steve
 
-1. **Which default, day or night?** Recommended: day for the app, with the Skyline board reading the
-   same setting, so a new player sees today's app and turning on Skyline gives a day skyline until
-   they pick night. The alternative is night for both, which matches the Skyline thread's choice but
-   changes every existing player's screen when this ships.
+1. ~~**Which default, day or night?**~~ Settled by Steve 2026-09-25: day, with a one-click toggle.
 2. ~~**Accent on cream?**~~ Settled by Step 3: `--accent` by day, the ember at night.
 3. ~~**Cream curtain for everyone, or a setting?**~~ Settled by Steve 2026-09-25: the curtain follows
    the app's day/night setting.
