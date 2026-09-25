@@ -182,7 +182,7 @@ Note that `build.py`'s company pool has drifted from the one that ships
 (`packages/engine/src/pool.ts` is the pool of record), so **the canvas shows companies that are not
 in the game**. See *Known divergence* in `docs/naming.md`.
 
-Published design canvas (9 artboards over 3 pages):
+Published design canvas (12 artboards over 3 pages):
 https://claude.ai/code/artifact/f1b58905-2da0-4cd0-9c2e-8d65624260a3
 
 ## Legal position, stated once

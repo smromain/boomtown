@@ -239,6 +239,11 @@ lost.
 The phone never shows the board, the beats or the story; those are the table's job. A mini-board may
 earn a place later, but the first version bets that people look up at the TV.
 
+**Designs:** the *Couch mode - the phone* artboard on the design canvas (`design/build.py`,
+`build_phone`) draws eleven phone screens (joining, waiting at the door, seated, watching, placing,
+buying, the end of turn, disposal, the vote, founding, reconnecting) and the table's lobby with its
+QR, both plain and under streaming mode.
+
 ### What the table shows
 
 The existing `GameScreen` with **no local seats**, the spectator path described above: the board

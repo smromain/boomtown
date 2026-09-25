@@ -94,6 +94,16 @@
       "page": "page-1"
     },
     {
+      "file": "Phone.dc.html",
+      "x": 7800,
+      "y": 0,
+      "w": 1440,
+      "h": 5050,
+      "title": "Couch mode - the phone",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
       "file": "RulesModel.dc.html",
       "x": 0,
       "y": 0,
@@ -154,6 +164,14 @@
       "w": 700,
       "page": "page-1",
       "text": "The third reading of the same game (#68): one company at a time, a band for what it was worth and a line per seat for whose it was. It started as stacked bars and the table killed them - a stack has to be ordered, and no order survives six seats trading the majority back and forth over forty turns. The second frame is that worst case, drawn, so the claim can be checked."
+    },
+    {
+      "id": "note-phone",
+      "x": 7800,
+      "y": -210,
+      "w": 700,
+      "page": "page-1",
+      "text": "Couch mode (#62): the desktop is the table and each player's hand is on their own phone. The phone is a thin page served by the room, drawing the hand and the legal moves the room already sends. Nothing private ever reaches the big screen, so couch play needs no hand-off card and streams as it is."
     },
     {
       "id": "note-rules",
