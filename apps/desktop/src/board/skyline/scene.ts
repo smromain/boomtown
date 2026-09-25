@@ -21,9 +21,10 @@ import {
   type Material,
   type Object3D,
 } from 'three';
-import type { TileId } from '@boomtown/engine';
+import type { Industry, TileId } from '@boomtown/engine';
 import { STOREY, buildingKey, type Building, type SkylinePlan } from './skylineModel.js';
 import type { Lighting, SkylineTrouble } from '../boardPrefs.js';
+import { emblemPaths } from './emblems.js';
 
 /**
  * Skyline's painter: plain three.js, imperative, mounted from one effect (#70).
@@ -287,6 +288,50 @@ export function createSkylineScene(options: SceneOptions): SkylineScene | { trou
     return mesh;
   }
 
+  // --------------------------------------------------------------- emblems
+  // A headquarters wears its industry mark on the roof, in its ink on its own
+  // colour — the Board View HQ badge, seen from above. One canvas per mark and
+  // backing, shared by every roof that shows it, and repainted upright with the
+  // ground's coordinates whenever the camera swings into another quarter.
+  const EMBLEM_PX = 128;
+  const emblems = new Map<string, { draw: () => void; texture: CanvasTexture }>();
+  function emblem(industry: Industry, backing: string, ink: string): CanvasTexture {
+    const key = `${industry}|${backing}|${ink}`;
+    let found = emblems.get(key);
+    if (!found) {
+      const c = document.createElement('canvas');
+      c.width = c.height = EMBLEM_PX;
+      const ctx = c.getContext('2d')!;
+      const texture = new CanvasTexture(c);
+      texture.colorSpace = SRGBColorSpace;
+      texture.anisotropy = 8;
+      const paths = emblemPaths(industry).map((p) => ({ path: new Path2D(p.d), rule: p.evenOdd ? 'evenodd' : 'nonzero' }) as const);
+      const draw = () => {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = backing;
+        ctx.fillRect(0, 0, EMBLEM_PX, EMBLEM_PX);
+        ctx.translate(EMBLEM_PX / 2, EMBLEM_PX / 2);
+        ctx.rotate((-quarter * Math.PI) / 2);
+        // The icon's 24-unit box, filling most of the roof.
+        const scale = (EMBLEM_PX * 0.8) / 24;
+        ctx.scale(scale, scale);
+        ctx.translate(-12, -12);
+        ctx.fillStyle = ink;
+        for (const { path, rule } of paths) ctx.fill(path, rule);
+        texture.needsUpdate = true;
+      };
+      draw();
+      found = { draw, texture };
+      emblems.set(key, found);
+    }
+    return found.texture;
+  }
+  function roofMaterial(industry: Industry, backing: string, ink: string, rim: string, extra = {}): Material[] {
+    const side = plain(rim, extra);
+    const top = new MeshStandardMaterial({ map: emblem(industry, backing, ink), roughness: 0.6 });
+    return [side, side, top, side, side, side];
+  }
+
   const lotCentre = (tile: TileId) => {
     const lot = plan?.lots.find((l) => l.tile === tile);
     return { x: (lot?.col ?? 0) - cols / 2 + 0.5, z: (lot?.row ?? 0) - rows / 2 + 0.5 };
@@ -320,12 +365,16 @@ export function createSkylineScene(options: SceneOptions): SkylineScene | { trou
         height = building.storeys * STOREY;
         group.add(box(0.82, height, 0.82, walls(facadeMaterial(building.color, 2, building.storeys), plain(building.color)), height / 2));
         building.eaten.forEach((colour, i) => group.add(box(0.88, 0.075, 0.88, plain(colour), 0.13 + i * 0.12)));
-        group.add(box(0.86, 0.06, 0.86, plain(building.ink === '#FFFFFF' ? '#2a2622' : '#f3ede4'), height + 0.03));
-        if (building.safe) {
-          const gold = plain('#e2b23a', { emissive: 0xe2a92a, emissiveIntensity: 0.55, metalness: 0.3, roughness: 0.4 });
-          group.add(box(0.46, 0.26, 0.46, gold, height + 0.19));
+        const rim = building.ink === '#FFFFFF' ? '#2a2622' : '#f3ede4';
+        if (!building.safe) {
+          group.add(box(0.86, 0.06, 0.86, roofMaterial(building.industry, building.color, building.ink, rim), height + 0.03));
+        } else {
+          // A safe chain's crown carries the mark instead, so it is never hidden under it.
+          group.add(box(0.86, 0.06, 0.86, plain(rim), height + 0.03));
+          const lit = { emissive: 0xe2a92a, emissiveIntensity: 0.55, metalness: 0.3, roughness: 0.4 };
+          group.add(box(0.6, 0.26, 0.6, roofMaterial(building.industry, building.color, building.ink, '#e2b23a', lit), height + 0.19));
           const antenna = new Mesh(new CylinderGeometry(0.018, 0.028, 0.9, 8), plain('#3a352f'));
-          antenna.position.y = height + 0.77;
+          antenna.position.set(0.24, height + 0.77, -0.24);
           antenna.castShadow = true;
           group.add(antenna);
         }
@@ -471,6 +520,7 @@ export function createSkylineScene(options: SceneOptions): SkylineScene | { trou
     if (q !== quarter) {
       quarter = q;
       paintGround();
+      for (const { draw } of emblems.values()) draw();
     }
     const width = stage.clientWidth;
     const height = stage.clientHeight;
@@ -751,6 +801,7 @@ export function createSkylineScene(options: SceneOptions): SkylineScene | { trou
       plateMat.dispose();
       groundMat.dispose();
       groundTex.dispose();
+      for (const { texture } of emblems.values()) texture.dispose();
       for (const f of facades.values()) {
         f.map.dispose();
         f.emissiveMap.dispose();
