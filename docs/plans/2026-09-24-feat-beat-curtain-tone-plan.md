@@ -93,10 +93,13 @@ a second code path. This follows it exactly, one level up.
 - **The setting:** `lighting: 'day' | 'night'` on `Settings`, under *This machine*, beside the volumes.
   `loadSettings` merges stored over defaults, so the new key needs no migration. Never a table rule,
   never on the wire; online opponents each pick their own.
-- **One setting, not two.** The Skyline board's `skylineLighting` should become this key rather than a
-  second day/night switch beside it. Two switches would allow a night board on a day table, which is
-  the same jolt this issue exists to remove, moved from the curtain to the board edge. The 3D thread
-  owns that setting, so this is a proposal to it, not a change made from here.
+- **One setting, not two** (decided by Steve 2026-09-25, in the Skyline thread). PR #82 (#70) already
+  adds `lighting: 'day' | 'night'`, default `'day'`, to `Settings`, and exposes it through
+  `useBoardPrefs().lighting` and `setLighting()` in `apps/desktop/src/board/boardPrefs.ts`, which
+  writes the key and notifies subscribers. This plan reads and writes that key; it adds no second
+  one. Once the tokens land, two pieces of #82 come over to this change: the SettingsDialog Lighting
+  field drops its "only while Skyline is selected" condition, and Skyline's own sun/moon button on the
+  board goes, because the header's button replaces it.
 - **The mechanism:** the app shell sets `data-lighting="night"` on `<html>`, and `global.css` gains one
   `:root[data-lighting="night"]` block that redefines the ground tokens (`--bg`, `--surface*`, `--ink`,
   `--muted`, `--rule`, `--input`, the board set, `--elev-1/2/3`, `--grain`) and `color-scheme: dark`.
@@ -106,10 +109,11 @@ a second code path. This follows it exactly, one level up.
   artboards stay true. `--beat-accent` is the only token whose value differs by more than the ground:
   the ember `#d98a4e` at night, `--accent` by day. That settles what was decision 2.
 - **Default: day** (decided by Steve 2026-09-25). It is the app everyone has today, so shipping
-  Step 3 changes nobody's screen until they ask. With one shared setting, the Skyline board also
-  starts in day, which reverses that plan's night default; see *One setting, not two*.
+  Step 3 changes nobody's screen until they ask. The Skyline board shares the setting, so it starts
+  in day too.
 - **Switching is one click** (decided by Steve 2026-09-25). A sun/moon icon button in the Header's
-  brand region, beside the speaker, flips `lighting` and persists it immediately. It is a plain
+  brand region, beside the speaker, calls `setLighting()`, which persists the key and repaints the
+  Skyline board on the spot. It is a plain
   toggle, not a menu or a popover: one press, the whole app changes, press again to go back. It sits
   beside the Skyline plan's Flat/Skyline icon, and both are there for the same reason the volume is:
   they are properties of this screen, not the table. The launch screen and lobby get the same button
