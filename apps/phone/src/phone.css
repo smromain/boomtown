@@ -1,0 +1,422 @@
+/*
+ * The couch-mode phone (#62). The palette, the fonts and the type roles come
+ * from the desktop's `global.css`; what is here is the phone's own layout:
+ * one column, thumb-sized targets (44px at least), and the seat bar in the
+ * same ink chrome as the desktop header.
+ */
+
+body {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.phone {
+  max-width: 30rem;
+  margin: 0 auto;
+  min-height: 100%;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1.5rem, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.phone h1,
+.phone h2 {
+  margin: 0;
+  font-weight: 400;
+}
+
+.phone h1 {
+  font-size: 2rem;
+  line-height: 1.1;
+}
+
+.phone h2 {
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.masthead {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 1.5rem;
+}
+
+.lede {
+  margin: 0;
+  color: var(--ink);
+}
+
+.note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.status {
+  margin: auto 0;
+  text-align: center;
+  color: var(--muted);
+}
+
+.error {
+  margin: 0;
+  min-height: 1.2em;
+  font-size: 0.85rem;
+  color: var(--error);
+}
+
+.kicker.accent {
+  color: var(--accent);
+}
+
+/* --- fields and buttons ---------------------------------------------------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.phone input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 0.8rem;
+  font: inherit;
+  font-size: 1.05rem;
+  color: var(--ink);
+  background: var(--input);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+
+.phone input.code {
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.phone button {
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0 1rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.phone button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.phone button.primary {
+  width: 100%;
+  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.phone button.ghost {
+  background: transparent;
+}
+
+.phone .card button.ghost {
+  width: 100%;
+}
+
+/* --- the door and the seats ------------------------------------------------- */
+
+.door {
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.initials {
+  width: 4.5rem;
+  height: 4.5rem;
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  color: var(--chrome-ink);
+  background: var(--chrome-bg);
+  border-radius: 50%;
+}
+
+.seats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.seats li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 48px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.seats li .kicker {
+  margin-left: auto;
+}
+
+.dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--cell-ring);
+}
+
+.dot[data-connected='true'] {
+  background: #3a9d5a;
+}
+
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.85rem;
+  color: var(--chrome-ink);
+  background: var(--chrome-bg);
+  border-radius: 8px;
+}
+
+/* --- the game ------------------------------------------------------------------ */
+
+.seatbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin: calc(-1 * max(1rem, env(safe-area-inset-top))) -1rem 0;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem 0.9rem;
+  color: var(--chrome-ink);
+  background: var(--chrome-bg);
+}
+
+.seatbar .kicker {
+  color: var(--chrome-muted);
+}
+
+.seatbar .name {
+  font-size: 1.3rem;
+}
+
+.seatbar .cash {
+  text-align: right;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  box-shadow: var(--elev-2);
+}
+
+.card.turn {
+  border-top: 3px solid var(--accent);
+}
+
+.watching .serif {
+  font-size: 1.3rem;
+}
+
+.rack ul,
+.shares ul,
+.rows,
+.standings {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+}
+
+.rack ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.phone button.tile {
+  width: 100%;
+  min-height: 5.25rem;
+  padding: 0.55rem 0.65rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 0.15rem 0.5rem;
+  align-items: start;
+  text-align: left;
+  font-weight: 400;
+  box-shadow: 0 3px 0 var(--rule);
+}
+
+.phone button.tile:disabled {
+  opacity: 1;
+}
+
+.phone button.tile[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 3px 0 var(--rule);
+}
+
+.tileId {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.chip {
+  justify-self: end;
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tile[data-effect='merge'] .chip,
+.tile[data-effect='found'] .chip {
+  color: var(--accent);
+}
+
+.tile[data-effect='dead'],
+.tile[data-effect='blocked'] {
+  color: var(--muted);
+}
+
+.what {
+  grid-column: 1 / -1;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  color: var(--muted);
+}
+
+.shares li,
+.rows li,
+.standings li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 48px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.shares li .tabnum,
+.standings li .tabnum {
+  margin-left: auto;
+  font-weight: 700;
+}
+
+.standings li[data-you] {
+  font-weight: 700;
+}
+
+.swatch {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.corp {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-wrap: anywhere;
+}
+
+.rows li[data-picked] {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.stepper output,
+.held {
+  min-width: 1.6rem;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.purse {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.phone .chips button {
+  min-height: 40px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: 999px;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.phone button.option {
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  text-align: left;
+}
+
+.phone button.option span {
+  font-weight: 400;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.phone button.corpOption {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.6rem;
+  align-items: center;
+}
+
+.phone button.corpOption span:last-child {
+  grid-column: 2;
+}

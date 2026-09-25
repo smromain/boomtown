@@ -266,6 +266,10 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # The couch-mode phone page (#62) is served by the room's own deploy, from
+      # packages/server/public/phone, so it is built from this same commit.
+      - name: Build the phone page
+        run: npm run phone:build
       - name: Deploy the PartyKit room
         working-directory: packages/server
         run: npx partykit deploy
