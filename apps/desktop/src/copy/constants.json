@@ -202,7 +202,7 @@
     "skyline": "Skyline",
     "boardStyleNote": "Skyline raises a tower for every chain. It wants a graphics card that can keep up.",
     "boardTrouble": "This machine couldn't draw Skyline this session, so the game is showing Board View.",
-    "skylineLighting": "Skyline lighting",
+    "lighting": "Lighting",
     "day": "Day",
     "night": "Night",
     "musicCredits": "Music credits",

@@ -6,7 +6,7 @@ import { coversTheScreen } from '../../beats/beatTriggers.js';
 import { copy } from '../../copy/copy.js';
 import { OverlayGrid } from '../BoardGrid.js';
 import type { BoardModel } from '../boardModel.js';
-import { reportSkylineTrouble, setSkylineLighting, useBoardPrefs } from '../boardPrefs.js';
+import { reportSkylineTrouble, setLighting, useBoardPrefs } from '../boardPrefs.js';
 import { createSkylineScene, type SkylineScene } from './scene.js';
 import { planSkyline } from './skylineModel.js';
 import styles from '../board.module.css';
@@ -124,7 +124,7 @@ export default function SkylineBoard({ model }: { model: BoardModel }) {
         <button
           type="button"
           className={styles.skylineButton}
-          onClick={() => setSkylineLighting(night ? 'day' : 'night')}
+          onClick={() => setLighting(night ? 'day' : 'night')}
           aria-label={night ? c.toDay : c.toNight}
           title={night ? c.toDay : c.toNight}
         >

@@ -51,8 +51,13 @@ export interface Settings {
    * and two players at one online game can each pick their own.
    */
   readonly boardStyle: 'board-view' | 'skyline';
-  /** Skyline's lighting. Board View has none of its own to choose. */
-  readonly skylineLighting: 'day' | 'night';
+  /**
+   * Day or night, for this machine. One switch for the whole app (Steve,
+   * 2026-09-25): Skyline reads it today, and the app-wide day/night tokens
+   * (#64) are meant to read the same key, so a night board can never sit on a
+   * day table.
+   */
+  readonly lighting: 'day' | 'night';
   /**
    * Schema version of the stored blob. Absent on anything written before
    * migrations existed; see `migrate`.
@@ -78,7 +83,7 @@ export const DEFAULT_SETTINGS: Settings = {
   musicTrack: 'pleasant-creek',
   playerName: '',
   boardStyle: 'board-view',
-  skylineLighting: 'day',
+  lighting: 'day',
   version: SETTINGS_VERSION,
 };
 

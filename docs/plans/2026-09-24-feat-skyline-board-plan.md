@@ -159,7 +159,7 @@ covering beat is up. The table idles at zero GPU.
 
 - **Setting:** `boardStyle: 'board-view' | 'skyline'` on `Settings`, default `'board-view'`. `loadSettings` merges
   stored over defaults, so an added key needs no migration and no version bump.
-- **Lighting (decided 2026-09-25: both):** `skylineLighting: 'day' | 'night'`, default `'day'`. Day is
+- **Lighting (decided 2026-09-25: both):** `lighting: 'day' | 'night'`, default `'day'`. Shared with the whole app (decided 2026-09-25): Skyline reads the same key the app-wide day/night tokens (#64) will, so the board and the screen always match. Day is
   the paper palette Board View uses; night is a dark board with lit windows that matches the launch
   screen's skyline (`assets/night`). It is one uniform switch in the scene (background, two lights, the
   ground palette and the windows' emissive intensity), not a second renderer, so the cost is a second
@@ -234,7 +234,7 @@ and the Skyline reads the same `spectating`-aware view the Board View does.
 ## Build order
 
 1. Extract `boardModel.ts` and `BoardGrid.tsx`; Board View unchanged, all tests green. (Mergeable alone.)
-2. `boardStyle` and `skylineLighting` settings and both switches, wired to a placeholder painter.
+2. `boardStyle` and `lighting` settings and both switches, wired to a placeholder painter.
 3. `skylineModel.ts` with tests.
 4. `scene.ts`: static skyline, overlay matrix, free rotation with drag/click separation, quarter-turn and reset buttons, fallback.
 5. Moments: rise, grow, demolish, crown, held behind covering beats; reduced motion.

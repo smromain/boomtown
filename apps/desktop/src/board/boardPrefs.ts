@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { loadSettings, saveSettings, type Settings } from '../settings/settings.js';
 
 export type BoardStyle = Settings['boardStyle'];
-export type SkylineLighting = Settings['skylineLighting'];
+export type Lighting = Settings['lighting'];
 
 /** Why this machine is drawing Board View although Skyline was asked for. */
 export type SkylineTrouble = 'no-webgl' | 'software' | 'slow' | 'lost' | 'failed';
@@ -12,7 +12,7 @@ export interface BoardPrefs {
   readonly chosen: BoardStyle;
   /** What is drawn: `chosen`, unless Skyline could not run here this session. */
   readonly style: BoardStyle;
-  readonly lighting: SkylineLighting;
+  readonly lighting: Lighting;
   /** Set once Skyline has fallen back this session; it is not retried until the app restarts. */
   readonly trouble: SkylineTrouble | null;
   /**
@@ -52,19 +52,15 @@ function read(): BoardPrefs {
   return {
     chosen,
     style: chosen === 'skyline' && !trouble ? 'skyline' : 'board-view',
-    lighting: skylineLighting(settings),
+    lighting: lightingOf(settings),
     trouble,
     forced: url.forced,
   };
 }
 
-/**
- * The one place Skyline's lighting is read. If lighting ever becomes an
- * app-wide day/night setting rather than Skyline's own, this is the line that
- * changes.
- */
-export function skylineLighting(settings: Settings = loadSettings()): SkylineLighting {
-  return settings.skylineLighting === 'night' ? 'night' : 'day';
+/** The app's day/night setting, which Skyline follows rather than keeping one of its own. */
+function lightingOf(settings: Settings): Lighting {
+  return settings.lighting === 'night' ? 'night' : 'day';
 }
 
 let current: BoardPrefs = read();
@@ -86,9 +82,9 @@ export function setBoardStyle(style: BoardStyle): void {
   publish();
 }
 
-/** Day or night, from the one-click toggle on the Skyline board or from the settings dialog. */
-export function setSkylineLighting(lighting: SkylineLighting): void {
-  saveSettings({ ...loadSettings(), skylineLighting: lighting });
+/** Day or night for the whole app, from the one-click toggle on the Skyline board. */
+export function setLighting(lighting: Lighting): void {
+  saveSettings({ ...loadSettings(), lighting });
   publish();
 }
 

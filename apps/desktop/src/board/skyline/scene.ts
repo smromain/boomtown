@@ -23,7 +23,7 @@ import {
 } from 'three';
 import type { TileId } from '@boomtown/engine';
 import { STOREY, buildingKey, type Building, type SkylinePlan } from './skylineModel.js';
-import type { SkylineLighting, SkylineTrouble } from '../boardPrefs.js';
+import type { Lighting, SkylineTrouble } from '../boardPrefs.js';
 
 /**
  * Skyline's painter: plain three.js, imperative, mounted from one effect (#70).
@@ -46,7 +46,7 @@ export interface SceneOptions {
   readonly stage: HTMLElement;
   /** Where the canvas goes. */
   readonly host: HTMLElement;
-  readonly lighting: SkylineLighting;
+  readonly lighting: Lighting;
   readonly reducedMotion: boolean;
   /** Skip the software-renderer and slow-frame checks (`?forceSkyline=1`). */
   readonly forced: boolean;
@@ -61,7 +61,7 @@ export interface SceneOptions {
 export interface SkylineScene {
   /** Draw `plan`. Changes rise, sink and recolour outward from `origin` unless `animate` is false. */
   show(plan: SkylinePlan, origin: TileId | null, animate: boolean): void;
-  setLighting(lighting: SkylineLighting): void;
+  setLighting(lighting: Lighting): void;
   setHighlight(hover: TileId | null, focus: TileId | null): void;
   /** Swing to the next quarter from wherever the camera is, left (-1) or right (1). */
   turn(direction: -1 | 1): void;
