@@ -273,13 +273,12 @@ screen. Sound plays here and not on the phones.
 - **Room bots still read authoritative state** (the open item in `docs/decisions.md`). Couch mode
   does not make that worse, but it makes online bots more visible, so it is a good moment to close.
 
-### Does couch mode replace the private window?
+### Couch mode and the private window both stay
 
-Probably. A streamer playing alone could open a couch table on the desktop and play their own hand
-from their phone, which is everything the private window offered, with one mechanism instead of
-two. The private window's remaining advantage is that it needs no phone and no internet. The
-recommendation is to **build couch mode and drop the private window**, keeping phases 2 and 3 above
-only as the body/shell split both of them need.
+A streamer playing alone could use couch mode and play their hand from their phone, but **Steve
+chose to keep both** (2026-09-25). The private window serves one person at a desktop with no phone
+and no internet needed. Couch mode serves a room of people. They share the body/shell split of the
+prompts, so whichever is built second reuses that work.
 
 ### Couch mode phasing
 
@@ -295,9 +294,12 @@ only as the body/shell split both of them need.
 - **Phase 1 ships on its own** (Steve, 2026-09-25).
 - **The private window is off by default** (Steve, 2026-09-25), as its own setting separate from
   streaming mode.
-- **Hot-seat privacy goes to phones: couch mode** (Steve, 2026-09-25).
+- **Hot-seat privacy goes to phones: couch mode** (Steve, 2026-09-25). The private window is for
+  one human per machine; at hot-seat it is not offered.
+- **Both are kept**: the private window and couch mode (Steve, 2026-09-25).
 
 ## Still open
 
-1. **Build couch mode and drop the private window?** Recommended: yes.
-2. **Always-on-top for the private window**, if it survives. Recommended: off, with a pin button.
+1. **Which comes first**, the private window or couch mode. Recommended: the private window. It
+   needs nothing that isn't built, while couch mode waits on the web build.
+2. **Always-on-top for the private window.** Recommended: off, with a pin button.
