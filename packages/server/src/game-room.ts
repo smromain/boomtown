@@ -248,7 +248,48 @@ export class GameRoom {
     if (!this.table || !tokensMatch(this.table.token, token)) return null;
     const rotated = mintToken();
     this.table = { token: rotated, connectionId };
+    // A new connection has not asked to be waited on yet.
+    this.paced = false;
     return rotated;
+  }
+
+  // --- pacing bots to the table (#62, U38) --------------------------------
+
+  /**
+   * True once the table on its current connection has sent `pace`. A table that
+   * never does is never waited on, which is also what keeps every older client
+   * and every test that does not care about pacing exactly as it was.
+   */
+  private paced = false;
+  /** Whether the table has taken in the last update and is not mid-beat. */
+  private tableReady = true;
+
+  /** The table says a covering beat has started (`true`) or that it is idle (`false`). */
+  tablePace(holding: boolean): void {
+    this.paced = true;
+    this.tableReady = !holding;
+  }
+
+  /** Whether bots are being played one move at a time, to the table's beat. */
+  isPaced(): boolean {
+    return this.paced && this.tableConnection() !== null;
+  }
+
+  /** Whether a bot owes the next command and nothing but pacing is stopping it. */
+  botWaiting(): boolean {
+    if (!this.state || this.broken || this.phase !== 'playing') return false;
+    const seat = seatOnClock(this.state);
+    return seat !== null && this.seats.isBot(seat);
+  }
+
+  /**
+   * Play what the bots owe. `force` plays one move even though the table has not
+   * said it is ready — the cap the adapter enforces, so a table that goes quiet
+   * mid-beat costs the game a pause rather than the game.
+   */
+  async stepBots(force = false): Promise<Outbound[]> {
+    if (force) this.tableReady = true;
+    return this.runBots();
   }
 
   /** Restore the table's binding after a hibernation wake, from the connection's state. */
@@ -367,7 +408,10 @@ export class GameRoom {
 
   markDisconnected(connectionId: string): void {
     this.seats.disconnect(connectionId);
-    if (this.table?.connectionId === connectionId) this.table = { ...this.table, connectionId: null };
+    if (this.table?.connectionId === connectionId) {
+      this.table = { ...this.table, connectionId: null };
+      this.paced = false;
+    }
   }
 
   /** Start the game. Returns the initial per-seat updates, or an error. */
@@ -401,6 +445,8 @@ export class GameRoom {
     this.state = createGame(setupOptionsFor(this.config, this.seats.displayNames()));
     this.phase = 'playing';
     this.started = true;
+    // A paced table takes the deal in before a bot plays on it.
+    if (this.isPaced()) this.tableReady = false;
     // Before the updates go out, the same order the command log keeps: nothing
     // is observable until the fact that produced it is durable (KTD13, R7).
     await this.persistLobby();
@@ -495,6 +541,8 @@ export class GameRoom {
       return null;
     }
     this.state = nextState;
+    // Paced: the table has to take this update in before a bot plays on it.
+    if (this.isPaced()) this.tableReady = false;
     if (nextState.status === 'over') {
       this.phase = 'over';
       return this.seatUpdates(events, await this.endRecord());
@@ -519,6 +567,9 @@ export class GameRoom {
       }
       const seat = seatOnClock(this.state);
       if (seat === null || !this.seats.isBot(seat)) return out;
+      // Paced to the table (#62): one bot move per `ready`, and the adapter
+      // arms a cap so this can never become a stall.
+      if (this.isPaced() && !this.tableReady) return out;
       const policy = this.policies.get(seat)!;
       const choice = policy.chooseMove(this.state, seat, this.botRngState);
       if (!choice) return out;

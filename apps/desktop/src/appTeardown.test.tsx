@@ -46,6 +46,7 @@ async function fakeRoom(): Promise<OnlineGame> {
       connectionStatus: () => 'open' as const,
       seat: () => 0,
       token: () => 'tok',
+      isTable: () => false,
       start: noop,
     } as unknown as OnlineGame['transport'],
     disconnect,

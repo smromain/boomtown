@@ -54,6 +54,7 @@ export type {
   Eject,
   StartGame,
   SendCommand,
+  Pace,
   Welcome,
   TableWelcome,
   Waiting,

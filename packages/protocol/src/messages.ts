@@ -9,7 +9,7 @@ import type { WireError } from './errors.js';
  * switch on `type`.
  *
  * Client -> room: `hello`, `create-room`, `knock`, `admit`, `decline`,
- * `set-locked`, `start`, `command`.
+ * `set-locked`, `eject`, `start`, `command`, `pace`.
  * Room -> client: `welcome`, `table-welcome`, `waiting`, `room-state`, `update`,
  * `table-update`, `error`.
  */
@@ -22,7 +22,8 @@ export type ClientMessage =
   | SetLocked
   | Eject
   | StartGame
-  | SendCommand;
+  | SendCommand
+  | Pace;
 export type RoomMessage =
   | Welcome
   | TableWelcome
@@ -108,6 +109,19 @@ export interface StartGame {
 export interface SendCommand {
   readonly type: 'command';
   readonly command: Command;
+}
+
+/**
+ * Table only (#62): whether a beat is covering the shared screen. A couch table
+ * is a show, and the room plays bots inline — without this, three bot turns
+ * arrive in one burst and their beats queue up behind each other. Once a table
+ * has sent it, the room plays one bot move per `holding: false`, and never
+ * waits on a table longer than a fixed cap, so a table that goes quiet cannot
+ * stall the game.
+ */
+export interface Pace {
+  readonly type: 'pace';
+  readonly holding: boolean;
 }
 
 // --- room -> client -------------------------------------------------------

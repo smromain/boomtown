@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Board } from '../board/Board.js';
 import {
   GameClientProvider,
@@ -80,6 +80,7 @@ export function GameScreen({
             <ErrorToast />
             <BeatOrchestrator />
             <BotHold pause={game.pauseBots} />
+            {game.paceTable && <TablePace pace={game.paceTable} />}
           </BeatProvider>
         </ReferenceProvider>
       </HotSeatProvider>
@@ -109,6 +110,42 @@ function BotHold({ pause }: { pause: ((paused: boolean) => void) | undefined }) 
   }, [pause, held]);
   return null;
 }
+
+/**
+ * The couch table's side of room pacing (#62, U38). A room plays its bots
+ * inline, so without this a table would receive three bot turns in one burst
+ * and play their beats back to back, long after the moves were made.
+ *
+ * It answers every update the table takes in: `true` while a covering beat
+ * holds the screen, `false` once it is idle — which the room reads as "ready
+ * for the next bot move". Answered a moment after the log changes, so the beat
+ * queue has had its turn to pick up whatever the update carried. The room caps
+ * how long it waits, so a table that stops answering costs a pause, never the
+ * game.
+ */
+function TablePace({ pace }: { pace: (holding: boolean) => void }) {
+  const { active } = useActiveBeat();
+  const held = active != null && coversTheScreen(active);
+  const logLength = useGameState((state) => state.log.length);
+  const heldNow = useRef(held);
+  heldNow.current = held;
+  const lastSent = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const holding = heldNow.current;
+      // Holding is news once; idle is an answer to every update.
+      if (holding && lastSent.current === true) return;
+      lastSent.current = holding;
+      pace(holding);
+    }, TABLE_PACE_SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [held, logLength, pace]);
+  return null;
+}
+
+/** Long enough for the beat queue's effect to have run on a new update. */
+const TABLE_PACE_SETTLE_MS = 80;
 
 function PlayArea({
   config,

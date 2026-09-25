@@ -1,9 +1,12 @@
 import {
+  INDUSTRIES,
   classifyPlacement,
   legalMoves,
   viewFor,
   type GameState,
+  type Industry,
   type Seat,
+  type TableView,
   type TileId,
 } from '@boomtown/engine';
 import type { ClientViewDTO, HandTile, HandTileEffect } from '@boomtown/protocol';
@@ -36,4 +39,37 @@ export function handTileOf(state: GameState, tile: TileId): HandTile {
   const effect: HandTileEffect =
     kind === 'found-blocked' ? 'blocked' : kind === 'dead' ? 'dead' : kind;
   return { tile, effect, playable: effect !== 'dead' && effect !== 'blocked' };
+}
+
+/**
+ * The key the couch table's view is stored under (#62). Not a seat: no seat is
+ * negative, so nothing that indexes seats by it finds anything, and nothing that
+ * compares it with the seat on the clock ever matches.
+ */
+export const TABLE_READER: Seat = -1;
+
+const NO_HOLDINGS = Object.fromEntries(INDUSTRIES.map((i) => [i, 0])) as Record<Industry, number>;
+
+/**
+ * The couch table's view in the shape the desktop already renders a spectator
+ * from (#62). The desktop reads the public board out of `ClientView` everywhere,
+ * and with no local seat it never draws a hand, a prompt or a private panel —
+ * so the table fills the private fields with nothing, here at the transport
+ * edge, rather than every panel learning a second view type.
+ *
+ * This is safe in the direction that matters: the wire carried a `TableView`,
+ * which has no private field to fill these from. Empty is all they can be.
+ */
+export function tableClientView(view: TableView): ClientView {
+  const { decision: _decision, ...shared } = view;
+  return {
+    ...shared,
+    you: TABLE_READER,
+    yourHand: [],
+    yourCash: 0,
+    yourHoldings: NO_HOLDINGS,
+    pendingDecision: null,
+    legalMoves: [],
+    handTiles: [],
+  };
 }

@@ -140,6 +140,10 @@ export function parseClientMessage(raw: string | ArrayBuffer | ArrayBufferView):
       }
       return { ok: true, message: { type, seat } as ClientMessage };
     }
+    case 'pace': {
+      if (typeof parsed['holding'] !== 'boolean') return fail('pace: holding must be a boolean');
+      return { ok: true, message: { type, holding: parsed['holding'] } as ClientMessage };
+    }
     case 'set-locked': {
       if (typeof parsed['locked'] !== 'boolean') return fail('set-locked: locked must be a boolean');
       return { ok: true, message: { type, locked: parsed['locked'] } as ClientMessage };

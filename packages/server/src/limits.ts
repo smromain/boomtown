@@ -51,6 +51,14 @@ export const LIMITS = {
    * count; the rest of this is reconnect overlap and slack, not an audience.
    */
   maxConnections: 24,
+  /**
+   * The longest a paced couch table can hold a bot's next move (#62). Long
+   * enough for the slowest covering beat — the merger beat's full staged run is
+   * about 18s — and short enough that a table which stopped answering reads as
+   * a pause, not a hang. A move that does arrive mid-beat is not lost: the
+   * table queues its beat behind the one playing.
+   */
+  tableHoldMs: 20_000,
 } as const;
 
 /**

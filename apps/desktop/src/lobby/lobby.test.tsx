@@ -26,11 +26,12 @@ vi.mock('../online/onlineGame.js', async (importActual) => {
   return {
     ...actual,
     createRoom: vi.fn(),
+    createTable: vi.fn(),
     joinRoom: vi.fn(),
   };
 });
 
-const { createRoom, joinRoom } = await import('../online/onlineGame.js');
+const { createRoom, createTable, joinRoom } = await import('../online/onlineGame.js');
 const { resolveTicket } = await import('../online/hostUrl.js');
 
 beforeEach(() => {
@@ -338,6 +339,25 @@ await userEvent.click(
   });
 });
 
+describe('CreateJoin as a couch table (#62)', () => {
+  it('opens a table with no name to give and nothing to join', async () => {
+    const onRoom = vi.fn();
+    vi.mocked(createTable).mockResolvedValue({ roomCode: 'ABC123' } as OnlineGame);
+    render(<CreateJoin couch onRoom={onRoom} onBack={vi.fn()} />);
+    expect(screen.queryByLabelText('Your name')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Join with a code' })).toBeNull();
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Open the table' }));
+    });
+    expect(createTable).toHaveBeenCalledTimes(1);
+    expect(createRoom).not.toHaveBeenCalled();
+    const [, code, name] = vi.mocked(createTable).mock.calls[0]!;
+    expect(isRoomAddress(code)).toBe(true);
+    expect(name).toBe('Table');
+    expect(onRoom).toHaveBeenCalled();
+  });
+});
+
 describe('SeatList', () => {
   function fakeGame(
     overrides: Partial<OnlineGame> = {},
@@ -379,6 +399,7 @@ describe('SeatList', () => {
         },
         seat: () => 0,
         token: () => 'tok',
+        isTable: () => false,
         start,
       },
       client: {} as OnlineGame['client'],
@@ -515,6 +536,48 @@ describe('SeatList', () => {
     emitRoomState(lobbyState({ ticket: null }));
     expect(screen.getByText('code expired')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Copy the code' })).not.toBeInTheDocument();
+  });
+
+  describe('at a couch table (#62)', () => {
+    const tableState = (over: Partial<RoomState> = {}) =>
+      lobbyState({
+        ticket: 'ABCD1234',
+        hostSeat: null,
+        table: true,
+        seats: [
+          { index: 0, kind: 'human', name: 'Nadia', connected: true },
+          { index: 1, kind: 'open', name: null, connected: false },
+        ],
+        knocks: [{ id: 'k1', name: 'Quick Tycoon' }],
+        ...over,
+      });
+    const asTable = (game: OnlineGame) => {
+      (game.transport as { isTable: () => boolean }).isTable = () => true;
+      (game.transport as { seat: () => number | null }).seat = () => null;
+      return game;
+    };
+
+    it('shows a QR code for the phone page, the address to type, and phones in the seats', () => {
+      const { game } = fakeGame({}, tableState());
+      render(<SeatList game={asTable(game)} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+      expect(screen.getByRole('heading', { name: 'Take a seat' })).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'QR code for joining from a phone' })).toBeInTheDocument();
+      expect(screen.getByText('http://localhost:1999/phone/')).toBeInTheDocument();
+      expect(screen.getByText('phone')).toBeInTheDocument();
+      expect(screen.getByText(/is knocking from a phone/)).toBeInTheDocument();
+      // Nobody at the table is "you", and the table is never at the door.
+      expect(screen.queryByText(/\(you\)/)).toBeNull();
+      expect(screen.queryByText('Waiting for the host to let you in…')).toBeNull();
+    });
+
+    it('replaces the QR code in streaming mode, because the QR is the code', () => {
+      saveSettings({ ...DEFAULT_SETTINGS, streamingMode: true });
+      const { game } = fakeGame({}, tableState());
+      const { container } = render(<SeatList game={asTable(game)} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+      expect(screen.queryByRole('img', { name: 'QR code for joining from a phone' })).toBeNull();
+      expect(screen.getByText('Hidden while streaming')).toBeInTheDocument();
+      expect(container.textContent).not.toMatch(/ABCD|1234/);
+    });
   });
 
   describe('in streaming mode (#62)', () => {

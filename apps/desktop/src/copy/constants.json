@@ -13,6 +13,10 @@
       "name": "Play online",
       "note": "a room · a code to join"
     },
+    "couch": {
+      "name": "Couch game",
+      "note": "one screen · phones as hands"
+    },
     "settings": "Settings"
   },
   "online": {
@@ -47,6 +51,16 @@
     },
     "noHostConfigured": "No online host is configured. This release was built without VITE_PARTYKIT_HOST (apps/desktop/.env.production) — set an “Online host” in Settings to play online."
   },
+  "couch": {
+    "screenLabel": "Couch game",
+    "eyebrow": "couch game · this screen is the table",
+    "title": "Couch game",
+    "lede": "Everyone watches the board here and plays their hand on their own phone. Nobody’s tiles or money ever show on this screen.",
+    "tableName": "Table",
+    "tableNote": "People join from their phones and bring their own names. Set a seat to a bot to fill it now.",
+    "open": "Open the table",
+    "allBots": "Leave at least one seat for a phone. An all-bot table is a local game."
+  },
   "lobby": {
     "screenLabel": "Room lobby",
     "eyebrow": "waiting room",
@@ -76,7 +90,16 @@
     "copyCodeLabel": "Copy the code",
     "codeMasked": "••••-••••",
     "holdToShow": "Hold to show",
-    "holdToShowLabel": "Hold to show the room code"
+    "holdToShowLabel": "Hold to show the room code",
+    "table": {
+      "eyebrow": "couch game · the table",
+      "title": "Take a seat",
+      "lede": "Scan with your phone’s camera, or go to the address below and type the code.",
+      "qrLabel": "QR code for joining from a phone",
+      "qrMasked": "Hidden while streaming",
+      "knocking": "is knocking from a phone",
+      "phone": "phone"
+    }
   },
   "setup": {
     "screenLabel": "New game",

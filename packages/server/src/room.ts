@@ -33,6 +33,11 @@ export default class BoomtownRoom implements Party.Server {
   private readonly seatByConnection = new Map<string, Seat>();
   /** Per-connection rate limits and strike counts (`limits.ts`). */
   private readonly guards = new RoomGuards();
+  /**
+   * The cap on how long bots wait for a paced table (#62). A table mid-beat, or
+   * one that stopped answering, delays a bot move by at most this long.
+   */
+  private botTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(readonly room: Party.Room) {}
 
@@ -137,6 +142,9 @@ export default class BoomtownRoom implements Party.Server {
         const view = this.game.currentTableUpdate();
         if (view) this.sendTo(connection, view);
         this.broadcastRoomState();
+        // Anything parked for the old connection's pace plays now; the new
+        // one is waited on only once it asks to be.
+        await this.playBots();
         return;
       }
     }
@@ -378,6 +386,7 @@ export default class BoomtownRoom implements Party.Server {
         }
         this.dispatch(updates);
         this.broadcastRoomState();
+        this.armBotCap();
         return;
       }
 
@@ -407,6 +416,21 @@ export default class BoomtownRoom implements Party.Server {
         }
         roomLog(this.room.id, 'game started', { updates: result.updates.length });
         this.dispatch(result.updates);
+        this.armBotCap();
+        return;
+      }
+
+      case 'pace': {
+        if (!this.game || !this.isTableConnection(sender)) {
+          this.sendTo(sender, { type: 'error', error: protocolError('not-host', 'only the table sets the pace') });
+          return;
+        }
+        this.game.tablePace(message.holding);
+        if (message.holding) {
+          this.armBotCap();
+          return;
+        }
+        await this.playBots();
         return;
       }
 
@@ -436,21 +460,56 @@ export default class BoomtownRoom implements Party.Server {
         }
         const updates = await this.game.command(seat, message.command);
         this.dispatch(updates);
+        this.armBotCap();
         return;
       }
     }
   }
 
-  onClose(connection: Party.Connection): void {
+  async onClose(connection: Party.Connection): Promise<void> {
     roomLog(this.room.id, 'onClose', {
       connection: connection.id,
       seat: this.seatByConnection.get(connection.id) ?? null,
     });
+    const wasTable = this.game?.isTable(connection.id) ?? false;
     this.seatByConnection.delete(connection.id);
     this.guards.release(connection.id);
     this.game?.door.dropConnection(connection.id);
     this.game?.markDisconnected(connection.id);
     this.broadcastRoomState();
+    // A table that walks away mid-beat takes its pacing with it: the bots it
+    // was holding play on for the phones.
+    if (wasTable) await this.playBots();
+  }
+
+  // --- pacing bots to the table (#62, U38) --------------------------------
+
+  /** Play whatever the bots may play now, send it, and re-arm the cap. */
+  private async playBots(force = false): Promise<void> {
+    if (!this.game) return;
+    this.clearBotCap();
+    this.dispatch(await this.game.stepBots(force));
+    this.armBotCap();
+  }
+
+  /**
+   * While a paced table holds a bot back, make sure it is held for at most
+   * `LIMITS.tableHoldMs`. Re-armed on every pace and every move, so the cap is
+   * per wait, not per game.
+   */
+  private armBotCap(): void {
+    this.clearBotCap();
+    if (!this.game?.isPaced() || !this.game.botWaiting()) return;
+    this.botTimer = setTimeout(() => {
+      this.botTimer = null;
+      roomWarn(this.room.id, 'the table held a bot past the cap — playing on', { capMs: LIMITS.tableHoldMs });
+      void this.playBots(true);
+    }, LIMITS.tableHoldMs);
+  }
+
+  private clearBotCap(): void {
+    if (this.botTimer !== null) clearTimeout(this.botTimer);
+    this.botTimer = null;
   }
 
   // --- helpers --------------------------------------------------------

@@ -311,6 +311,111 @@ describe('GameRoom — bots inline', () => {
   });
 });
 
+describe('GameRoom — a couch table (#62)', () => {
+  const couch = () =>
+    new GameRoom('COUCH1', baseConfig({ seatCount: 3, edition: 'boomtown', visibility: 'hidden', bots: { 1: 6, 2: 6 }, seed: 9 }), new MemoryStore());
+
+  /** Play seat 0's turn through to the command that hands the clock to a bot. */
+  async function playToEndTurn(r: GameRoom, updates: import('@boomtown/server').Outbound[]) {
+    // The deal may put a bot first; a paced room holds it until told.
+    let forced = 0;
+    while (r.botWaiting() && forced++ < 50) updates = await r.stepBots(true);
+    const current = r.currentUpdateFor(0);
+    let view = current?.type === 'update' ? current.view : seatView(updates, 0);
+    let out: import('@boomtown/server').Outbound[] = [];
+    let safety = 0;
+    while (view.activeSeat === 0 && view.status === 'playing' && safety++ < 20) {
+      const moves = view.legalMoves;
+      const next =
+        moves.find((m) => m.type === 'place-tile') ??
+        moves.find((m) => m.type === 'end-turn') ??
+        moves.find((m) => m.type === 'buy-shares' && Object.keys(m.picks).length === 0) ??
+        moves[0]!;
+      out = await r.command(0, next);
+      view = seatView(out, 0);
+    }
+    return out;
+  }
+
+  const tableMoves = (updates: import('@boomtown/server').Outbound[]) =>
+    updates.filter((u) => u.kind === 'to-table' && u.message.type === 'table-update').length;
+
+  it('hosts without a seat and is sent the public view', async () => {
+    const r = couch();
+    const token = await r.becomeTable('table-conn');
+    expect(token).toMatch(/^[0-9a-f]{64}$/);
+    expect(r.roomState().hostSeat).toBeNull();
+    expect(r.roomState().table).toBe(true);
+    r.join('Ana', 't1', 'c1');
+    const started = await r.start();
+    if ('error' in started) throw new Error('start');
+    const first = started.updates.find((u) => u.kind === 'to-table');
+    if (first?.kind !== 'to-table' || first.message.type !== 'table-update') throw new Error('no table update');
+    expect(first.message.view).not.toHaveProperty('yourHand');
+    expect(first.message.view.seats.every((seat) => seat.cash === null)).toBe(true);
+  });
+
+  it('takes the table back only by its token, and rotates it', async () => {
+    const r = couch();
+    const token = await r.becomeTable('table-conn');
+    r.markDisconnected('table-conn');
+    expect(r.reconnectTable('not-the-token', 'x')).toBeNull();
+    const rotated = r.reconnectTable(token, 'table-2');
+    expect(rotated).not.toBeNull();
+    expect(rotated).not.toBe(token);
+    expect(r.isTable('table-2')).toBe(true);
+    expect(r.reconnectTable(token, 'table-3')).toBeNull();
+  });
+
+  it('plays bots inline for a table that never asked to be paced', async () => {
+    const r = couch();
+    await r.becomeTable('table-conn');
+    r.join('Ana', 't1', 'c1');
+    const started = await r.start();
+    if ('error' in started) throw new Error('start');
+    await playToEndTurn(r, started.updates);
+    expect(r.botWaiting()).toBe(false);
+  });
+
+  it('plays one bot move per ready once the table paces, and the cap forces one', async () => {
+    const r = couch();
+    await r.becomeTable('table-conn');
+    r.tablePace(false);
+    r.join('Ana', 't1', 'c1');
+    const started = await r.start();
+    if ('error' in started) throw new Error('start');
+    const handed = await playToEndTurn(r, started.updates);
+    // The human's end-turn went out; the bot behind it waits for the table.
+    expect(tableMoves(handed)).toBe(1);
+    expect(r.botWaiting()).toBe(true);
+
+    // Not ready yet: nothing plays.
+    expect(tableMoves(await r.stepBots())).toBe(0);
+    // Ready: exactly one move.
+    r.tablePace(false);
+    expect(tableMoves(await r.stepBots())).toBe(1);
+    // Mid-beat, the cap forces exactly one more.
+    r.tablePace(true);
+    expect(tableMoves(await r.stepBots())).toBe(0);
+    expect(tableMoves(await r.stepBots(true))).toBe(1);
+  });
+
+  it('stops pacing when the table goes away, so the phones play on', async () => {
+    const r = couch();
+    await r.becomeTable('table-conn');
+    r.tablePace(false);
+    r.join('Ana', 't1', 'c1');
+    const started = await r.start();
+    if ('error' in started) throw new Error('start');
+    await playToEndTurn(r, started.updates);
+    expect(r.botWaiting()).toBe(true);
+    r.markDisconnected('table-conn');
+    expect(r.isPaced()).toBe(false);
+    await r.stepBots();
+    expect(r.botWaiting()).toBe(false);
+  });
+});
+
 // --- helpers ---
 function seatView(updates: import('@boomtown/server').Outbound[], seat: number) {
   const v = seatViewMaybe(updates, seat);

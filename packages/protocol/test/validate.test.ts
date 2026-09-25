@@ -21,6 +21,7 @@ describe('what gets through', () => {
       { type: 'admit', knockId: 'a1b2c3d4' },
       { type: 'decline', knockId: 'a1b2c3d4' },
       { type: 'set-locked', locked: true },
+      { type: 'pace', holding: true },
       { type: 'start' },
       { type: 'command', command: { type: 'place-tile', tile: '1A' } },
     ];
@@ -55,6 +56,11 @@ describe('what does not', () => {
   it('refuses a frame over the size cap without parsing it', () => {
     const huge = frame({ type: 'command', command: { type: 'x', pad: 'a'.repeat(MAX_MESSAGE_BYTES) } });
     expect(refused(huge)?.code).toBe('message-too-large');
+  });
+
+  it('refuses a pace that does not say whether it is holding', () => {
+    expect(refused(frame({ type: 'pace' }))?.code).toBe('malformed-message');
+    expect(refused(frame({ type: 'pace', holding: 1 }))?.code).toBe('malformed-message');
   });
 
   it('refuses a table flag that is not a boolean', () => {

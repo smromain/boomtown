@@ -179,3 +179,53 @@ describe('socketTransport', () => {
     }
   });
 });
+
+describe('socketTransport as a couch table (#62)', () => {
+  it('creates the room as a table, holds no seat, and keeps the table token', async () => {
+    const transport = socketTransport({
+      host: 'localhost:1999',
+      room: 'ROOM01',
+      name: 'Table',
+      intent: { kind: 'table', config },
+    });
+    const connect = transport.connect();
+    const socket = FakeSocket.last!;
+    socket.emit('open');
+    socket.deliver({ type: 'table-welcome', token: 'table-tok' });
+    await connect;
+    expect(JSON.parse(socket.sent[0]!)).toEqual({ type: 'create-room', config, table: true });
+    expect(transport.isTable()).toBe(true);
+    expect(transport.seat()).toBeNull();
+    expect(transport.token()).toBe('table-tok');
+
+    transport.pace(true);
+    expect(JSON.parse(socket.sent.at(-1)!)).toEqual({ type: 'pace', holding: true });
+  });
+
+  it('hands the public view on as a spectator view keyed by no seat', async () => {
+    const { createGame, tableView } = await import('@boomtown/engine');
+    const { TABLE_READER } = await import('@boomtown/client-core');
+    const transport = socketTransport({
+      host: 'localhost:1999',
+      room: 'ROOM01',
+      name: 'Table',
+      intent: { kind: 'table', config },
+    });
+    const received: import('@boomtown/client-core').TransportMessage[] = [];
+    transport.onMessage((m) => received.push(m));
+    const connect = transport.connect();
+    const socket = FakeSocket.last!;
+    socket.emit('open');
+    socket.deliver({ type: 'table-welcome', token: 'table-tok' });
+    await connect;
+
+    const game = createGame({ seats: [{ name: 'A' }, { name: 'B' }, { name: 'C' }], seed: 3 });
+    socket.deliver({ type: 'table-update', view: tableView(game), events: [] });
+    const view = received[0]!.views[TABLE_READER]!;
+    expect(view.you).toBe(TABLE_READER);
+    expect(view.yourHand).toEqual([]);
+    expect(view.legalMoves).toEqual([]);
+    expect(view.pendingDecision).toBeNull();
+    expect(view.seats.map((s) => s.name)).toEqual(['A', 'B', 'C']);
+  });
+});

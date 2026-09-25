@@ -9,6 +9,8 @@ import { copyText } from '../ui/clipboard.js';
 import { copy } from '../copy/copy.js';
 import { loadSettings } from '../settings/settings.js';
 import { useHoldToReveal } from './useHoldToReveal.js';
+import { QrCode } from './QrCode.js';
+import { phoneUrl } from '../online/hostUrl.js';
 import form from '../setup/form.module.css';
 import styles from './lobby.module.css';
 
@@ -93,8 +95,11 @@ export function SeatList({
    * until the first room-state landed, which is a flicker bought for no safety.
    */
   const isHost = game.isHost;
+  // A couch table (#62) hosts without a seat: it is never at the door, and
+  // every human seat in its room is somebody's phone.
+  const table = game.transport.isTable();
   // Connected, no seat, and the room has not refused us: we are at the door.
-  const waiting = mySeat === null && !lobbyError;
+  const waiting = mySeat === null && !lobbyError && !table;
 
   useEffect(() => {
     netlog.log('lobby', 'note', 'lobby render', {
@@ -113,21 +118,34 @@ export function SeatList({
       <section className={form.screen} aria-label={copy.lobby.screenLabel}>
         <header className={form.head}>
           <div>
-            <span className={`kicker ${form.eyebrow}`}>{copy.lobby.eyebrow}</span>
-            <h1 className={form.title}>{copy.lobby.title}</h1>
-            <p className={form.lede}>{copy.lobby.lede}</p>
+            <span className={`kicker ${form.eyebrow}`}>{table ? copy.lobby.table.eyebrow : copy.lobby.eyebrow}</span>
+            <h1 className={form.title}>{table ? copy.lobby.table.title : copy.lobby.title}</h1>
+            <p className={form.lede}>{table ? copy.lobby.table.lede : copy.lobby.lede}</p>
           </div>
           {/* The shareable ticket, not the room's address — the address is 32
               characters of entropy nobody reads out, and it is already in the
               URL this client connected to. A retired or expired ticket shows
               as nothing rather than as a code that no longer works. */}
           <div className={styles.codeBlock}>
+            {/* At a couch table the QR is the way in, and it *is* the code: a
+                stream that shows it has shared it, so streaming mode replaces
+                it exactly as it replaces the characters. */}
+            {table && ticket && (
+              masked ? (
+                <div className={styles.qrMasked}>{copy.lobby.table.qrMasked}</div>
+              ) : (
+                <div className={styles.qr}>
+                  <QrCode text={phoneUrl(ticket)} label={copy.lobby.table.qrLabel} />
+                </div>
+              )
+            )}
             {/* Masked means the characters are replaced, not blurred: a blur
                 leaves the code in the DOM and in the capture, and a light one
                 on eight characters is not much of a barrier. */}
             <span className={styles.code} aria-label={copy.lobby.roomCode}>
               {!ticket ? copy.lobby.ticketExpired : masked ? copy.lobby.codeMasked : formatTicket(ticket)}
             </span>
+            {table && ticket && <span className={styles.phoneAddress}>{phoneUrl()}</span>}
             {ticket && (
               <div className={styles.codeActions}>
                 {/* Copy works masked — that is the point. The clipboard is how
@@ -166,7 +184,9 @@ export function SeatList({
                   {seat.name ?? copy.lobby.openSeat}
                   {seat.index === mySeat ? copy.lobby.youSuffix : ''}
                 </span>
-                <span className={styles.kind}>{seat.kind}</span>
+                <span className={styles.kind}>
+                  {table && seat.kind === 'human' ? copy.lobby.table.phone : seat.kind}
+                </span>
                 {/* The host can hand a seat to a bot — never reopen it, which
                     would let whoever knocks next inherit those holdings. */}
                 {isHost && seat.kind === 'human' && seat.index !== mySeat && (
@@ -191,7 +211,10 @@ export function SeatList({
               <ol className={styles.seats}>
                 {knocks.map((knock) => (
                   <li key={knock.id} className={styles.seatRow}>
-                    <span>{knock.name}</span>
+                    <span>
+                      {knock.name}
+                      {table && <span className={styles.hint}> {copy.lobby.table.knocking}</span>}
+                    </span>
                     <span className={styles.doorActions}>
                       <Button
                         variant="primary"

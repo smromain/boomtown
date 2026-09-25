@@ -666,6 +666,62 @@ describe('PartyKit room — a couch table (#62)', () => {
     }
   }, 30_000);
 
+  it('holds each bot move for a table that paces, one per ready (U38)', async () => {
+    const { room, table } = await openTable();
+    const ana = client(room, { name: 'Ana' });
+    await ana.open;
+    await admit(table, ana);
+    table.send({ type: 'pace', holding: false });
+    table.send({ type: 'start' });
+
+    const tableUpdates = () => table.seen.filter((m) => m.type === 'table-update').length;
+    const quiet = () => new Promise((r) => setTimeout(r, 400));
+    let pacedBotMoves = 0;
+    let anaView = (await ana.next('update')) as UpdateOf;
+    for (let round = 0; round < 60 && pacedBotMoves < 4; round += 1) {
+      const botOnClock = anaView.view.activeSeat !== 0 && !anaView.view.pendingDecision;
+      if (!botOnClock) {
+        if (anaView.view.status !== 'playing') break;
+        ana.send({ type: 'command', command: pickHumanMove(anaView.view) });
+        anaView = (await ana.next('update', 8000)) as UpdateOf;
+        continue;
+      }
+      // A bot owes a move. Let the frame that handed it the clock reach the
+      // table too, then: without a ready from the table, nothing arrives.
+      await quiet();
+      const before = tableUpdates();
+      await quiet();
+      expect(tableUpdates()).toBe(before);
+      table.send({ type: 'pace', holding: false });
+      anaView = (await ana.next('update', 8000)) as UpdateOf;
+      await quiet();
+      // One ready, one move.
+      expect(tableUpdates()).toBe(before + 1);
+      pacedBotMoves += 1;
+    }
+    expect(pacedBotMoves).toBe(4);
+  }, 60_000);
+
+  it('stops holding bots the moment the table goes away', async () => {
+    const { room, table } = await openTable();
+    const ana = client(room, { name: 'Ana' });
+    await ana.open;
+    await admit(table, ana);
+    table.send({ type: 'pace', holding: true });
+    table.send({ type: 'start' });
+    await table.next('table-update');
+    table.close();
+
+    // With the table gone the bots play inline again, so Ana's turn comes
+    // round without anyone sending a ready.
+    let view = (await ana.next('update')) as UpdateOf;
+    let safety = 0;
+    while (view.view.activeSeat !== 0 && safety++ < 40) {
+      view = (await ana.next('update', 3000)) as UpdateOf;
+    }
+    expect(view.view.activeSeat).toBe(0);
+  }, 30_000);
+
   it('takes the table back by token, and the old token stops working', async () => {
     const { room, table, token } = await openTable();
     const ana = client(room, { name: 'Ana' });

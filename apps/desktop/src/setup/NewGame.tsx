@@ -34,6 +34,12 @@ export interface StartedGame {
    *  isn't buried under moves nobody has watched. Absent when the table has no
    *  bots. */
   pauseBots?: (paused: boolean) => void;
+  /**
+   * A couch table only (#62): tells the room a covering beat has started
+   * (`true`) or that the table has taken in the last update and is idle
+   * (`false`). The room's bots wait on it, the way `pauseBots` holds local ones.
+   */
+  paceTable?: (holding: boolean) => void;
   /** The authoritative state, for dev diagnostics. Local games only. */
   snapshot?: () => GameState;
 }
