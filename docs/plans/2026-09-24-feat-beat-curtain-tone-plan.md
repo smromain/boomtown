@@ -1,8 +1,11 @@
 # The beat curtain takes the table's tone (#64)
 
 **Status:** design for review. Nothing here is built.
-**Scope:** reading **A** of the issue (a light curtain for the light app), built so that reading **B**
-(a dark mode) later costs no beat work at all. B stays its own issue.
+**Scope (revised 2026-09-25):** the curtain takes the tone of the app, and the app gets a **day/night
+setting** on the same pattern as the Skyline board's lighting switch
+(`docs/plans/2026-09-24-feat-skyline-board-plan.md`, *The switch*). Day curtain is cream; night curtain
+is ink. Steps 1 and 2 are the issue's reading **A**; Step 3 is reading **B**, which Steve has now asked
+for, following the 3D board's pattern.
 
 ## The finding that changes the size of A
 
@@ -80,6 +83,42 @@ because a black shadow on cream reads as dirt.
 The curtain stops *being* chrome and becomes the ground. `TurnHandoff` already sits on `--bg` and
 is untouched, so hot-seat privacy is not in play.
 
+## Step 3: a day/night setting for the whole app, on the Skyline board's pattern
+
+The Skyline board plan settled how this app offers a day and a night look (decided 2026-09-25):
+`skylineLighting: 'day' | 'night'` on `Settings`, under *This machine*, a preference about this screen
+that never travels to the room, implemented as **one uniform switch** over a shared palette rather than
+a second code path. This follows it exactly, one level up.
+
+- **The setting:** `lighting: 'day' | 'night'` on `Settings`, under *This machine*, beside the volumes.
+  `loadSettings` merges stored over defaults, so the new key needs no migration. Never a table rule,
+  never on the wire; online opponents each pick their own.
+- **One setting, not two.** The Skyline board's `skylineLighting` should become this key rather than a
+  second day/night switch beside it. Two switches would allow a night board on a day table, which is
+  the same jolt this issue exists to remove, moved from the curtain to the board edge. The 3D thread
+  owns that setting, so this is a proposal to it, not a change made from here.
+- **The mechanism:** the app shell sets `data-lighting="night"` on `<html>`, and `global.css` gains one
+  `:root[data-lighting="night"]` block that redefines the ground tokens (`--bg`, `--surface*`, `--ink`,
+  `--muted`, `--rule`, `--input`, the board set, `--elev-1/2/3`, `--grain`) and `color-scheme: dark`.
+  Because Step 1 derived the beat tokens from those, the curtain needs no night code of its own: at
+  night it is dark again, close to today's ink curtain, and still the same tone as the table.
+- **Night beat values** are Step 1's column, which is today's curtain, so night is where the existing
+  artboards stay true. `--beat-accent` is the only token whose value differs by more than the ground:
+  the ember `#d98a4e` at night, `--accent` by day. That settles what was decision 2.
+- **Default: day.** It is the app everyone has today, and it keeps a merged Step 3 from changing
+  anyone's screen until they ask. The Skyline board defaults to night; if the two settings merge into
+  one, the defaults have to agree, which is decision 1 below.
+- **No in-game toggle.** The header's single icon stays the Flat/Skyline switch, as the Skyline plan
+  has it. Lighting lives in Settings only.
+- **No `prefers-color-scheme` yet.** Following the OS would be a third value (`'system'`) and is cheap
+  to add later; the Skyline pattern has two values, so this starts with two.
+
+What Step 3 still has to do is the issue's list for B, unchanged: the board tokens, a dark elevation
+scale (the top-lit inset highlight has to go), `--grain`, the modal scrim, and a contrast check of the
+seven industry `ink` pairs in `packages/engine/src/pool.ts` against the night ground. The launch
+skyline already has both tones (`Skyline.tsx`'s `tone`), and `assets/night` is already the night art.
+`TurnHandoff`'s card sits on `--bg`, so it goes dark at night and stays fully opaque in both.
+
 ## Also soften the cut, but as polish, not the fix
 
 The issue suggests trying a gentler transition before any colour work. I would do both, with the
@@ -93,34 +132,33 @@ black, which is the harshest version of the bug; the light curtain fixes that ca
 
 Per `CLAUDE.md`, the canvas is the source of truth, so this ships with:
 
-- `design/build.py`: the three peak-frame artboards (`:1730`, `:1792`, `:1809`) redrawn on the
-  cream ground, and their notes changed from "ink curtain" to "cream curtain, ink top rule". Re-read
+- `design/build.py`: the three peak-frame artboards (`:1730`, `:1792`, `:1809`) stay as the night
+  frames, and each gains a day twin on the cream ground; the notes change from "ink curtain" to
+  "the curtain takes the table's tone". Step 3 also needs a night version of the table artboards,
+  or at least one, to hold the night token values. Re-read
   the published canvas and diff its visible text first, per the usual rule, then regenerate and
   republish at the same URL.
 - `beats.module.css`'s header comment (currently "the same ink curtain the header/launch screen use
   (KTD1)").
 - `docs/decisions.md:60`: "Five drop an opaque curtain" stays true; add that the curtain is the
-  ground, not chrome, and why (#64).
+  ground, not chrome, and why (#64), plus a row for the `lighting` setting and its default.
 
 ## Verification
 
 - Step 1: `run-app` screenshots of all five curtain beats before and after, which should match.
 - Step 2: `run-app` through a merger (including a three-way), a founding, a motion, the endgame and
   the victory beat over the after-game carousel, with and without `prefers-reduced-motion`.
+- Step 3: the same run in each lighting, plus a hot-seat hand-off at night (the card must be opaque),
+  the lobby and settings screens, and the Skyline board if it has landed.
 - `npm run typecheck`, `npm run lint`, `npm test`. `beats.test.tsx` and `VictoryBeat.test.tsx`
   should need no changes, because nothing in them asserts a colour.
 
-## What this leaves for B (dark mode)
-
-Unchanged from the issue's list: the `:root` and board tokens, a dark elevation scale, `--grain`,
-the industry `ink` pairs in `packages/engine/src/pool.ts`, a second skyline tone from
-`make_skyline.py`, and the modal scrim. The beats come off that list. I'd file B as its own issue
-once A is merged.
-
 ## Decisions for Steve
 
-1. **Cream curtain for everyone, or a setting?** Recommended: for everyone. A curtain-tone setting
-   is a small dark mode, and B should be the real one.
-2. **Accent on cream:** the ember `#d98a4e` fails contrast on cream, so the kicker and winner line
-   take `--accent` (the brick red). The other option is a darker ember of our own, a new colour
-   the language doesn't have yet. Recommended: `--accent`.
+1. **Which default, day or night?** Recommended: day for the app, with the Skyline board reading the
+   same setting, so a new player sees today's app and turning on Skyline gives a day skyline until
+   they pick night. The alternative is night for both, which matches the Skyline thread's choice but
+   changes every existing player's screen when this ships.
+2. ~~**Accent on cream?**~~ Settled by Step 3: `--accent` by day, the ember at night.
+3. ~~**Cream curtain for everyone, or a setting?**~~ Settled by Steve 2026-09-25: the curtain follows
+   the app's day/night setting.
