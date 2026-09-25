@@ -179,6 +179,9 @@ takes turns looking at the same screen. Three options were weighed:
 
 ## Couch mode
 
+The technical plan, with units and decisions, is
+[`2026-09-25-feat-couch-mode-plan.md`](2026-09-25-feat-couch-mode-plan.md).
+
 > **The desktop app becomes the table: a board everyone watches, on a TV or a stream. Each player
 > holds their hand on their own phone.** Nobody's private information is ever on the shared screen,
 > so there is no hand-off card and nothing to cover.
