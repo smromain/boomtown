@@ -274,6 +274,8 @@
 }
 
 .boardSlot {
+  /* Positioned for Skyline's fallback notice, which sits over its corner. */
+  position: relative;
   flex: 1;
   min-height: 0;
   min-width: 0;

@@ -197,6 +197,14 @@
     "loggingNote": "Ctrl/Cmd+Shift+L reads the log back.",
     "on": "On",
     "off": "Off",
+    "boardStyle": "Board",
+    "boardView": "Board View",
+    "skyline": "Skyline",
+    "boardStyleNote": "Skyline raises a tower for every chain. It wants a graphics card that can keep up.",
+    "boardTrouble": "This machine couldn't draw Skyline this session, so the game is showing Board View.",
+    "skylineLighting": "Skyline lighting",
+    "day": "Day",
+    "night": "Night",
     "musicCredits": "Music credits",
     "buildLabel": "This build",
     "buildVersion": "v{version} · released {date}",
@@ -367,6 +375,8 @@
     "nextTrack": "Next track",
     "muteMusic": "Mute music — {track}",
     "unmuteMusic": "Unmute music — {track}",
+    "toSkyline": "Switch to Skyline",
+    "toBoardView": "Switch to Board View",
     "turn": "Turn",
     "reference": "Reference",
     "rules": "Rules",
@@ -784,7 +794,22 @@
   },
   "board": {
     "label": "Board",
-    "placeAt": "Place at {tile}"
+    "placeAt": "Place at {tile}",
+    "skyline": {
+      "turnLeft": "Turn the board left",
+      "turnRight": "Turn the board right",
+      "resetView": "Reset the view",
+      "toDay": "Switch to day",
+      "toNight": "Switch to night",
+      "dismiss": "Dismiss",
+      "trouble": {
+        "no-webgl": "Your graphics card declined to finance the skyline. Board View it is.",
+        "software": "This machine draws 3D on the CPU, which is how skylines go bankrupt. Board View it is.",
+        "slow": "The skyline was running at the speed of a zoning committee, so it's Board View for now.",
+        "lost": "The skyline lost its graphics context mid-deal. Board View has taken over the lease.",
+        "failed": "The skyline failed to break ground. Board View it is."
+      }
+    }
   },
   "netlog": {
     "label": "Online play log",

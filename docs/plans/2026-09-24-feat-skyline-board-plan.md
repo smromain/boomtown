@@ -4,7 +4,7 @@ type: feat
 date: 2026-09-24
 topic: skyline-board
 issue: 70
-artifact_readiness: design-for-review
+artifact_readiness: implemented
 execution: code
 ---
 
@@ -15,7 +15,7 @@ beside the CSS board rather than instead of it. Steve's comment on the issue set
 to do: **3D buildings that grow with company size**, and **a switch available in the game as well as in
 Settings**.
 
-This plan is the design. Nothing here is built yet. A clickable sketch of the look and of the overlay
+This plan is the design, and it is now built (see `docs/decisions.md`, *Board rendering*). Where the build departed from it: Skyline has no design-canvas artboard (the decision records the option as outside the canvas), and a software renderer is detected by name as well as by `failIfMajorPerformanceCaveat`, which headless Chromium ignores. Not built yet: the industry glyph as a roof decal, and the dust puff on a demolition (the tower sinks without one). A clickable sketch of the look and of the overlay
 trick lives at https://claude.ai/artifact/UHDu3csUWzzckrERKqgdKS (plain three.js, made-up table, real
 company colours).
 
@@ -33,7 +33,7 @@ default is the **Flat** board (it isn't flat, but it is the one without building
 
 ## What each cell looks like
 
-| Cell | Flat board (today) | Skyline board |
+| Cell | Board View (today) | Skyline board |
 |---|---|---|
 | empty | paper tile with its coordinate | bare lot, coordinate painted on the ground |
 | unincorporated | grey tile | a construction pad: slab and a crane-yellow hoarding, one storey |
@@ -82,7 +82,7 @@ what tests, the `run-app` driver and screen readers stand on. The Skyline board 
 live**, not as a hidden mirror.
 
 **Why that is cheap here.** The camera is orthographic. An orthographic projection maps the ground plane
-to the screen by a 2D affine transform, so the same DOM grid the Flat board renders can be laid over the
+to the screen by a 2D affine transform, so the same DOM grid the Board View renders can be laid over the
 canvas with one CSS `matrix()` that puts every cell exactly on its lot. Clicks, hover, keyboard focus and
 the accessible tree then come from the real DOM, with no raycasting at all. The canvas is
 `pointer-events: none` and `aria-hidden`; the grid's cells go transparent and the canvas draws their
@@ -157,14 +157,14 @@ covering beat is up. The table idles at zero GPU.
 
 ## The switch
 
-- **Setting:** `boardStyle: 'flat' | 'skyline'` on `Settings`, default `'flat'`. `loadSettings` merges
+- **Setting:** `boardStyle: 'board-view' | 'skyline'` on `Settings`, default `'board-view'`. `loadSettings` merges
   stored over defaults, so an added key needs no migration and no version bump.
-- **Lighting (decided 2026-09-25: both):** `skylineLighting: 'day' | 'night'`, default `'night'`. Day is
-  the paper palette the Flat board uses; night is a dark board with lit windows that matches the launch
+- **Lighting (decided 2026-09-25: both):** `skylineLighting: 'day' | 'night'`, default `'day'`. Day is
+  the paper palette Board View uses; night is a dark board with lit windows that matches the launch
   screen's skyline (`assets/night`). It is one uniform switch in the scene (background, two lights, the
   ground palette and the windows' emissive intensity), not a second renderer, so the cost is a second
   look to keep polished rather than a second code path. It sits beside `boardStyle` in Settings and
-  shows only when Skyline is selected; the in-game toggle stays the single Flat/Skyline switch.
+  shows only when Skyline is selected; the in-game toggle stays the single Board View/Skyline switch.
 - **In Settings:** under *This machine*, beside the volumes. It is a preference about this screen, never a
   table rule, so it never travels to the room and online opponents can each pick their own.
 - **In the game:** a small icon toggle in the Header's brand region, next to the speaker, for the same
@@ -175,16 +175,16 @@ covering beat is up. The table idles at zero GPU.
 
 The option must never cost anyone the board.
 
-1. **No WebGL2** (context creation fails): Flat board, once-per-session notice.
+1. **No WebGL2** (context creation fails): Board View, once-per-session notice.
 2. **Software renderer:** create the context with `failIfMajorPerformanceCaveat: true`; if that fails,
    same as above.
-3. **Slow machine:** time the first animated frames; if the median is over ~50 ms, drop to Flat.
-4. **Context lost** mid-game, or the chunk fails to load: drop to Flat on the spot. The DOM grid never
+3. **Slow machine:** time the first animated frames; if the median is over ~50 ms, drop to Board View.
+4. **Context lost** mid-game, or the chunk fails to load: drop to Board View on the spot. The DOM grid never
    went away, so the player loses nothing but the buildings.
 
 The stored setting stays `'skyline'` (it is a preference, not a verdict), and Settings shows a line saying
 this machine couldn't run it. Copy in the house voice, e.g. *"Your graphics card declined to finance the
-skyline. Flat board it is."*
+skyline. Board View it is."*
 
 **The automated harness trips rule 2.** Headless Chromium runs SwiftShader, which is exactly a software
 renderer. The `run-app` driver therefore needs a force flag (`?board=skyline&forceSkyline=1` in the
@@ -194,12 +194,12 @@ browser build) so it can actually exercise the Skyline path, and the skill shoul
 
 Panels, modals, beats, the hand-off card and the merger decisions are all DOM and unchanged. The canvas
 sits inside `.boardSlot` in normal flow, below every overlay, with no z-index of its own, so the curtain
-covers it the way it covers the Flat board. Hot-seat privacy is unaffected: the board is public state,
-and the Skyline reads the same `spectating`-aware view the Flat board does.
+covers it the way it covers the Board View. Hot-seat privacy is unaffected: the board is public state,
+and the Skyline reads the same `spectating`-aware view the Board View does.
 
 ## Tests
 
-- `board.test.tsx` runs under `describe.each(['flat', 'skyline'])`. jsdom has no WebGL, so under
+- `board.test.tsx` runs under `describe.each(['board-view', 'skyline'])`. jsdom has no WebGL, so under
   `'skyline'` the scene module is mocked and the test asserts against the DOM grid in overlay mode, which
   is exactly the contract. Same roles, same labels, same clicks.
 - `skylineModel.test.ts`: height per band at both editions' cuts, crown at `safe`, lineage stripes in
@@ -233,7 +233,7 @@ and the Skyline reads the same `spectating`-aware view the Flat board does.
 
 ## Build order
 
-1. Extract `boardModel.ts` and `BoardGrid.tsx`; Flat board unchanged, all tests green. (Mergeable alone.)
+1. Extract `boardModel.ts` and `BoardGrid.tsx`; Board View unchanged, all tests green. (Mergeable alone.)
 2. `boardStyle` and `skylineLighting` settings and both switches, wired to a placeholder painter.
 3. `skylineModel.ts` with tests.
 4. `scene.ts`: static skyline, overlay matrix, free rotation with drag/click separation, quarter-turn and reset buttons, fallback.
@@ -243,5 +243,5 @@ and the Skyline reads the same `spectating`-aware view the Flat board does.
 ## Open questions for Steve
 
 1. ~~**Height by size band or by share price?**~~ Decided 2026-09-25: chain size.
-2. ~~**Day or night?**~~ Decided 2026-09-25: both, as a setting, defaulting to night. See *The switch*.
-3. **Name.** *Skyline* and *Flat* are working names for the switch.
+2. ~~**Day or night?**~~ Decided 2026-09-25: both, as a setting, defaulting to day, with a one-click sun/moon toggle on the board itself. See *The switch*.
+3. ~~**Name.**~~ Decided 2026-09-25: **Skyline** and **Board View**.

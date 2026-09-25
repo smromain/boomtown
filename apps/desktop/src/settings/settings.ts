@@ -45,6 +45,15 @@ export interface Settings {
    */
   readonly playerName: string;
   /**
+   * Which painter draws the board (#70): Board View, the tilted paper grid, or
+   * Skyline, the WebGL city where every chain is a district. A preference about
+   * this screen rather than a rule of the table, so it never reaches the room
+   * and two players at one online game can each pick their own.
+   */
+  readonly boardStyle: 'board-view' | 'skyline';
+  /** Skyline's lighting. Board View has none of its own to choose. */
+  readonly skylineLighting: 'day' | 'night';
+  /**
    * Schema version of the stored blob. Absent on anything written before
    * migrations existed; see `migrate`.
    */
@@ -68,6 +77,8 @@ export const DEFAULT_SETTINGS: Settings = {
   musicMuted: false,
   musicTrack: 'pleasant-creek',
   playerName: '',
+  boardStyle: 'board-view',
+  skylineLighting: 'day',
   version: SETTINGS_VERSION,
 };
 

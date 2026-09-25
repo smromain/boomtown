@@ -237,3 +237,125 @@
   opacity: 0.85;
   letter-spacing: 0.05em;
 }
+
+/* ---------------------------------------------------------------- Skyline (#70)
+   The WebGL city fills the slot; the ordinary grid lies over it, transparent,
+   pinned to the ground by the transform the scene writes after every frame. */
+
+.skyline {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 14px;
+  cursor: grab;
+  /* A drag is a camera move, never a page scroll or a text selection. */
+  touch-action: none;
+  user-select: none;
+}
+
+.skyline[data-dragging='true'],
+.skyline[data-dragging='true'] .overlayCell {
+  cursor: grabbing;
+}
+
+.skylineCanvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.skylineCanvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.overlayGrid {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  transform-origin: 0 0;
+}
+
+.overlayCell {
+  all: unset;
+  box-sizing: border-box;
+  display: block;
+}
+
+.overlayCell[data-kind='playable']:not(:disabled) {
+  cursor: pointer;
+}
+
+/* The canvas draws the focus ring on the lot, but a keyboard user gets the
+   DOM's own too; it rides the same transform, so it sits on the lot as well. */
+.overlayCell:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.skylineControls {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 6px;
+}
+
+.skylineButton {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(28, 25, 23, 0.72);
+  color: #fff;
+  cursor: pointer;
+}
+
+.skylineButton:hover {
+  background: rgba(28, 25, 23, 0.88);
+}
+
+/* On the night board a dark button is a hole in the dark: light them instead. */
+.skyline[data-lighting='night'] .skylineButton {
+  background: rgba(241, 235, 226, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(241, 235, 226, 0.22);
+}
+
+.skyline[data-lighting='night'] .skylineButton:hover {
+  background: rgba(241, 235, 226, 0.28);
+}
+
+.skylineButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Skyline fell back: said once, over the corner of Board View. */
+.notice {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  max-width: calc(100% - 24px);
+  padding: 8px 10px 8px 12px;
+  border-radius: 8px;
+  background: rgba(28, 25, 23, 0.84);
+  color: #fff;
+  font-size: 12.5px;
+}
+
+.noticeClose {
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
