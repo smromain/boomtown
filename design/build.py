@@ -569,8 +569,52 @@ def build_language():
             '%s</div>' % (B_RULE, title, inner)
         )
 
+    # Day and night (#64): one lighting switch in the top bar repaints the whole
+    # app by redefining the ground tokens under :root[data-lighting="night"].
+    # Day is the default. Values are global.css's; this is where they are drawn.
+    lighting_pairs = [
+        ("--bg", "ground", "#FAF6F0", "#171412"),
+        ("--surface", "panel", "#FFFFFF", "#201C19"),
+        ("--surface-2", "sunken panel", "#F1EAE0", "#2A2521"),
+        ("--ink", "type", "#1C1917", "#F3ECE2"),
+        ("--muted", "labels", "#867A6D", "#A39686"),
+        ("--rule", "hairlines", "#E7DED2", "#3A332D"),
+        ("--accent", "act / true", "#B3462F", "#E0784F"),
+        ("--board-bg", "board", "#FAF6F0", "#1C1917"),
+        ("--cell-empty", "empty cell", "#F1EAE0", "#26211D"),
+        ("--chrome-bg", "top bar", "#1C1917", "#0E0C0B"),
+    ]
+    def tone_column(label, idx, ground, ink, note):
+        rows = "".join(
+            '<div style="display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid %s">'
+            '<span style="width:34px;height:22px;border-radius:3px;background:%s;box-shadow:0 0 0 1px rgba(128,110,90,.35);flex-shrink:0"></span>'
+            '<span class="mono" style="width:110px;font-size:10.5px">%s</span>'
+            '<span style="flex:1;font-size:11px;opacity:.75">%s</span>'
+            '<span class="mono" style="font-size:10.5px;opacity:.75">%s</span></div>'
+            % ("rgba(128,110,90,.25)", pair[idx], pair[0], pair[1], pair[idx].lower())
+            for pair in lighting_pairs)
+        return (
+            '<div style="flex:1;min-width:0;background:%s;color:%s;border-radius:6px;padding:18px 20px;box-shadow:0 0 0 1px %s">'
+            '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">'
+            '<span class="ser" style="font-size:20px">%s</span>'
+            '<span class="mono" style="font-size:10px;opacity:.7">%s</span></div>%s</div>'
+            % (ground, ink, B_RULE, label, note, rows))
+    lighting = (
+        '<div style="display:flex;flex-direction:column;gap:12px">'
+        '<div style="font-size:13px;line-height:1.55;color:%s;max-width:900px">One switch, a sun/moon button in the '
+        'top bar beside the speaker, repaints the whole app: the table, the board, every panel and modal, and the beat '
+        'curtain, which takes the table\'s tone rather than being ink chrome. <strong style="color:%s">Day is the default.</strong> '
+        'It is a preference of this screen, never a table rule, and the flip is instant. The night set keeps every '
+        'industry type shade at AA on the night panel; the elevation scale drops its top-lit inset highlight and '
+        'uses black shadows.</div>'
+        '<div style="display:flex;gap:20px;width:1200px">%s%s</div></div>'
+        % (B_MUTED, B_ACCENT,
+           tone_column("Day", 2, "#FAF6F0", "#1C1917", "default"),
+           tone_column("Night", 3, "#171412", "#F3ECE2", 'data-lighting="night"'))
+    )
+
     body = (
-        '<div style="width:1440px;min-height:1900px;background:%s;color:%s;'
+        '<div style="width:1440px;min-height:2500px;background:%s;color:%s;'
         'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:44px 60px 60px;'
         'display:flex;flex-direction:column;gap:34px">'
         '<div style="display:flex;flex-direction:column;gap:8px">'
@@ -579,13 +623,14 @@ def build_language():
         '<span style="font-size:13px;color:%s;max-width:820px">Anchors unchanged — %s / %s, DM Serif Display + DM Sans. '
         'Depth comes from elevation, framing and one texture ceiling, never from material mimicry (R3). '
         'This sheet is the spec build_b() and build_beats() implement.</span></div>'
-        '%s%s%s%s%s%s</div>'
+        '%s%s%s%s%s%s%s</div>'
         % (B_BG, B_INK, B_MUTED, B_MUTED, B_BG, B_ACCENT,
            section("Elevation scale — three levels, one warm light source", '<div style="display:flex;gap:20px">%s</div>' % elevation),
            section("Framing &amp; texture ceiling", '<div style="display:flex;gap:20px">%s</div>' % framing),
            section("Corporation card — before / after", '<div style="display:flex;align-items:center;gap:18px">%s</div>' % before_after),
            section("Type hierarchy — four roles, not two", type_rows),
            section("The accent's role — stated, not decorative", '<div style="display:flex;gap:12px;flex-wrap:wrap">%s</div>' % accent_chips),
+           section("Day and night — one switch, two values per token", lighting),
            section("Illustration style brief (seed — refined at U9)", illustration_brief))
     )
     write("Language.dc.html", B_HELMET, body)
@@ -1700,53 +1745,86 @@ def build_reference():
 # spec so it stands alone as an implementer's target, the way a storyboard
 # panel would — the still image is what U11 animates into and out of.
 
-def beat_frame(caption, spec, inner, dark=True):
-    bg = "#17140F" if dark else B_BG
-    ink = B_BG if dark else B_INK
+# The curtain takes the table's tone (#64). Day and night are one set of beat
+# tokens with two values each, read off global.css (--beat-*): the frames below
+# are drawn from a tone, never from literals, so each beat is drawn once and
+# rendered twice. Day is the default and leads; night is its twin.
+BEAT_TONES = {
+    "day": {
+        "label": "Day", "bg": B_BG, "bg2": "#F1EAE0", "ink": B_INK, "ink1": B_INK, "ink2": "#5C5147",
+        "muted": B_MUTED, "hint": B_MUTED, "rule": "#C6B8A6", "hairline": B_RULE, "accent": B_ACCENT,
+        "edge": B_INK, "shadow": "rgba(94,74,52,.5)",
+        "grain": "rgba(28,25,23,.4)",
+    },
+    "night": {
+        "label": "Night", "bg": "#171412", "bg2": "#110F0D", "ink": "#F3ECE2", "ink1": "#E2D9CC", "ink2": "#B8AC9F",
+        "muted": "#9C9086", "hint": "#7D7266", "rule": "#46403A", "hairline": "#3A332D", "accent": "#D98A4E",
+        "edge": "transparent", "shadow": "rgba(0,0,0,.7)",
+        "grain": "rgba(255,248,238,.5)",
+    },
+}
+BEAT_SHADE = "#1C1917"  # darkens a corporation colour for a bevel, in either tone
+
+def beat_frame(caption, spec, inner, t=None):
+    """A curtain frame in tone t; t=None is the table itself (buy stock is not a curtain)."""
+    if t is None:
+        bg, ink, extra, tag = B_BG, B_INK, "", ""
+    else:
+        bg = "linear-gradient(180deg, %s, %s)" % (t["bg"], t["bg2"])
+        ink = t["ink"]
+        extra = "border-top:3px solid %s;" % t["edge"]
+        tag = ('<span class="mono" style="font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;'
+               'padding:2px 8px;border-radius:10px;border:1px solid %s;color:%s">%s</span>'
+               % (B_RULE, B_MUTED, t["label"]))
+    grain = ('' if t is None else
+             '<div style="position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(%s .6px, transparent 1.1px);'
+             'background-size:3px 3px;opacity:%s"></div>' % (t["grain"], L_GRAIN_MAX))
     return (
       '<div style="display:flex;flex-direction:column;gap:10px">'
       '<div style="display:flex;align-items:baseline;gap:12px">'
-      '<span style="font-size:13px;font-weight:600">%s</span>'
+      '<span style="font-size:13px;font-weight:600">%s</span>%s'
       '<span class="mono" style="font-size:11px;color:%s">%s</span></div>'
-      '<div style="width:1440px;height:760px;position:relative;overflow:hidden;background:%s;color:%s;'
-      'border-radius:5px;display:flex;align-items:center;justify-content:center">%s</div></div>'
-      % (caption, B_MUTED, spec, bg, ink, inner)
+      '<div style="width:1440px;height:760px;position:relative;overflow:hidden;background:%s;color:%s;%s'
+      'border-radius:5px;box-shadow:0 0 0 1px %s;display:flex;align-items:center;justify-content:center">%s%s</div></div>'
+      % (caption, tag, B_MUTED, spec, bg, ink, extra, B_RULE, grain, inner)
     )
 
-def beat_kicker(text, color="#D98A4E"):
-    return '<span class="mono" style="font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:%s">%s</span>' % (color, text)
+def beat_kicker(text, t):
+    return '<span class="mono" style="font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:%s">%s</span>' % (t["accent"], text)
 
 def build_beats():
     m = market()
     survivor = [x for x in m if x["key"] == "tech"][0]
-    defunct = [x for x in m if x["key"] == "energy"][0]
     accreted = display_name(CORP["tech"]["name"], [CORP["energy"]["name"]])
     founding_ind = "video"
     founding = CORP[founding_ind]
+    tone_note = "the curtain takes the table's tone"
 
     # 1. Founding — the plinth takeover (F2-adjacent; the model U11 animates as
     # entrance/hold/exit). Peak = the panel fully arrived, plinth lit.
-    founding_frame = beat_frame(
-      "Founding — peak frame", "3.0s hold, skippable · sound: founding.wav · curtain-drop entrance, ink exit",
-      '<div style="display:flex;align-items:center;gap:56px">'
-      '<div style="width:150px;height:216px;border-radius:3px;overflow:hidden;display:flex;align-items:center;'
-      'justify-content:center;background:linear-gradient(165deg, color-mix(in srgb, %s 84%%, #fff), %s 55%%, '
-      'color-mix(in srgb, %s 48%%, #1C1917));box-shadow:0 40px 70px -20px rgba(0,0,0,.7),inset 0 2px 0 rgba(255,255,255,.3)">%s</div>'
-      '<div style="width:470px">%s'
-      '<div style="height:1px;width:60px;margin:10px 0 2px;background:#46403A"></div>'
-      '<div class="ser" style="font-size:60px;line-height:1.1;margin-top:12px">%s</div>'
-      '<div style="font-size:14px;color:#B8AC9F;margin-top:10px;max-width:34ch">%s</div>'
-      '<div style="display:flex;gap:38px;margin-top:26px;padding-top:18px;border-top:1px solid #46403A">%s</div></div></div>'
-      % (founding["color"], founding["color"], founding["color"], b_mark(founding_ind, "#FAF6F0", 52),
-         beat_kicker("a corporation is founded"), founding["name"], founding["flavor"],
-         "".join('<span style="display:flex;flex-direction:column;gap:3px">'
-                 '<span class="mono" style="font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#9C9086">%s</span>'
-                 '<span class="ser" style="font-size:21px">%s</span></span>' % (lab, val)
-                 for lab, val in [("headquarters", HQ.get(founding_ind, "7D")), ("opening price", money(400)), ("founder", "+1 share")]))
-    )
+    def founding_frame(t):
+        return beat_frame(
+          "Founding — peak frame", "3.0s hold, skippable · sound: founding.wav · curtain-drop entrance, %s" % tone_note,
+          '<div style="position:relative;display:flex;align-items:center;gap:56px">'
+          '<div style="width:150px;height:216px;border-radius:3px;overflow:hidden;display:flex;align-items:center;'
+          'justify-content:center;background:linear-gradient(165deg, color-mix(in srgb, %s 84%%, #fff), %s 55%%, '
+          'color-mix(in srgb, %s 48%%, %s));box-shadow:0 40px 70px -20px %s,inset 0 2px 0 rgba(255,255,255,.3)">%s</div>'
+          '<div style="width:470px">%s'
+          '<div style="height:1px;width:60px;margin:10px 0 2px;background:%s"></div>'
+          '<div class="ser" style="font-size:60px;line-height:1.1;margin-top:12px">%s</div>'
+          '<div style="font-size:14px;color:%s;margin-top:10px;max-width:34ch">%s</div>'
+          '<div style="display:flex;gap:38px;margin-top:26px;padding-top:18px;border-top:1px solid %s">%s</div></div></div>'
+          % (founding["color"], founding["color"], founding["color"], BEAT_SHADE, t["shadow"], b_mark(founding_ind, "#FAF6F0", 52),
+             beat_kicker("a corporation is founded", t), t["rule"], founding["name"], t["ink2"], founding["flavor"], t["rule"],
+             "".join('<span style="display:flex;flex-direction:column;gap:3px">'
+                     '<span class="mono" style="font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:%s">%s</span>'
+                     '<span class="ser" style="font-size:21px;%s">%s</span></span>'
+                     % (t["muted"], lab, "color:%s" % t["accent"] if lab == "founder" else "", val)
+                     for lab, val in [("headquarters", HQ.get(founding_ind, "7D")), ("opening price", money(400)), ("founder", "+1 share")])),
+          t)
 
     # 2. Buy-stock — the lightest beat: an in-place flourish on the holdings
-    # row, not a screen takeover. Peak = the purchased shares just landed.
+    # row, not a screen takeover, so it has no curtain and no tone of its own.
     buy_row = (
       '<div style="width:520px;background:%s;%sborder-radius:4px;box-shadow:%s;padding:22px 26px;'
       'display:flex;flex-direction:column;gap:14px">'
@@ -1762,75 +1840,89 @@ def build_beats():
          b_mark("tech", survivor["ink"], 16), survivor["color"], B_MUTED, survivor["name"])
     )
     buy_frame = beat_frame(
-      "Buy stock — peak frame", "0.9s flourish, not skippable-hold · sound: buy.wav · a coin arcs into the row, the row glows and settles",
-      buy_row, dark=False
+      "Buy stock — peak frame", "0.9s flourish, not skippable-hold · sound: buy.wav · a coin arcs into the row, the row glows and settles · no curtain",
+      buy_row
     )
 
     # 3. Merger — the name-reveal peak (F1's load-bearing moment): the accreted
-    # name at scale, cream on ink, industry glow behind it.
-    merger_frame = beat_frame(
-      "Merger — name-reveal peak frame", "6-stage sequence ~9.1s total, skippable · sound: merger.wav · collide → blend → name → mass → bonus → settle",
-      '<div style="position:absolute;left:50%%;top:50%%;width:900px;height:620px;margin:-310px 0 0 -450px;'
-      'pointer-events:none;background:radial-gradient(50%% 50%% at 50%% 50%%, color-mix(in srgb, %s 30%%, transparent) 0%%, transparent 72%%)"></div>'
-      '<div style="position:relative;width:860px;display:flex;flex-direction:column;align-items:center;text-align:center">'
-      '%s<div style="width:60px;height:1px;margin:12px 0 0;background:#46403A"></div>'
-      '<div class="ser" style="font-size:112px;line-height:1.02;letter-spacing:-.035em;margin-top:18px;'
-      'text-shadow:0 0 60px color-mix(in srgb, %s 45%%, transparent)">%s</div>'
-      '<div style="max-width:46ch;font-size:13px;line-height:1.55;color:#9C9086;margin-top:14px">Its name grows '
-      'with a piece of every company it takes over. Your shares in it stay yours.</div>'
-      '<div style="display:flex;gap:76px;margin-top:46px">%s</div></div>'
-      % (survivor["color"], beat_kicker("merger at %s" % "4E"), survivor["color"], accreted,
-         "".join('<div style="text-align:left"><span class="mono" style="font-size:10px;letter-spacing:.18em;'
-                 'text-transform:uppercase;color:#9C9086">%s</span><span class="ser mono" style="display:block;'
-                 'font-size:56px;line-height:1.05;margin-top:6px;letter-spacing:-.03em">%s</span></div>'
-                 % (who, money(amt)) for who, amt in [("Mara · majority", 4000), ("Otto · minority", 2000)]))
-    )
+    # name at scale, industry glow behind it. On cream the glow carries the beat
+    # that the tonal jump used to.
+    def merger_frame(t):
+        return beat_frame(
+          "Merger — name-reveal peak frame", "6-stage sequence ~9.1s total, skippable · sound: merger.wav · collide → blend → name → mass → bonus → settle",
+          '<div style="position:absolute;left:50%%;top:50%%;width:900px;height:620px;margin:-310px 0 0 -450px;'
+          'pointer-events:none;background:radial-gradient(50%% 50%% at 50%% 50%%, color-mix(in srgb, %s 30%%, transparent) 0%%, transparent 72%%)"></div>'
+          '<div style="position:relative;width:860px;display:flex;flex-direction:column;align-items:center;text-align:center">'
+          '%s<div style="width:60px;height:1px;margin:12px 0 0;background:%s"></div>'
+          '<div class="ser" style="font-size:112px;line-height:1.02;letter-spacing:-.035em;margin-top:18px;'
+          'text-shadow:0 0 60px color-mix(in srgb, %s 45%%, transparent)">%s</div>'
+          '<div style="max-width:46ch;font-size:13px;line-height:1.55;color:%s;margin-top:14px">Its name grows '
+          'with a piece of every company it takes over. Your shares in it stay yours.</div>'
+          '<div style="display:flex;gap:76px;margin-top:46px">%s</div></div>'
+          % (survivor["color"], beat_kicker("merger at %s" % "4E", t), t["rule"], survivor["color"], accreted, t["ink2"],
+             "".join('<div style="text-align:left"><span class="mono" style="font-size:10px;letter-spacing:.18em;'
+                     'text-transform:uppercase;color:%s">%s</span><span class="ser mono" style="display:block;'
+                     'font-size:56px;line-height:1.05;margin-top:6px;letter-spacing:-.03em">%s</span></div>'
+                     % (t["muted"], who, money(amt)) for who, amt in [("Mara · majority", 4000), ("Otto · minority", 2000)])),
+          t)
 
     # 4. Endgame trigger — a table-level beat (fires for every seat): the
     # threshold is announced before the final round plays out.
-    endgame_frame = beat_frame(
-      "Endgame trigger — peak frame", "2.4s hold, skippable · sound: endgame.wav · ink curtain drops, rule underlines, lifts on dismiss",
-      '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px">%s'
-      '<div class="ser" style="font-size:64px;margin-top:6px">The endgame is triggered</div>'
-      '<div style="font-size:14px;color:#B8AC9F;max-width:52ch;line-height:1.55">%s is safe at %d tiles. '
-      'Any player may announce the end from here — once called, this is the final round.</div>'
-      '<div style="display:flex;gap:12px;margin-top:10px">%s</div></div>'
-      % (beat_kicker("final round approaching"), survivor["display"], survivor["size"],
-         "".join('<span style="display:inline-flex;align-items:center;gap:7px;border:1px solid #46403A;'
-                 'border-radius:20px;padding:8px 16px;font-size:12px;color:#D8CFC3">%s<span class="ser">%s</span></span>'
-                 % (b_mark(x["key"], x["color"], 16), x["display"]) for x in m if x["size"] > 0))
-    )
+    def endgame_frame(t):
+        return beat_frame(
+          "Endgame trigger — peak frame", "2.4s hold, skippable · sound: endgame.wav · curtain drops, rule underlines, lifts on dismiss",
+          '<div style="position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px">%s'
+          '<div class="ser" style="font-size:64px;margin-top:6px">The endgame is triggered</div>'
+          '<div style="font-size:14px;color:%s;max-width:52ch;line-height:1.55">%s is safe at %d tiles. '
+          'Any player may announce the end from here — once called, this is the final round.</div>'
+          '<div style="display:flex;gap:12px;margin-top:10px">%s</div></div>'
+          % (beat_kicker("final round approaching", t), t["ink2"], survivor["display"], survivor["size"],
+             "".join('<span style="display:inline-flex;align-items:center;gap:7px;border:1px solid %s;'
+                     'border-radius:20px;padding:8px 16px;font-size:12px;color:%s">%s<span class="ser">%s</span></span>'
+                     % (t["rule"], t["ink1"], b_mark(x["key"], x["color"], 16), x["display"]) for x in m if x["size"] > 0)),
+          t)
 
     # 5. Victory — final settlement. The tagline callback ties it back to the
     # launch beat's "seven start-ups, one skyline" line.
     standings = sorted(((p[0], p[1] + sum(v * m2["price"] for k, v in p[2].items()
                         for m2 in [next(x for x in m if x["key"] == k)])) for p in PLAYERS), key=lambda x: -x[1])
-    victory_frame = beat_frame(
-      "Victory — peak frame", "4.0s hold before standings become interactive · sound: victory.wav · slow ink-curtain lift, names rise in sequence",
-      '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px">%s'
-      '<div class="ser" style="font-size:76px">%s wins</div>'
-      '<div style="display:flex;flex-direction:column;gap:2px;margin-top:10px;width:420px">%s</div>'
-      '<div class="mono" style="font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#6F665D;margin-top:18px">seven start-ups, one skyline</div></div>'
-      % (beat_kicker("game over"), standings[0][0],
-         "".join('<div style="display:flex;justify-content:space-between;padding:9px 4px;'
-                 'border-bottom:1px solid #2B2621;%s"><span class="ser" style="font-size:16px">%d. %s</span>'
-                 '<span class="mono num" style="font-size:16px">%s</span></div>'
-                 % ("color:#D98A4E" if i == 0 else "color:#B8AC9F", i + 1, n, money(total))
-                 for i, (n, total) in enumerate(standings)))
-    )
+    def victory_frame(t):
+        return beat_frame(
+          "Victory — peak frame", "4.0s hold before standings become interactive · sound: victory.wav · slow curtain lift, names rise in sequence",
+          '<div style="position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px">%s'
+          '<div class="ser" style="font-size:76px">%s wins</div>'
+          '<div style="display:flex;flex-direction:column;gap:2px;margin-top:10px;width:420px">%s</div>'
+          '<div class="mono" style="font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:%s;margin-top:18px">seven start-ups, one skyline</div></div>'
+          % (beat_kicker("game over", t), standings[0][0],
+             "".join('<div style="display:flex;justify-content:space-between;padding:9px 4px;'
+                     'border-bottom:1px solid %s;color:%s"><span class="ser" style="font-size:16px">%d. %s</span>'
+                     '<span class="mono num" style="font-size:16px">%s</span></div>'
+                     % (t["hairline"], t["accent"] if i == 0 else t["ink2"], i + 1, n, money(total))
+                     for i, (n, total) in enumerate(standings)),
+             t["hint"]),
+          t)
 
+    day, night = BEAT_TONES["day"], BEAT_TONES["night"]
+    frames = [founding_frame(day), founding_frame(night), buy_frame,
+              merger_frame(day), merger_frame(night), endgame_frame(day), endgame_frame(night),
+              victory_frame(day), victory_frame(night)]
     body = (
-      '<div style="width:1440px;min-height:4300px;background:%s;color:%s;font-family:\'DM Sans\',Helvetica,Arial,sans-serif;'
+      '<div style="width:1440px;min-height:7700px;background:%s;color:%s;font-family:\'DM Sans\',Helvetica,Arial,sans-serif;'
       'font-size:13px;padding:40px 0 48px;display:flex;flex-direction:column;gap:34px;align-items:center">'
       '<div style="width:1440px;padding:0 36px;display:flex;flex-direction:column;gap:9px">'
-      '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">Boomtown · beat still-frames (U3)</span>'
+      '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">Boomtown · beat still-frames (U3, #64)</span>'
       '<span class="ser" style="font-size:32px">The five beats without their own screen</span>'
       '<span style="font-size:13px;line-height:1.5;color:%s;max-width:900px">Launch is the Main-menu treatment (U9); '
       'first-tile is a note on the board, not its own frame. Each frame below is the beat\'s peak visual — what U11 '
-      'animates into (entrance) and out of (exit); the caption line under each title is that beat\'s timing/sound spec.</span></div>'
-      '%s%s%s%s%s</div>'
-      % (B_BG, B_INK, B_MUTED, B_MUTED,
-         founding_frame, buy_frame, merger_frame, endgame_frame, victory_frame)
+      'animates into (entrance) and out of (exit); the caption line under each title is that beat\'s timing/sound spec.</span>'
+      '<span style="font-size:13px;line-height:1.5;color:%s;max-width:900px">The curtain is the ground, not chrome: it '
+      'takes the table\'s day or night tone from the lighting switch in the top bar, so a beat never jumps from cream '
+      'to near-black (#64). Each curtain beat is drawn in <strong>Day</strong>, the default, with its <strong>Night</strong> '
+      'twin beneath. By day the curtain carries a 3px ink top rule, a warm shadow on its leading edge while it drops, and '
+      'the brick accent; by night it is the old ink curtain with the ember accent. Buy stock plays on the table itself '
+      'and has no curtain.</span></div>'
+      '%s</div>'
+      % (B_BG, B_INK, B_MUTED, B_MUTED, B_MUTED, "".join(frames))
     )
     write("Beats.dc.html", B_HELMET, body)
 
