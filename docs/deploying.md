@@ -151,10 +151,11 @@ So the installers we build for the GitHub release page are exactly what must
 Windows page says that instead of shipping an installer, push the install
 folder; the Linux page says make a portable build and push it; the macOS page
 says push the `.app`, and put the `.app` and the manifest in a folder together
-when there is a manifest. `electron/itch.mjs` pushes `dist/mac-universal/`,
-`dist/win-unpacked/` and `dist/linux-unpacked/` — the directories
-electron-builder packs *before* it builds each installer, so they cost nothing
-extra to produce.
+when there is a manifest. `electron/itch.mjs` pushes `dist/win-unpacked/` and
+`dist/linux-unpacked/` — the directories electron-builder packs *before* it
+builds each installer, so they cost nothing extra to produce — and, on macOS,
+a copy of `dist/mac-universal/Boomtown.app` under a folder named for the
+release (next section).
 
 The AppImage is skipped for the same reason the DMG and the NSIS installer are:
 one opaque file butler cannot patch well, which additionally needs FUSE on the
@@ -168,6 +169,36 @@ binary the missing executable bit — a direct download without it gives players
 "Error -10810" on macOS. None of it applies to an archive we build ourselves,
 which is the other reason butler is never handed one.
 
+### macOS: a new folder for every release
+
+The pushed macOS build is `v<version>/Boomtown.app` with `.itch.toml` beside the
+folder, assembled in `dist/itch-osx/` — never `Boomtown.app` at a fixed path.
+The fixed path crashed the game after every itch update.
+
+The itch app updates a game by patching it where it is installed, and a file
+that changed between two builds is patched **in place**: the same file on disk,
+rewritten. Every release changes the signed Mach-O binaries in the bundle — the
+ad-hoc signature seals `Info.plist`, which carries the version — and macOS
+caches a binary's code signature against the file itself. A signed binary
+rewritten in place no longer matches that cache, so the next launch is killed
+with `SIGKILL (Code Signature Invalid)` until the game is reinstalled or the Mac
+is rebooted. Apple's guidance for updating signed code is to write a new file
+and move it into place, never to modify the old one. We cannot change how the
+itch app writes, but we can make every file a new one.
+
+Under a per-release folder every path is new, so the itch app writes each file
+fresh and removes the old folder, whose paths the new build no longer has.
+butler diffs by content across the whole build rather than path by path, so a
+player still downloads a patch, not the whole app. Real signing does not remove
+the need for this: the cache is keyed on the file, whoever signed it.
+
+Two costs, both small. `itch:stage -- mac` needs the version and refuses without
+one. And a Dock icon pinned from the itch install folder points at the old
+folder after an update, which the itch app's *Play* button does not.
+
+Windows and Linux have no such cache and keep pushing the unpacked directory as
+it stands.
+
 ### The manifest
 
 `build/itch/<platform>.itch.toml` is copied to the root of the pushed directory
@@ -176,7 +207,9 @@ well-known `play` action, which the itch app renders as a highlighted *Play Now*
 button.
 
 The launch paths are `Boomtown.app`, `boomtown.exe` and `boomtown` — lowercase
-on Windows and Linux because that is what electron-builder emits. They are the
+on Windows and Linux because that is what electron-builder emits. On macOS
+`stage` rewrites the path to `v<version>/Boomtown.app` as it writes the
+manifest, so the file in the repo names only the bundle. They are the
 same paths `electron/afterPack.mjs` flips the Electron fuses on, and that hook
 runs on every package and would fail the build if they were wrong.
 
@@ -185,9 +218,9 @@ runs on every package and would fail the build if they were wrong.
 ```bash
 cd apps/desktop
 npm run package
-npm run itch:stage -- mac        # stages the manifest, prints the path to push
-butler validate  "$(npm run --silent itch:stage -- mac)"
-butler push      "$(npm run --silent itch:stage -- mac)" <your-itch-user>/boomtown:osx --userversion 2026.9.1
+npm run itch:stage -- mac 2026.9.2   # stages the build and manifest, prints the path to push
+butler validate  "$(npm run --silent itch:stage -- mac 2026.9.2)"
+butler push      "$(npm run --silent itch:stage -- mac 2026.9.2)" <your-itch-user>/boomtown:osx --userversion 2026.9.2
 ```
 
 Channel names carry the platform tag, so they are the plain keywords — `osx`,

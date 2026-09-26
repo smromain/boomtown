@@ -208,8 +208,10 @@ jobs:
             *)              PLATFORM=linux ;;
           esac
           # Stages the .itch.toml manifest and prints what to push: the unpacked
-          # build directory on macOS and Windows, the AppImage on Linux.
-          PUSH_PATH="$(node electron/itch.mjs "$PLATFORM")"
+          # build directory on Windows and Linux; on macOS the .app under a
+          # per-release folder, so an itch update writes every file fresh
+          # rather than patching a signed binary in place (see macReleaseDir).
+          PUSH_PATH="$(node electron/itch.mjs "$PLATFORM" "$VERSION")"
           CHANNEL="$(node -e "import('./electron/itch.mjs').then((m) => process.stdout.write(m.CHANNELS['$PLATFORM']))")"
           # itch recommends wiring this into CI, and it is the only check that
           # runs against a real packaged build: it exits non-zero on a launch

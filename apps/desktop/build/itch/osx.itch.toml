@@ -3,6 +3,11 @@
 # with butler, and "if an app manifest is needed, place both the `.app` and the
 # manifest in a folder before uploading".
 #
+# `electron/itch.mjs` pushes the `.app` under a folder named for the release and
+# rewrites `path` below to `v<version>/Boomtown.app` as it stages this file: the
+# itch app patches changed files in place, and macOS kills a signed binary that
+# was rewritten in place. A new folder per release makes every file a new one.
+#
 # `play` is a well-known action name: the itch app renders it as the highlighted
 # "Play Now" button rather than a generic launch entry.
 [[actions]]

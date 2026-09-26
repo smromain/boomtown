@@ -18,8 +18,16 @@ export interface ItchTarget {
 }
 
 export function target(platform: string, entries: string[]): ItchTarget;
+/** Where the macOS push is assembled inside `dist`. */
+export const MAC_STAGING_DIR: string;
+/** The per-release folder the macOS `.app` is pushed under, e.g. `v2026.9.2`. */
+export function macReleaseDir(version: string | undefined): string;
+/** `osx.itch.toml` with its launch path moved under the release folder. */
+export function macManifest(template: string, releaseDir: string): string;
+/** `version` is required for `mac` and ignored elsewhere. */
 export function stage(
   platform: string,
   dist?: string,
   manifests?: string,
+  version?: string,
 ): Promise<ItchTarget & { pushPath: string }>;

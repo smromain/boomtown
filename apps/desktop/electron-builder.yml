@@ -52,9 +52,11 @@ mac:
   # then calls the hook again on the merged app. See `electron/afterPack.mjs` —
   # the ad-hoc re-sign must happen only on that last call.
   #
-  # itch.io does not get the DMG: `electron/itch.mjs` pushes the unpacked
-  # `dist/mac-universal/` directory with butler, which is itch's own advice —
-  # push the `.app`, with the manifest beside it in a folder. butler manages
+  # itch.io does not get the DMG: `electron/itch.mjs` pushes the `.app` from
+  # `dist/mac-universal/` with butler, which is itch's own advice — push the
+  # `.app`, with the manifest beside it in a folder. It goes up under a folder
+  # named for the release, so an itch update never rewrites a signed binary in
+  # place (see `macReleaseDir` there). butler manages
   # symlinks and fixes permissions on that push and the itch app fixes them
   # again at launch, so no separate zip target is needed for it.
   target:
