@@ -149,7 +149,7 @@ testable core. Detail in `online-play.md`; the file map:
 | `art/` | `Skyline` (the vector silhouette, four surfaces) and `NightSkyline` (the launch backdrop) |
 | `audio/` | Effects and music managers, two independent volumes |
 | `beats/` | The beat queue, triggers off engine events, and six beats: founding, buy, merger, motion, endgame, victory |
-| `board/` | The 108-cell CSS grid and click-to-place |
+| `board/` | The cell model both painters share, the DOM grid (the a11y and test contract), click-to-place, and the two painters: Board View (CSS) and Skyline (`board/skyline/`, three.js, lazy-loaded) |
 | `client/` | The `GameClient` provider and `ownView` |
 | `copy/` | `constants.json` — every word the app says — plus `copy.ts`, `Rich.tsx` and usage tests |
 | `debug/` | The netlog overlay (`Ctrl`/`Cmd`+`Shift`+`L`, dev builds only) and `dump.ts` |

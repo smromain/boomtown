@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
-import { INDUSTRIES, INDUSTRY_INFO, type PlayerView, type Seat } from '@boomtown/engine';
+import { INDUSTRIES, type PlayerView, type Seat } from '@boomtown/engine';
 import { IndustryMark } from '../../game/marks.js';
+import { industryTheme } from '../../game/industryTheme.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
@@ -46,7 +47,7 @@ export function EndgameBeat({ seat, view, dismiss }: { seat: Seat; view: PlayerV
                 color: '#d8cfc3',
               }}
             >
-              <IndustryMark industry={industry} color={INDUSTRY_INFO[industry].color} size={16} />
+              <IndustryMark industry={industry} color={industryTheme(industry).onNight} size={16} />
               <span className="serif">{view.corporations[industry].displayName}</span>
             </span>
           ))}

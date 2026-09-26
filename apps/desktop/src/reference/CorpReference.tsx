@@ -2,6 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import type { Industry } from '@boomtown/engine';
 import { useOwnView } from '../client/ownView.js';
 import { IndustryMark } from '../game/marks.js';
+import { industryTheme } from '../game/industryTheme.js';
 import { corpReference } from './priceReference.js';
 import styles from './reference.module.css';
 import { copy, fill } from '../copy/copy.js';
@@ -31,6 +32,10 @@ export function CorpReference({
 }) {
   const view = useOwnView();
   const data = industry && view ? corpReference(view, industry) : null;
+  // Every tinted word here is type on paper, so it takes the legible shade
+  // rather than the fill (#19). The mark leads the title, so none of it
+  // leans on colour to say which corporation this is.
+  const tint = industry ? industryTheme(industry).onPaper : undefined;
 
   return (
     <Dialog.Root open={data != null} onOpenChange={(o) => !o && onClose()}>
@@ -40,15 +45,15 @@ export function CorpReference({
           {data && (
             <>
               <header className={styles.corpHead}>
-                <IndustryMark industry={data.industry} color={data.color} size={30} />
+                <IndustryMark industry={data.industry} color={tint!} size={30} />
                 <div className={styles.corpTitle}>
-                  <Dialog.Title className="serif" style={{ color: data.color }}>
+                  <Dialog.Title className="serif" style={{ color: tint }}>
                     {data.name}
                   </Dialog.Title>
                   {data.flavour && <p className={styles.corpFlavour}>{data.flavour}</p>}
                 </div>
                 {data.safe && (
-                  <span className={styles.safeTag} style={{ color: data.color }}>
+                  <span className={styles.safeTag} style={{ color: tint }}>
                     ◇ safe
                   </span>
                 )}
@@ -72,7 +77,7 @@ export function CorpReference({
                 </div>
                 <div>
                   <span className={styles.statLabel}>{c.corp.youHold}</span>
-                  <span className={`serif tabnum ${styles.statValue}`} style={{ color: data.color }}>
+                  <span className={`serif tabnum ${styles.statValue}`} style={{ color: tint }}>
                     {data.you.shares}
                     {data.you.shares > 0 && ` — $${data.you.value.toLocaleString()}`}
                   </span>
@@ -88,7 +93,7 @@ export function CorpReference({
                       {fill(c.corp.tilesCell, { label: data.nextStep.atSize })}
                     </span>{' '}
                     →{' '}
-                    <span className="tabnum" style={{ color: data.color }}>
+                    <span className="tabnum" style={{ color: tint }}>
                       ${data.nextStep.price.toLocaleString()}
                     </span>
                   </span>

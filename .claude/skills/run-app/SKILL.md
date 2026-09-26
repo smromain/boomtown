@@ -38,6 +38,7 @@ the header of the script for its full options; the ones that matter most:
 | `--seats 2–6`, `--edition Boomtown\|Classic\|Modern` | table shape; the default is 3 seats on whatever edition the settings remember (Boomtown) |
 | `--out <dir>` | screenshots and `samples.json` land here; put it outside the repo |
 | `--headed` | a visible window, if a display is available |
+| `--board board-view \| skyline` | which board to draw. Skyline passes `forceSkyline=1` and turns on SwiftShader, because headless Chromium draws WebGL on the CPU and Skyline otherwise refuses a software renderer and falls back to Board View |
 
 An all-bot table is the point: nobody has to answer a prompt for the game to
 reach its own set pieces, so a founding, a merger, a motion and the ending all

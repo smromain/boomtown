@@ -101,6 +101,21 @@ describe('the merger beat staging', () => {
     expect(dialog).toHaveTextContent(/2 companies eaten/i);
   });
 
+  it('marks every disc and block with its glyph, so the takeover is not colour alone (#19)', async () => {
+    const user = userEvent.setup();
+    render(<DebugBeatPreview kind="merger-three-way" onDismiss={() => {}} />);
+    const dialog = screen.getByRole('dialog');
+    // the blend discs are on screen from the start
+    const discs = [...dialog.querySelectorAll('[data-disc]')];
+    expect(discs.length).toBe(2);
+    for (const disc of discs) expect(disc.querySelector('svg')).toBeTruthy();
+
+    for (let i = 0; i < 7; i++) await act(async () => { await user.click(dialog); });
+    const blocks = [...dialog.querySelectorAll('[data-mass-block]')];
+    expect(blocks.length).toBe(2);
+    for (const block of blocks) expect(block.querySelector('svg')).toBeTruthy();
+  });
+
   it('keeps the mass caption out of the collapsing block row', async () => {
     const user = userEvent.setup();
     render(<DebugBeatPreview kind="merger-three-way" onDismiss={() => {}} />);

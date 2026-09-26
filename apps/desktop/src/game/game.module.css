@@ -274,6 +274,8 @@
 }
 
 .boardSlot {
+  /* Positioned for Skyline's fallback notice, which sits over its corner. */
+  position: relative;
   flex: 1;
   min-height: 0;
   min-width: 0;
@@ -801,6 +803,12 @@
 .logHeadline {
   padding: 3px 0;
   font-weight: 600;
+}
+
+/* The industry glyph that leads a tinted headline (#19). */
+.logMark {
+  display: inline-flex;
+  vertical-align: -4px;
 }
 
 .logTurn {

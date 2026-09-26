@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import {
   BackwardIcon,
+  BuildingOffice2Icon,
   ForwardIcon,
   MusicalNoteIcon,
   NoSymbolIcon,
   SpeakerWaveIcon,
   SpeakerXMarkIcon,
+  Squares2X2Icon,
+  SwatchIcon,
 } from '@heroicons/react/24/solid';
 import type { TurnStep } from '@boomtown/engine';
 import { useAnyView, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
@@ -13,9 +16,12 @@ import { useReference } from '../reference/ReferenceContext.js';
 import { editionLabel } from '../setup/editionLabel.js';
 import { soundManager } from '../audio/soundManager.js';
 import { musicManager } from '../audio/musicManager.js';
+import { loadSettings, saveSettings } from '../settings/settings.js';
+import { useIndustryPatterns } from '../settings/useSetting.js';
 import { copy, fill } from '../copy/copy.js';
 import { Button } from '../ui/Button.js';
 import { ExitGame } from './ExitGame.js';
+import { setBoardStyle, useBoardPrefs } from '../board/boardPrefs.js';
 import logoUrl from '../assets/boomtown-logo.png';
 import styles from './game.module.css';
 
@@ -90,11 +96,24 @@ export function Header({ onExit, online = false }: { onExit?: (() => void) | und
     setTrack(to === 'next' ? musicManager.next() : musicManager.previous());
     setAnnouncing(true);
   };
+  // Board View or Skyline (#70), beside the sound for the same reason the
+  // sound is here: it is a property of this screen, not of the table. The icon
+  // shows where a click takes you, and the label says so.
+  const board = useBoardPrefs();
+  const toSkyline = board.chosen !== 'skyline';
+
   const toggleMusic = () => {
     const next = !musicMuted;
     musicManager.setMuted(next);
     setMusicMuted(next);
   };
+
+  // Industry patterns (#19) switch here as well as in Settings, because
+  // Settings is only reachable from the menu: a player who finds mid-game that
+  // they cannot separate two chains should not have to leave the table to fix
+  // it. It is the same stored setting, so the dialog shows what was set here.
+  const patterns = useIndustryPatterns();
+  const togglePatterns = () => saveSettings({ ...loadSettings(), industryPatterns: !patterns });
 
   // "?" opens the stock reference and F1 the rules, unless a text field has
   // focus. F1 rather than a letter: the play surface has no text input to
@@ -194,11 +213,30 @@ export function Header({ onExit, online = false }: { onExit?: (() => void) | und
             <ForwardIcon width={14} height={14} />
           </button>
         </span>
+        <button
+          type="button"
+          className={styles.muteButton}
+          onClick={togglePatterns}
+          aria-label={copy.header.patterns}
+          aria-pressed={patterns}
+          title={copy.header.patterns}
+        >
+          <SwatchIcon width={16} height={16} />
+        </button>
         {announcing && (
           <span className={styles.trackName} aria-hidden>
             {track.title}
           </span>
         )}
+        <button
+          type="button"
+          className={styles.muteButton}
+          onClick={() => setBoardStyle(toSkyline ? 'skyline' : 'board-view')}
+          aria-label={toSkyline ? copy.header.toSkyline : copy.header.toBoardView}
+          title={toSkyline ? copy.header.toSkyline : copy.header.toBoardView}
+        >
+          {toSkyline ? <BuildingOffice2Icon width={16} height={16} /> : <Squares2X2Icon width={16} height={16} />}
+        </button>
         {/* In the brand region, which is always rendered — the status block
             below needs a view, and a broken table is exactly when there may
             not be one and exactly when you want out (#73). */}
