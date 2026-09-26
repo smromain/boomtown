@@ -373,13 +373,13 @@
 }
 
 .banner[data-status='connecting'] {
-  background: #fdf3d8;
-  color: #7a5c12;
+  background: var(--notice-warn-bg);
+  color: var(--notice-warn-ink);
 }
 
 .banner[data-status='closed'] {
-  background: #fbe4e0;
-  color: #8a2f22;
+  background: var(--notice-error-bg);
+  color: var(--notice-error-ink);
 }
 
 /* The knock queue: only the host is sent one, so this only ever renders there. */

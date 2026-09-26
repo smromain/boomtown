@@ -90,7 +90,7 @@ export function setBoardStyle(style: BoardStyle): void {
   publish();
 }
 
-/** Day or night for the whole app, from the one-click toggle on the Skyline board. */
+/** Day or night for the whole app, from the header's one-click toggle or Settings. */
 export function setLighting(lighting: Lighting): void {
   saveSettings({ ...loadSettings(), lighting });
   publish();

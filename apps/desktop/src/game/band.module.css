@@ -40,7 +40,7 @@
   padding: 0 30px;
   border: 1.5px dashed var(--rule);
   border-radius: 4px;
-  background: repeating-linear-gradient(135deg, rgba(203, 189, 169, 0.16) 0 10px, transparent 10px 20px), rgba(255, 255, 255, 0.4);
+  background: repeating-linear-gradient(135deg, rgba(203, 189, 169, 0.16) 0 10px, transparent 10px 20px), var(--band-empty-wash);
   font-size: 13px;
   color: var(--muted);
 }

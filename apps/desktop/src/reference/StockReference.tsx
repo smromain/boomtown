@@ -55,7 +55,7 @@ export function StockReference({ open, onClose }: { open: boolean; onClose: () =
                         {byTier[tier].map((c) => (
                           <span
                             key={c.industry}
-                            style={{ color: c.size > 0 ? industryTheme(c.industry).onPaper : undefined }}
+                            style={{ color: c.size > 0 ? industryTheme(c.industry).type : undefined }}
                             className={c.size > 0 ? undefined : styles.dim}
                           >
                             {c.name}

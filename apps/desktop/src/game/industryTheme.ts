@@ -35,8 +35,14 @@ export interface IndustryTheme {
   readonly ink: string;
   /** The industry colour as text or icon on the cream paper (`--bg`/`--surface`). */
   readonly onPaper: string;
-  /** The industry colour as text or icon on the night ground of the beats. */
+  /** The industry colour as text or icon on the night ground. */
   readonly onNight: string;
+  /**
+   * The industry colour as text or icon on the app's ground, whichever tone it
+   * is in: a CSS variable that `applyLighting` points at `onPaper` by day and
+   * `onNight` at night (#64), falling back to `onPaper` where it is unset.
+   */
+  readonly type: string;
 }
 
 const TYPE: Record<Industry, { readonly onPaper: string; readonly onNight: string }> = {
@@ -51,7 +57,20 @@ const TYPE: Record<Industry, { readonly onPaper: string; readonly onNight: strin
 
 export function industryTheme(industry: Industry): IndustryTheme {
   const { color, ink } = INDUSTRY_INFO[industry];
-  return { color, ink, ...TYPE[industry] };
+  const type = TYPE[industry];
+  return { color, ink, ...type, type: `var(--type-${industry}, ${type.onPaper})` };
+}
+
+/**
+ * Point the app at day or night (#64): `data-lighting` on <html> switches the
+ * token set in global.css, and each industry's `--type-*` variable takes the
+ * shade that reads on that ground. The one place the lighting reaches the DOM.
+ */
+export function applyLighting(lighting: 'day' | 'night', root: HTMLElement = document.documentElement): void {
+  root.dataset.lighting = lighting;
+  for (const industry of Object.keys(TYPE) as Industry[]) {
+    root.style.setProperty(`--type-${industry}`, lighting === 'night' ? TYPE[industry].onNight : TYPE[industry].onPaper);
+  }
 }
 
 /**

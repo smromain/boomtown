@@ -29,8 +29,8 @@ export function CorporationBand() {
         <Skyline tone="ink" className={styles.bandEmptyArt} />
         <div className={styles.bandEmptyMarks}>
           {INDUSTRIES.map((industry) => (
-            <span key={industry} className={styles.bandEmptyMark} style={{ color: industryTheme(industry).onPaper }}>
-              <IndustryMark industry={industry} color={industryTheme(industry).onPaper} size={13} />
+            <span key={industry} className={styles.bandEmptyMark} style={{ color: industryTheme(industry).type }}>
+              <IndustryMark industry={industry} color={industryTheme(industry).type} size={13} />
             </span>
           ))}
         </div>
@@ -74,7 +74,7 @@ export function TrayStrip() {
       <span className={styles.trayTitle}>{copy.game.inTray}</span>
       {tray.map((industry) => (
         <span key={industry} className={styles.trayItem}>
-          <IndustryMark industry={industry} color={industryTheme(industry).onPaper} size={15} />
+          <IndustryMark industry={industry} color={industryTheme(industry).type} size={15} />
           <span className="serif">{view.corporations[industry].baseName}</span>
         </span>
       ))}
@@ -127,7 +127,7 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
                 <IndustryMark
                   key={`${eatenIndustry}-${index}`}
                   industry={eatenIndustry}
-                  color={industryTheme(eatenIndustry).onPaper}
+                  color={industryTheme(eatenIndustry).type}
                   size={15}
                 />
               ))}

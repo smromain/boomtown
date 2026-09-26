@@ -24,8 +24,10 @@ export function Skyline({
   className?: string | undefined;
   style?: CSSProperties | undefined;
 }) {
-  const body = tone === 'ink' ? '#c9bcac' : '#3a332c';
-  const windowBase = tone === 'ink' ? '#e7ded2' : '#2b2621';
+  // The ink tone sits on the app's ground, so it follows day/night through
+  // tokens (#64); chrome is always the dark launch ground.
+  const body = tone === 'ink' ? 'var(--skyline-ink-body)' : '#3a332c';
+  const windowBase = tone === 'ink' ? 'var(--skyline-ink-window)' : '#2b2621';
 
   // A row of flat trapezoid/rectangle buildings, varying width and height —
   // WPA-poster flat shapes, no gradient, no cast shadow.
@@ -64,7 +66,7 @@ export function Skyline({
         const rows = windowRows(b.h);
         return (
           <g key={i}>
-            <rect x={b.x} y={220 - b.h} width={b.w} height={b.h} fill={info ? info.color : body} opacity={info ? 0.5 : 1} />
+            <rect x={b.x} y={220 - b.h} width={b.w} height={b.h} style={{ fill: info ? info.color : body }} opacity={info ? 0.5 : 1} />
             {Array.from({ length: rows }, (_, r) => (
               <rect
                 key={r}
@@ -72,7 +74,7 @@ export function Skyline({
                 y={220 - b.h + 12 + r * 26}
                 width={b.w - 16}
                 height={10}
-                fill={windowBase}
+                style={{ fill: windowBase }}
                 opacity={0.6}
               />
             ))}

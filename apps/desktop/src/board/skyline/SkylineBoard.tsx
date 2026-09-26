@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowPathIcon, ArrowUturnLeftIcon, ArrowUturnRightIcon, MoonIcon, SunIcon } from '@heroicons/react/24/solid';
+import { ArrowPathIcon, ArrowUturnLeftIcon, ArrowUturnRightIcon } from '@heroicons/react/24/solid';
 import type { TileId } from '@boomtown/engine';
 import { useActiveBeat } from '../../beats/BeatContext.js';
 import { coversTheScreen } from '../../beats/beatTriggers.js';
 import { copy } from '../../copy/copy.js';
 import { OverlayGrid } from '../BoardGrid.js';
 import type { BoardModel } from '../boardModel.js';
-import { reportSkylineTrouble, setLighting, useBoardPrefs } from '../boardPrefs.js';
+import { reportSkylineTrouble, useBoardPrefs } from '../boardPrefs.js';
 import { createSkylineScene, type SkylineScene } from './scene.js';
 import { planSkyline } from './skylineModel.js';
 import styles from '../board.module.css';
@@ -115,21 +115,11 @@ export default function SkylineBoard({ model }: { model: BoardModel }) {
   }, []);
 
   const c = copy.board.skyline;
-  const night = prefs.lighting === 'night';
   return (
     <div ref={stageRef} className={styles.skyline} data-board-style="skyline">
       <div ref={hostRef} className={styles.skylineCanvas} aria-hidden />
       <OverlayGrid model={model} gridRef={gridRef} cellPx={CELL_PX} events={{ onHover: setHover, onFocus: setFocus }} />
       <div className={styles.skylineControls} data-skyline-controls>
-        <button
-          type="button"
-          className={styles.skylineButton}
-          onClick={() => setLighting(night ? 'day' : 'night')}
-          aria-label={night ? c.toDay : c.toNight}
-          title={night ? c.toDay : c.toNight}
-        >
-          {night ? <SunIcon width={16} height={16} /> : <MoonIcon width={16} height={16} />}
-        </button>
         <button
           type="button"
           className={styles.skylineButton}

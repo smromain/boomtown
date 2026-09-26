@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { INDUSTRIES, INDUSTRY_INFO } from '@boomtown/engine';
-import { industryPattern, industryTheme, PATTERN_NAMES } from './industryTheme.js';
+import { applyLighting, industryPattern, industryTheme, PATTERN_NAMES } from './industryTheme.js';
 
 /**
  * The renderer's half of the palette spec (#19). `packages/engine/test/
@@ -24,8 +24,11 @@ function contrast(a: string, b: string): number {
 
 /** `--bg` and `--surface`: the cream page and the white panels on it. */
 const PAPER = ['#faf6f0', '#ffffff'];
-/** `--chrome-bg`, the ground every beat is played on. */
-const NIGHT = '#1c1917';
+/**
+ * The night grounds type sits on: the ink curtain's old ground, and the night
+ * `--bg` and `--surface` from global.css (#64).
+ */
+const NIGHT = ['#1c1917', '#171412', '#201c19'];
 const AA = 4.5;
 
 describe('industry type shades read as text', () => {
@@ -37,8 +40,10 @@ describe('industry type shades read as text', () => {
   });
 
   it.each(INDUSTRIES)('%s on night clears WCAG AA', (industry) => {
-    const ratio = contrast(industryTheme(industry).onNight, NIGHT);
-    expect({ industry, ok: ratio >= AA }).toEqual({ industry, ok: true });
+    for (const ground of NIGHT) {
+      const ratio = contrast(industryTheme(industry).onNight, ground);
+      expect({ industry, ground, ok: ratio >= AA }).toEqual({ industry, ground, ok: true });
+    }
   });
 
   it('leaves the engine fill and ink as they are — identity is not the renderer\'s to change', () => {
@@ -57,5 +62,25 @@ describe('industry patterns', () => {
       expect(industryPattern(industry)).toContain(INDUSTRY_INFO[industry].ink);
     }
     expect(new Set(Object.values(PATTERN_NAMES)).size).toBe(INDUSTRIES.length);
+  });
+});
+
+describe('applyLighting (#64)', () => {
+  it('marks the root and points every industry type variable at the shade for that ground', () => {
+    const root = document.createElement('div');
+    applyLighting('night', root);
+    expect(root.dataset.lighting).toBe('night');
+    for (const industry of INDUSTRIES) {
+      expect(root.style.getPropertyValue(`--type-${industry}`)).toBe(industryTheme(industry).onNight);
+    }
+    applyLighting('day', root);
+    expect(root.dataset.lighting).toBe('day');
+    for (const industry of INDUSTRIES) {
+      expect(root.style.getPropertyValue(`--type-${industry}`)).toBe(industryTheme(industry).onPaper);
+    }
+  });
+
+  it('keeps the paper shade as the fallback where the variable is unset', () => {
+    expect(industryTheme('air').type).toBe(`var(--type-air, ${industryTheme('air').onPaper})`);
   });
 });
