@@ -1,6 +1,6 @@
 # The beat curtain takes the table's tone (#64)
 
-**Status:** design for review. Nothing here is built.
+**Status:** Steps 1 and 2 built (2026-09-26), with the curtain already following `lighting` at night. Still to do: the rest of the app's night palette (Step 3), the header toggle, and the design canvas.
 **Scope (revised 2026-09-25):** the curtain takes the tone of the app, and the app gets a **day/night
 setting** on the same pattern as the Skyline board's lighting switch
 (`docs/plans/2026-09-24-feat-skyline-board-plan.md`, *The switch*). Day curtain is cream; night curtain

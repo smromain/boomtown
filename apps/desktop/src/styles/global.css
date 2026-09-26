@@ -38,6 +38,25 @@
   --chrome-muted: #9c9086;
   --chrome-rule: #46403a;
 
+  /* Beat curtain (#64). The five full-screen beats take the tone of the app's
+     day/night setting (`Settings.lighting`, mirrored onto <html> as
+     `data-lighting`), so a beat never inverts the screen against the table
+     behind it. By day the curtain is the cream ground with an ink top rule;
+     the night values are the ink curtain the beats always had. */
+  --beat-bg: var(--bg);
+  --beat-bg-2: var(--surface-2);
+  --beat-ink: var(--ink); /* display type and totals */
+  --beat-ink-1: var(--ink); /* primary body lines */
+  --beat-ink-2: #5c5147; /* secondary body: flavour, explanations (7.2:1 on cream) */
+  --beat-muted: var(--muted); /* labels and glyphs */
+  --beat-hint: var(--muted);
+  --beat-rule: var(--cell-ring);
+  --beat-hairline: var(--rule);
+  --beat-accent: var(--accent); /* the ember is 2.5:1 on cream; brick red is 5.1:1 */
+  --beat-edge: var(--ink); /* the curtain's top rule */
+  --beat-shade: #1c1917; /* darkens a corporation colour for a bevel, in either tone */
+  --beat-shadow: rgba(94, 74, 52, 0.5);
+
   /* board */
   --board-bg: #faf6f0;
   --cell-empty: #f1eae0;
@@ -71,6 +90,25 @@
   --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --serif: "DM Serif Display", Georgia, "Times New Roman", serif;
   font-family: var(--sans);
+}
+
+
+/* Night (#64): only the beat tokens so far. The rest of the app's night palette
+   is still to come; until then a night table keeps the cream ground and the
+   beats keep the ink curtain they always had. */
+:root[data-lighting="night"] {
+  --beat-bg: #1c1917;
+  --beat-bg-2: #14110f;
+  --beat-ink: #faf6f0;
+  --beat-ink-1: #d8cfc3;
+  --beat-ink-2: #b8ac9f;
+  --beat-muted: #9c9086;
+  --beat-hint: #6f665d;
+  --beat-rule: #46403a;
+  --beat-hairline: #2b2621;
+  --beat-accent: #d98a4e;
+  --beat-edge: transparent;
+  --beat-shadow: rgba(0, 0, 0, 0.7);
 }
 
 * {

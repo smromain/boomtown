@@ -46,8 +46,8 @@ export function FoundingBeat({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: `linear-gradient(165deg, color-mix(in srgb, ${color} 84%, #fff), ${color} 55%, color-mix(in srgb, ${color} 48%, #1c1917))`,
-            boxShadow: '0 40px 70px -20px rgba(0,0,0,.7), inset 0 2px 0 rgba(255,255,255,.3)',
+            background: `linear-gradient(165deg, color-mix(in srgb, ${color} 84%, #fff), ${color} 55%, color-mix(in srgb, ${color} 48%, var(--beat-shade)))`,
+            boxShadow: '0 40px 70px -20px var(--beat-shadow), inset 0 2px 0 rgba(255,255,255,.3)',
           }}
         >
           <IndustryMark industry={industry} color={ink} size={54} />
@@ -58,11 +58,11 @@ export function FoundingBeat({
           <div className="serif" style={{ fontSize: 60, lineHeight: 1.1, marginTop: 12 }}>
             {corp.baseName}
           </div>
-          <div style={{ fontSize: 14, color: '#b8ac9f', marginTop: 10, maxWidth: '34ch' }}>{corp.flavour}</div>
-          <div style={{ display: 'flex', gap: 38, marginTop: 26, paddingTop: 18, borderTop: '1px solid var(--chrome-rule)' }}>
+          <div style={{ fontSize: 14, color: 'var(--beat-ink-2)', marginTop: 10, maxWidth: '34ch' }}>{corp.flavour}</div>
+          <div style={{ display: 'flex', gap: 38, marginTop: 26, paddingTop: 18, borderTop: '1px solid var(--beat-rule)' }}>
             <BeatStat label="headquarters" value={corp.hqTile ?? '—'} />
             <BeatStat label="opening price" value={corp.sharePrice != null ? `$${corp.sharePrice}` : '—'} />
-            <BeatStat label="founder" value="+1 share" color="#d98a4e" />
+            <BeatStat label="founder" value="+1 share" color="var(--beat-accent)" />
           </div>
         </div>
       </div>
@@ -77,7 +77,7 @@ function BeatStat({ label, value, color }: { label: string; value: string; color
       <span className={styles.kicker} style={{ letterSpacing: '0.16em' }}>
         {label}
       </span>
-      <span className="serif" style={{ fontSize: 22, color: color ?? 'var(--chrome-ink)' }}>
+      <span className="serif" style={{ fontSize: 22, color: color ?? 'var(--beat-ink)' }}>
         {value}
       </span>
     </span>

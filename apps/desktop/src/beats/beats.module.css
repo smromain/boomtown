@@ -1,7 +1,9 @@
-/* Shared beat chrome (U11). Full-screen beats (founding, merger, endgame,
-   victory) drop the same ink curtain the header/launch screen use (KTD1); the
-   buy-stock beat is an in-place flourish, not a takeover (R6 — "buy-stock is
-   the lightest"). */
+/* Shared beat chrome (U11). The five full-screen beats (founding, merger,
+   motion, endgame, victory) drop a curtain in the tone of the table behind it
+   (#64): cream with an ink top rule by day, ink at night, all from the
+   `--beat-*` tokens in global.css. The buy-stock beat is an in-place flourish,
+   not a takeover (R6 — "buy-stock is the lightest"), and keeps the ink chrome
+   pill. */
 
 /* Not a hit-testable full-screen blocker by itself — the buy-stock flourish
    renders inside this without ever pausing play. Only `.curtain` (the four
@@ -38,10 +40,26 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: linear-gradient(178deg, #1c1917 0%, #14110f 100%);
-  color: var(--chrome-ink);
+  background: linear-gradient(178deg, var(--beat-bg) 0%, var(--beat-bg-2) 100%);
+  border-top: 3px solid var(--beat-edge);
+  color: var(--beat-ink);
   cursor: pointer;
+  /* Without the flip to dark, the drop itself is the entrance: this shadow
+     marks the curtain's leading edge while it travels, and sits below the
+     viewport once the curtain has settled at inset 0. */
+  box-shadow: 0 24px 48px -12px var(--beat-shadow);
   animation: curtainDrop 480ms cubic-bezier(0.16, 0.9, 0.2, 1) both;
+}
+
+/* The one texture the language allows (global.css's .grain), capped there. */
+.curtain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--grain);
+  background-size: var(--grain-size);
+  opacity: var(--grain-opacity);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -64,14 +82,14 @@
   font-size: 10.5px;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: #d98a4e;
+  color: var(--beat-accent);
 }
 
 .rule {
   width: 60px;
   height: 1px;
   margin: 12px 0 0;
-  background: var(--chrome-rule);
+  background: var(--beat-rule);
 }
 
 /* Absolutely positioned (against `.curtain`, its containing block) rather than
@@ -84,7 +102,7 @@
   bottom: 26px;
   font-size: 10px;
   letter-spacing: 0.08em;
-  color: #6f665d;
+  color: var(--beat-hint);
 }
 
 @keyframes curtainDrop {

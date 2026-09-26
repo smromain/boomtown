@@ -61,10 +61,10 @@ export function MotionBeat({
         <div className={`serif ${reduced ? '' : styles.rise}`} style={{ fontSize: 64, marginTop: 6 }}>
           {carried ? m.carries : m.fails}
         </div>
-        <div className={`serif tabnum`} style={{ fontSize: 20, color: '#d8cfc3' }}>
+        <div className={`serif tabnum`} style={{ fontSize: 20, color: 'var(--beat-ink-1)' }}>
           {fill(m.sharesInFavour, { yes, total })}
         </div>
-        <div style={{ fontSize: 14, color: '#b8ac9f', maxWidth: '52ch', lineHeight: 1.55 }}>
+        <div style={{ fontSize: 14, color: 'var(--beat-ink-2)', maxWidth: '52ch', lineHeight: 1.55 }}>
           {carried ? (
             <>{m.carriedNote}</>
           ) : backers.length > 0 ? (

@@ -15,6 +15,7 @@ import { copy } from './copy/copy.js';
 import { NightSkyline } from './art/NightSkyline.js';
 import logoUrl from './assets/boomtown-logo.png';
 import styles from './lobby/lobby.module.css';
+import { useBoardPrefs } from './board/boardPrefs.js';
 
 type Screen =
   | { kind: 'menu' }
@@ -64,6 +65,14 @@ export function App() {
       room?.disconnect();
     };
   }, []);
+
+  // The day/night setting reaches CSS as `data-lighting` on <html>, where the
+  // tokens that follow it (the beat curtains, #64) read it. Every save
+  // republishes the prefs, so a change anywhere lands here on the spot.
+  const { lighting } = useBoardPrefs();
+  useEffect(() => {
+    document.documentElement.dataset.lighting = lighting;
+  }, [lighting]);
 
   // The online-play log rides along on every screen (Ctrl/Cmd+Shift+L), so a
   // lobby that will not fill can be diagnosed without leaving it — in a dev
