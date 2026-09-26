@@ -1,6 +1,6 @@
 # The beat curtain takes the table's tone (#64)
 
-**Status:** built. The beat curtain shipped in #84; the night palette for the whole app and the top-bar toggle followed (2026-09-26). Still to do: the design canvas.
+**Status:** built. The beat curtain shipped in #84; the night palette for the whole app and the top-bar toggle followed (2026-09-26). The design canvas followed the same day: `Beats` draws each curtain beat in day with its night twin beneath, and `Language` gains the day and night token sheet. Republishing the canvas waits for a session with the `design` skill.
 **Scope (revised 2026-09-25):** the curtain takes the tone of the app, and the app gets a **day/night
 setting** on the same pattern as the Skyline board's lighting switch
 (`docs/plans/2026-09-24-feat-skyline-board-plan.md`, *The switch*). Day curtain is cream; night curtain
