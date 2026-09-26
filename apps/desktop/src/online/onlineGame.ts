@@ -131,6 +131,21 @@ export function createRoom(config: GameConfig, roomCode: string, name: string): 
   });
 }
 
+/**
+ * Open a couch table (#62): a room this screen hosts without taking a seat.
+ * Every seat is filled from a phone knocking, and this client is sent only the
+ * public view, so nothing private can reach the shared screen.
+ */
+export function createTable(config: GameConfig, roomCode: string, name: string): Promise<OnlineGame> {
+  return build({
+    config,
+    roomCode,
+    name,
+    intent: { kind: 'table', config: toRoomConfig(config) },
+    isHost: true,
+  });
+}
+
 /** Join an existing room by code. The real config arrives via `room-state`. */
 export function joinRoom(placeholder: GameConfig, roomCode: string, name: string): Promise<OnlineGame> {
   return build({ config: placeholder, roomCode, name, intent: { kind: 'join' }, isHost: false });

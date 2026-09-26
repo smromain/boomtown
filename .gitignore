@@ -15,3 +15,6 @@ debug-dumps/
 # Python bytecode
 __pycache__/
 *.pyc
+
+# The couch-mode phone page, built by apps/phone into the room package (#62)
+packages/server/public/phone/

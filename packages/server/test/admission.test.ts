@@ -116,7 +116,7 @@ describe('handing a seat to a bot', () => {
 
     expect(seats.eject(1)).toBe(true);
 
-    const slots = seats.snapshot(null, 'playing', { hostSeat: 0, knocks: [], locked: false }).seats;
+    const slots = seats.snapshot(null, 'playing', { hostSeat: 0, table: false, knocks: [], locked: false }).seats;
     expect(slots[1]!.kind).toBe('bot');
     expect(slots.some((s) => s.kind === 'open')).toBe(false);
     expect(seats.isBot(1)).toBe(true);

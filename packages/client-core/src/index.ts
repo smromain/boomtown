@@ -3,6 +3,8 @@
 export { GameSession, type SessionResult } from './session.js';
 export {
   clientView,
+  tableClientView,
+  TABLE_READER,
   type ClientView,
   type HandTile,
   type HandTileEffect,

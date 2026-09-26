@@ -10,7 +10,7 @@ import { DebugBeatPreview } from './beats/debug/DebugBeatPreview.js';
 import { NetLogOverlay } from './debug/NetLogOverlay.js';
 import type { PreviewKind } from './beats/debug/fixtures.js';
 import { configFromRoom, type OnlineGame } from './online/onlineGame.js';
-import { Cog6ToothIcon, GlobeAltIcon, UsersIcon } from '@heroicons/react/24/solid';
+import { Cog6ToothIcon, GlobeAltIcon, TvIcon, UsersIcon } from '@heroicons/react/24/solid';
 import { copy } from './copy/copy.js';
 import { NightSkyline } from './art/NightSkyline.js';
 import logoUrl from './assets/boomtown-logo.png';
@@ -20,6 +20,7 @@ type Screen =
   | { kind: 'menu' }
   | { kind: 'local-setup' }
   | { kind: 'online-setup' }
+  | { kind: 'couch-setup' }
   | { kind: 'online-lobby'; room: OnlineGame }
   | { kind: 'playing-local'; game: StartedGame }
   | { kind: 'playing-online'; room: OnlineGame };
@@ -117,6 +118,18 @@ export function App() {
                     {copy.menu.online.note}
                   </span>
                 </button>
+                <button
+                  type="button"
+                  className={styles.launchPlate}
+                  aria-label={copy.menu.couch.name}
+                  onClick={() => setScreen({ kind: 'couch-setup' })}
+                >
+                  <TvIcon width={22} height={22} className={styles.launchPlateMark} aria-hidden />
+                  <span className={`serif ${styles.launchPlateName}`}>{copy.menu.couch.name}</span>
+                  <span className={styles.launchPlateNote} aria-hidden>
+                    {copy.menu.couch.note}
+                  </span>
+                </button>
               </div>
               <button type="button" className={styles.launchChip} onClick={() => setSettingsOpen(true)}>
                 <Cog6ToothIcon width={13} height={13} aria-hidden />
@@ -143,6 +156,15 @@ export function App() {
       case 'online-setup':
         return (
           <CreateJoin
+            onRoom={(room) => setScreen({ kind: 'online-lobby', room })}
+            onBack={() => setScreen({ kind: 'menu' })}
+          />
+        );
+
+      case 'couch-setup':
+        return (
+          <CreateJoin
+            couch
             onRoom={(room) => setScreen({ kind: 'online-lobby', room })}
             onBack={() => setScreen({ kind: 'menu' })}
           />
@@ -178,6 +200,15 @@ function OnlineGameScreen({ room, onExit }: { room: OnlineGame; onExit: () => vo
   const seat = room.transport.seat();
   const localSeats: Seat[] = seat == null ? [] : [seat];
   const config = useMemo(() => configFromRoom(room.config, roomState), [room.config, roomState]);
+  // A couch table (#62) holds no seat, so nothing private is ever drawn here,
+  // and it paces the room's bots to its own beats.
+  const paceTable = room.transport.isTable() ? room.transport.pace : undefined;
 
-  return <GameScreen game={{ client: room.client, config, localSeats }} onExit={onExit} online />;
+  return (
+    <GameScreen
+      game={{ client: room.client, config, localSeats, ...(paceTable ? { paceTable } : {}) }}
+      onExit={onExit}
+      online
+    />
+  );
 }

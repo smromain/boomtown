@@ -45,6 +45,14 @@ export interface Settings {
    */
   readonly playerName: string;
   /**
+   * Streaming mode (#62): the room code is masked on screen from the first
+   * frame — in the host's lobby and in the joiner's field — and shown only
+   * while a hold-to-show control is held. Copy keeps working, because the
+   * clipboard is how the code actually travels. Per machine, off by default.
+   * A new key needs no version bump: `loadSettings` merges over the defaults.
+   */
+  readonly streamingMode: boolean;
+  /**
    * Which painter draws the board (#70): Board View, the tilted paper grid, or
    * Skyline, the WebGL city where every chain is a district. A preference about
    * this screen rather than a rule of the table, so it never reaches the room
@@ -90,6 +98,7 @@ export const DEFAULT_SETTINGS: Settings = {
   musicMuted: false,
   musicTrack: 'pleasant-creek',
   playerName: '',
+  streamingMode: false,
   boardStyle: 'board-view',
   lighting: 'day',
   industryPatterns: false,

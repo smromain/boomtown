@@ -319,8 +319,61 @@ export interface PlayerView {
   readonly result: GameResult | null;
 }
 
+/**
+ * What the shared screen at a couch table sees (#62): the board, the market and
+ * every seat's public face, and nobody's hand.
+ *
+ * It is `PlayerView` without the fields that belong to a reader who holds a
+ * seat, and it is built from the same projection as `viewFor`, so the two
+ * cannot disagree about what is public. Cash and holdings follow the table's
+ * rules as they would for a seat that holds nothing: open at an open table and
+ * for any seat in `openBooks`, null otherwise.
+ *
+ * The open decision reaches the table as who owes it and what kind it is, and
+ * nothing more. A `dispose-shares` decision carries the share count, which is
+ * the deciding seat's holdings, so the payload stays with that seat.
+ */
+export interface TableView extends Omit<
+  PlayerView,
+  'you' | 'yourHand' | 'yourCash' | 'yourHoldings' | 'pendingDecision'
+> {
+  readonly decision: { readonly seat: Seat; readonly kind: PendingDecision['type'] } | null;
+}
+
 /** Project the authoritative state to what one seat is allowed to see. */
 export function viewFor(state: GameState, you: Seat): PlayerView {
+  const pending =
+    state.merger?.pending && state.merger.pending.seat === you
+      ? state.merger.pending
+      : state.motion?.pending && state.motion.pending.seat === you
+        ? state.motion.pending
+        : null;
+
+  return {
+    ...publicProjection(state, you),
+    you,
+    yourHand: [...state.hands[you]!],
+    yourCash: state.seats[you]!.cash,
+    yourHoldings: { ...state.seats[you]!.holdings },
+    pendingDecision: pending,
+  };
+}
+
+/** Project the authoritative state to what the shared table screen may see (#62). */
+export function tableView(state: GameState): TableView {
+  const pending = state.merger?.pending ?? state.motion?.pending ?? null;
+  return {
+    ...publicProjection(state, null),
+    decision: pending ? { seat: pending.seat, kind: pending.type } : null,
+  };
+}
+
+/**
+ * Everything a reader sees whether or not they hold a seat. `reader` decides
+ * one thing: whether a seat's cash and holdings are bare because they are the
+ * reader's own. The table passes null and so sees only what is public.
+ */
+function publicProjection(state: GameState, reader: Seat | null): Omit<TableView, 'decision'> {
   const open = state.visibility === 'open';
   const corporations = Object.fromEntries(
     INDUSTRIES.map((industry) => {
@@ -345,16 +398,8 @@ export function viewFor(state: GameState, you: Seat): PlayerView {
     }),
   ) as Record<Industry, CorpView>;
 
-  const pending =
-    state.merger?.pending && state.merger.pending.seat === you
-      ? state.merger.pending
-      : state.motion?.pending && state.motion.pending.seat === you
-        ? state.motion.pending
-        : null;
-
   return {
     ruleset: state.ruleset,
-    you,
     step: state.step,
     status: state.status,
     activeSeat: activeSeat(state),
@@ -362,7 +407,7 @@ export function viewFor(state: GameState, you: Seat): PlayerView {
     seats: state.seats.map((seat, index) => {
       // Open books are exactly that: a seat that backed a failed motion is as
       // visible as it would be at an open table, permanently.
-      const bare = open || index === you || state.openBooks.includes(index);
+      const bare = open || index === reader || state.openBooks.includes(index);
       return {
         name: seat.name,
         cash: bare ? seat.cash : null,
@@ -370,15 +415,11 @@ export function viewFor(state: GameState, you: Seat): PlayerView {
         handCount: state.hands[index]!.length,
       };
     }),
-    yourHand: [...state.hands[you]!],
-    yourCash: state.seats[you]!.cash,
-    yourHoldings: { ...state.seats[you]!.holdings },
     cells: state.cells,
     corporations,
     companies: state.companies,
     drawPileCount: state.bag.length,
     removedTiles: [...state.removed],
-    pendingDecision: pending,
     motion: state.motion
       ? {
           by: state.motion.by,

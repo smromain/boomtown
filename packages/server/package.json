@@ -8,8 +8,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "dev": "partykit dev",
-    "deploy": "partykit deploy"
+    "dev": "npm run build --workspace @boomtown/phone && partykit dev",
+    "deploy": "npm run build --workspace @boomtown/phone && partykit deploy"
   },
   "dependencies": {
     "@boomtown/ai": "*",

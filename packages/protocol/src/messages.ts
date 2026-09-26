@@ -1,5 +1,5 @@
 import type { Command, Seat } from '@boomtown/engine';
-import type { ClientViewDTO, EngineEventDTO, RetrospectiveDTO } from './dto.js';
+import type { ClientViewDTO, EngineEventDTO, RetrospectiveDTO, TableViewDTO } from './dto.js';
 import type { WireError } from './errors.js';
 
 /**
@@ -9,8 +9,9 @@ import type { WireError } from './errors.js';
  * switch on `type`.
  *
  * Client -> room: `hello`, `create-room`, `knock`, `admit`, `decline`,
- * `set-locked`, `start`, `command`.
- * Room -> client: `welcome`, `waiting`, `room-state`, `update`, `error`.
+ * `set-locked`, `eject`, `start`, `command`, `pace`.
+ * Room -> client: `welcome`, `table-welcome`, `waiting`, `room-state`, `update`,
+ * `table-update`, `error`.
  */
 export type ClientMessage =
   | Hello
@@ -21,8 +22,16 @@ export type ClientMessage =
   | SetLocked
   | Eject
   | StartGame
-  | SendCommand;
-export type RoomMessage = Welcome | Waiting | RoomStateMessage | Update | ErrorMessage;
+  | SendCommand
+  | Pace;
+export type RoomMessage =
+  | Welcome
+  | TableWelcome
+  | Waiting
+  | RoomStateMessage
+  | Update
+  | TableUpdate
+  | ErrorMessage;
 export type WireMessage = ClientMessage | RoomMessage;
 
 // --- client -> room -------------------------------------------------------
@@ -41,6 +50,12 @@ export interface Hello {
 export interface CreateRoom {
   readonly type: 'create-room';
   readonly config: RoomConfig;
+  /**
+   * Couch mode (#62): the creator is the table, not a player. It takes no seat,
+   * sees only what is public, and holds the room's host authority — admitting,
+   * declining, locking, ejecting and starting. Every seat is filled by a knock.
+   */
+  readonly table?: boolean;
 }
 
 /**
@@ -96,12 +111,35 @@ export interface SendCommand {
   readonly command: Command;
 }
 
+/**
+ * Table only (#62): whether a beat is covering the shared screen. A couch table
+ * is a show, and the room plays bots inline — without this, three bot turns
+ * arrive in one burst and their beats queue up behind each other. Once a table
+ * has sent it, the room plays one bot move per `holding: false`, and never
+ * waits on a table longer than a fixed cap, so a table that goes quiet cannot
+ * stall the game.
+ */
+export interface Pace {
+  readonly type: 'pace';
+  readonly holding: boolean;
+}
+
 // --- room -> client -------------------------------------------------------
 
 /** Acknowledges `hello`/`join`, assigning this connection its seat and token. */
 export interface Welcome {
   readonly type: 'welcome';
   readonly seat: Seat;
+  readonly token: string;
+}
+
+/**
+ * Acknowledges a `create-room` with `table: true`. The token is the table's
+ * way back in, handled exactly as a seat token is: 256 bits, rotated on every
+ * resume, presented as `?token=` on reconnect.
+ */
+export interface TableWelcome {
+  readonly type: 'table-welcome';
   readonly token: string;
 }
 
@@ -133,6 +171,19 @@ export interface Update {
   readonly events: readonly EngineEventDTO[];
   readonly rejection?: { readonly command: Command; readonly error: WireError };
   /** Set once, on the update that ends the game (#68, #69). */
+  readonly retrospective?: RetrospectiveDTO;
+}
+
+/**
+ * One authoritative update for the table (#62). The view is what every reader
+ * may see, and the events are redacted for a reader holding no seat — on a
+ * closed table a purchase names the corporation and carries no amount.
+ */
+export interface TableUpdate {
+  readonly type: 'table-update';
+  readonly view: TableViewDTO;
+  readonly events: readonly EngineEventDTO[];
+  /** Set once, on the update that ends the game, exactly as for a seat. */
   readonly retrospective?: RetrospectiveDTO;
 }
 
@@ -172,8 +223,13 @@ export interface RoomState {
   readonly phase: 'lobby' | 'playing' | 'over';
   readonly config: RoomConfig;
   readonly seats: readonly SeatSlot[];
-  /** The seat that may admit, decline and lock. */
-  readonly hostSeat: number;
+  /**
+   * The seat that may admit, decline, lock, eject and start — or null when the
+   * table hosts (#62), which is not a seat.
+   */
+  readonly hostSeat: number | null;
+  /** Whether a couch table created this room. Its seats are all filled by knocking. */
+  readonly table: boolean;
   /** Knocks waiting on the host. Only ever populated for the host's own view. */
   readonly knocks: readonly Knocker[];
   /** While locked, knocks are refused outright. */

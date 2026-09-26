@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, legalMoves, reduce, viewFor, type Command, type GameState, type Seat } from '@boomtown/engine';
+import { createGame, legalMoves, reduce, tableView, viewFor, type Command, type GameState, type Seat } from '@boomtown/engine';
 import {
   PROTOCOL_VERSION,
   protocolError,
@@ -45,16 +45,23 @@ describe('message round-trips', () => {
         seed: 1,
       },
     },
+    {
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'boomtown', visibility: 'hidden', bots: {} },
+      table: true,
+    },
     { type: 'knock' },
     { type: 'start' },
     { type: 'command', command: { type: 'place-tile', seat: 0, tile: '1A' } },
     { type: 'welcome', seat: 1, token: 'tok' },
+    { type: 'table-welcome', token: 'tok' },
     {
       type: 'room-state',
       state: {
         ticket: 'ABCD1234',
         phase: 'lobby',
         hostSeat: 0,
+        table: false,
         knocks: [{ id: 'a1b2c3d4', name: 'Cal' }],
         locked: false,
         config: { seatCount: 3, edition: 'edition-2015', visibility: 'hidden', bots: {} },
@@ -104,6 +111,22 @@ describe('message round-trips', () => {
     expect(round.view.seats[0]!.cash).toBeNull(); // opponent, hidden table
     expect(round.view.seats[0]!.holdings).toBeNull();
     expect(round.view.drawPileCount).toBe(hidden.bag.length); // count only, not contents
+  });
+
+  it('a table update round-trips with nobody\'s hand in it (#62)', () => {
+    const hidden = createGame({
+      seats: [{ name: 'A' }, { name: 'B' }, { name: 'C' }],
+      seed: 42,
+      turnOrder: [0, 1, 2],
+      visibility: 'hidden',
+    });
+    const update: RoomMessage = { type: 'table-update', view: tableView(hidden), events: [] };
+    const round = clone(update);
+    expect(round).toEqual(update);
+    const json = JSON.stringify(round);
+    expect(json).not.toContain('"yourHand"');
+    expect(json).not.toContain('"bag"');
+    for (const hand of hidden.hands) for (const tile of hand) expect(json).not.toContain(`"${tile}"`);
   });
 
   it('an EngineError from reduce forwards through the error envelope losslessly', () => {

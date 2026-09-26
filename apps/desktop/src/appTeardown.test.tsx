@@ -46,6 +46,7 @@ async function fakeRoom(): Promise<OnlineGame> {
       connectionStatus: () => 'open' as const,
       seat: () => 0,
       token: () => 'tok',
+      isTable: () => false,
       start: noop,
     } as unknown as OnlineGame['transport'],
     disconnect,
@@ -73,6 +74,7 @@ describe('App — online lobby to game transition', () => {
     const playing: RoomState = {
       ticket: 'ROOM01',
       hostSeat: 0,
+      table: false,
       knocks: [],
       locked: false,
       phase: 'playing',

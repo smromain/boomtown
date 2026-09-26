@@ -278,6 +278,53 @@
   gap: 0.35rem;
 }
 
+/* The couch table's QR (#62). A light plate whatever the theme, because a
+   camera across a room reads a code by its contrast; the module is sized so a
+   TV at couch distance is comfortably inside what a phone will focus on. */
+.qr {
+  padding: 0.5rem;
+  background: #fff;
+  border-radius: 8px;
+  line-height: 0;
+}
+
+.qr svg {
+  display: block;
+}
+
+/* Replaced, not blurred — the same rule as the masked code. */
+.qrMasked {
+  width: 184px;
+  height: 184px;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px dashed var(--rule);
+  border-radius: 8px;
+}
+
+.phoneAddress {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.codeActions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+/* The hold-to-show control, while held. */
+.codeActions [aria-pressed='true'],
+.nameRow button[aria-pressed='true'] {
+  color: var(--ink);
+  border-color: var(--cell-ring);
+}
+
 .hint {
   font-size: 0.85rem;
   color: var(--muted);

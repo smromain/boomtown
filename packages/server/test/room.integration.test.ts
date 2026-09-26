@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import type { ClientMessage, RoomMessage } from '@boomtown/protocol';
+import type { ClientMessage, RoomConfig, RoomMessage } from '@boomtown/protocol';
 import { PROTOCOL_VERSION } from '@boomtown/protocol';
 import { TICKET_LENGTH, isTicket, mintRoomAddress, mintTicket } from '@boomtown/protocol';
 
@@ -12,6 +12,8 @@ class TestClient {
   private waiters: ((m: RoomMessage) => void)[] = [];
   private closed = false;
   readonly open: Promise<void>;
+  /** Every message received, in order, whether or not anything waited for it. */
+  readonly seen: RoomMessage[] = [];
 
   constructor(room: string, params: Record<string, string> = {}) {
     const qs = new URLSearchParams({ v: PROTOCOL_VERSION, name: 'Tester', ...params });
@@ -32,6 +34,7 @@ class TestClient {
     });
     this.ws.addEventListener('message', (ev) => {
       const msg = JSON.parse(String((ev as MessageEvent).data)) as RoomMessage;
+      this.seen.push(msg);
       const waiter = this.waiters.shift();
       if (waiter) waiter(msg);
       else this.queue.push(msg);
@@ -550,6 +553,209 @@ describe('PartyKit room — end to end', () => {
     expect(seatBView.view.seats[2]!.holdings).toBeNull();
     // only this seat's own hand is present
     expect(seatBView.view.yourHand).toHaveLength(6);
+  });
+});
+
+// --- couch mode: the table (#62) -------------------------------------------
+//
+// The desktop at a couch table is a connection with host authority and no seat.
+// What matters is on the wire: the table is sent the public view and nothing a
+// seat holds, the phones are sent their own, and nobody but the table hosts.
+
+describe('PartyKit room — a couch table (#62)', () => {
+  type RoomStateOf = Extract<RoomMessage, { type: 'room-state' }>;
+  type TableUpdateOf = Extract<RoomMessage, { type: 'table-update' }>;
+  type UpdateOf = Extract<RoomMessage, { type: 'update' }>;
+
+  async function openTable(
+    config: RoomConfig = { seatCount: 3, edition: 'boomtown', visibility: 'hidden', bots: { 1: 6, 2: 6 }, seed: 11 },
+  ) {
+    const room = uniqueRoom();
+    const table = client(room, { name: 'Table' });
+    await table.open;
+    table.send({ type: 'create-room', config, table: true });
+    const welcome = (await table.next('table-welcome')) as Extract<RoomMessage, { type: 'table-welcome' }>;
+    return { room, table, token: welcome.token };
+  }
+
+  it('makes the creator the table: a token, host authority, and no seat', async () => {
+    const { table, token } = await openTable({ seatCount: 3, edition: 'boomtown', visibility: 'hidden', bots: {}, seed: 1 });
+    expect(token).toMatch(/^[0-9a-f]{64}$/);
+    const state = ((await table.next('room-state')) as RoomStateOf).state;
+    expect(state.table).toBe(true);
+    expect(state.hostSeat).toBeNull();
+    expect(state.seats.every((seat) => seat.kind === 'open')).toBe(true);
+  });
+
+  it('lets phones in only through the table, and only the table hosts', async () => {
+    const { room, table } = await openTable({ seatCount: 3, edition: 'boomtown', visibility: 'hidden', bots: { 2: 6 }, seed: 1 });
+    const ana = client(room, { name: 'Ana' });
+    await ana.open;
+    await admit(table, ana);
+    const bo = client(room, { name: 'Bo' });
+    await bo.open;
+    await admit(table, bo);
+
+    // A seated phone cannot start, lock or admit — there is one host.
+    ana.send({ type: 'start' });
+    const refused = (await ana.next('error')) as Extract<RoomMessage, { type: 'error' }>;
+    expect(refused.error.kind === 'protocol' && refused.error.code).toBe('not-host');
+    ana.send({ type: 'set-locked', locked: true });
+    const alsoRefused = (await ana.next('error')) as Extract<RoomMessage, { type: 'error' }>;
+    expect(alsoRefused.error.kind === 'protocol' && alsoRefused.error.code).toBe('not-host');
+
+    // And the table cannot sit down.
+    table.send({ type: 'knock' });
+    const noSeat = (await table.next('error')) as Extract<RoomMessage, { type: 'error' }>;
+    expect(noSeat.error.kind === 'protocol' && noSeat.error.code).toBe('not-in-room');
+
+    table.send({ type: 'start' });
+    const first = (await table.next('table-update')) as TableUpdateOf;
+    expect(first.view.status).toBe('playing');
+    const anaView = (await ana.next('update')) as UpdateOf;
+    expect(anaView.view.yourHand).toHaveLength(6);
+  });
+
+  it('sends the table the public view and no purchase amounts while the phones play', async () => {
+    const { room, table } = await openTable();
+    const ana = client(room, { name: 'Ana' });
+    await ana.open;
+    await admit(table, ana);
+    table.send({ type: 'start' });
+
+    const hands = new Set<string>();
+    let view = (await ana.next('update')) as UpdateOf;
+    let ownPurchases = 0;
+    let safety = 0;
+    while (view.view.status === 'playing' && safety++ < 300 && ownPurchases < 2) {
+      for (const tile of view.view.yourHand) hands.add(tile);
+      if (view.view.activeSeat !== 0 && !view.view.pendingDecision) {
+        view = (await ana.next('update', 8000)) as UpdateOf;
+        continue;
+      }
+      const command = pickBuyingMove(view.view);
+      if (command.type === 'buy-shares' && Object.keys(command.picks).length > 0) ownPurchases += 1;
+      ana.send({ type: 'command', command });
+      view = (await ana.next('update', 8000)) as UpdateOf;
+    }
+    await new Promise((r) => setTimeout(r, 500));
+    const tableFrames = table.seen.filter((m): m is TableUpdateOf => m.type === 'table-update');
+
+    expect(ownPurchases).toBeGreaterThan(0);
+    expect(tableFrames.length).toBeGreaterThan(1);
+    const purchases = tableFrames.flatMap((f) => f.events.flatMap((e) => (e.type === 'shares-bought' ? [e] : [])));
+    // Hers and the bots' alike: the table holds no seat, so it sees no amount.
+    expect(purchases.some((e) => e.seat === 0)).toBe(true);
+    expect(purchases.some((e) => e.seat !== 0)).toBe(true);
+    for (const event of purchases) {
+      expect(event.cost).toBeNull();
+      expect(Object.values(event.picks).every((n) => n === null)).toBe(true);
+    }
+    for (const frame of tableFrames) {
+      const json = JSON.stringify(frame.view);
+      expect(json).not.toContain('"yourHand"');
+      expect(json).not.toContain('"bag"');
+      // A tile Ana held but had not yet played must never reach the table.
+      const onBoard = new Set(Object.keys(frame.view.cells).filter((t) => frame.view.cells[t as keyof typeof frame.view.cells]));
+      for (const tile of hands) {
+        if (!onBoard.has(tile) && !frame.view.removedTiles.includes(tile as never)) {
+          expect(json).not.toContain(`"${tile}"`);
+        }
+      }
+      for (const seat of frame.view.seats) expect(seat.cash).toBeNull();
+    }
+  }, 30_000);
+
+  it('holds each bot move for a table that paces, one per ready (U38)', async () => {
+    const { room, table } = await openTable();
+    const ana = client(room, { name: 'Ana' });
+    await ana.open;
+    await admit(table, ana);
+    table.send({ type: 'pace', holding: false });
+    table.send({ type: 'start' });
+
+    const tableUpdates = () => table.seen.filter((m) => m.type === 'table-update').length;
+    const quiet = () => new Promise((r) => setTimeout(r, 400));
+    let pacedBotMoves = 0;
+    let anaView = (await ana.next('update')) as UpdateOf;
+    for (let round = 0; round < 60 && pacedBotMoves < 4; round += 1) {
+      const botOnClock = anaView.view.activeSeat !== 0 && !anaView.view.pendingDecision;
+      if (!botOnClock) {
+        if (anaView.view.status !== 'playing') break;
+        ana.send({ type: 'command', command: pickHumanMove(anaView.view) });
+        anaView = (await ana.next('update', 8000)) as UpdateOf;
+        continue;
+      }
+      // A bot owes a move. Let the frame that handed it the clock reach the
+      // table too, then: without a ready from the table, nothing arrives.
+      await quiet();
+      const before = tableUpdates();
+      await quiet();
+      expect(tableUpdates()).toBe(before);
+      table.send({ type: 'pace', holding: false });
+      anaView = (await ana.next('update', 8000)) as UpdateOf;
+      await quiet();
+      // One ready, one move.
+      expect(tableUpdates()).toBe(before + 1);
+      pacedBotMoves += 1;
+    }
+    expect(pacedBotMoves).toBe(4);
+  }, 60_000);
+
+  it('stops holding bots the moment the table goes away', async () => {
+    const { room, table } = await openTable();
+    const ana = client(room, { name: 'Ana' });
+    await ana.open;
+    await admit(table, ana);
+    table.send({ type: 'pace', holding: true });
+    table.send({ type: 'start' });
+    await table.next('table-update');
+    table.close();
+
+    // With the table gone the bots play inline again, so Ana's turn comes
+    // round without anyone sending a ready.
+    let view = (await ana.next('update')) as UpdateOf;
+    let safety = 0;
+    while (view.view.activeSeat !== 0 && safety++ < 40) {
+      view = (await ana.next('update', 3000)) as UpdateOf;
+    }
+    expect(view.view.activeSeat).toBe(0);
+  }, 30_000);
+
+  it('takes the table back by token, and the old token stops working', async () => {
+    const { room, table, token } = await openTable();
+    const ana = client(room, { name: 'Ana' });
+    await ana.open;
+    await admit(table, ana);
+    table.send({ type: 'start' });
+    await table.next('table-update');
+
+    table.close();
+    await new Promise((r) => setTimeout(r, 300));
+
+    const back = client(room, { token, name: 'Table' });
+    await back.open;
+    const rewelcome = (await back.next('table-welcome')) as Extract<RoomMessage, { type: 'table-welcome' }>;
+    expect(rewelcome.token).not.toBe(token);
+    const current = (await back.next('table-update')) as TableUpdateOf;
+    expect(current.view.status).toBe('playing');
+    expect(JSON.stringify(current.view)).not.toContain('"yourHand"');
+    // Still the host.
+    back.send({ type: 'set-locked', locked: true });
+    // The reconnect itself sent a room-state first; the lock is the next one.
+    let locked = false;
+    for (let attempt = 0; attempt < 3 && !locked; attempt += 1) {
+      locked = ((await back.next('room-state')) as RoomStateOf).state.locked;
+    }
+    expect(locked).toBe(true);
+
+    // The token it used is spent: presenting it again binds nothing, and a
+    // connection that holds nothing cannot host.
+    const replay = client(room, { token, name: 'Table' });
+    await replay.open;
+    replay.send({ type: 'set-locked', locked: false });
+    const refused = (await replay.next('error')) as Extract<RoomMessage, { type: 'error' }>;
+    expect(refused.error.kind === 'protocol' && refused.error.code).toBe('not-host');
   });
 });
 

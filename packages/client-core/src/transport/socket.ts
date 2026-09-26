@@ -8,7 +8,7 @@ import {
   type RoomState,
 } from '@boomtown/protocol';
 import { netlog, safeJson } from '../netlog.js';
-import type { ClientView } from '../view.js';
+import { TABLE_READER, tableClientView, type ClientView } from '../view.js';
 import type { GameTransport, TransportMessage } from './types.js';
 
 export interface SocketTransportOptions {
@@ -22,12 +22,14 @@ export interface SocketTransportOptions {
   readonly token?: string;
   /**
    * Sent as the first message after the socket opens. `create` configures a new
-   * room; `join` takes an open seat in an existing one; `resume` (with a token)
+   * room; `table` configures one as a couch table (#62), which hosts without a
+   * seat; `join` takes an open seat in an existing one; `resume` (with a token)
    * is a reconnect and sends nothing — the room re-binds on the token in the
-   * query string.
+   * query string, whether it is a seat's or the table's.
    */
   readonly intent:
     | { readonly kind: 'create'; readonly config: RoomConfig }
+    | { readonly kind: 'table'; readonly config: RoomConfig }
     | { readonly kind: 'join' }
     | { readonly kind: 'resume' };
   /**
@@ -71,6 +73,14 @@ export interface SocketExtras {
   seat(): Seat | null;
   /** The session token, once `welcome` arrives — persist it for reconnects. */
   token(): string | null;
+  /** True once the room has made this connection the couch table (#62). */
+  isTable(): boolean;
+  /**
+   * Table only (#62): a beat that covers the screen has started or ended. The
+   * room holds its bots while one is running, so the table plays out a bot's
+   * move before the next one arrives.
+   */
+  pace(holding: boolean): void;
   /**
    * True while this client has knocked and the host has not answered:
    * connected to the room, but holding no seat. Distinct from a failed join —
@@ -117,6 +127,8 @@ export function socketTransport(
   let socket: PartySocket | null = null;
   let mySeat: Seat | null = null;
   let myToken: string | null = options.token ?? null;
+  /** True once the room has made this connection the couch table (#62). */
+  let isTable = false;
   /** True between knocking and being admitted — connected, seatless, waiting. */
   let waitingAtDoor = false;
   /** The last room state seen, replayed to late subscribers. */
@@ -197,6 +209,25 @@ export function socketTransport(
         waitingAtDoor = false;
         settle('resolve');
         return;
+      case 'table-welcome':
+        // The couch table (#62): host authority, no seat. It resumes by token
+        // exactly as a seat does.
+        myToken = message.token;
+        isTable = true;
+        joined = true;
+        waitingAtDoor = false;
+        settle('resolve');
+        return;
+      case 'table-update':
+        // The public view, shaped as the spectator view the desktop already
+        // renders. Keyed by a reader that is not a seat, so nothing mistakes it
+        // for one.
+        outstandingCommand = null;
+        for (const h of handlers) {
+          const views: Record<Seat, ClientView> = { [TABLE_READER]: tableClientView(message.view) };
+          h(message.retrospective ? { events: message.events, views, retrospective: message.retrospective } : { events: message.events, views });
+        }
+        return;
       case 'waiting':
         // Knocked, and now waiting on the host. `connect()` resolves here: the
         // caller has a live connection and a room to watch, it just has no
@@ -269,7 +300,9 @@ export function socketTransport(
           intent: options.intent.kind,
           protocolVersion: PROTOCOL_VERSION,
           hasToken: Boolean(myToken),
-          ...(options.intent.kind === 'create' ? { config: options.intent.config } : {}),
+          ...(options.intent.kind === 'create' || options.intent.kind === 'table'
+            ? { config: options.intent.config }
+            : {}),
         });
         notifyConnection('connecting');
         settleConnect = { resolve, reject };
@@ -304,6 +337,8 @@ export function socketTransport(
           if (!joined) {
             if (options.intent.kind === 'create') {
               send({ type: 'create-room', config: options.intent.config });
+            } else if (options.intent.kind === 'table') {
+              send({ type: 'create-room', config: options.intent.config, table: true });
             } else if (options.intent.kind === 'join') {
               send({ type: 'knock' });
             }
@@ -383,6 +418,8 @@ export function socketTransport(
     connectionStatus: () => status,
     seat: () => mySeat,
     token: () => myToken,
+    isTable: () => isTable,
+    pace: (holding: boolean) => send({ type: 'pace', holding }),
     waitingAtDoor: () => waitingAtDoor,
     start: () => send({ type: 'start' }),
     admit: (knockId: string) => send({ type: 'admit', knockId }),
@@ -396,7 +433,7 @@ export function socketTransport(
 function summariseClient(message: ClientMessage): Record<string, unknown> {
   switch (message.type) {
     case 'create-room':
-      return { config: message.config };
+      return { config: message.config, ...(message.table ? { table: true } : {}) };
     case 'command':
       return { command: message.command.type, seat: message.command.seat };
     case 'hello':
@@ -411,6 +448,8 @@ function summariseRoom(message: RoomMessage): Record<string, unknown> {
   switch (message.type) {
     case 'welcome':
       return { seat: message.seat };
+    case 'table-welcome':
+      return { table: true };
     case 'waiting':
       return {};
     case 'room-state':
@@ -426,6 +465,8 @@ function summariseRoom(message: RoomMessage): Record<string, unknown> {
         events: message.events.length,
         ...(message.rejection ? { rejected: message.rejection.command.type } : {}),
       };
+    case 'table-update':
+      return { table: true, status: message.view.status, events: message.events.length };
     case 'error':
       return { code: errorCode(message.error), message: errorText(message.error) };
   }

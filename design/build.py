@@ -2895,6 +2895,402 @@ def build_market():
     )
     write("Market.dc.html", B_HELMET, body)
 
+# =============================================================== COUCH MODE — THE PHONE
+# The phone half of couch mode (#62): the desktop is the table everybody
+# watches, and each player holds their hand on their own phone. The phone
+# shows only what is private to its seat — rack, books, the buy, every
+# decision owed — and never the board, the beats or the story, which are the
+# table's. Each frame is one screen at 390x844 (a common phone viewport), in
+# the same Direction B language as the table so the two read as one game.
+
+PH_W, PH_H = 390, 844
+PHONE_H = 5050
+
+def ph_frame(caption, spec, inner):
+    return (
+      '<div style="display:flex;flex-direction:column;gap:12px;width:%dpx">'
+      '<div style="display:flex;flex-direction:column;gap:3px;min-height:48px">'
+      '<span style="font-size:13px;font-weight:600">%s</span>'
+      '<span class="mono" style="font-size:10.5px;line-height:1.45;color:%s">%s</span></div>'
+      '<div style="width:%dpx;height:%dpx;box-sizing:border-box;border:9px solid #1C1917;border-radius:46px;'
+      'overflow:hidden;position:relative;background:%s;box-shadow:%s">'
+      '<div style="position:absolute;top:9px;left:50%%;transform:translateX(-50%%);width:96px;height:26px;'
+      'border-radius:14px;background:#1C1917;z-index:2"></div>'
+      '<div style="position:absolute;inset:0;padding:48px 20px 26px;box-sizing:border-box;display:flex;'
+      'flex-direction:column;gap:14px">%s</div></div></div>'
+      % (PH_W, caption, B_MUTED, spec, PH_W, PH_H, B_BG, L_ELEV[3], inner)
+    )
+
+def ph_top(name, cash, seat_note):
+    """The strip every in-game screen opens with: who this phone is, and its cash."""
+    return (
+      '<div style="display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:12px;'
+      'border-bottom:1px solid %s">'
+      '<div><div class="mono" style="font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:%s">%s</div>'
+      '<div class="ser" style="font-size:24px;line-height:1.1">%s</div></div>'
+      '<div style="text-align:right"><div class="mono" style="font-size:9.5px;letter-spacing:.16em;'
+      'text-transform:uppercase;color:%s">cash</div><div class="ser num" style="font-size:24px">%s</div></div></div>'
+      % (B_RULE, B_MUTED, seat_note, name, B_MUTED, money(cash))
+    )
+
+def ph_button(label, primary=True, note=None, disabled=False):
+    style = ("background:%s;color:#FFF;box-shadow:%s" % (B_ACCENT, L_ELEV[1]) if primary and not disabled else
+             "background:%s;color:%s;border:1px solid %s" % (B_PANEL, B_MUTED if disabled else B_INK, B_RULE))
+    n = ('<div style="font-size:11.5px;line-height:1.4;color:%s;margin-top:6px;text-align:center">%s</div>'
+         % (B_MUTED, note)) if note else ""
+    return ('<div><div style="height:54px;border-radius:10px;display:flex;align-items:center;justify-content:center;'
+            'font-size:16px;font-weight:700;%s">%s</div>%s</div>' % (style, label, n))
+
+def ph_kicker(text, color=None):
+    return ('<div class="mono" style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:%s">%s</div>'
+            % (color or B_MUTED, text))
+
+def ph_chip(k, n):
+    return ('<span style="display:inline-flex;align-items:center;gap:5px">'
+            '<span style="width:20px;height:20px;border-radius:50%%;background:%s;display:flex;align-items:center;'
+            'justify-content:center">%s</span><span class="mono num" style="font-size:13px">%d</span></span>'
+            % (CORP[k]["color"], b_mark(k, CORP[k]["ink"], 13), n))
+
+def ph_holdings(h):
+    return ('<div style="display:flex;flex-wrap:wrap;gap:10px 14px">%s</div>'
+            % "".join(ph_chip(k, v) for k, v in h.items() if v))
+
+EFFECT_WORD = {"found": "found", "grow": "grow", "merge": "merge", "dead": "dead", "none": "idle"}
+
+def ph_rack(live, selected=None):
+    """The hand as a list, not a row: at phone width a tile needs its
+    consequence beside it, because the board that would explain it is on the TV."""
+    rows = []
+    for t, kind, note in HAND:
+        sel = live and t == selected
+        dead = kind == "dead"
+        tile = ('<div style="width:50px;height:50px;flex-shrink:0;border-radius:9px;display:flex;align-items:center;'
+                'justify-content:center;font-size:17px;font-weight:700;%s" class="mono num">%s</div>'
+                % ("background:%s;color:#FFF;box-shadow:%s" % (B_ACCENT, L_ELEV[1]) if sel else
+                   ("background:%s;color:%s;border:1px dashed %s;opacity:.55" % (B_BG, B_MUTED, B_MUTED) if dead else
+                    "background:%s;color:%s;border:1px solid %s;box-shadow:0 3px 0 %s"
+                    % (B_PANEL, B_INK, B_RULE, B_RULE)), t))
+        rows.append(
+          '<div style="display:flex;align-items:center;gap:12px;padding:6px 8px;border-radius:10px;%s%s">%s'
+          '<div style="display:flex;flex-direction:column;gap:2px;min-width:0">'
+          '<span style="display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.14em;'
+          'text-transform:uppercase;color:%s" class="mono">%s%s</span>'
+          '<span style="font-size:13.5px;line-height:1.3;color:%s">%s</span></div></div>'
+          % ("background:color-mix(in srgb, %s 10%%, transparent);box-shadow:0 0 0 1.5px %s;" % (B_ACCENT, B_ACCENT) if sel else "",
+             "opacity:.62;" if not live and not dead else "",
+             tile, B_ACCENT if sel else B_MUTED, icon(kind, B_ACCENT if sel else B_MUTED, 12), EFFECT_WORD[kind],
+             B_MUTED if dead else B_INK, note))
+    return '<div style="display:flex;flex-direction:column;gap:6px">%s</div>' % "".join(rows)
+
+def ph_stepper(k, price_, n, bank, note=None):
+    c = CORP[k]
+    btn = lambda s, on=True: ('<div style="width:44px;height:44px;border-radius:50%%;display:flex;align-items:center;'
+                             'justify-content:center;font-size:22px;font-weight:500;%s">%s</div>'
+                             % ("border:1.5px solid %s;color:%s" % (B_INK, B_INK) if on else
+                                "border:1.5px solid %s;color:%s" % (B_RULE, B_RULE), s))
+    return (
+      '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:%s;border:1px solid %s;'
+      'border-radius:10px;%s">'
+      '<span style="width:34px;height:34px;border-radius:7px;background:%s;display:flex;align-items:center;'
+      'justify-content:center;flex-shrink:0">%s</span>'
+      '<div style="flex-grow:1;min-width:0"><div class="ser" style="font-size:16px;line-height:1.15">%s</div>'
+      '<div style="font-size:11.5px;color:%s" class="num">%s · %s</div></div>'
+      '%s<span class="ser num" style="font-size:22px;width:18px;text-align:center">%d</span>%s</div>'
+      % (B_PANEL, B_RULE, "box-shadow:0 0 0 1.5px %s;" % c["color"] if n else "",
+         c["color"], b_mark(k, c["ink"], 20), c["name"], B_MUTED, money(price_), "%d in bank" % bank,
+         btn("&minus;", n > 0), n, btn("+")))
+
+def ph_split(label, n, sub, on=True):
+    btn = lambda s, ok: ('<div style="width:40px;height:40px;border-radius:50%%;display:flex;align-items:center;'
+                        'justify-content:center;font-size:20px;border:1.5px solid %s;color:%s">%s</div>'
+                        % (B_INK if ok else B_RULE, B_INK if ok else B_RULE, s))
+    return ('<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:%s;border:1px solid %s;'
+            'border-radius:10px"><div style="flex-grow:1"><div style="font-size:15px;font-weight:700">%s</div>'
+            '<div style="font-size:11.5px;color:%s">%s</div></div>%s'
+            '<span class="ser num" style="font-size:22px;width:20px;text-align:center">%d</span>%s</div>'
+            % (B_PANEL, B_RULE, label, B_MUTED, sub, btn("&minus;", n > 0), n, btn("+", on)))
+
+def ph_qr(size=180, masked=False):
+    """A stand-in QR: deterministic modules plus the three finder squares. It
+    only has to read as a QR code on the canvas; the real one is generated."""
+    n = 25
+    cell = size / float(n)
+    seed = 7
+    rects = []
+    def finder(x, y):
+        return ('<rect x="%g" y="%g" width="%g" height="%g" fill="#1C1917"/>'
+                '<rect x="%g" y="%g" width="%g" height="%g" fill="#FFF"/>'
+                '<rect x="%g" y="%g" width="%g" height="%g" fill="#1C1917"/>'
+                % (x*cell, y*cell, 7*cell, 7*cell, (x+1)*cell, (y+1)*cell, 5*cell, 5*cell,
+                   (x+2)*cell, (y+2)*cell, 3*cell, 3*cell))
+    for yy in range(n):
+        for xx in range(n):
+            if (xx < 8 and yy < 8) or (xx > n-9 and yy < 8) or (xx < 8 and yy > n-9):
+                continue
+            seed = (seed * 1103515245 + 12345) & 0x7fffffff
+            if seed % 100 < 47:
+                rects.append('<rect x="%g" y="%g" width="%g" height="%g" fill="#1C1917"/>'
+                             % (xx*cell, yy*cell, cell+.2, cell+.2))
+    body = finder(0, 0) + finder(n-7, 0) + finder(0, n-7) + "".join(rects)
+    svg = ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block">%s</svg>'
+           % (size, size, size, size, body))
+    if masked:
+        return ('<div style="width:%dpx;height:%dpx;border-radius:6px;background:repeating-linear-gradient(135deg,'
+                '%s 0 10px, %s 10px 20px);display:flex;align-items:center;justify-content:center;'
+                'border:1px solid %s"><span class="mono" style="font-size:11px;letter-spacing:.14em;'
+                'text-transform:uppercase;color:%s;background:%s;padding:6px 10px;border-radius:4px">'
+                'hold to show</span></div>'
+                % (size, size, B_RULE, B_BG, B_RULE, B_MUTED, B_PANEL))
+    return ('<div style="background:#FFF;padding:12px;border-radius:6px;border:1px solid %s;box-shadow:%s">%s</div>'
+            % (B_RULE, L_ELEV[1], svg))
+
+def ph_table_lobby(masked=False):
+    """The desktop as the table, before the deal: 16:9, scaled to sit beside the phones."""
+    seats = [("Nadia", "phone", True), ("Ravi", "phone", True), ("Bot 3", "bot", True), (None, "open", False)]
+    rows = "".join(
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;'
+      'border-bottom:1px solid %s"><span style="display:flex;align-items:center;gap:10px;font-size:15px">'
+      '<span style="width:9px;height:9px;border-radius:50%%;background:%s"></span>%s</span>'
+      '<span class="mono" style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:%s">%s</span></div>'
+      % (B_RULE, "#3E8E5A" if ok else B_RULE, name or '<span style="color:%s">Open seat</span>' % B_MUTED,
+         B_MUTED, kind) for name, kind, ok in seats)
+    knock = ('<div style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 12px;'
+             'background:%s;border:1px solid %s;border-radius:6px"><span style="flex-grow:1;font-size:14px">'
+             '<strong>Quick Tycoon</strong> <span style="color:%s">is knocking from a phone</span></span>'
+             '<span style="font-size:13px;font-weight:700;color:%s;padding:8px 12px">Turn away</span>'
+             '<span style="font-size:13px;font-weight:700;color:#FFF;background:%s;padding:8px 14px;border-radius:5px">'
+             'Let in</span></div>' % (B_PANEL, B_RULE, B_MUTED, B_MUTED, B_ACCENT))
+    code = "••••-••••" if masked else "KQ7M-3XPA"
+    return (
+      '<div style="width:880px;height:495px;box-sizing:border-box;border:10px solid #1C1917;border-radius:10px;'
+      'background:%s;box-shadow:%s;padding:34px 40px;display:flex;gap:44px">'
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:14px;width:230px">%s'
+      '<div class="mono num" style="font-size:24px;letter-spacing:.22em">%s</div>'
+      '<div style="font-size:12.5px;line-height:1.45;color:%s;text-align:center">Scan with your phone\'s camera, '
+      'or go to the address on the card and type the code.</div></div>'
+      '<div style="flex-grow:1;display:flex;flex-direction:column">'
+      '%s<div class="ser" style="font-size:34px;margin:4px 0 14px">Take a seat</div>%s%s'
+      '<div style="margin-top:auto;display:flex;justify-content:flex-end">'
+      '<span style="font-size:15px;font-weight:700;color:#FFF;background:%s;opacity:.45;padding:13px 26px;'
+      'border-radius:8px">Waiting for players…</span></div></div></div>'
+      % (B_BG, L_ELEV[3], ph_qr(200, masked), code, B_MUTED,
+         ph_kicker("couch game · the table"), rows, knock, B_ACCENT)
+    )
+
+def build_phone():
+    m = {x["key"]: x for x in market()}
+    you_cash, you_h = PLAYERS[0][1], PLAYERS[0][2]
+
+    # --- getting in ---------------------------------------------------------
+    join = ph_frame(
+      "1 · Join", "opened from the QR · the code arrives in the link, never typed",
+      '<div style="display:flex;flex-direction:column;gap:6px;margin-top:18px">%s'
+      '<div class="ser" style="font-size:34px;line-height:1.05">Boomtown</div>'
+      '<div style="font-size:14px;color:%s">You\'re joining the table on the big screen.</div></div>'
+      '<div style="display:flex;flex-direction:column;gap:8px;margin-top:22px">%s'
+      '<div style="display:flex;gap:8px"><div style="flex-grow:1;height:52px;border-radius:10px;border:1px solid %s;'
+      'background:%s;display:flex;align-items:center;padding:0 14px;font-size:17px">Quick Tycoon</div>'
+      '<div style="height:52px;padding:0 16px;border-radius:10px;border:1px solid %s;display:flex;align-items:center;'
+      'font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:%s" class="mono">Roll</div></div></div>'
+      '<div style="margin-top:auto">%s</div>'
+      % (ph_kicker("couch game"), B_MUTED, ph_kicker("your name"), B_RULE, B_PANEL, B_RULE, B_MUTED,
+         ph_button("Knock", note="Whoever has the mouse lets you in from the table.")))
+
+    door = ph_frame(
+      "2 · At the door", "knocked · the host admits from the TV · a decline sticks",
+      '<div style="margin:auto 0;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center">'
+      '<div style="width:78px;height:78px;border-radius:50%%;border:2px dashed %s;display:flex;align-items:center;'
+      'justify-content:center" class="ser"><span style="font-size:30px">QT</span></div>'
+      '<div class="ser" style="font-size:26px;line-height:1.15">Waiting to be<br>let in…</div>'
+      '<div style="font-size:14px;line-height:1.5;color:%s;max-width:26ch">Your name is on the big screen. '
+      'Keep this page open; locking the phone is fine.</div></div>'
+      % (B_ACCENT, B_MUTED))
+
+    seated = ph_frame(
+      "3 · Seated", "admitted · seat and token held in the tab · the deal starts from the table",
+      '%s<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">'
+      '<div class="ser" style="font-size:28px;line-height:1.1">You\'re in.</div>'
+      '<div style="font-size:14px;color:%s">Seat 4 of 4 · the game starts from the table.</div></div>'
+      '<div style="display:flex;flex-direction:column">%s</div>'
+      '<div style="margin-top:auto;font-size:12.5px;line-height:1.5;color:%s;border-top:1px solid %s;padding-top:12px">'
+      'Your tiles and your money will show here and only here. Keep your screen to yourself.</div>'
+      % (ph_kicker("couch game"), B_MUTED,
+         "".join('<div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid %s;'
+                 'font-size:15px"><span style="font-weight:%d">%s</span><span class="mono" style="font-size:10px;'
+                 'letter-spacing:.14em;text-transform:uppercase;color:%s">%s</span></div>'
+                 % (B_RULE, 700 if n == "Quick Tycoon" else 400, n + (" (you)" if n == "Quick Tycoon" else ""), B_MUTED, k)
+                 for n, k in [("Nadia", "phone"), ("Ravi", "phone"), ("Bot 3", "bot"), ("Quick Tycoon", "phone")]),
+         B_MUTED, B_RULE))
+
+    # --- playing -------------------------------------------------------------
+    offturn = ph_frame(
+      "4 · Watching", "not your turn · rack read-only, effects stay live (#61) · your books",
+      '%s<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:%s;border:1px solid %s;'
+      'border-radius:10px"><span style="width:10px;height:10px;border-radius:50%%;background:%s;flex-shrink:0"></span>'
+      '<span style="font-size:14.5px"><strong>Ravi</strong> is buying stock… <span style="color:%s">watch the table</span>'
+      '</span></div>%s%s<div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">%s%s</div>'
+      % (ph_top("Quick Tycoon", you_cash, "seat 4"), B_PANEL, B_RULE, "#D98A4E", B_MUTED,
+         ph_kicker("your tiles"), ph_rack(False), ph_kicker("your shares"), ph_holdings(you_h)))
+
+    place = ph_frame(
+      "5 · Your turn — place a tile", "tap a tile, then place it · two taps, so a thumb can't commit a merger",
+      '%s<div style="display:flex;align-items:center;justify-content:space-between">'
+      '<div class="ser" style="font-size:22px;color:%s">Your turn</div>%s</div>%s'
+      '<div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">%s</div>'
+      % (ph_top("Quick Tycoon", you_cash, "seat 4"), B_ACCENT, ph_kicker("place a tile"), ph_rack(True, SELECTED),
+         ph_button("Place 9F", note="Blackcurrant absorbs Enrun. The merger plays on the big screen.")))
+
+    buy_rows = [("books", 0, None), ("electronics", 1, None),
+                ("tech", 2, None), ("video", 0, None)]
+    cost = sum(m[k]["price"] * n for k, n, _ in buy_rows)
+    buy = ph_frame(
+      "6 · Buy stock", "up to three shares · the phone adds up, the room judges · buy nothing is always there",
+      '%s<div style="display:flex;align-items:baseline;justify-content:space-between">'
+      '<div class="ser" style="font-size:22px">Buy stock</div>'
+      '<span class="mono num" style="font-size:12px;color:%s">3 of 3 picked</span></div>'
+      '<div style="display:flex;flex-direction:column;gap:8px">%s</div>'
+      '<div style="display:flex;justify-content:space-between;font-size:13px;color:%s;padding:0 2px">'
+      '<span>%s in hand</span><span class="num">%s left</span></div>'
+      '<div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">%s%s</div>'
+      % (ph_top("Quick Tycoon", you_cash, "seat 4"), B_MUTED,
+         "".join(ph_stepper(k, m[k]["price"], n, m[k]["bank"], note) for k, n, note in buy_rows),
+         B_MUTED, money(you_cash), money(you_cash - cost),
+         ph_button("Buy 3 for %s" % money(cost)), ph_button("Buy nothing and end turn", primary=False)))
+
+    endcheck = ph_frame(
+      "7 · End of turn (Boomtown)", "the same three choices the table's end-of-turn prompt offers",
+      '%s<div style="display:flex;flex-direction:column;gap:6px">'
+      '<div class="ser" style="font-size:24px">Before you finish</div>'
+      '<div style="font-size:13.5px;line-height:1.5;color:%s">No corporation has reached the end size, but you may '
+      'ask the table to wind the game up.</div></div>'
+      '<div style="margin-top:auto;display:flex;flex-direction:column;gap:14px">%s%s</div>'
+      % (ph_top("Quick Tycoon", you_cash - cost, "seat 4"), B_MUTED,
+         ph_button("End turn", note="Pass to the next player."),
+         ph_button("Move to liquidate", primary=False,
+                   note="Everyone votes their shares in safe corporations. If it fails, every backer plays on with open books — including you.")))
+
+    # --- decisions -------------------------------------------------------------
+    en, bc = m["energy"], m["tech"]
+    dispose = ph_frame(
+      "8 · A merger you're in", "dispose of defunct stock · keep, sell, trade 2-for-1 · quick splits first",
+      '%s<div style="display:flex;align-items:center;gap:10px">'
+      '<span style="width:34px;height:34px;border-radius:7px;background:%s;display:flex;align-items:center;'
+      'justify-content:center">%s</span><div class="ser" style="font-size:21px;line-height:1.1">Dispose of Enrun stock</div></div>'
+      '<div style="font-size:13px;line-height:1.5;color:%s">You hold <strong style="color:%s">3</strong> · sells at '
+      '%s a share · trade is 2-for-1 into Blackcurrant (%d in bank)</div>'
+      '<div style="display:flex;gap:8px">%s</div>'
+      '<div style="display:flex;flex-direction:column;gap:8px">%s%s%s</div>'
+      '<div style="margin-top:auto">%s</div>'
+      % (ph_top("Quick Tycoon", you_cash, "seat 4"), en["color"], b_mark("energy", en["ink"], 20), B_MUTED, B_INK,
+         money(en["price"]), bc["bank"],
+         "".join('<span style="font-size:12.5px;padding:8px 11px;border-radius:18px;border:1px solid %s;%s">%s</span>'
+                 % (B_RULE, "", s)
+                 for i, s in enumerate(["Keep all", "Sell all", "Trade the most I can"])),
+         ph_split("Trade", 2, "for 1 Blackcurrant"), ph_split("Sell", 1, "for %s" % money(en["price"])),
+         ph_split("Keep", 0, "live again if Enrun is refounded", on=False),
+         ph_button("Confirm", note="1 Blackcurrant and %s. Nothing is final until you confirm." % money(en["price"]))))
+
+    vote = ph_frame(
+      "9 · The vote", "a motion to liquidate · everyone votes at once, so every phone shows this together",
+      '%s<div class="ser" style="font-size:26px;line-height:1.1">Wind the game up?</div>'
+      '<div style="font-size:13.5px;line-height:1.5;color:%s">Nadia moved to liquidate — you vote '
+      '<strong style="color:%s">16 shares</strong>.</div>'
+      '<div style="display:flex;flex-direction:column;gap:6px"><div style="height:8px;background:%s;border-radius:4px;'
+      'overflow:hidden;display:flex"><div style="width:34%%;background:%s"></div></div>'
+      '<div style="font-size:12px;color:%s" class="num">19 of 56 shares in favour so far; 29 carries it.</div></div>'
+      '<div style="margin-top:auto;display:flex;flex-direction:column;gap:14px">%s%s</div>'
+      % (ph_top("Quick Tycoon", you_cash, "seat 4"), B_MUTED, B_INK, B_RULE, "#3E8E5A", B_MUTED,
+         ph_button("Vote to liquidate",
+                   note="Ends the game now if the motion carries. If it fails, you play on with open books."),
+         ph_button("Vote against", primary=False, note="Play on. A vote against costs you nothing either way.")))
+
+    tray = [k for k in ORDER if SIZE[k] == 0]
+    found = ph_frame(
+      "10 · Found a corporation", "pick one · survivor and defunct order use this same one-tap list",
+      '%s<div class="ser" style="font-size:24px">Found a corporation</div>'
+      '<div style="font-size:13.5px;color:%s">You · new group of 2 tiles</div>'
+      '<div style="display:flex;flex-direction:column;gap:10px">%s</div>'
+      '<div style="margin-top:auto;font-size:12.5px;line-height:1.5;color:%s">One tap founds it. The founding plays '
+      'on the big screen, and you get your founder\'s share.</div>'
+      % (ph_top("Quick Tycoon", you_cash, "seat 4"), B_MUTED,
+         "".join('<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:%s;'
+                 'border:1px solid %s;border-left:5px solid %s;border-radius:10px">'
+                 '<span style="width:38px;height:38px;border-radius:8px;background:%s;display:flex;align-items:center;'
+                 'justify-content:center">%s</span><div style="flex-grow:1"><div class="ser" style="font-size:17px">%s</div>'
+                 '<div style="font-size:11.5px;color:%s" class="num">tier %d · %s a share · bonus from %s</div></div>%s</div>'
+                 % (B_PANEL, B_RULE, CORP[k]["color"], CORP[k]["color"], b_mark(k, CORP[k]["ink"], 22),
+                    CORP[k]["name"], B_MUTED, CORP[k]["tier"], money(price(2, CORP[k]["tier"])),
+                    money(PRIMARY[row_index(2, CORP[k]["tier"])]), chevron(B_MUTED)) for k in tray),
+         B_MUTED))
+
+    lost = ph_frame(
+      "11 · Connection lost", "phone locked or network dropped · the seat is held by its token, the table waits",
+      '%s<div style="margin:auto 0;display:flex;flex-direction:column;gap:14px;text-align:center;align-items:center">'
+      '<div class="ser" style="font-size:24px">Reconnecting…</div>'
+      '<div style="font-size:14px;line-height:1.5;color:%s;max-width:27ch">Your seat is held. The table waits for you '
+      'if it\'s your move.</div></div>'
+      % (ph_top("Quick Tycoon", you_cash, "seat 4"), B_MUTED))
+
+    header = (
+      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;gap:40px;align-items:flex-end">'
+      '<div style="flex-grow:1">%s<div class="ser" style="font-size:44px;line-height:1.05;margin-top:8px">'
+      'Your hand, in your hand</div>'
+      '<div style="font-size:15px;line-height:1.55;color:%s;margin-top:10px;max-width:78ch">Couch mode (#62). The '
+      'desktop is the table everybody watches; each player holds their hand on their own phone. The phone shows '
+      'what is private to its seat and nothing else — the board, the beats and the story stay on the big screen. '
+      'It is a thin page served by the room: it draws the hand and the legal moves the room already sends, and '
+      'sends back the one you tap.</div></div></div>' % (ph_kicker("couch mode · the phone"), B_MUTED))
+
+    def row(title, frames):
+        return ('<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:18px">'
+                '<div class="ser" style="font-size:24px;border-top:3px solid %s;padding-top:12px">%s</div>'
+                '<div style="display:flex;gap:44px;align-items:flex-start">%s</div></div>'
+                % (B_INK, title, "".join(frames)))
+
+    table = (
+      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:18px">'
+      '<div class="ser" style="font-size:24px;border-top:3px solid %s;padding-top:12px">The table, before the deal</div>'
+      '<div style="display:flex;gap:40px;align-items:flex-start">%s'
+      '<div style="display:flex;flex-direction:column;gap:14px;width:380px">%s'
+      '<div style="font-size:13px;line-height:1.55;color:%s">Under streaming mode the QR and the code are replaced, '
+      'not blurred, the same way the lobby code is — a QR is the code, and a stream that shows it has shared it. '
+      'Whoever is in the room holds <em>Hold to show</em> while the phones scan.</div>'
+      '<div style="font-size:13px;line-height:1.55;color:%s">The QR carries the eight-character ticket, not the room\'s '
+      'address: it expires in about fifteen minutes and is retired when the last seat fills, so a photo of it is '
+      'worth one knock the host can turn away.</div></div></div></div>'
+      % (B_INK, ph_table_lobby(False), '<div style="transform:scale(.43);transform-origin:top left;width:380px;height:215px">%s</div>'
+         % ph_table_lobby(True), B_MUTED, B_MUTED))
+
+    notes = (
+      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
+      % (af_note("Only what is yours",
+                 "The phone is the private surface and nothing else. No board: the TV has it, and a phone-sized "
+                 "board is a worse copy of the thing everybody is already looking at. So each tile carries its "
+                 "consequence in words — “Blackcurrant absorbs Enrun” — which is what the board would have "
+                 "told you. A mini-board can earn its place later; the first version bets on people looking up."),
+         af_note("Thumbs, not a mouse",
+                 "Every target is at least 44px and every commit is a second tap on a labelled button: pick the tile, "
+                 "then Place 9F. A merger can't happen because a thumb brushed the rack. Steppers replace the "
+                 "desktop's tile pickers for buying and disposal, with the quick splits kept as chips above them."),
+         af_note("What the room already sends",
+                 "Each seat's update carries its view, its hand with every tile's effect, and every legal command. "
+                 "Pick-one screens (place, found, survivor, defunct order, vote, end of turn) map straight onto "
+                 "that list. Buying and disposal are the two built from the view and the ruleset, and the room's "
+                 "reduce rejects anything wrong, as it does for every client now.")))
+
+    body = (
+      '<div style="width:1440px;min-height:%dpx;box-sizing:border-box;background:%s;color:%s;'
+      'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:44px 0 48px;'
+      'display:flex;flex-direction:column;gap:44px">%s%s%s%s%s%s</div>'
+      % (PHONE_H, B_BG, B_INK, header, table,
+         row("Getting in", [join, door, seated]),
+         row("Playing a turn", [offturn, place, buy]),
+         row("Decisions", [endcheck, dispose, vote]),
+         row("", [found, lost]) + notes)
+    )
+    write("Phone.dc.html", B_HELMET, body)
+
+
 def build_canvas():
     doc = {
       "pages": [{"id": "page-1", "name": "Boomtown"},
@@ -2909,6 +3305,7 @@ def build_canvas():
         {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
         {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 2976, "title": "After the game", "print": "flow", "page": "page-1"},
         {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 1566, "title": "Company by company", "print": "flow", "page": "page-1"},
+        {"file": "Phone.dc.html", "x": 7800, "y": 0, "w": 1440, "h": PHONE_H, "title": "Couch mode - the phone", "print": "flow", "page": "page-1"},
         {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4720, "title": "Rules model",
          "print": "flow", "page": "page-2"},
         {"file": "BoardRoom.dc.html",    "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "A - Board Room", "page": "page-3"},
@@ -2923,6 +3320,8 @@ def build_canvas():
          "text": "The post-game screen (#68 + #69), designed as one thing because both issues asked for that. It is a carousel now, not a page: four frames that turn over on their own, 78 seconds all the way round, each still a tab you can click to hold. Every block below is one state of the same screen. The seats deliberately have no colours - a palette both colourblind-safe and distinct from the seven corporation colours does not exist at six seats, and 12,000 candidates through the dataviz validator say so."},
         {"id": "note-market", "x": 6240, "y": -210, "w": 700, "page": "page-1",
          "text": "The third reading of the same game (#68): one company at a time, a band for what it was worth and a line per seat for whose it was. It started as stacked bars and the table killed them - a stack has to be ordered, and no order survives six seats trading the majority back and forth over forty turns. The second frame is that worst case, drawn, so the claim can be checked."},
+        {"id": "note-phone", "x": 7800, "y": -210, "w": 700, "page": "page-1",
+         "text": "Couch mode (#62): the desktop is the table and each player's hand is on their own phone. The phone is a thin page served by the room, drawing the hand and the legal moves the room already sends. Nothing private ever reaches the big screen, so couch play needs no hand-off card and streams as it is."},
         {"id": "note-rules", "x": 0, "y": -150, "w": 700, "page": "page-2",
          "text": "The sheet to argue with before any code exists. Every disagreement between the two rulebooks is listed as a config key rather than a fork."},
         {"id": "note-earlier", "x": 0, "y": -170, "w": 700, "page": "page-3",
@@ -2936,5 +3335,5 @@ def build_canvas():
 
 if __name__ == "__main__":
     build_a(); build_b(); build_c(); build_rules(); build_names(); build_pool(); build_reference()
-    build_language(); build_beats(); build_market(); build_after()
+    build_language(); build_beats(); build_market(); build_after(); build_phone()
     build_canvas()

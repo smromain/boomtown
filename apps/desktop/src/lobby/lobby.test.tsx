@@ -26,11 +26,12 @@ vi.mock('../online/onlineGame.js', async (importActual) => {
   return {
     ...actual,
     createRoom: vi.fn(),
+    createTable: vi.fn(),
     joinRoom: vi.fn(),
   };
 });
 
-const { createRoom, joinRoom } = await import('../online/onlineGame.js');
+const { createRoom, createTable, joinRoom } = await import('../online/onlineGame.js');
 const { resolveTicket } = await import('../online/hostUrl.js');
 
 beforeEach(() => {
@@ -70,6 +71,7 @@ describe('configFromRoom', () => {
   const room: RoomState = {
     ticket: 'ABC123',
     hostSeat: 0,
+    table: false,
     knocks: [],
     locked: false,
     phase: 'playing',
@@ -299,6 +301,25 @@ await userEvent.click(
     expect(screen.getByRole('alert')).toHaveTextContent('');
   });
 
+  it('in streaming mode, takes the code as a password until held to show (#62)', async () => {
+    saveSettings({ ...DEFAULT_SETTINGS, streamingMode: true });
+    const user = userEvent.setup();
+    render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'Join with a code' }));
+    // A password field has no textbox role, so find it by its label.
+    const field = screen.getByLabelText('Room code');
+    expect(field).toHaveAttribute('type', 'password');
+    await user.click(field);
+    await user.paste('abcd1234');
+    expect(field).toHaveValue('ABCD-1234');
+
+    const hold = screen.getByRole('button', { name: 'Hold to show the room code' });
+    await user.pointer({ keys: '[MouseLeft>]', target: hold });
+    expect(field).toHaveAttribute('type', 'text');
+    await user.pointer({ keys: '[/MouseLeft]', target: hold });
+    expect(field).toHaveAttribute('type', 'password');
+  });
+
   it('blocks joining with a too-short code', async () => {
     render(<CreateJoin onRoom={vi.fn()} onBack={vi.fn()} />);
     await userEvent.click(screen.getByRole('button', { name: 'Join with a code' }));
@@ -315,6 +336,25 @@ await userEvent.click(
       await userEvent.click(screen.getByRole('button', { name: 'Create room' }));
     });
     expect(screen.getByRole('alert')).toHaveTextContent(/could not connect/);
+  });
+});
+
+describe('CreateJoin as a couch table (#62)', () => {
+  it('opens a table with no name to give and nothing to join', async () => {
+    const onRoom = vi.fn();
+    vi.mocked(createTable).mockResolvedValue({ roomCode: 'ABC123' } as OnlineGame);
+    render(<CreateJoin couch onRoom={onRoom} onBack={vi.fn()} />);
+    expect(screen.queryByLabelText('Your name')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Join with a code' })).toBeNull();
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Open the table' }));
+    });
+    expect(createTable).toHaveBeenCalledTimes(1);
+    expect(createRoom).not.toHaveBeenCalled();
+    const [, code, name] = vi.mocked(createTable).mock.calls[0]!;
+    expect(isRoomAddress(code)).toBe(true);
+    expect(name).toBe('Table');
+    expect(onRoom).toHaveBeenCalled();
   });
 });
 
@@ -359,6 +399,7 @@ describe('SeatList', () => {
         },
         seat: () => 0,
         token: () => 'tok',
+        isTable: () => false,
         start,
       },
       client: {} as OnlineGame['client'],
@@ -381,6 +422,7 @@ describe('SeatList', () => {
   const lobbyState = (over: Partial<RoomState> = {}): RoomState => ({
     ticket: 'ROOM01',
     hostSeat: 0,
+    table: false,
     knocks: [],
     locked: false,
     phase: 'lobby',
@@ -494,6 +536,120 @@ describe('SeatList', () => {
     emitRoomState(lobbyState({ ticket: null }));
     expect(screen.getByText('code expired')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Copy the code' })).not.toBeInTheDocument();
+  });
+
+  describe('at a couch table (#62)', () => {
+    const tableState = (over: Partial<RoomState> = {}) =>
+      lobbyState({
+        ticket: 'ABCD1234',
+        hostSeat: null,
+        table: true,
+        seats: [
+          { index: 0, kind: 'human', name: 'Nadia', connected: true },
+          { index: 1, kind: 'open', name: null, connected: false },
+        ],
+        knocks: [{ id: 'k1', name: 'Quick Tycoon' }],
+        ...over,
+      });
+    const asTable = (game: OnlineGame) => {
+      (game.transport as { isTable: () => boolean }).isTable = () => true;
+      (game.transport as { seat: () => number | null }).seat = () => null;
+      return game;
+    };
+
+    it('shows a QR code for the phone page, the address to type, and phones in the seats', () => {
+      const { game } = fakeGame({}, tableState());
+      render(<SeatList game={asTable(game)} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+      expect(screen.getByRole('heading', { name: 'Take a seat' })).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'QR code for joining from a phone' })).toBeInTheDocument();
+      expect(screen.getByText('http://localhost:1999/phone/')).toBeInTheDocument();
+      expect(screen.getByText('phone')).toBeInTheDocument();
+      expect(screen.getByText(/is knocking from a phone/)).toBeInTheDocument();
+      // Nobody at the table is "you", and the table is never at the door.
+      expect(screen.queryByText(/\(you\)/)).toBeNull();
+      expect(screen.queryByText('Waiting for the host to let you in…')).toBeNull();
+    });
+
+    it('replaces the QR code in streaming mode, because the QR is the code', () => {
+      saveSettings({ ...DEFAULT_SETTINGS, streamingMode: true });
+      const { game } = fakeGame({}, tableState());
+      const { container } = render(<SeatList game={asTable(game)} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+      expect(screen.queryByRole('img', { name: 'QR code for joining from a phone' })).toBeNull();
+      expect(screen.getByText('Hidden while streaming')).toBeInTheDocument();
+      expect(container.textContent).not.toMatch(/ABCD|1234/);
+    });
+  });
+
+  describe('in streaming mode (#62)', () => {
+    beforeEach(() => saveSettings({ ...DEFAULT_SETTINGS, streamingMode: true }));
+
+    it('never puts the code on screen, from the first frame', () => {
+      const { game } = fakeGame({}, lobbyState({ ticket: 'ABCD1234' }));
+      const { container } = render(<SeatList game={game} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+      expect(screen.getByLabelText('Room code')).toHaveTextContent('••••-••••');
+      // Replaced, not hidden: the characters are not in the document at all.
+      expect(container.textContent).not.toMatch(/ABCD|1234/);
+    });
+
+    it('still copies the real code while it is masked', async () => {
+      const user = userEvent.setup();
+      const { game, emitRoomState } = fakeGame();
+      render(<SeatList game={game} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+      emitRoomState(lobbyState({ ticket: 'ABCD1234' }));
+      await user.click(screen.getByRole('button', { name: 'Copy the code' }));
+      expect(await navigator.clipboard.readText()).toBe('ABCD-1234');
+      expect(screen.getByLabelText('Room code')).toHaveTextContent('••••-••••');
+    });
+
+    it('shows the code only while the control is held', async () => {
+      const user = userEvent.setup();
+      const { game, emitRoomState } = fakeGame();
+      render(<SeatList game={game} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+      emitRoomState(lobbyState({ ticket: 'ABCD1234' }));
+      const hold = screen.getByRole('button', { name: 'Hold to show the room code' });
+
+      await user.pointer({ keys: '[MouseLeft>]', target: hold });
+      expect(screen.getByLabelText('Room code')).toHaveTextContent('ABCD-1234');
+      await user.pointer({ keys: '[/MouseLeft]', target: hold });
+      expect(screen.getByLabelText('Room code')).toHaveTextContent('••••-••••');
+    });
+
+    it('lets go when the window loses focus mid-hold', async () => {
+      const user = userEvent.setup();
+      const { game, emitRoomState } = fakeGame();
+      render(<SeatList game={game} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+      emitRoomState(lobbyState({ ticket: 'ABCD1234' }));
+      await user.pointer({ keys: '[MouseLeft>]', target: screen.getByRole('button', { name: 'Hold to show the room code' }) });
+      act(() => {
+        window.dispatchEvent(new Event('blur'));
+      });
+      expect(screen.getByLabelText('Room code')).toHaveTextContent('••••-••••');
+    });
+
+    it('stays masked through a reconnect and a seat joining', () => {
+      const { game, emitRoomState, emitConnection } = fakeGame();
+      render(<SeatList game={game} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+      emitRoomState(lobbyState({ ticket: 'ABCD1234' }));
+      emitConnection('closed');
+      emitConnection('open');
+      emitRoomState(
+        lobbyState({
+          ticket: 'ABCD1234',
+          seats: [
+            { index: 0, kind: 'human', name: 'Ana', connected: true },
+            { index: 1, kind: 'human', name: 'Bo', connected: true },
+          ],
+        }),
+      );
+      expect(screen.getByLabelText('Room code')).toHaveTextContent('••••-••••');
+    });
+  });
+
+  it('shows the code and no hold control with streaming mode off', () => {
+    const { game } = fakeGame({}, lobbyState({ ticket: 'ABCD1234' }));
+    render(<SeatList game={game} onEnterGame={vi.fn()} onLeave={vi.fn()} />);
+    expect(screen.getByLabelText('Room code')).toHaveTextContent('ABCD-1234');
+    expect(screen.queryByRole('button', { name: 'Hold to show the room code' })).not.toBeInTheDocument();
   });
 
   it('a non-host sees a waiting message, no Start button', () => {

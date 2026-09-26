@@ -263,6 +263,18 @@ await userEvent.click(
     void onClose;
   });
 
+  it('streaming mode ships off and is saved per machine (#62)', async () => {
+    expect(loadSettings().streamingMode).toBe(false);
+    render(<SettingsDialog open onClose={() => {}} />);
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Streaming mode' })).getByRole('radio', { name: 'On' }),
+    );
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    });
+    expect(loadSettings().streamingMode).toBe(true);
+  });
+
   it('turns industry patterns on, off by default (#19)', async () => {
     expect(loadSettings().industryPatterns).toBe(false);
     render(<SettingsDialog open onClose={() => {}} />);

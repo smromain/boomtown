@@ -5,7 +5,7 @@ import { Choice } from '../setup/Choice.js';
 import { VisibilityChoice } from '../setup/VisibilityChoice.js';
 import { SeatRow } from '../setup/SeatConfig.js';
 import { formatTicket, mintRoomAddress, normaliseTicket, TICKET_LENGTH } from '@boomtown/protocol';
-import { createRoom, joinRoom, type OnlineGame } from '../online/onlineGame.js';
+import { createRoom, createTable, joinRoom, type OnlineGame } from '../online/onlineGame.js';
 import { resolveTicket } from '../online/hostUrl.js';
 import { randomName } from '../online/randomName.js';
 import { loadSettings, saveSettings } from '../settings/settings.js';
@@ -14,17 +14,24 @@ import { Button } from '../ui/Button.js';
 import { copy, fill } from '../copy/copy.js';
 import form from '../setup/form.module.css';
 import styles from './lobby.module.css';
+import { useHoldToReveal } from './useHoldToReveal.js';
 
 /**
  * Create a room (with the same seat/edition/visibility options as a local
  * game) or join one by code. On success it hands an `OnlineGame` to the lobby.
+ *
+ * `couch` opens a couch table instead (#62): the same table settings, but this
+ * screen takes no seat and has no name to give, and there is nothing to join —
+ * the phones do that.
  */
 export function CreateJoin({
   onRoom,
   onBack,
+  couch = false,
 }: {
   onRoom: (game: OnlineGame) => void;
   onBack: () => void;
+  couch?: boolean;
 }) {
   const [mode, setMode] = useState<'create' | 'join'>('create');
   // Seeded from the saved name, else a generated one. Never the literal
@@ -33,6 +40,10 @@ export function CreateJoin({
   // the same name (#16).
   const [name, setName] = useState(() => loadSettings().playerName.trim() || randomName());
   const [joinCode, setJoinCode] = useState('');
+  // Streaming mode (#62): someone joining on stream would otherwise reveal the
+  // code by typing it. The field reads as a password until held to show.
+  const streaming = loadSettings().streamingMode;
+  const reveal = useHoldToReveal();
   const [config, setConfig] = useState<GameConfig>(() => ({
     ...defaultConfig(),
     seats: [
@@ -64,23 +75,25 @@ export function CreateJoin({
   const allBots = mode === 'create' && humanSeats === 0;
 
   const go = async () => {
-    const chosen = name.trim();
+    const chosen = couch ? copy.couch.tableName : name.trim();
     if (chosen === '') {
       setError(copy.online.errors.noName);
       return;
     }
 
     if (allBots) {
-      setError(copy.online.errors.allBots);
+      setError(couch ? copy.couch.allBots : copy.online.errors.allBots);
       return;
     }
 
     setBusy(true);
     setError(null);
     // Remembered for next time, the way the online host override is.
-    saveSettings({ ...loadSettings(), playerName: chosen });
+    if (!couch) saveSettings({ ...loadSettings(), playerName: chosen });
     try {
-      if (mode === 'create') {
+      if (couch) {
+        onRoom(await createTable(config, mintRoomAddress(), chosen));
+      } else if (mode === 'create') {
         // The client mints the address it will connect to — 160 bits, never
         // shown. The room mints the short ticket people actually share, once
         // the directory has accepted it.
@@ -130,21 +143,23 @@ export function CreateJoin({
 
   return (
     <div className={form.viewport}>
-      <section className={form.screen} aria-label={copy.online.screenLabel}>
+      <section className={form.screen} aria-label={couch ? copy.couch.screenLabel : copy.online.screenLabel}>
         <header className={form.head}>
           <div>
-            <span className={`kicker ${form.eyebrow}`}>{copy.online.eyebrow}</span>
-            <h1 className={form.title}>{copy.online.title}</h1>
-            <p className={form.lede}>{copy.online.lede}</p>
+            <span className={`kicker ${form.eyebrow}`}>{couch ? copy.couch.eyebrow : copy.online.eyebrow}</span>
+            <h1 className={form.title}>{couch ? copy.couch.title : copy.online.title}</h1>
+            <p className={form.lede}>{couch ? copy.couch.lede : copy.online.lede}</p>
           </div>
-          <div className={form.segment}>
-            <button type="button" data-active={mode === 'create'} onClick={() => setMode('create')}>
-              {copy.online.modeCreate}
-            </button>
-            <button type="button" data-active={mode === 'join'} onClick={() => setMode('join')}>
-              {copy.online.modeJoin}
-            </button>
-          </div>
+          {!couch && (
+            <div className={form.segment}>
+              <button type="button" data-active={mode === 'create'} onClick={() => setMode('create')}>
+                {copy.online.modeCreate}
+              </button>
+              <button type="button" data-active={mode === 'join'} onClick={() => setMode('join')}>
+                {copy.online.modeJoin}
+              </button>
+            </div>
+          )}
         </header>
 
         <div className={form.body}>
@@ -158,17 +173,25 @@ export function CreateJoin({
                     ourselves, and all of that has to land as eight characters.
                     `normaliseTicket` is the same function the submit path used
                     to run alone, so what you see is now what is sent. */}
-                <input
-                  className={`${form.input} ${styles.codeInput}`}
-                  value={joinCode}
-                  onChange={(e) =>
-                    setJoinCode(formatTicket(normaliseTicket(e.target.value).slice(0, TICKET_LENGTH)))
-                  }
-                  aria-label={copy.online.roomCode}
-                  placeholder={copy.online.roomCodePlaceholder}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
+                <div className={styles.nameRow}>
+                  <input
+                    className={`${form.input} ${styles.codeInput}`}
+                    type={streaming && !reveal.held ? 'password' : 'text'}
+                    value={joinCode}
+                    onChange={(e) =>
+                      setJoinCode(formatTicket(normaliseTicket(e.target.value).slice(0, TICKET_LENGTH)))
+                    }
+                    aria-label={copy.online.roomCode}
+                    placeholder={copy.online.roomCodePlaceholder}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  {streaming && (
+                    <button type="button" aria-label={copy.online.holdToShowLabel} {...reveal.props}>
+                      {copy.online.holdToShow}
+                    </button>
+                  )}
+                </div>
                 <span className={form.note}>{copy.online.roomCodeNote}</span>
               </label>
               {nameField}
@@ -180,7 +203,7 @@ export function CreateJoin({
               <div className={form.columns}>
                 <div className={form.field}>
                   <span>{copy.online.table}</span>
-                  <span className={form.note}>{copy.online.tableNote}</span>
+                  <span className={form.note}>{couch ? copy.couch.tableNote : copy.online.tableNote}</span>
                   <div className={form.roster}>
                     {config.seats.map((seat, index) => (
                       <SeatRow
@@ -197,7 +220,7 @@ export function CreateJoin({
                 </div>
 
                 <div>
-                  {nameField}
+                  {!couch && nameField}
 
                   <div className={form.field}>
                     <span>{copy.online.seats}</span>
@@ -227,7 +250,7 @@ export function CreateJoin({
               the button is disabled before it can be pressed — a control that
               refuses without saying why is the worse half of this fix. */}
           <p className={form.error} role="alert">
-            {error ?? (allBots ? copy.online.errors.allBots : '')}
+            {error ?? (allBots ? (couch ? copy.couch.allBots : copy.online.errors.allBots) : '')}
           </p>
         </div>
 
@@ -238,9 +261,11 @@ export function CreateJoin({
           <Button variant="primary" disabled={busy || allBots} onClick={() => void go()}>
             {busy
               ? copy.online.connecting
-              : mode === 'create'
-                ? copy.online.create
-                : copy.online.join}
+              : couch
+                ? copy.couch.open
+                : mode === 'create'
+                  ? copy.online.create
+                  : copy.online.join}
           </Button>
         </div>
       </section>

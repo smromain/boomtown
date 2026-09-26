@@ -39,13 +39,35 @@ export function partykitHost(): string {
  */
 export async function resolveTicket(ticket: string): Promise<string | null> {
   const host = partykitHost();
-  const scheme = host.startsWith('localhost') || host.startsWith('127.') ? 'http' : 'https';
   try {
-    const response = await fetch(`${scheme}://${host}/parties/directory/${ticket}`);
+    const response = await fetch(`${schemeFor(host)}://${host}/parties/directory/${ticket}`);
     if (!response.ok) return null;
     const body = (await response.json()) as { address?: unknown };
     return typeof body.address === 'string' && isRoomAddress(body.address) ? body.address : null;
   } catch {
     return null;
   }
+}
+
+/** Plain HTTP for a local dev room, HTTPS for anything deployed. */
+function schemeFor(host: string): 'http' | 'https' {
+  return host.startsWith('localhost') || host.startsWith('127.') || /^\d+\.\d+\.\d+\.\d+(:\d+)?$/.test(host)
+    ? 'http'
+    : 'https';
+}
+
+/**
+ * Where a phone joins a couch table (#62): the page the room's own deploy
+ * serves beside it (`packages/server/public/phone`). Without a ticket it is the
+ * address a person types; with one, it is what the QR code carries.
+ *
+ * The ticket rides in the fragment, which a browser never sends to the server,
+ * so it lands in no access log. A dev room on `localhost` is only reachable
+ * from this machine: to scan from a real phone, set the online host in
+ * Settings to this machine's address on the local network.
+ */
+export function phoneUrl(ticket?: string): string {
+  const host = partykitHost();
+  const base = `${schemeFor(host)}://${host}/phone/`;
+  return ticket ? `${base}#t=${ticket}` : base;
 }

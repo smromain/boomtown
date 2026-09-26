@@ -89,6 +89,8 @@ export {
   flavourOf,
   emptyHoldings,
   viewFor,
+  tableView,
+  type TableView,
 } from './state.js';
 
 export { type SetupOptions, createGame } from './setup.js';

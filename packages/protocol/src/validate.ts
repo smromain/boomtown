@@ -113,7 +113,14 @@ export function parseClientMessage(raw: string | ArrayBuffer | ArrayBufferView):
     }
     case 'create-room': {
       if (!parseConfig(parsed['config'])) return fail('create-room: malformed config');
-      return { ok: true, message: parsed as unknown as ClientMessage };
+      const table = parsed['table'];
+      if (table !== undefined && typeof table !== 'boolean') return fail('create-room: table must be a boolean');
+      // Rebuilt rather than passed through, so nothing but the two known
+      // fields reaches the room.
+      return {
+        ok: true,
+        message: { type, config: parsed['config'], ...(table ? { table: true } : {}) } as ClientMessage,
+      };
     }
     case 'knock':
     case 'start':
@@ -132,6 +139,10 @@ export function parseClientMessage(raw: string | ArrayBuffer | ArrayBufferView):
         return fail('eject: seat must be a small non-negative integer');
       }
       return { ok: true, message: { type, seat } as ClientMessage };
+    }
+    case 'pace': {
+      if (typeof parsed['holding'] !== 'boolean') return fail('pace: holding must be a boolean');
+      return { ok: true, message: { type, holding: parsed['holding'] } as ClientMessage };
     }
     case 'set-locked': {
       if (typeof parsed['locked'] !== 'boolean') return fail('set-locked: locked must be a boolean');

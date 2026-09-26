@@ -1,5 +1,5 @@
 import { PRESETS, RULES, type SetupOptions } from '@boomtown/engine';
-import type { Knocker, RoomConfig, SeatSlot } from '@boomtown/protocol';
+import type { Knocker, RoomConfig, RoomState, SeatSlot } from '@boomtown/protocol';
 import { mintToken, tokensMatch } from './tokens.js';
 
 /**
@@ -232,16 +232,8 @@ export class SeatTable {
   snapshot(
     ticket: string | null,
     phase: 'lobby' | 'playing' | 'over',
-    door: { hostSeat: number; knocks: readonly Knocker[]; locked: boolean },
-  ): {
-    ticket: string | null;
-    phase: 'lobby' | 'playing' | 'over';
-    config: RoomConfig;
-    seats: SeatSlot[];
-    hostSeat: number;
-    knocks: readonly Knocker[];
-    locked: boolean;
-  } {
+    door: { hostSeat: number | null; table: boolean; knocks: readonly Knocker[]; locked: boolean },
+  ): RoomState {
     const bots = this.botSeats();
     const seats: SeatSlot[] = this.allSeats().map((index) => {
       if (bots.has(index)) {

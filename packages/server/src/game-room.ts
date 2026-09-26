@@ -8,6 +8,7 @@ import {
   type EngineEvent,
   type GameState,
   redactEventsFor,
+  tableView,
   type Retrospective,
   type Rng,
   type Seat,
@@ -29,6 +30,7 @@ import { CommandLog, type KeyValueStore } from './storage.js';
 import { SeatTable, configError, setupOptionsFor } from './seats.js';
 import { LIFECYCLE, atCommandCeiling } from './lifecycle.js';
 import { Door } from './admission.js';
+import { mintToken, tokensMatch } from './tokens.js';
 
 /**
  * One non-deterministic seed at room creation. This is the single point where
@@ -47,9 +49,10 @@ export function seatOnClock(state: GameState): Seat | null {
   return state.merger?.pending?.seat ?? state.motion?.pending?.seat ?? activeSeat(state);
 }
 
-/** What the room sends to one seat's connection. */
+/** What the room sends to one seat's connection, to the couch table, or to everyone. */
 export type Outbound =
   | { readonly kind: 'to-seat'; readonly seat: Seat; readonly message: RoomMessage }
+  | { readonly kind: 'to-table'; readonly message: RoomMessage }
   | { readonly kind: 'broadcast'; readonly message: RoomMessage };
 
 /**
@@ -113,6 +116,7 @@ export class GameRoom {
     const lobby = await log.loadLobby();
     if (lobby) {
       room.hostSeat = lobby.hostSeat;
+      room.tableHosted = lobby.table ?? false;
       room.door.locked = lobby.locked;
       room.started = lobby.started ?? false;
       room.seats.restoreEjected(lobby.ejected ?? []);
@@ -185,20 +189,131 @@ export class GameRoom {
   readonly door = new Door();
 
   /**
-   * The seat allowed to admit, decline and lock — the one the creator took.
-   * Persisted, because it has to survive a hibernation wake: a room that forgot
-   * who its host was would either have no one able to admit, or everyone.
+   * The seat allowed to admit, decline, lock, eject and start — the one the
+   * creator took, or null when a couch table hosts. Persisted, because it has
+   * to survive a hibernation wake: a room that forgot who its host was would
+   * either have no one able to admit, or everyone.
    */
-  hostSeat = 0;
+  hostSeat: Seat | null = 0;
 
-  /** Write the lobby facts a wake must not lose: host, lock, ejected seats, started. */
+  /**
+   * Whether a couch table created this room and hosts it (#62). Persisted with
+   * the host seat, for the same reason: a woken room must still know that its
+   * host is the table, even if the table's socket was down across the wake.
+   */
+  tableHosted = false;
+
+  /**
+   * The table's token and the connection holding it. Held here rather than in
+   * the lobby record, exactly like seat tokens: the adapter keeps the token in
+   * the connection's own persisted state and hands it back after a wake.
+   */
+  private table: { token: string; connectionId: string | null } | null = null;
+
+  /** Write the lobby facts a wake must not lose: host, lock, ejected seats, started, table. */
   async persistLobby(): Promise<void> {
     await this.log.saveLobby({
       hostSeat: this.hostSeat,
       locked: this.door.locked,
       ejected: this.seats.ejectedSeats(),
       started: this.started,
+      table: this.tableHosted,
     });
+  }
+
+  // --- the couch table (#62) --------------------------------------------
+
+  /**
+   * Make `connectionId` this room's table: host authority, no seat. Returns the
+   * table's token. Called once, at creation — a room has at most one table, and
+   * `create-room` is refused once the room exists, so no second connection can
+   * claim the role.
+   */
+  async becomeTable(connectionId: string): Promise<string> {
+    const token = mintToken();
+    this.table = { token, connectionId };
+    this.tableHosted = true;
+    this.hostSeat = null;
+    await this.persistLobby();
+    roomLog(this.code, 'the creator is the table');
+    return token;
+  }
+
+  /**
+   * The table coming back by token. Like a seat's, the token rotates on use, so
+   * a captured one buys a single reconnect. Returns the fresh token, or null if
+   * this is not the table's token.
+   */
+  reconnectTable(token: string, connectionId: string): string | null {
+    if (!this.table || !tokensMatch(this.table.token, token)) return null;
+    const rotated = mintToken();
+    this.table = { token: rotated, connectionId };
+    // A new connection has not asked to be waited on yet.
+    this.paced = false;
+    return rotated;
+  }
+
+  // --- pacing bots to the table (#62, U38) --------------------------------
+
+  /**
+   * True once the table on its current connection has sent `pace`. A table that
+   * never does is never waited on, which is also what keeps every older client
+   * and every test that does not care about pacing exactly as it was.
+   */
+  private paced = false;
+  /** Whether the table has taken in the last update and is not mid-beat. */
+  private tableReady = true;
+
+  /** The table says a covering beat has started (`true`) or that it is idle (`false`). */
+  tablePace(holding: boolean): void {
+    this.paced = true;
+    this.tableReady = !holding;
+  }
+
+  /** Whether bots are being played one move at a time, to the table's beat. */
+  isPaced(): boolean {
+    return this.paced && this.tableConnection() !== null;
+  }
+
+  /** Whether a bot owes the next command and nothing but pacing is stopping it. */
+  botWaiting(): boolean {
+    if (!this.state || this.broken || this.phase !== 'playing') return false;
+    const seat = seatOnClock(this.state);
+    return seat !== null && this.seats.isBot(seat);
+  }
+
+  /**
+   * Play what the bots owe. `force` plays one move even though the table has not
+   * said it is ready — the cap the adapter enforces, so a table that goes quiet
+   * mid-beat costs the game a pause rather than the game.
+   */
+  async stepBots(force = false): Promise<Outbound[]> {
+    if (force) this.tableReady = true;
+    return this.runBots();
+  }
+
+  /** Restore the table's binding after a hibernation wake, from the connection's state. */
+  restoreTable(token: string, connectionId: string): void {
+    if (!this.tableHosted) return;
+    // A live binding is the truth; persisted state only fills an empty one.
+    if (this.table?.connectionId) return;
+    this.table = { token, connectionId };
+  }
+
+  /** Whether this connection is the table. */
+  isTable(connectionId: string): boolean {
+    return this.table?.connectionId === connectionId;
+  }
+
+  /** The table's current connection, or null when it is away. */
+  tableConnection(): string | null {
+    return this.table?.connectionId ?? null;
+  }
+
+  /** The table's current update, for a reconnect. Null before the deal. */
+  currentTableUpdate(): RoomMessage | null {
+    if (!this.state || !this.tableHosted) return null;
+    return { type: 'table-update', view: tableView(this.state), events: [] };
   }
 
   /**
@@ -229,6 +344,7 @@ export class GameRoom {
   roomState(knocks: readonly Knocker[] = []): RoomState {
     return this.seats.snapshot(this.ticket, this.phase, {
       hostSeat: this.hostSeat,
+      table: this.tableHosted,
       knocks,
       locked: this.door.locked,
     });
@@ -292,6 +408,10 @@ export class GameRoom {
 
   markDisconnected(connectionId: string): void {
     this.seats.disconnect(connectionId);
+    if (this.table?.connectionId === connectionId) {
+      this.table = { ...this.table, connectionId: null };
+      this.paced = false;
+    }
   }
 
   /** Start the game. Returns the initial per-seat updates, or an error. */
@@ -325,6 +445,8 @@ export class GameRoom {
     this.state = createGame(setupOptionsFor(this.config, this.seats.displayNames()));
     this.phase = 'playing';
     this.started = true;
+    // A paced table takes the deal in before a bot plays on it.
+    if (this.isPaced()) this.tableReady = false;
     // Before the updates go out, the same order the command log keeps: nothing
     // is observable until the fact that produced it is durable (KTD13, R7).
     await this.persistLobby();
@@ -419,6 +541,8 @@ export class GameRoom {
       return null;
     }
     this.state = nextState;
+    // Paced: the table has to take this update in before a bot plays on it.
+    if (this.isPaced()) this.tableReady = false;
     if (nextState.status === 'over') {
       this.phase = 'over';
       return this.seatUpdates(events, await this.endRecord());
@@ -443,6 +567,9 @@ export class GameRoom {
       }
       const seat = seatOnClock(this.state);
       if (seat === null || !this.seats.isBot(seat)) return out;
+      // Paced to the table (#62): one bot move per `ready`, and the adapter
+      // arms a cap so this can never become a stall.
+      if (this.isPaced() && !this.tableReady) return out;
       const policy = this.policies.get(seat)!;
       const choice = policy.chooseMove(this.state, seat, this.botRngState);
       if (!choice) return out;
@@ -477,7 +604,8 @@ export class GameRoom {
 
   /**
    * One `update` per seat, each with that seat's filtered view **and** that
-   * seat's filtered events.
+   * seat's filtered events — and, at a couch table, one `table-update` with the
+   * public view and the events as a reader with no seat may see them (#62).
    *
    * The events used to be one shared array handed to everyone while only the
    * view was per-seat — so a closed table's purchase quantities and costs went
@@ -488,7 +616,7 @@ export class GameRoom {
   private seatUpdates(events: readonly EngineEvent[], record?: Retrospective): Outbound[] {
     if (!this.state) return [];
     const state = this.state;
-    return this.seats.liveConnections().map(({ seat }) => ({
+    const out: Outbound[] = this.seats.liveConnections().map(({ seat }) => ({
       kind: 'to-seat' as const,
       seat,
       message: {
@@ -498,6 +626,18 @@ export class GameRoom {
         ...(record ? { retrospective: record } : {}),
       },
     }));
+    if (this.tableHosted) {
+      out.push({
+        kind: 'to-table',
+        message: {
+          type: 'table-update',
+          view: tableView(state),
+          events: redactEventsFor(state, events, null),
+          ...(record ? { retrospective: record } : {}),
+        },
+      });
+    }
+    return out;
   }
 
   /**

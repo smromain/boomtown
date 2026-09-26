@@ -13,7 +13,7 @@
     "app:build": "npm run build --workspace @boomtown/desktop",
     "app:preview": "npm run start --workspace @boomtown/desktop",
     "build": "npm run typecheck",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p apps/desktop/tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p apps/desktop/tsconfig.json && tsc --noEmit -p apps/phone/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:engine": "vitest run --project engine",
@@ -22,7 +22,10 @@
     "smoke": "npm run smoke --workspace @boomtown/desktop",
     "server:dev": "npm run dev --workspace @boomtown/server",
     "server:deploy": "npm run deploy --workspace @boomtown/server",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:phone": "vitest run --project phone",
+    "phone:build": "npm run build --workspace @boomtown/phone",
+    "phone:dev": "npm run dev --workspace @boomtown/phone"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

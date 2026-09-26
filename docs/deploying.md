@@ -19,8 +19,12 @@ bot policy directly.
 ```bash
 cd packages/server
 npx partykit login      # GitHub OAuth, once per machine
-npm run deploy           # = partykit deploy
+npm run deploy           # = build apps/phone, then partykit deploy
 ```
+
+The deploy carries the couch-mode phone page (#62): `apps/phone` builds into
+`packages/server/public/phone/` (gitignored), and `"serve": "public"` in `partykit.json` serves it at
+`/phone/` beside the room. The release workflow runs `npm run phone:build` before its deploy step.
 
 The room name is `boomtown` (`partykit.json`), so the deploy URL is
 `https://boomtown.<your-partykit-account>.partykit.dev`. **First deploy of a new

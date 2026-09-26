@@ -217,6 +217,21 @@ export function SettingsDialog({
                 </label>
 
                 <div className={form.field}>
+                  <span>{c.streaming}</span>
+                  <Choice
+                    quiet
+                    label={c.streaming}
+                    value={draft.streamingMode ? 'on' : 'off'}
+                    options={[
+                      { value: 'on', label: c.on },
+                      { value: 'off', label: c.off },
+                    ]}
+                    onChange={(value) => patch({ streamingMode: value === 'on' })}
+                  />
+                  <span className={form.note}>{c.streamingNote}</span>
+                </div>
+
+                <div className={form.field}>
                   <span>{c.boardStyle}</span>
                   <Choice
                     label={c.boardStyle}
