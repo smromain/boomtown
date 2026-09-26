@@ -28,12 +28,13 @@ const money = (n: number): string => `$${n.toLocaleString()}`;
  * the seven corporation colours does not exist at six seats, so the colour you
  * *do* see here belongs to companies, which already own it.
  *
- * **The line stops where the game did.** Settlement pays every bonus and buys
- * back every share at once, which at a long table is more money than the whole
- * game before it: drawn as a data point it triples the axis and flattens forty
- * turns of play into a line along the bottom with a spike on the end. So the
- * lines are net worth *in play*, and what each seat settled for is the figure
- * beside their name. Both numbers are true; only one of them is a series.
+ * **The line ends where the seats did.** Settlement pays every bonus and buys
+ * back every share at once, and a line that stopped before it drew the game's
+ * winner in second place whenever the last turn's liquidation was what won it.
+ * So settlement is the last point on every line, set a short run to the right
+ * of the last turn played and marked off by its own rule, so the jump reads as
+ * the bank paying out rather than as one more turn. The figure beside each
+ * name is that point.
  */
 export const MarketGraph = memo(function MarketGraph({
   record,
@@ -50,19 +51,22 @@ export const MarketGraph = memo(function MarketGraph({
   const seats = record.turns[0]?.seats.map((_, seat) => seat) ?? [];
   const series = seats.map((seat) => netWorthSeries(record, seat));
 
-  // The settlement record is the last one when the game finished; it is a
-  // different kind of number and belongs in the legend, not on the line.
+  // The settlement record is the last one when the game finished. It is drawn,
+  // but not as one more turn: it sits a short run past the last turn played,
+  // under its own label, so the axis still counts turns up to it.
   const played = record.turns.slice(0, record.settled ? -1 : undefined);
   const lastPlayed = Math.max(0, played.length - 1);
-  const inPlay = series.map((line) => line.slice(0, played.length));
-  const axis = moneyAxis(Math.min(...inPlay.flat()), Math.max(1, ...inPlay.flat()));
+  const settledAt = record.settled ? lastPlayed + Math.max(1, Math.round(lastPlayed / 24)) : null;
+  const span = settledAt ?? lastPlayed;
+  const axis = moneyAxis(Math.min(...series.flat()), Math.max(1, ...series.flat()));
 
-  const x = (turn: number): number =>
-    PAD_L + (lastPlayed <= 0 ? 0 : (turn / lastPlayed) * (W - PAD_L - PAD_R));
+  const x = (turn: number): number => PAD_L + (span <= 0 ? 0 : (turn / span) * (W - PAD_L - PAD_R));
   const y = (value: number): number =>
     H - PAD_B - ((value - axis.floor) / (axis.max - axis.floor || 1)) * (H - PAD_B - PAD_T);
 
   const step = Math.max(1, Math.ceil(lastPlayed / 12));
+  // A turn number too close to the settlement label would collide with it.
+  const clearOfSettled = (turn: number): boolean => settledAt === null || x(settledAt) - x(turn) >= 48;
 
   const final = seats
     .map((seat) => ({ seat, total: series[seat]![series[seat]!.length - 1] ?? 0 }))
@@ -111,7 +115,7 @@ export const MarketGraph = memo(function MarketGraph({
           </text>
 
           {played.map((turn) =>
-            turn.turn % step === 0 ? (
+            turn.turn % step === 0 && clearOfSettled(turn.turn) ? (
               <text
                 key={turn.turn}
                 x={x(turn.turn)}
@@ -125,6 +129,23 @@ export const MarketGraph = memo(function MarketGraph({
               </text>
             ) : null,
           )}
+
+          {settledAt !== null ? (
+            <g data-settled-rule="">
+              <line
+                x1={x(settledAt)}
+                y1={PAD_T}
+                x2={x(settledAt)}
+                y2={y(axis.floor)}
+                stroke="var(--muted)"
+                strokeDasharray="1 3"
+                opacity="0.7"
+              />
+              <text x={W - 2} y={y(axis.floor) + 17} fontSize="10" fill="var(--muted)" textAnchor="end">
+                {after.settled}
+              </text>
+            </g>
+          ) : null}
 
           {/* The company timeline, on the axis: one mark per event, laid out
               exactly and stacked into a second row when two land together. A
@@ -168,7 +189,12 @@ export const MarketGraph = memo(function MarketGraph({
           {seats.map((seat) => (
             <path
               key={seat}
-              d={linePath(played.map((turn) => [x(turn.turn), y(inPlay[seat]![turn.turn] ?? axis.floor)] as const))}
+              d={linePath([
+                ...played.map((turn) => [x(turn.turn), y(series[seat]![turn.turn] ?? axis.floor)] as const),
+                ...(settledAt !== null
+                  ? [[x(settledAt), y(series[seat]![series[seat]!.length - 1] ?? axis.floor)] as const]
+                  : []),
+              ])}
               fill="none"
               stroke={seat === lit ? 'var(--accent)' : 'var(--ink)'}
               strokeWidth={seat === lit ? 2.5 : 1.5}

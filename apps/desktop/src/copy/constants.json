@@ -607,12 +607,13 @@
       },
       "market": {
         "title": "Tracking the market",
-        "note": "net worth per turn, while it was being played",
+        "note": "net worth per turn, through settlement",
         "founded": "founded",
         "refounded": "founded again",
         "folded": "folded",
         "turns": "turn",
-        "settledNote": "The figures are what each seat settled for — the bank buying every share back and paying every bonus at once, which is a different number from anything the game was worth while it ran."
+        "settled": "settled",
+        "settledNote": "The last step on each line is settlement — the bank buying every share back and paying every bonus at once — and the figures are what each seat settled for."
       },
       "companies": {
         "title": "The market, company by company",
