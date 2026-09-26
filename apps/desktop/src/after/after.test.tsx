@@ -164,6 +164,24 @@ describe('the after-game carousel', () => {
     expect(screen.getByText(/Page 2 of \d+/)).toBeInTheDocument();
   });
 
+  it('ends every net-worth line at what the seat settled for', () => {
+    renderAfter();
+    fireEvent.click(screen.getByRole('tab', { name: 'Tracking the market' }));
+    const chart = screen.getByRole('img', { name: 'Tracking the market' });
+    expect(chart.querySelector('[data-settled-rule]')).not.toBeNull();
+
+    const settled = fixture.record.turns[fixture.record.turns.length - 1]!.seats.map((seat) => seat.netWorth);
+    const ends = NAMES.map((name) => {
+      const path = [...chart.querySelectorAll('path')].find((line) => line.querySelector('title')?.textContent === name)!;
+      const points = (path.getAttribute('d') ?? '').split(/[ML]/).filter(Boolean);
+      return Number(points[points.length - 1]!.trim().split(' ')[1]);
+    });
+    // Higher on the page is a smaller y, so the richest seat ends on top.
+    const byEnd = NAMES.map((_, seat) => seat).sort((a, b) => ends[a]! - ends[b]!);
+    const bySettled = NAMES.map((_, seat) => seat).sort((a, b) => settled[b]! - settled[a]!);
+    expect(byEnd).toEqual(bySettled);
+  });
+
   it('names a seat the same way in every frame', () => {
     renderAfter();
     const standings = screen.getByText('Final standings').closest('section')!;
