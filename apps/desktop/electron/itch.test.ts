@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdtemp, mkdir, readFile, readdir, readlink, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-const { CHANNELS, macBuildDir, target, stage } = await import('./itch.mjs');
+const { CHANNELS, macBuildDir, macManifest, macReleaseDir, target, stage } = await import('./itch.mjs');
 
 const at = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
@@ -76,6 +76,72 @@ describe('staging the manifest', () => {
     // The manifest sits beside the executable, not inside a subdirectory —
     // the itch app reads it from the root of what it installed.
     expect(await readFile(join(dist, 'win-unpacked', '.itch.toml'), 'utf8')).toMatch(/path = "boomtown\.exe"/);
+  });
+});
+
+describe('staging the macOS build', () => {
+  // A fake bundle with the two things a real one must survive the copy with:
+  // an executable binary and a framework's `Current` symlink.
+  async function macDist() {
+    const dist = await mkdtemp(join(tmpdir(), 'boomtown-itch-mac-'));
+    const app = join(dist, 'mac-universal', 'Boomtown.app', 'Contents');
+    await mkdir(join(app, 'MacOS'), { recursive: true });
+    await writeFile(join(app, 'MacOS', 'Boomtown'), 'binary');
+    await chmod(join(app, 'MacOS', 'Boomtown'), 0o755);
+    await mkdir(join(app, 'Frameworks', 'Electron Framework.framework', 'Versions', 'A'), { recursive: true });
+    await symlink('A', join(app, 'Frameworks', 'Electron Framework.framework', 'Versions', 'Current'));
+    return dist;
+  }
+
+  it('puts the .app under a folder named for the release, with the manifest at the root', async () => {
+    // The itch app patches a changed file in place, and macOS kills a signed
+    // binary that was rewritten in place. A new folder per release makes every
+    // path new, so every file is written fresh instead.
+    const dist = await macDist();
+    const staged = await stage('mac', dist, at('../build/itch'), '2026.9.2');
+
+    expect(staged.pushPath).toBe(join(dist, 'itch-osx'));
+    expect(staged.channel).toBe('osx');
+    expect(await readFile(join(staged.pushPath, '.itch.toml'), 'utf8')).toMatch(
+      /^path = "v2026\.9\.2\/Boomtown\.app"$/m,
+    );
+    const binary = join(staged.pushPath, 'v2026.9.2', 'Boomtown.app', 'Contents', 'MacOS', 'Boomtown');
+    expect((await stat(binary)).mode & 0o111).not.toBe(0);
+    const current = join(
+      staged.pushPath,
+      'v2026.9.2',
+      'Boomtown.app',
+      'Contents',
+      'Frameworks',
+      'Electron Framework.framework',
+      'Versions',
+      'Current',
+    );
+    expect((await lstat(current)).isSymbolicLink()).toBe(true);
+    expect(await readlink(current)).toBe('A');
+  });
+
+  it('leaves no earlier release behind when staged again', async () => {
+    const dist = await macDist();
+    await stage('mac', dist, at('../build/itch'), '2026.9.1');
+    const staged = await stage('mac', dist, at('../build/itch'), '2026.9.2');
+    expect((await readdir(staged.pushPath)).sort()).toEqual(['.itch.toml', 'v2026.9.2']);
+  });
+
+  it('refuses to stage without a version rather than reuse a fixed path', async () => {
+    const dist = await macDist();
+    await expect(stage('mac', dist, at('../build/itch'))).rejects.toThrow(/needs the release version/);
+    expect(() => macReleaseDir('../escape')).toThrow(/needs the release version/);
+  });
+
+  it('accepts the CalVer shapes the release workflow produces', () => {
+    expect(macReleaseDir('2026.9.2')).toBe('v2026.9.2');
+    expect(macReleaseDir('2026.9.3-rc1')).toBe('v2026.9.3-rc1');
+  });
+
+  it('moves only the launch path under the release folder', () => {
+    const manifest = '[[actions]]\nname = "play"\npath = "Boomtown.app"\n';
+    expect(macManifest(manifest, 'v2026.9.2')).toBe('[[actions]]\nname = "play"\npath = "v2026.9.2/Boomtown.app"\n');
   });
 });
 

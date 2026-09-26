@@ -1,4 +1,4 @@
-import { copyFile, readdir } from 'node:fs/promises';
+import { copyFile, cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,6 +28,9 @@ import { fileURLToPath } from 'node:url';
  * - **The manifest.** `build/itch/<platform>.itch.toml` is copied to the root
  *   of the pushed directory, naming the thing to launch under the well-known
  *   `play` action.
+ *
+ * - **On macOS, a new folder per release.** The `.app` is pushed as
+ *   `v<version>/Boomtown.app`, never at a fixed path — see `macReleaseDir`.
  *
  * What is deliberately *not* handled here: symlinks and executable bits. butler
  * manages symlinks and fixes permissions on push, and the itch app fixes
@@ -84,21 +87,85 @@ function unpacked(dir, entries) {
   return dir;
 }
 
+/** Where the macOS push is assembled, beside the build electron-builder left. */
+export const MAC_STAGING_DIR = 'itch-osx';
+
+/**
+ * The folder the macOS `.app` sits in, inside what butler pushes. It changes
+ * with every release, and that is the whole point: it is why an itch update
+ * no longer crashes the game.
+ *
+ * The itch app updates a game by patching it where it is installed, and a file
+ * that changed between two builds is patched **in place** — the same file on
+ * disk, rewritten. Every release rewrites the signed Mach-O binaries in the
+ * bundle (the ad-hoc signature seals `Info.plist`, which carries the version),
+ * and macOS caches a binary's code signature against the file itself. A signed
+ * binary rewritten in place no longer matches what the kernel cached, so the
+ * next launch is killed with `SIGKILL (Code Signature Invalid)` until the game
+ * is reinstalled or the Mac rebooted. Apple's own guidance for updating signed
+ * code is to write a new file and move it into place, never to modify the old
+ * one; we cannot change how the itch app writes, but we can make every file a
+ * new one.
+ *
+ * Under a per-release folder every path in the bundle is new, so the itch app
+ * writes each file fresh and deletes the old folder, whose paths the new build
+ * no longer has. butler diffs by content across the whole build, not path by
+ * path, so the download stays a patch rather than the whole app.
+ */
+export function macReleaseDir(version) {
+  if (typeof version !== 'string' || !/^[0-9]+(\.[0-9]+)*(-[0-9A-Za-z.]+)?$/.test(version)) {
+    throw new Error(
+      `the macOS itch build needs the release version, e.g. \`itch:stage -- mac 2026.9.2\` — got '${version ?? ''}'`,
+    );
+  }
+  return `v${version}`;
+}
+
+/**
+ * The manifest for a macOS push: the repo's manifest with its launch path moved
+ * under the release folder.
+ */
+export function macManifest(template, releaseDir) {
+  const rewritten = template.replace(/^path = "([^"]+)"$/m, (_line, path) => `path = "${releaseDir}/${path}"`);
+  if (rewritten === template) throw new Error('osx.itch.toml has no `path = "…"` line to rewrite');
+  return rewritten;
+}
+
 /**
  * Stage the manifest and print the absolute path butler should push, so the
- * caller can do `butler push "$(node electron/itch.mjs mac)" user/game:osx`.
+ * caller can do `butler push "$(node electron/itch.mjs mac 2026.9.2)" user/game:osx`.
+ *
+ * Windows and Linux push electron-builder's unpacked directory as it stands.
+ * macOS copies the `.app` into `itch-osx/v<version>/` first (`macReleaseDir`
+ * says why); the copy keeps symlinks as symlinks, which a framework bundle is
+ * made of, and file modes, so the binaries stay executable.
  */
-export async function stage(platform, dist = distDir(), manifests = manifestsDir()) {
+export async function stage(platform, dist = distDir(), manifests = manifestsDir(), version = undefined) {
   const chosen = target(platform, await readdir(dist));
-  const pushPath = join(dist, chosen.path);
-  await copyFile(join(manifests, chosen.manifest), join(pushPath, '.itch.toml'));
-  return { ...chosen, pushPath };
+  if (platform !== 'mac') {
+    const pushPath = join(dist, chosen.path);
+    await copyFile(join(manifests, chosen.manifest), join(pushPath, '.itch.toml'));
+    return { ...chosen, pushPath };
+  }
+
+  const releaseDir = macReleaseDir(version);
+  const built = join(dist, chosen.path);
+  const pushPath = join(dist, MAC_STAGING_DIR);
+  await rm(pushPath, { recursive: true, force: true });
+  await mkdir(join(pushPath, releaseDir), { recursive: true });
+  for (const entry of await readdir(built)) {
+    if (!entry.endsWith('.app')) continue;
+    await cp(join(built, entry), join(pushPath, releaseDir, entry), { recursive: true, verbatimSymlinks: true });
+  }
+  const template = await readFile(join(manifests, chosen.manifest), 'utf8');
+  await writeFile(join(pushPath, '.itch.toml'), macManifest(template, releaseDir));
+  return { ...chosen, path: MAC_STAGING_DIR, pushPath };
 }
 
 /* c8 ignore start — the CLI wrapper; `stage` is what the tests drive. */
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
-  const platform = process.argv[2];
-  stage(platform).then(
+  const [platform, version] = process.argv.slice(2);
+  stage(platform, undefined, undefined, version).then(
     ({ pushPath }) => process.stdout.write(pushPath),
     (error) => {
       process.stderr.write(`${String(error.message ?? error)}\n`);
