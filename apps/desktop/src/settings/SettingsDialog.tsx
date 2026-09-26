@@ -12,6 +12,7 @@ import { copy, fill } from '../copy/copy.js';
 import form from '../setup/form.module.css';
 import decisionStyles from '../decisions/decisions.module.css';
 import styles from './settings.module.css';
+import { getBoardPrefs, refreshBoardPrefs } from '../board/boardPrefs.js';
 
 const c = copy.settings;
 
@@ -93,6 +94,9 @@ export function SettingsDialog({
 
   const save = () => {
     saveSettings(draft);
+    // The board is drawn from a store of its own, so it has to hear that the
+    // stored choice changed underneath it.
+    refreshBoardPrefs();
     // A track playing behind this dialog has to hear the new level now; effects
     // pick it up as they next fire.
     musicManager.applyVolume();
@@ -226,6 +230,39 @@ export function SettingsDialog({
                   />
                   <span className={form.note}>{c.streamingNote}</span>
                 </div>
+
+                <div className={form.field}>
+                  <span>{c.boardStyle}</span>
+                  <Choice
+                    label={c.boardStyle}
+                    value={draft.boardStyle}
+                    options={[
+                      { value: 'board-view' as Settings['boardStyle'], label: c.boardView },
+                      { value: 'skyline' as Settings['boardStyle'], label: c.skyline },
+                    ]}
+                    onChange={(boardStyle) => patch({ boardStyle })}
+                  />
+                  <span className={form.note}>{getBoardPrefs().trouble ? c.boardTrouble : c.boardStyleNote}</span>
+                </div>
+
+                {/* Only Skyline draws with it so far; the app-wide day/night
+                    tokens (#64) will read the same key, and can drop this
+                    condition when they land. */}
+                {draft.boardStyle === 'skyline' && (
+                  <div className={form.field}>
+                    <span>{c.lighting}</span>
+                    <Choice
+                      quiet
+                      label={c.lighting}
+                      value={draft.lighting}
+                      options={[
+                        { value: 'day' as Settings['lighting'], label: c.day },
+                        { value: 'night' as Settings['lighting'], label: c.night },
+                      ]}
+                      onChange={(lighting) => patch({ lighting })}
+                    />
+                  </div>
+                )}
 
                 <label className={form.field}>
                   <span>{c.onlineHost}</span>

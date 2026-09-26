@@ -53,6 +53,20 @@ export interface Settings {
    */
   readonly streamingMode: boolean;
   /**
+   * Which painter draws the board (#70): Board View, the tilted paper grid, or
+   * Skyline, the WebGL city where every chain is a district. A preference about
+   * this screen rather than a rule of the table, so it never reaches the room
+   * and two players at one online game can each pick their own.
+   */
+  readonly boardStyle: 'board-view' | 'skyline';
+  /**
+   * Day or night, for this machine. One switch for the whole app (Steve,
+   * 2026-09-25): Skyline reads it today, and the app-wide day/night tokens
+   * (#64) are meant to read the same key, so a night board can never sit on a
+   * day table.
+   */
+  readonly lighting: 'day' | 'night';
+  /**
    * Draw a texture per industry over the board's cells, the corporation caps
    * and the merger discs, so a chain is told by shape as well as colour (#19).
    * Off by default: most players are served by the glyphs and the re-spaced
@@ -85,6 +99,8 @@ export const DEFAULT_SETTINGS: Settings = {
   musicTrack: 'pleasant-creek',
   playerName: '',
   streamingMode: false,
+  boardStyle: 'board-view',
+  lighting: 'day',
   industryPatterns: false,
   version: SETTINGS_VERSION,
 };

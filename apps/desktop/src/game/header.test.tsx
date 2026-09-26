@@ -7,6 +7,7 @@ import { soundManager } from '../audio/soundManager.js';
 import { ReferenceProvider } from '../reference/ReferenceContext.js';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '../settings/settings.js';
 import { renderPanel } from '../testing/harness.js';
+import { getBoardPrefs, resetBoardPrefsForTests } from '../board/boardPrefs.js';
 
 vi.mock('howler', () => ({
   Howl: vi.fn().mockImplementation(() => {
@@ -293,5 +294,19 @@ describe('leaving the game from the header (#73)', () => {
     const exit = screen.getByRole('button', { name: 'Leave the game' });
     expect(exit.closest('[class*="brand"]')).not.toBeNull();
     expect(exit.closest('[class*="status"]')).toBeNull();
+  });
+});
+
+describe('Header board switch (#70)', () => {
+  afterEach(() => resetBoardPrefsForTests());
+
+  it('flips between Board View and Skyline in one click, and remembers it on this machine', async () => {
+    const user = userEvent.setup();
+    await renderPanel(<Header />);
+    await user.click(screen.getByRole('button', { name: 'Switch to Skyline' }));
+    expect(loadSettings().boardStyle).toBe('skyline');
+    expect(getBoardPrefs().chosen).toBe('skyline');
+    await user.click(screen.getByRole('button', { name: 'Switch to Board View' }));
+    expect(loadSettings().boardStyle).toBe('board-view');
   });
 });

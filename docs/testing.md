@@ -7,9 +7,9 @@ current `main`.
 
 | Command | What runs | Count |
 |---|---|---|
-| `npm test` | All three Vitest projects | **1039** |
+| `npm test` | All three Vitest projects | **1060** |
 | `npm run test:engine` | The `engine` project (node): `packages/*/test/**` — engine, protocol, ai, client-core, and the room's own logic | 540 |
-| `npm run test:desktop` | The `desktop` project (jsdom): `apps/desktop/**/*.test.{ts,tsx}` — components through `@testing-library/react`, plus the Electron main-process modules | 491 |
+| `npm run test:desktop` | The `desktop` project (jsdom): `apps/desktop/**/*.test.{ts,tsx}` — components through `@testing-library/react`, plus the Electron main-process modules | 512 |
 | `npm run test:phone` | The `phone` project (jsdom): `apps/phone/src/**/*.test.{ts,tsx}` — the couch-mode phone page's join, resume and decision sheets against a real engine | 8 |
 | `npm run test:server` | Integration: a real `partykit dev` room (workerd) | 29 |
 | `npm run typecheck` | `tsc --noEmit` for all three tsconfigs | — |
