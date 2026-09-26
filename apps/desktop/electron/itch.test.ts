@@ -106,7 +106,11 @@ describe('staging the macOS build', () => {
       /^path = "v2026\.9\.2\/Boomtown\.app"$/m,
     );
     const binary = join(staged.pushPath, 'v2026.9.2', 'Boomtown.app', 'Contents', 'MacOS', 'Boomtown');
-    expect((await stat(binary)).mode & 0o111).not.toBe(0);
+    // Windows has no executable bit — `stat` reports none on any file there,
+    // and the release workflow runs this suite on a Windows runner too. The
+    // macOS push is only ever staged on macOS, where the bit is what matters.
+    if (process.platform === 'win32') expect((await stat(binary)).isFile()).toBe(true);
+    else expect((await stat(binary)).mode & 0o111).not.toBe(0);
     const current = join(
       staged.pushPath,
       'v2026.9.2',
