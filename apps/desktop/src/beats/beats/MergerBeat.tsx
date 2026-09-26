@@ -6,6 +6,7 @@ import { IndustryMark } from '../../game/marks.js';
 import { industryTheme, patternedBackground } from '../../game/industryTheme.js';
 import { useIndustryPatterns } from '../../settings/useSetting.js';
 import { useReducedMotion } from '../useReducedMotion.js';
+import { useBeatType } from '../beatTone.js';
 import styles from '../beats.module.css';
 import { copy, fill } from '../../copy/copy.js';
 
@@ -73,6 +74,7 @@ const REDUCED_HOLD_MS = 1600;
  */
 export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; view: PlayerView; dismiss: () => void }) {
   const reduced = useReducedMotion();
+  const typeOf = useBeatType();
   const [stage, setStage] = useState(0);
   const timer = useRef<number | undefined>(undefined);
 
@@ -83,10 +85,10 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
   const past = (kind: StageKind): boolean => reduced || firstIndexOf(kind) <= index;
 
   const survivor = merger.survivor ? view.corporations[merger.survivor] : null;
-  const survivorColor = merger.survivor ? industryTheme(merger.survivor).color : '#faf6f0';
-  // The fill is for the discs and the glow; words on the night ground take the
-  // shade that reads there (#19) — air and video are too dark as they are.
-  const survivorText = merger.survivor ? industryTheme(merger.survivor).onNight : '#faf6f0';
+  const survivorColor = merger.survivor ? industryTheme(merger.survivor).color : 'var(--beat-ink)';
+  // The fill is for the discs and the glow; words on the curtain take the
+  // shade that reads on its ground (#19, #64), which follows day/night.
+  const survivorText = merger.survivor ? typeOf(merger.survivor) : 'var(--beat-ink)';
 
   const chain = at.chain ?? merger.chains.length - 1;
   const defunctOf = (k: number): Industry | null => merger.chains[k]?.defunct ?? null;
@@ -180,7 +182,7 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
             {nameBefore(chain)}
           </span>
           <span style={{ fontSize: 22, color: survivorText }}>+</span>
-          <span className="serif" style={{ fontSize: 30, color: '#9c9086' }}>
+          <span className="serif" style={{ fontSize: 30, color: 'var(--beat-muted)' }}>
             {activeDefunct ? nameOfDefunct(activeDefunct) : ''}
           </span>
         </div>
@@ -201,13 +203,13 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
         >
           <div
             data-disc={merger.survivor ?? undefined}
-            style={{ width: 68, height: 68, borderRadius: '50%', marginRight: -18, display: 'grid', placeItems: 'center', fontSize: 16, ...fillFor(merger.survivor, survivorColor), boxShadow: '0 14px 26px -8px rgba(0,0,0,.55)', animation: at.kind === 'blend' ? `${styles.blendSlideL} 1200ms ease-in-out both` : undefined }}
+            style={{ width: 68, height: 68, borderRadius: '50%', marginRight: -18, display: 'grid', placeItems: 'center', fontSize: 16, ...fillFor(merger.survivor, survivorColor), boxShadow: '0 14px 26px -8px var(--beat-shadow)', animation: at.kind === 'blend' ? `${styles.blendSlideL} 1200ms ease-in-out both` : undefined }}
           >
             {markFor(merger.survivor, 28)}
           </div>
           <div
             data-disc={activeDefunct ?? undefined}
-            style={{ width: 68, height: 68, borderRadius: '50%', marginLeft: -18, display: 'grid', placeItems: 'center', fontSize: 16, ...fillFor(activeDefunct, defunctColor), boxShadow: '0 14px 26px -8px rgba(0,0,0,.55)', animation: at.kind === 'blend' ? `${styles.blendSlideR} 1200ms ease-in-out both` : undefined }}
+            style={{ width: 68, height: 68, borderRadius: '50%', marginLeft: -18, display: 'grid', placeItems: 'center', fontSize: 16, ...fillFor(activeDefunct, defunctColor), boxShadow: '0 14px 26px -8px var(--beat-shadow)', animation: at.kind === 'blend' ? `${styles.blendSlideR} 1200ms ease-in-out both` : undefined }}
           >
             {markFor(activeDefunct, 28)}
           </div>
@@ -265,7 +267,7 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
                 {/* Who was actually paid. A seat count told you a bonus landed
                     somewhere; the point of watching a merger is knowing who it
                     landed on. */}
-                <span style={{ display: 'block', marginTop: 8, fontSize: 15, color: '#c9bfb2', maxWidth: 260 }}>
+                <span style={{ display: 'block', marginTop: 8, fontSize: 15, color: 'var(--beat-ink-2)', maxWidth: 260 }}>
                   {bonus.seats
                     .map(
                       (seat) =>
@@ -298,7 +300,7 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
             maxWidth: '46ch',
             fontSize: 13,
             lineHeight: 1.55,
-            color: '#9c9086',
+            color: 'var(--beat-muted)',
             marginTop: past('name') ? 14 : 0,
             opacity: past('name') ? 1 : 0,
             overflow: 'hidden',
@@ -335,7 +337,7 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
               placeItems: 'center',
               fontSize: 16,
               ...fillFor(merger.survivor, `linear-gradient(160deg, color-mix(in srgb, ${survivorColor} 84%, #fff), ${survivorColor})`),
-              boxShadow: `0 8px 0 color-mix(in srgb, ${survivorColor} 46%, #1c1917), 0 20px 30px -10px rgba(0,0,0,.7)`,
+              boxShadow: `0 8px 0 color-mix(in srgb, ${survivorColor} 46%, var(--beat-shade)), 0 20px 30px -10px var(--beat-shadow)`,
               transition: 'width 700ms cubic-bezier(0.16,0.9,0.2,1) 180ms',
             }}
           >
@@ -356,9 +358,9 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
                   placeItems: 'center',
                   overflow: 'hidden',
                   fontSize: 16,
-                  ...fillFor(absorbed.defunct, `linear-gradient(160deg, ${color}, color-mix(in srgb, ${color} 50%, #1c1917))`),
+                  ...fillFor(absorbed.defunct, `linear-gradient(160deg, ${color}, color-mix(in srgb, ${color} 50%, var(--beat-shade)))`),
                   opacity: past('settle') ? 0 : 0.55,
-                  boxShadow: `0 6px 0 color-mix(in srgb, ${color} 40%, #1c1917)`,
+                  boxShadow: `0 6px 0 color-mix(in srgb, ${color} 40%, var(--beat-shade))`,
                   transition: `all 700ms cubic-bezier(0.16,0.9,0.2,1) ${260 + k * 120}ms`,
                 }}
               >
@@ -379,7 +381,7 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
           style={{
             alignSelf: 'stretch',
             marginTop: past('mass') ? 26 : 0,
-            color: '#8a8076',
+            color: 'var(--beat-muted)',
             opacity: past('mass') ? 1 : 0,
             transition: 'opacity 400ms ease 700ms, margin-top 620ms cubic-bezier(0.16,0.9,0.2,1)',
           }}

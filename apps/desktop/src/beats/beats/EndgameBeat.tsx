@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { INDUSTRIES, type PlayerView, type Seat } from '@boomtown/engine';
 import { IndustryMark } from '../../game/marks.js';
-import { industryTheme } from '../../game/industryTheme.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
+import { useBeatType } from '../beatTone.js';
 import styles from '../beats.module.css';
 import { copy, fill } from '../../copy/copy.js';
 
@@ -12,6 +12,7 @@ const HOLD_MS = 2400;
 /** The endgame trigger beat (R6): a table-level moment, fires for every seat. */
 export function EndgameBeat({ seat, view, dismiss }: { seat: Seat; view: PlayerView; dismiss: () => void }) {
   const reduced = useReducedMotion();
+  const typeOf = useBeatType();
   const who = view.seats[seat]?.name ?? fill(copy.common.playerFallback, { n: seat + 1 });
   const active = INDUSTRIES.filter((industry) => view.corporations[industry].founded);
 
@@ -29,7 +30,7 @@ export function EndgameBeat({ seat, view, dismiss }: { seat: Seat; view: PlayerV
         <div className={`serif ${reduced ? '' : styles.rise}`} style={{ fontSize: 64, marginTop: 6 }}>
           The endgame is triggered
         </div>
-        <div style={{ fontSize: 14, color: '#b8ac9f', maxWidth: '52ch', lineHeight: 1.55 }}>
+        <div style={{ fontSize: 14, color: 'var(--beat-ink-2)', maxWidth: '52ch', lineHeight: 1.55 }}>
           {who} called the end, finishing their turn. No other player gets another turn — final scoring follows.
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 10, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 700 }}>
@@ -40,14 +41,14 @@ export function EndgameBeat({ seat, view, dismiss }: { seat: Seat; view: PlayerV
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 7,
-                border: '1px solid var(--chrome-rule)',
+                border: '1px solid var(--beat-rule)',
                 borderRadius: 20,
                 padding: '8px 16px',
                 fontSize: 12,
-                color: '#d8cfc3',
+                color: 'var(--beat-ink-1)',
               }}
             >
-              <IndustryMark industry={industry} color={industryTheme(industry).onNight} size={16} />
+              <IndustryMark industry={industry} color={typeOf(industry)} size={16} />
               <span className="serif">{view.corporations[industry].displayName}</span>
             </span>
           ))}

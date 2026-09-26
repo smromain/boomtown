@@ -245,24 +245,21 @@ export function SettingsDialog({
                   <span className={form.note}>{getBoardPrefs().trouble ? c.boardTrouble : c.boardStyleNote}</span>
                 </div>
 
-                {/* Only Skyline draws with it so far; the app-wide day/night
-                    tokens (#64) will read the same key, and can drop this
-                    condition when they land. */}
-                {draft.boardStyle === 'skyline' && (
-                  <div className={form.field}>
-                    <span>{c.lighting}</span>
-                    <Choice
-                      quiet
-                      label={c.lighting}
-                      value={draft.lighting}
-                      options={[
-                        { value: 'day' as Settings['lighting'], label: c.day },
-                        { value: 'night' as Settings['lighting'], label: c.night },
-                      ]}
-                      onChange={(lighting) => patch({ lighting })}
-                    />
-                  </div>
-                )}
+                {/* Day/night for the whole app: Skyline's lighting and the
+                    beat curtains (#64) both read it, so it shows for every board. */}
+                <div className={form.field}>
+                  <span>{c.lighting}</span>
+                  <Choice
+                    quiet
+                    label={c.lighting}
+                    value={draft.lighting}
+                    options={[
+                      { value: 'day' as Settings['lighting'], label: c.day },
+                      { value: 'night' as Settings['lighting'], label: c.night },
+                    ]}
+                    onChange={(lighting) => patch({ lighting })}
+                  />
+                </div>
 
                 <label className={form.field}>
                   <span>{c.onlineHost}</span>

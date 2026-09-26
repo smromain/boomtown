@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CorpSettlement, PlayerView } from '@boomtown/engine';
 import { IndustryMark } from '../../game/marks.js';
-import { industryTheme } from '../../game/industryTheme.js';
 import { Skyline } from '../../art/Skyline.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
+import { useBeatSkylineTone, useBeatType } from '../beatTone.js';
 import styles from '../beats.module.css';
 import { copy, fill } from '../../copy/copy.js';
 
@@ -63,6 +63,7 @@ function msFor(line: Line): number {
  */
 export function VictoryBeat({ view, dismiss }: { view: PlayerView; dismiss: () => void }) {
   const reduced = useReducedMotion();
+  const skylineTone = useBeatSkylineTone();
   const result = view.result;
 
   const reveals: SeatReveal[] = useMemo(() => {
@@ -128,7 +129,7 @@ export function VictoryBeat({ view, dismiss }: { view: PlayerView; dismiss: () =
   return (
     <div className={styles.curtain} role="dialog" aria-label={copy.beats.victory.label} onClick={advance}>
       <Skyline
-        tone="chrome"
+        tone={skylineTone}
         style={{
           position: 'absolute',
           inset: 'auto 0 0 0',
@@ -166,8 +167,8 @@ export function VictoryBeat({ view, dismiss }: { view: PlayerView; dismiss: () =
                   display: 'flex',
                   justifyContent: 'space-between',
                   padding: '9px 4px',
-                  borderBottom: '1px solid #2b2621',
-                  color: i === 0 ? '#d98a4e' : '#b8ac9f',
+                  borderBottom: '1px solid var(--beat-hairline)',
+                  color: i === 0 ? 'var(--beat-accent)' : 'var(--beat-ink-2)',
                 }}
               >
                 <span className="serif" style={{ fontSize: 16, opacity: settled ? 1 : 0.35, transition: 'opacity 500ms ease' }}>
@@ -196,7 +197,7 @@ export function VictoryBeat({ view, dismiss }: { view: PlayerView; dismiss: () =
           className={styles.kicker}
           style={{
             marginTop: done ? 18 : 0,
-            color: '#6f665d',
+            color: 'var(--beat-hint)',
             maxHeight: done ? 20 : 0,
             opacity: done ? 1 : 0,
             overflow: 'hidden',
@@ -228,6 +229,7 @@ function SeatCard({
   // pops in with the total, not before, so the standings can't be skimmed
   // ahead of the math (U-victory-cascade, refinement: hide names until settled).
   const identityRevealed = visibleLines >= reveal.lines.length;
+  const typeOf = useBeatType();
   return (
     <div
       className={styles.rise}
@@ -241,7 +243,7 @@ function SeatCard({
         width: 'min(1400px, 94vw)',
       }}
     >
-      <div key={identityRevealed ? 'name' : 'placeholder'} className={`serif ${styles.rise}`} style={{ fontSize: 20, color: '#d8cfc3' }}>
+      <div key={identityRevealed ? 'name' : 'placeholder'} className={`serif ${styles.rise}`} style={{ fontSize: 20, color: 'var(--beat-ink-1)' }}>
         {identityRevealed ? `${rank}. ${nameOf(reveal.seat)}` : `${ordinal(rank)} place`}
       </div>
       {reveal.lines.map((line, li) => (
@@ -249,7 +251,7 @@ function SeatCard({
           key={li}
           style={{
             fontSize: 13,
-            color: line.kind === 'total' ? '#faf6f0' : '#9c9086',
+            color: line.kind === 'total' ? 'var(--beat-ink)' : 'var(--beat-muted)',
             fontWeight: line.kind === 'total' ? 600 : 400,
             display: 'flex',
             alignItems: 'center',
@@ -264,14 +266,18 @@ function SeatCard({
             transition: 'opacity 380ms ease, transform 380ms ease, max-height 380ms ease',
           }}
         >
-          {renderLine(line, corpName)}
+          {renderLine(line, corpName, typeOf)}
         </div>
       ))}
     </div>
   );
 }
 
-function renderLine(line: Line, corpName: (industry: CorpSettlement['industry']) => string) {
+function renderLine(
+  line: Line,
+  corpName: (industry: CorpSettlement['industry']) => string,
+  typeOf: (industry: CorpSettlement['industry']) => string,
+) {
   switch (line.kind) {
     case 'cash':
       return <span>{fill(copy.beats.victory.cashOnHand, { amount: line.amount.toLocaleString() })}</span>;
@@ -285,7 +291,7 @@ function renderLine(line: Line, corpName: (industry: CorpSettlement['industry'])
       const shareWord = line.shares === 1 ? 'share' : 'shares';
       return (
         <>
-          <IndustryMark industry={line.industry} color={industryTheme(line.industry).onNight} size={20} />
+          <IndustryMark industry={line.industry} color={typeOf(line.industry)} size={20} />
           <span>
             {line.shares} {shareWord} of {corpName(line.industry)} at ${line.price.toLocaleString()} each = $
             {line.saleValue.toLocaleString()}
