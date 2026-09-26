@@ -64,6 +64,18 @@
   --cell-uninc: #b0a496;
   --cell-ring: #c6b8a6;
   --board-base: #e7ded2;
+  --board-plate-top: #f7f0e5;
+  --board-plate-bottom: #efe6d9;
+
+  /* Notices, the empty band's wash and the skyline drawn on the ground: the
+     few colours that had no token until night needed one (#64). */
+  --notice-warn-bg: #fdf3d8;
+  --notice-warn-ink: #7a5c12;
+  --notice-error-bg: #fbe4e0;
+  --notice-error-ink: #8a2f22;
+  --band-empty-wash: rgba(255, 255, 255, 0.4);
+  --skyline-ink-body: #c9bcac;
+  --skyline-ink-window: #e7ded2;
 
   /* Elevation scale (U1/U6, design/build.py L_ELEV) — three fixed levels, one
      warm light source. 1 = a resting card, 2 = a raised panel, 3 = a floating
@@ -93,19 +105,64 @@
 }
 
 
-/* Night (#64): only the beat tokens so far. The rest of the app's night palette
-   is still to come; until then a night table keeps the cream ground and the
-   beats keep the ink curtain they always had. */
+/* Night (#64). `Settings.lighting` reaches CSS as `data-lighting` on <html>
+   (App.tsx), and this block redefines the ground under the whole app: the
+   same tokens, a warm near-black ground, one light source from above that
+   casts black rather than brown. The header and launch screen stay ink chrome
+   in both tones, a shade darker here so the bar still reads as a bar. */
 :root[data-lighting="night"] {
-  --beat-bg: #1c1917;
-  --beat-bg-2: #14110f;
-  --beat-ink: #faf6f0;
-  --beat-ink-1: #d8cfc3;
+  color-scheme: dark;
+
+  --bg: #171412;
+  --surface: #201c19; /* company type shades still clear AA on it */
+  --surface-2: #2a2521;
+  --ink: #f3ece2; /* 15.6:1 on --bg */
+  --muted: #a39686; /* 6.3:1 */
+  --rule: #3a332d;
+  --accent: #e0784f; /* brick, lifted to 6.1:1 */
+  --on-accent: #1c1917;
+  --input: #1f1b18;
+  --error: #e8836a;
+
+  --chrome-bg: #0e0c0b;
+  --chrome-rule: #3a332d;
+
+  --board-bg: #1c1917;
+  --board-plate-top: #25201c;
+  --board-plate-bottom: #1d1916;
+  --cell-empty: #26211d;
+  --cell-empty-ink: #7d7266;
+  --cell-uninc: #5a5047;
+  --cell-ring: #4a423b;
+  --board-base: #2b2621;
+
+  /* A top-lit bevel reads as a mistake on a dark ground, so the inset
+     highlight all but goes and the drop shadows turn black. */
+  --elev-1: 0 1px 0 rgba(255, 253, 250, 0.04) inset, 0 2px 6px -3px rgba(0, 0, 0, 0.6);
+  --elev-2: 0 1px 0 rgba(255, 253, 250, 0.04) inset, 0 10px 22px -14px rgba(0, 0, 0, 0.75);
+  --elev-3:
+    0 1px 0 rgba(255, 253, 250, 0.05) inset,
+    0 24px 48px -20px rgba(0, 0, 0, 0.8),
+    0 8px 16px -8px rgba(0, 0, 0, 0.6);
+
+  --grain: radial-gradient(rgba(250, 246, 240, 0.4) 0.6px, transparent 1.1px);
+
+  --notice-warn-bg: #3a2e12;
+  --notice-warn-ink: #ecc86a;
+  --notice-error-bg: #3d1f1a;
+  --notice-error-ink: #f0a291;
+  --band-empty-wash: rgba(255, 255, 255, 0.03);
+  --skyline-ink-body: #3a332c;
+  --skyline-ink-window: #2b2621;
+
+  /* The beat curtain is the ground (see :root), so most of its tokens follow
+     on their own; these are the ones tuned for the dark ground. */
+  --beat-bg-2: #110f0d;
+  --beat-ink-1: #e2d9cc;
   --beat-ink-2: #b8ac9f;
   --beat-muted: #9c9086;
-  --beat-hint: #6f665d;
+  --beat-hint: #7d7266;
   --beat-rule: #46403a;
-  --beat-hairline: #2b2621;
   --beat-accent: #d98a4e;
   --beat-edge: transparent;
   --beat-shadow: rgba(0, 0, 0, 0.7);

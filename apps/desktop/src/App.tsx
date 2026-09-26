@@ -16,6 +16,7 @@ import { NightSkyline } from './art/NightSkyline.js';
 import logoUrl from './assets/boomtown-logo.png';
 import styles from './lobby/lobby.module.css';
 import { useBoardPrefs } from './board/boardPrefs.js';
+import { applyLighting } from './game/industryTheme.js';
 
 type Screen =
   | { kind: 'menu' }
@@ -68,11 +69,11 @@ export function App() {
   }, []);
 
   // The day/night setting reaches CSS as `data-lighting` on <html>, where the
-  // tokens that follow it (the beat curtains, #64) read it. Every save
-  // republishes the prefs, so a change anywhere lands here on the spot.
+  // whole token set follows it (#64). Every save republishes the prefs, so a
+  // change anywhere (the header's toggle, Settings) lands here on the spot.
   const { lighting } = useBoardPrefs();
   useEffect(() => {
-    document.documentElement.dataset.lighting = lighting;
+    applyLighting(lighting);
   }, [lighting]);
 
   // The online-play log rides along on every screen (Ctrl/Cmd+Shift+L), so a

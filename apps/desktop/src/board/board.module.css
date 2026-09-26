@@ -56,7 +56,7 @@
   font-variant-numeric: tabular-nums;
   padding: 14px 14px 22px;
   border-radius: 10px;
-  background: linear-gradient(180deg, #f7f0e5, #efe6d9);
+  background: linear-gradient(180deg, var(--board-plate-top), var(--board-plate-bottom));
   box-shadow:
     var(--elev-3),
     0 46px 70px -28px rgba(60, 45, 30, 0.55),

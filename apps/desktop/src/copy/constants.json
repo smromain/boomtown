@@ -477,6 +477,8 @@
     "unmuteMusic": "Unmute music — {track}",
     "toSkyline": "Switch to Skyline",
     "toBoardView": "Switch to Board View",
+    "toDay": "Switch to day",
+    "toNight": "Switch to night",
     "patterns": "Industry patterns",
     "turn": "Turn",
     "reference": "Reference",
@@ -901,8 +903,6 @@
       "turnLeft": "Turn the board left",
       "turnRight": "Turn the board right",
       "resetView": "Reset the view",
-      "toDay": "Switch to day",
-      "toNight": "Switch to night",
       "dismiss": "Dismiss",
       "trouble": {
         "no-webgl": "Your graphics card declined to finance the skyline. Board View it is.",

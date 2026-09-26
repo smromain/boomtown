@@ -161,7 +161,7 @@ export const MarketGraph = memo(function MarketGraph({
                   y1={PAD_T}
                   x2={at}
                   y2={y(axis.floor) + (slot ? 8 + slot.row * (CHIP + 6) : 0)}
-                  stroke={event.kind === 'folded' ? 'var(--muted)' : info.onPaper}
+                  style={{ stroke: event.kind === 'folded' ? 'var(--muted)' : info.type }}
                   strokeDasharray={event.kind === 'folded' ? '3 3' : '1 4'}
                   opacity="0.55"
                 />
@@ -179,7 +179,7 @@ export const MarketGraph = memo(function MarketGraph({
                   // is the industry's glyph, in the shade that reads on paper.
                   <g data-overflow-mark={event.industry} transform={`translate(${(at - 7).toFixed(1)} ${(y(axis.floor) - 7).toFixed(1)})`}>
                     <title>{`${nameOf(event.industry)} — ${labelFor(event.kind)}, turn ${event.turn}`}</title>
-                    <IndustryMark industry={event.industry} color={info.onPaper} size={10} />
+                    <IndustryMark industry={event.industry} color={info.type} size={10} />
                   </g>
                 )}
               </g>

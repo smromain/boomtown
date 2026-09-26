@@ -3,11 +3,13 @@ import {
   BackwardIcon,
   BuildingOffice2Icon,
   ForwardIcon,
+  MoonIcon,
   MusicalNoteIcon,
   NoSymbolIcon,
   SpeakerWaveIcon,
   SpeakerXMarkIcon,
   Squares2X2Icon,
+  SunIcon,
   SwatchIcon,
 } from '@heroicons/react/24/solid';
 import type { TurnStep } from '@boomtown/engine';
@@ -21,7 +23,7 @@ import { useIndustryPatterns } from '../settings/useSetting.js';
 import { copy, fill } from '../copy/copy.js';
 import { Button } from '../ui/Button.js';
 import { ExitGame } from './ExitGame.js';
-import { setBoardStyle, useBoardPrefs } from '../board/boardPrefs.js';
+import { setBoardStyle, setLighting, useBoardPrefs } from '../board/boardPrefs.js';
 import logoUrl from '../assets/boomtown-logo.png';
 import styles from './game.module.css';
 
@@ -101,6 +103,9 @@ export function Header({ onExit, online = false }: { onExit?: (() => void) | und
   // shows where a click takes you, and the label says so.
   const board = useBoardPrefs();
   const toSkyline = board.chosen !== 'skyline';
+  // Day or night for the whole app (#64), one press each way. The icon is where
+  // a click takes you, like the board toggle beside it.
+  const toNight = board.lighting !== 'night';
 
   const toggleMusic = () => {
     const next = !musicMuted;
@@ -236,6 +241,15 @@ export function Header({ onExit, online = false }: { onExit?: (() => void) | und
           title={toSkyline ? copy.header.toSkyline : copy.header.toBoardView}
         >
           {toSkyline ? <BuildingOffice2Icon width={16} height={16} /> : <Squares2X2Icon width={16} height={16} />}
+        </button>
+        <button
+          type="button"
+          className={styles.muteButton}
+          onClick={() => setLighting(toNight ? 'night' : 'day')}
+          aria-label={toNight ? copy.header.toNight : copy.header.toDay}
+          title={toNight ? copy.header.toNight : copy.header.toDay}
+        >
+          {toNight ? <MoonIcon width={16} height={16} /> : <SunIcon width={16} height={16} />}
         </button>
         {/* In the brand region, which is always rendered — the status block
             below needs a view, and a broken table is exactly when there may

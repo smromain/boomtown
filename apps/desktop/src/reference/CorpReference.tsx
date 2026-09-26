@@ -35,7 +35,7 @@ export function CorpReference({
   // Every tinted word here is type on paper, so it takes the legible shade
   // rather than the fill (#19). The mark leads the title, so none of it
   // leans on colour to say which corporation this is.
-  const tint = industry ? industryTheme(industry).onPaper : undefined;
+  const tint = industry ? industryTheme(industry).type : undefined;
 
   return (
     <Dialog.Root open={data != null} onOpenChange={(o) => !o && onClose()}>

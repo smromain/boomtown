@@ -52,12 +52,12 @@ export function EventChip({
         height={CHIP}
         rx="4"
         fill={solid ? info.color : 'var(--surface)'}
-        stroke={solid ? info.color : info.onPaper}
+        style={{ stroke: solid ? info.color : info.type }}
         strokeWidth="1.5"
         opacity={kind === 'folded' ? 0.5 : 1}
       />
       <g transform={`translate(${inset} ${inset})`} opacity={kind === 'folded' ? 0.55 : 1}>
-        <IndustryMark industry={industry} color={solid ? info.ink : info.onPaper} size={12} />
+        <IndustryMark industry={industry} color={solid ? info.ink : info.type} size={12} />
       </g>
       {kind === 'folded' ? (
         <line x1="2.5" y1={CHIP - 2.5} x2={CHIP - 2.5} y2="2.5" stroke="var(--ink)" strokeWidth="1.5" opacity="0.7" />
