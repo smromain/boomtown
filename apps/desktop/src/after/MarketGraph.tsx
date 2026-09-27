@@ -231,6 +231,7 @@ export const MarketGraph = memo(function MarketGraph({
           </div>
         ))}
         {events.length > 0 ? <ChipKey industry={events[0]!.industry} /> : null}
+        <span className={styles.sideNote}>{record.settled ? after.settledNote : ''}</span>
       </div>
     </div>
   );

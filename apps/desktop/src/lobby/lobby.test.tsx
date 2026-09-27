@@ -174,7 +174,7 @@ await userEvent.click(
     // hint to somebody sweeping the ticket space.
     expect(joinRoom).not.toHaveBeenCalled();
     expect(onRoom).not.toHaveBeenCalled();
-    expect(screen.getByText(/isn’t working/i)).toBeInTheDocument();
+    expect(screen.getByText(/not working/i)).toBeInTheDocument();
   });
 
   it('offers no seat-name inputs online — those names are discarded (#20)', async () => {

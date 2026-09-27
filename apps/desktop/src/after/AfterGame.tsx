@@ -144,7 +144,7 @@ export function AfterGame({
       <section className={styles.panel}>
         <div className={styles.panelHead}>
           <span className={`serif ${styles.panelTitle}`}>{titleFor(live.key, industry, corporations)}</span>
-          <span className={styles.panelNote}>{noteFor(live.key, carousel.step, frames)}</span>
+          <span className={styles.panelNote}>{noteFor(live.key, carousel.step, frames, awards.length)}</span>
         </div>
 
         {live.key === 'standings' ? <Standings rankings={rankings} record={record} names={names} /> : null}
@@ -188,10 +188,12 @@ function noteFor(
   key: FrameKey,
   step: number,
   frames: readonly { key: string; steps: number }[],
+  earned: number,
 ): string {
   const after = copy.game.after;
-  if (key === 'standings' || key === 'awards') return '';
+  if (key === 'standings') return after.standings.note;
   if (key === 'market') return after.market.note;
+  if (key === 'awards') return fill(after.awards.note, { n: earned });
   const total = frames.find((frame) => frame.key === 'companies')?.steps ?? 1;
   return fill(after.companies.counter, { n: step + 1, total });
 }

@@ -176,6 +176,7 @@ function rulesSections(ruleset: Ruleset, view: PlayerView): RulesSection[] {
                   }),
                   c.goingPublic.price,
                 ])}
+                {note(c.goingPublic.standing)}
               </>
             ),
           },
