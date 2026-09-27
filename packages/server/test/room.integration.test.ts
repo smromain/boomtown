@@ -19,14 +19,14 @@ class TestClient {
     const qs = new URLSearchParams({ v: PROTOCOL_VERSION, name: 'Tester', ...params });
     this.ws = new WebSocket(`ws://${HOST}/parties/main/${room}?${qs}`);
     this.open = new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`ws did not open in 10s (is partykit dev on ${HOST}?)`)), 10_000);
+      const timer = setTimeout(() => reject(new Error(`ws did not open in 10s (is wrangler dev on ${HOST}?)`)), 10_000);
       this.ws.addEventListener('open', () => {
         clearTimeout(timer);
         resolve();
       });
       this.ws.addEventListener('error', () => {
         clearTimeout(timer);
-        reject(new Error(`ws connection to ${HOST} failed — is partykit dev running?`));
+        reject(new Error(`ws connection to ${HOST} failed — is wrangler dev running?`));
       });
     });
     this.ws.addEventListener('close', () => {
@@ -116,7 +116,7 @@ async function admit(host: TestClient, joiner: TestClient): Promise<void> {
 
 const uniqueRoom = () => mintRoomAddress();
 
-describe('PartyKit room — end to end', () => {
+describe('online room — end to end', () => {
   it('creates a room, joins two more seats, starts, and each client gets its own view', async () => {
     const room = uniqueRoom();
     const host = client(room);
@@ -598,7 +598,7 @@ describe('PartyKit room — end to end', () => {
 // What matters is on the wire: the table is sent the public view and nothing a
 // seat holds, the phones are sent their own, and nobody but the table hosts.
 
-describe('PartyKit room — a couch table (#62)', () => {
+describe('online room — a couch table (#62)', () => {
   type RoomStateOf = Extract<RoomMessage, { type: 'room-state' }>;
   type TableUpdateOf = Extract<RoomMessage, { type: 'table-update' }>;
   type UpdateOf = Extract<RoomMessage, { type: 'update' }>;

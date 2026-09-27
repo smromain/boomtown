@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // The online room on Cloudflare Workers + Durable Objects (docs/deploying.md).
+  "name": "boomtown",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "playboomtown.party", "custom_domain": true },
+    { "pattern": "www.playboomtown.party", "custom_domain": true }
+  ],
+  // The couch-mode phone page (#62), built by apps/phone into public/phone.
+  // The Worker runs first so `www.` redirects for every path, assets included.
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
+  "durable_objects": {
+    "bindings": [
+      { "name": "Main", "class_name": "BoomtownRoom" },
+      { "name": "Directory", "class_name": "TicketDirectory" }
+    ]
+  },
+  // SQLite-backed objects: the only kind a new namespace can have, and the kind
+  // the Workers free plan allows. The key-value storage API is the same.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["BoomtownRoom", "TicketDirectory"] }],
+  // The release workflow sets this from ITCH_TARGET. Empty means `/` is a 404.
+  "vars": { "LANDING_URL": "" },
+  "observability": { "enabled": true }
+}

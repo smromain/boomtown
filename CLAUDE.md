@@ -24,7 +24,7 @@ anything specific. `docs/decisions.md` under **Open** is the honest list of what
 | `docs/development.md` | Running the app (Electron, browser, two instances), the environment variables, diagnosing online play |
 | `docs/testing.md` | What each suite guarantees and how to run it — the verification contract |
 | `docs/online-play.md` | The room: addresses and tickets, knock/admit, seat tokens, rate limits, hibernation |
-| `docs/deploying.md` | Cutting a release, the PartyKit deploy, itch.io channels, versioning |
+| `docs/deploying.md` | Cutting a release, the Cloudflare room deploy, itch.io channels, versioning |
 
 ## The map
 
@@ -34,7 +34,8 @@ packages/
   protocol/      the wire contract — message union, DTOs, typed errors, validation, addresses
   ai/            bot Policy over the engine — heuristics, a redacted view, the vote
   client-core/   GameSession, GameTransport (local / worker / socket), store, bot driver, netlog
-  server/        the authoritative PartyKit room — seats, admission, command log, server-side bots
+  server/        the authoritative room — Durable Objects via partyserver, deployed by wrangler to
+                 playboomtown.party — seats, admission, command log, server-side bots
 apps/
   desktop/       Electron app — hardened shell, board, panels, decision modals, beats, sound, lobby,
                  and the after-game carousel (`src/after/`)
@@ -144,7 +145,7 @@ npm install            # workspaces; ELECTRON_SKIP_BINARY_DOWNLOAD=1 where there
 npm test               # 1060 unit tests, all three projects
 npm run typecheck      # both tsconfigs
 npm run lint           # eslint flat config
-npm run test:server    # 29 integration tests against a real partykit dev room
+npm run test:server    # 29 integration tests against a real wrangler dev room (Node 22)
 npm run dev            # the Electron app
 npm run server:dev     # the room on :1999, which a dev build talks to by default
 ```

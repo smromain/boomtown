@@ -3,7 +3,7 @@ import type { Knocker, RoomConfig, RoomState, SeatSlot } from '@boomtown/protoco
 import { mintToken, tokensMatch } from './tokens.js';
 
 /**
- * Lobby seat bookkeeping for one room. Pure and synchronous — the PartyKit
+ * Lobby seat bookkeeping for one room. Pure and synchronous — the Durable Object
  * adapter (`room.ts`) owns storage and sockets, this owns "who is in which
  * seat". Bot seats come from the room config; human seats fill as people join.
  */

@@ -1,6 +1,7 @@
-import type * as Party from 'partykit/server';
+import { Server } from 'partyserver';
 import { isRoomAddress, isTicket } from '@boomtown/protocol';
 import { roomLog, roomWarn } from './log.js';
+import type { Env } from './env.js';
 
 /**
  * The ticket directory: one durable object *per ticket*, holding the room
@@ -47,7 +48,7 @@ interface TicketEntry {
  * so the two stay indistinguishable.
  *
  * Deliberately GET only. Claiming and retiring a ticket are the room's business,
- * called object-to-object inside PartyKit; a browser has no reason to reach them
+ * called object-to-object inside the Worker; a browser has no reason to reach them
  * and is not given a header that would let it.
  */
 const READ_CORS = { 'access-control-allow-origin': '*' } as const;
@@ -59,13 +60,11 @@ const READ_CORS = { 'access-control-allow-origin': '*' } as const;
  */
 const miss = () => new Response(null, { status: 404, headers: READ_CORS });
 
-export default class TicketDirectory implements Party.Server {
-  readonly options = { hibernate: true };
+export default class TicketDirectory extends Server<Env> {
+  static override options = { hibernate: true };
 
-  constructor(readonly room: Party.Room) {}
-
-  async onRequest(request: Party.Request): Promise<Response> {
-    const ticket = this.room.id;
+  override async onRequest(request: Request): Promise<Response> {
+    const ticket = this.name;
     if (!isTicket(ticket)) return miss();
 
     if (request.method === 'GET') return this.resolve();
@@ -76,12 +75,12 @@ export default class TicketDirectory implements Party.Server {
 
   /** Resolve a ticket to its room address, or miss. */
   private async resolve(): Promise<Response> {
-    const entry = await this.room.storage.get<TicketEntry>(ENTRY_KEY);
+    const entry = await this.ctx.storage.get<TicketEntry>(ENTRY_KEY);
     if (!entry) return miss();
     if (Date.now() >= entry.expiresAt) {
       // Expire lazily on read as well as by alarm: whichever happens first,
       // the ticket stops resolving at the same moment.
-      await this.room.storage.delete(ENTRY_KEY);
+      await this.ctx.storage.delete(ENTRY_KEY);
       return miss();
     }
     return Response.json({ address: entry.address }, { headers: READ_CORS });
@@ -92,7 +91,7 @@ export default class TicketDirectory implements Party.Server {
    * taken and unexpired — the caller mints another and tries again, which is
    * what stops one room from stealing another's ticket.
    */
-  private async claim(ticket: string, request: Party.Request): Promise<Response> {
+  private async claim(ticket: string, request: Request): Promise<Response> {
     let address: unknown;
     try {
       address = ((await request.json()) as { address?: unknown }).address;
@@ -101,15 +100,15 @@ export default class TicketDirectory implements Party.Server {
     }
     if (typeof address !== 'string' || !isRoomAddress(address)) return miss();
 
-    const existing = await this.room.storage.get<TicketEntry>(ENTRY_KEY);
+    const existing = await this.ctx.storage.get<TicketEntry>(ENTRY_KEY);
     if (existing && Date.now() < existing.expiresAt && existing.address !== address) {
       roomWarn(ticket, 'ticket already claimed by another room');
       return new Response(null, { status: 409 });
     }
 
     const expiresAt = Date.now() + TICKET_TTL_MS;
-    await this.room.storage.put<TicketEntry>(ENTRY_KEY, { address, expiresAt });
-    await this.room.storage.setAlarm(expiresAt);
+    await this.ctx.storage.put<TicketEntry>(ENTRY_KEY, { address, expiresAt });
+    await this.ctx.storage.setAlarm(expiresAt);
     roomLog(ticket, 'ticket claimed', { expiresInMs: TICKET_TTL_MS });
     return Response.json({ ticket, expiresAt });
   }
@@ -119,14 +118,14 @@ export default class TicketDirectory implements Party.Server {
    * code that has already done its job stops being a way in at all.
    */
   private async retire(ticket: string): Promise<Response> {
-    await this.room.storage.delete(ENTRY_KEY);
-    await this.room.storage.deleteAlarm();
+    await this.ctx.storage.delete(ENTRY_KEY);
+    await this.ctx.storage.deleteAlarm();
     roomLog(ticket, 'ticket retired');
     return new Response(null, { status: 204 });
   }
 
   /** TTL reached: forget the mapping. */
-  async onAlarm(): Promise<void> {
-    await this.room.storage.delete(ENTRY_KEY);
+  override async onAlarm(): Promise<void> {
+    await this.ctx.storage.delete(ENTRY_KEY);
   }
 }

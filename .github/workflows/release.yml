@@ -65,7 +65,7 @@ jobs:
           echo "tag=v$V" >> "$GITHUB_OUTPUT"
 
       # A manual dispatch has no tag yet — create one at this commit so the
-      # release and PartyKit deploy hang off a real ref. A tag-push run skips this.
+      # release and room deploy hang off a real ref. A tag-push run skips this.
       - if: ${{ github.ref_type != 'tag' }}
         run: |
           TAG="${{ steps.resolve.outputs.tag }}"
@@ -265,19 +265,28 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22   # wrangler needs Node 22
           cache: npm
       - run: npm ci
       # The couch-mode phone page (#62) is served by the room's own deploy, from
       # packages/server/public/phone, so it is built from this same commit.
       - name: Build the phone page
         run: npm run phone:build
-      - name: Deploy the PartyKit room
+      - name: Deploy the room to Cloudflare
         working-directory: packages/server
-        run: npx partykit deploy
+        # The bare domain sends visitors to the game's itch.io page, derived from
+        # ITCH_TARGET (`user/project` -> https://user.itch.io/project). Without it
+        # the root is a 404 and everything else still deploys.
+        run: |
+          LANDING=""
+          if [ -n "${ITCH_TARGET:-}" ]; then
+            LANDING="https://${ITCH_TARGET%%/*}.itch.io/${ITCH_TARGET#*/}"
+          fi
+          npx wrangler deploy --var "LANDING_URL:$LANDING"
         env:
-          # PartyKit's CLI authenticates through GitHub — the headless path
-          # needs BOTH the token and the login (username) or it falls back to
-          # the interactive browser login and hangs in CI.
-          PARTYKIT_LOGIN: ${{ secrets.PARTYKIT_LOGIN }}
-          PARTYKIT_TOKEN: ${{ secrets.PARTYKIT_TOKEN }}
+          # A Cloudflare API token does not expire unless it was made to, which
+          # is the point of leaving PartyKit's weekly GitHub-login token behind.
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ITCH_TARGET: ${{ vars.ITCH_TARGET || secrets.ITCH_TARGET }}
+          WRANGLER_SEND_METRICS: 'false'

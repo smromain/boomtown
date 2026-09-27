@@ -4,8 +4,8 @@ import { defineConfig } from 'vitest/config';
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 /**
- * A separate project for the PartyKit room integration test. It boots a real
- * `partykit dev` server (workerd) once via globalSetup and drives it over
+ * A separate project for the room integration test. It boots a real
+ * `wrangler dev` server (workerd) once via globalSetup and drives it over
  * WebSockets. Kept out of the default `npm test` run because it needs the
  * `workerd` binary and one outbound call to Cloudflare on boot; run it with
  * `npm run test:server`.
@@ -25,7 +25,7 @@ export default defineConfig({
     name: 'server-integration',
     environment: 'node',
     include: ['test/**/*.integration.test.ts'],
-    globalSetup: [r('./test/partykit-server.ts')],
+    globalSetup: [r('./test/dev-server.ts')],
     testTimeout: 30_000,
     hookTimeout: 60_000,
   },

@@ -1,10 +1,10 @@
 import type { Command } from '@boomtown/engine';
 
 /**
- * The slice of PartyKit's `room.storage` the room uses, narrowed so the room
- * logic can be exercised with an in-memory fake. PartyKit's real storage is an
- * async key-value store; each value is capped at 128 KiB and it is not
- * transactional (KTD13).
+ * The slice of Durable Object storage (`ctx.storage`) the room uses, narrowed
+ * so the room logic can be exercised with an in-memory fake. The real storage is
+ * an async key-value store over SQLite; entries are kept small and it is not
+ * treated as transactional (KTD13).
  */
 export interface KeyValueStore {
   get<T>(key: string): Promise<T | undefined>;

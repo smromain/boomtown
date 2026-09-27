@@ -11,6 +11,8 @@
       "@boomtown/server": ["packages/server/src/index.ts"]
     }
   },
+  // The Worker entry points need Cloudflare's runtime types; packages/server/tsconfig.json checks them.
+  "exclude": ["packages/server/src/worker.ts", "packages/server/src/env.ts", "packages/server/src/room.ts", "packages/server/src/directory.ts"],
   "include": [
     "packages/*/src",
     "packages/*/test",

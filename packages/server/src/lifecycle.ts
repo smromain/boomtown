@@ -38,7 +38,7 @@ export function atCommandCeiling(count: number): boolean {
 export const ACTIVITY_KEY = 'activity';
 
 /**
- * PartyKit's storage also carries the room's alarm. Narrowed like
+ * Durable Object storage also carries the room's alarm. Narrowed like
  * `KeyValueStore` so the lifecycle can be exercised against a fake.
  */
 export interface AlarmStore {

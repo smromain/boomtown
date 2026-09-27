@@ -128,7 +128,7 @@ packages/
   ai/            non‑LLM bot Policy — heuristic scoring, optional lookahead, one 1–10 dial
   client-core/   GameSession, GameTransport (local / worker / socket), Zustand store, reconcile,
                  bot driver, and netlog (the online‑play diagnostic timeline)
-  server/        the authoritative PartyKit room — seats, command log, server‑side bots
+  server/        the authoritative room (Cloudflare Durable Objects) — seats, command log, server‑side bots
 apps/
   desktop/       Electron app — hardened shell, 2D board, panels, decision modals, beats,
                  sound, settings, reference chart, online lobby
@@ -162,7 +162,7 @@ npm install     # or npm ci
 ```
 
 Install scripts are allow‑listed in the root `package.json` (`allowScripts`): `esbuild` for
-Vite/Vitest, `workerd` for the PartyKit dev server, `fsevents` on macOS.
+Vite/Vitest, `workerd` for the room's dev server, `fsevents` on macOS.
 
 **Electron binary:** a ~150 MB platform binary is fetched for the GUI. Where that download is
 unavailable — a sandbox, an offline CI — set `ELECTRON_SKIP_BINARY_DOWNLOAD=1`; everything except
@@ -201,20 +201,20 @@ validates every command, plays the bots, and sends each client only its own filt
 By default a dev build talks to `localhost:1999`, so run the room alongside it:
 
 ```bash
-npm run server:dev      # partykit dev, port 1999
+npm run server:dev      # wrangler dev, port 1999 (Node 22)
 ```
 
 A release build talks to the deployed room instead (`apps/desktop/.env.production`), and Settings →
 **Online host** overrides both for a self‑hosted deploy.
 
 **Dev app against the deployed room.** Two things stop a plain `npm run dev` from reaching
-`boomtown.smromain.partykit.dev`: the dev build defaults to `localhost:1999`, and the dev CSP only
+`playboomtown.party`: the dev build defaults to `localhost:1999`, and the dev CSP only
 allows `connect-src` to localhost. Override both:
 
 ```bash
 env -u ELECTRON_RUN_AS_NODE \
-  VITE_PARTYKIT_HOST=boomtown.smromain.partykit.dev \
-  BOOMTOWN_DEV_CONNECT_SRC="wss://boomtown.smromain.partykit.dev,https://boomtown.smromain.partykit.dev" \
+  VITE_PARTYKIT_HOST=playboomtown.party \
+  BOOMTOWN_DEV_CONNECT_SRC="wss://playboomtown.party,https://playboomtown.party" \
   npm run -w @boomtown/desktop dev
 ```
 
@@ -233,8 +233,8 @@ joining as a new one:
 env -u ELECTRON_RUN_AS_NODE \
   BOOMTOWN_DEV_PORT=5273 \
   BOOMTOWN_DEV_USER_DATA="$(mktemp -d)" \
-  VITE_PARTYKIT_HOST=boomtown.smromain.partykit.dev \
-  BOOMTOWN_DEV_CONNECT_SRC="wss://boomtown.smromain.partykit.dev,https://boomtown.smromain.partykit.dev" \
+  VITE_PARTYKIT_HOST=playboomtown.party \
+  BOOMTOWN_DEV_CONNECT_SRC="wss://playboomtown.party,https://playboomtown.party" \
   npm run -w @boomtown/desktop dev
 ```
 
@@ -249,8 +249,8 @@ Both `BOOMTOWN_DEV_PORT` and `BOOMTOWN_DEV_USER_DATA` are unset in normal use an
 `Ctrl`/`Cmd`+`Shift`+`L` opens the online‑play log on any screen: every frame in and out, socket
 lifecycle, host resolution and lobby decisions, with a Copy button for bug reports. It captures by
 default in a dev build; in a packaged build, Settings → **Log online play** turns it on. Room‑side,
-every lobby decision prints one line — visible in `partykit dev`, or `npx partykit tail` against the
-deployed room.
+every lobby decision prints one line — visible in `wrangler dev`, or `npx wrangler tail` (from
+`packages/server`) against the deployed room.
 
 ---
 
@@ -263,7 +263,7 @@ Tests run under a **Vitest workspace** with two projects:
 | `engine` | node | `packages/*/test/**` — engine, protocol, ai, client‑core, and the room's own logic (467 tests) |
 | `desktop` | jsdom | `apps/desktop/**/*.test.{ts,tsx}` — components via `@testing-library/react`, plus the Electron main‑process modules (390 tests) |
 
-Integration tests live outside both, because they boot a real `partykit dev` room (workerd) and are
+Integration tests live outside both, because they boot a real `wrangler dev` room (workerd) and are
 too slow for the default suite.
 
 ```bash
@@ -271,7 +271,7 @@ npm test                # both projects, once (857 tests)
 npm run test:watch      # watch mode
 npm run test:engine     # just the node project
 npm run test:desktop    # just the jsdom project
-npm run test:server     # integration: a real PartyKit room, end to end (20 tests)
+npm run test:server     # integration: a real room under wrangler dev, end to end (20 tests)
 npm run typecheck       # tsc --noEmit for both tsconfigs
 npm run lint            # eslint (flat config)
 npm run smoke           # build + boot the real Electron app, verify it renders
@@ -305,7 +305,7 @@ runs lint, typecheck and `npm test` only.
   including the normal case where no seed was supplied. A log that cannot replay parks the room
   read‑only rather than throwing, because a throw on wake would brick the room code forever.
 
-**And what the integration suite adds** (`npm run test:server`, against a real `partykit dev` room):
+**And what the integration suite adds** (`npm run test:server`, against a real `wrangler dev` room):
 a full 1‑human/2‑bot game to a ranked result, three clients each receiving only their own view, a
 knocker holding no seat until the host admits them, a dropped client resuming its seat on its token,
 a ticket that resolves to the room address and is retired when the last seat fills, and the lobby
@@ -370,7 +370,7 @@ first job, in seconds. `PROTOCOL_VERSION` is *not* this number and does not move
 | `prepare` | Resolves the version, validates its shape, creates and pushes the tag |
 | `build` (×3) | On macOS, Windows and Linux in parallel: `npm ci`, **typecheck, full test suite**, stamp the version, package installers, push to itch.io, upload artifacts |
 | `release` | Collects the three platforms' artifacts into one GitHub Release, with generated notes |
-| `deploy-party` | `partykit deploy` — the online room, from the same commit |
+| `deploy-party` | `wrangler deploy` — the online room on Cloudflare, from the same commit |
 
 **The tests are the gate.** `build` runs `npm run typecheck` and `npm test` before it packages
 anything, so a red suite fails the release rather than shipping. There is no flag to skip that.
@@ -384,7 +384,7 @@ out:
 | `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` | macOS build is unsigned — players need the `xattr` step above |
 | `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD` | Windows build is unsigned — SmartScreen warns |
 | `BUTLER_API_KEY` | itch.io push is skipped; the GitHub Release is still published |
-| `PARTYKIT_LOGIN` **and** `PARTYKIT_TOKEN` | `deploy-party` goes red and the room keeps running its previous code; the installers still publish. Both are needed — with only one, the CLI silently falls back to an interactive login and hangs until the job times out |
+| `CLOUDFLARE_ACCOUNT_ID` **and** `CLOUDFLARE_API_TOKEN` | `deploy-party` goes red and the room keeps running its previous code; the installers still publish |
 | `ITCH_TARGET` (variable) | itch.io push is skipped — there is no default, because a publish step must never guess an account name. Set it to `<your itch user>/<project>` |
 
 Set them at **Settings → Secrets and variables → Actions**.
@@ -516,7 +516,7 @@ room plays bot seats inline, since the edge has no worker threads and the policy
 
 ### The online room is one authoritative object per game
 
-`packages/server` is a **PartyKit** room: one room object per game code, holding the `GameState` and
+`packages/server` is the room, one **Cloudflare Durable Object** per game code (via `partyserver`), holding the `GameState` and
 applying every command through the same `reduce` the desktop app uses. Clients send commands and
 receive their own filtered view — never the bag, never another hand — so a modified client can cheat
 no more than it can guess.
@@ -590,7 +590,7 @@ what is current versus archival. The set:
 | `docs/online-play.md` | The room and its security model — addresses and tickets, knock/admit, seat tokens, every limit the room enforces |
 | `docs/development.md` | Running the app three ways, two dev instances, every environment variable, diagnosing online play |
 | `docs/testing.md` | What each suite guarantees, what tests cannot catch, and the conventions worth keeping |
-| `docs/deploying.md` | The PartyKit room, versioning, and the itch.io pipeline |
+| `docs/deploying.md` | The room on Cloudflare, versioning, and the itch.io pipeline |
 | `docs/decisions.md` | What was decided and why, what was reversed, what is still open, and the traps already hit |
 | `docs/screenshots/` | Seventeen frames from one real game, in play order — what each shows, and how to retake them |
 | `docs/plans/` | The four plans the project was built from, with a status note per plan |

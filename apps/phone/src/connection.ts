@@ -3,7 +3,7 @@ import { isRoomAddress, isTicket, normaliseTicket } from '@boomtown/protocol';
 /**
  * Where the room is. In a build this page is served by the room's own deploy
  * (`/phone/` beside `/parties/…`), so the room is simply this page's host. The
- * Vite dev server is not the room, so a dev page talks to `partykit dev`.
+ * Vite dev server is not the room, so a dev page talks to `wrangler dev`.
  */
 export function roomHost(): string {
   if (import.meta.env.DEV) {
