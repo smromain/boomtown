@@ -260,33 +260,6 @@ jobs:
 
   deploy-party:
     needs: [prepare, build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22   # wrangler needs Node 22
-          cache: npm
-      - run: npm ci
-      # The couch-mode phone page (#62) is served by the room's own deploy, from
-      # packages/server/public/phone, so it is built from this same commit.
-      - name: Build the phone page
-        run: npm run phone:build
-      - name: Deploy the room to Cloudflare
-        working-directory: packages/server
-        # The bare domain sends visitors to the game's itch.io page, derived from
-        # ITCH_TARGET (`user/project` -> https://user.itch.io/project). Without it
-        # the root is a 404 and everything else still deploys.
-        run: |
-          LANDING=""
-          if [ -n "${ITCH_TARGET:-}" ]; then
-            LANDING="https://${ITCH_TARGET%%/*}.itch.io/${ITCH_TARGET#*/}"
-          fi
-          npx wrangler deploy --var "LANDING_URL:$LANDING"
-        env:
-          # A Cloudflare API token does not expire unless it was made to, which
-          # is the point of leaving PartyKit's weekly GitHub-login token behind.
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          ITCH_TARGET: ${{ vars.ITCH_TARGET || secrets.ITCH_TARGET }}
-          WRANGLER_SEND_METRICS: 'false'
+    # The same job `Deploy room` runs by hand, so the two cannot drift.
+    uses: ./.github/workflows/deploy-room.yml
+    secrets: inherit

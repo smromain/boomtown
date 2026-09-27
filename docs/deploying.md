@@ -76,7 +76,9 @@ Observability in the dashboard.
 
 ### CI
 
-The `deploy-party` job in the release workflow runs `wrangler deploy` with two
+The **Deploy room** workflow (`deploy-room.yml`) runs `wrangler deploy`. The
+release workflow's `deploy-party` job calls it after the build, and it also runs
+by hand from the Actions tab to ship a room change without a release. It uses two
 repo secrets:
 
 | Secret | Value |
