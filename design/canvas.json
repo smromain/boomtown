@@ -18,34 +18,95 @@
       "file": "Main.dc.html",
       "x": 0,
       "y": 0,
-      "w": 1440,
-      "h": 900,
+      "w": 3032,
+      "h": 3168,
       "title": "Table",
+      "print": "flow",
       "page": "page-1"
     },
     {
-      "file": "Language.dc.html",
-      "x": 1560,
-      "y": 940,
-      "w": 1440,
-      "h": 1900,
-      "title": "Visual language",
+      "file": "Skyline.dc.html",
+      "x": 3192,
+      "y": 0,
+      "w": 3032,
+      "h": 2002,
+      "title": "Skyline",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
+      "file": "Decisions.dc.html",
+      "x": 6384,
+      "y": 0,
+      "w": 2632,
+      "h": 1351,
+      "title": "Decisions",
       "print": "flow",
       "page": "page-1"
     },
     {
       "file": "Beats.dc.html",
-      "x": 3120,
-      "y": 940,
+      "x": 9176,
+      "y": 0,
+      "w": 3032,
+      "h": 7112,
+      "title": "Beats",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
+      "file": "Reference.dc.html",
+      "x": 12368,
+      "y": 0,
+      "w": 2200,
+      "h": 854,
+      "title": "Stock reference",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
+      "file": "After.dc.html",
+      "x": 14728,
+      "y": 0,
+      "w": 3032,
+      "h": 4154,
+      "title": "After the game",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
+      "file": "Menus.dc.html",
+      "x": 17920,
+      "y": 0,
+      "w": 3032,
+      "h": 6126,
+      "title": "Launch and setup",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
+      "file": "Phone.dc.html",
+      "x": 21112,
+      "y": 0,
+      "w": 3032,
+      "h": 4690,
+      "title": "Couch mode",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
+      "file": "Language.dc.html",
+      "x": 24304,
+      "y": 0,
       "w": 1440,
-      "h": 4300,
-      "title": "Beat still-frames",
+      "h": 3240,
+      "title": "Visual language",
       "print": "flow",
       "page": "page-1"
     },
     {
       "file": "Names.dc.html",
-      "x": 1560,
+      "x": 25904,
       "y": 0,
       "w": 1440,
       "h": 2680,
@@ -55,51 +116,11 @@
     },
     {
       "file": "Pool.dc.html",
-      "x": 3120,
+      "x": 27504,
       "y": 0,
       "w": 1440,
       "h": 1300,
       "title": "The pool",
-      "print": "flow",
-      "page": "page-1"
-    },
-    {
-      "file": "Reference.dc.html",
-      "x": 4680,
-      "y": 0,
-      "w": 1440,
-      "h": 2210,
-      "title": "Stock reference",
-      "print": "flow",
-      "page": "page-1"
-    },
-    {
-      "file": "After.dc.html",
-      "x": 4680,
-      "y": 2350,
-      "w": 1440,
-      "h": 2976,
-      "title": "After the game",
-      "print": "flow",
-      "page": "page-1"
-    },
-    {
-      "file": "Market.dc.html",
-      "x": 6240,
-      "y": 0,
-      "w": 1440,
-      "h": 1566,
-      "title": "Company by company",
-      "print": "flow",
-      "page": "page-1"
-    },
-    {
-      "file": "Phone.dc.html",
-      "x": 7800,
-      "y": 0,
-      "w": 1440,
-      "h": 5050,
-      "title": "Couch mode - the phone",
       "print": "flow",
       "page": "page-1"
     },
@@ -137,41 +158,25 @@
       "id": "note-table",
       "x": 0,
       "y": -210,
-      "w": 700,
+      "w": 760,
       "page": "page-1",
-      "text": "Turn 14. Tile 9F is selected and Blackcurrant is about to swallow Enrun - and be renamed Blackcurrun for it.\nThe board state is rule-checked: Chapter 11 at 11 tiles and Megahit Video at 12 are both safe, which is what makes 3F a permanently dead tile. 6A and 12H each found a corporation, and two headquarters are still free."
+      "text": "Every screen on this page is captured from the running app, in day and in night: design/capture.mjs plays it in a browser and writes each screen as an SVG with live text, and build.py lays them out. To change a screen, change the app and re-run both. The canvas used to draw the screens by hand, and drifted until it showed a game that no longer existed."
     },
     {
       "id": "note-names",
-      "x": 760,
+      "x": 25904,
       "y": -210,
       "w": 660,
       "page": "page-1",
       "text": "Seven companies that were once unassailable and then got eaten - which is what happens to every corporation on this board. Parodies of defunct brands, not live ones. Nothing here has been trademark-searched, and the backwards R is trade dress rather than wordplay: swap it first if anyone gets nervous."
     },
     {
-      "id": "note-after",
-      "x": 4680,
-      "y": 2140,
+      "id": "note-language",
+      "x": 24304,
+      "y": -170,
       "w": 700,
       "page": "page-1",
-      "text": "The post-game screen (#68 + #69), designed as one thing because both issues asked for that. It is a carousel now, not a page: four frames that turn over on their own, 78 seconds all the way round, each still a tab you can click to hold. Every block below is one state of the same screen. The seats deliberately have no colours - a palette both colourblind-safe and distinct from the seven corporation colours does not exist at six seats, and 12,000 candidates through the dataviz validator say so."
-    },
-    {
-      "id": "note-market",
-      "x": 6240,
-      "y": -210,
-      "w": 700,
-      "page": "page-1",
-      "text": "The third reading of the same game (#68): one company at a time, a band for what it was worth and a line per seat for whose it was. It started as stacked bars and the table killed them - a stack has to be ordered, and no order survives six seats trading the majority back and forth over forty turns. The second frame is that worst case, drawn, so the claim can be checked."
-    },
-    {
-      "id": "note-phone",
-      "x": 7800,
-      "y": -210,
-      "w": 700,
-      "page": "page-1",
-      "text": "Couch mode (#62): the desktop is the table and each player's hand is on their own phone. The phone is a thin page served by the room, drawing the hand and the legal moves the room already sends. Nothing private ever reaches the big screen, so couch play needs no hand-off card and streams as it is."
+      "text": "Read from the app's stylesheet when the canvas is built, so the values are the ones that ship. The pool and names artboards read packages/engine/src/pool.ts the same way."
     },
     {
       "id": "note-rules",
@@ -187,7 +192,7 @@
       "y": -170,
       "w": 700,
       "page": "page-3",
-      "text": "The two directions not taken, kept for reference. Board Room makes the board the subject; Trading Floor makes the money the subject. Both show the same position as the Boomtown table."
+      "text": "The two directions not taken, kept for reference. Board Room makes the board the subject; Trading Floor makes the money the subject."
     }
   ],
   "launch": {

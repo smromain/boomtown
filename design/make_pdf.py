@@ -13,16 +13,22 @@ CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 ARTIFACT = "https://claude.ai/code/artifact/f1b58905-2da0-4cd0-9c2e-8d65624260a3"
 
 CAPTIONS = {
-  "Main.dc.html":         ("The table", "Turn 14, mid-merger — the screen players spend the game on"),
-  "Reference.dc.html":    ("Stock reference", "The price and bonus chart, and one corporation's ladder"),
+  "Main.dc.html":         ("The table", "A player's seat mid-game, day and night — captured from the app"),
+  "Skyline.dc.html":      ("Skyline", "The same table on the 3D board — the itch.io page's screenshots"),
+  "Decisions.dc.html":    ("Decisions", "Found, buy, survivor, disposal and the end — captured from the app"),
+  "Beats.dc.html":        ("Beats", "The moments that take the screen, day and night — captured from the app"),
+  "Reference.dc.html":    ("Stock reference", "The live price and bonus chart — captured from the app"),
+  "After.dc.html":        ("After the game", "The four-frame carousel — captured from the app"),
+  "Menus.dc.html":        ("Launch and setup", "Launch, settings, new game and the online room — captured from the app"),
+  "Phone.dc.html":        ("Couch mode", "The table and the phone — captured from the app"),
+  "Language.dc.html":     ("Visual language", "Tokens, elevation and type, read from the app's stylesheet"),
   "Names.dc.html":        ("Merged names", "How an acquiring corporation's name and flavour accrete"),
-  "Pool.dc.html":         ("The pool", "28 companies across seven industries, four drawn per game"),
+  "Pool.dc.html":         ("The pool", "28 companies across seven industries, one drawn per industry"),
   "RulesModel.dc.html":   ("Rules model", "Turn, merger sequencing, edition config, invariants"),
   "BoardRoom.dc.html":    ("Direction A — Board Room", "Not taken: the board as the subject"),
   "TradingFloor.dc.html": ("Direction C — Trading Floor", "Not taken: the money as the subject"),
 }
-ORDERED = ["Main.dc.html", "Reference.dc.html", "Names.dc.html", "Pool.dc.html",
-           "RulesModel.dc.html", "BoardRoom.dc.html", "TradingFloor.dc.html"]
+ORDERED = list(CAPTIONS)
 
 PRINT_CSS = """
   *, *::before, *::after { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }

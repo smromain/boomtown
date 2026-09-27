@@ -68,6 +68,7 @@ landed.
 | Moments | Six **beats**, driven off engine events | Founding, buy, merger, motion, endgame, victory, as timed skippable overlays with sound, rather than animation sprinkled through components. Five drop an opaque curtain; the buy flourish is deliberately light and never pauses play |
 | The curtain's tone | The curtain is the **ground, not chrome**: it follows the day/night setting ([#64](https://github.com/smromain/boomtown/issues/64)) | An ink curtain over a cream table inverted the whole screen for every founding and merger. By day the curtain is cream with an ink top rule, and the drop (with a shadow on its leading edge), the industry glow and the grain carry the moment the inversion used to. At night it is the ink curtain it always was. The colours are `--beat-*` tokens in `global.css`, switched by `data-lighting` on `<html>`, which mirrors `Settings.lighting`, the same key Skyline reads. Day is the default |
 | Day and night | **One setting for the whole app**, a sun/moon button in the top bar beside the board toggle ([#64](https://github.com/smromain/boomtown/issues/64)) | Night redefines the token set under `:root[data-lighting="night"]` rather than adding a second stylesheet, so a component that uses tokens needs no night code. Company type takes a `--type-*` variable that `applyLighting` points at the paper or night shade, and both night grounds hold every shade at WCAG AA (`industryTheme.test.ts`). The header and launch screen stay ink chrome in both. The QR plate stays white in both, because a camera reads it by contrast. Skyline's own day/night button went when the top bar got one |
+| The design canvas | Its screens are **captured from the running app**, not drawn (Steve, 2026-09-27) | The canvas drew every screen by hand in `build.py`, the app moved on, and by September the canvas showed a launch screen, header, board and game-over that no longer existed, and companies that were not in the pool. `design/capture.mjs` now plays the app in day and night and writes each screen as an SVG with live text; `build.py` lays them out, reads the pool from `pool.ts` and the palette from `global.css`. After a UI change, re-run both. What stays hand-drawn is what has no screen: the rules model, the merged names and the pool |
 | Hot-seat privacy | An opaque hand-off card, **by construction** | The turn advances the instant a buy resolves, so anything that covers the screen defers the hand-off and anything that does not, does not. A light beat that got this wrong leaked the next player's hand for a second every turn |
 | Copy | One file, `copy/constants.json` | Revising the writing is a pass through one file rather than a hunt across fifty components, and a phrase used twice cannot drift into two versions of itself |
 | Launch backdrop | The **pixel-art town at night**, recoloured from `design/skyline.psd` | Replaced the drifting vector skyline. Four layers so the ranks can drift at different speeds while the moon and stars hold still; every colour mapped onto the palette by `design/make_skyline.py`, which fails rather than passing an unmapped colour through |
@@ -89,8 +90,9 @@ landed.
   reproduced a flat design at 2.2 MB; Skyline draws something the CSS board cannot (a city whose
   heights encode size, safety and lineage) at about a quarter of the weight, behind a lazy import.
   The coordinates are painted into a canvas texture with the app's own font, so there is no font
-  pipeline. The design canvas has no Skyline artboard: the option is deliberately outside it, and the
-  look lives in `board/skyline/scene.ts`.
+  pipeline. The look lives in `board/skyline/scene.ts`; since 2026-09-27 the design canvas carries
+  it too, as a Skyline artboard of the itch.io page's screenshots (Steve asked for it); the scene is
+  WebGL, which the SVG capture cannot read.
 - **The vote's notice period.** Designed as a turn's delay between raising a motion and voting on
   it; did not ship at any seat count. At three seats it hands the table a free turn to gerrymander
   the register against a mover who has just published it — a fourth cost on one action, when the
@@ -147,10 +149,6 @@ landed.
   seat), but nothing enforces it: deepen the lookahead and the hands are right there in the
   parameter. The fix is the rule already stated — a bot sees what a player at that table could see —
   applied in `game-room.ts` as it already is in `bots.ts`.
-- **The design canvas shows companies that are not in the game.** `design/build.py` carries its own
-  older `POOL` — Woolyworth, Compuwas, Pan-Atlas, Braniffle, Texicorps, Wattage, Megahit Video,
-  Tower of Records — and the artboards are generated from it. `packages/engine/src/pool.ts` is the
-  pool of record. Reconciling means editing `build.py`, regenerating and republishing.
 - **`mergeNaming.stem` value.** 0.75 as specified; 0.6 drifts names further from where they started.
   Playtest rather than decide.
 - **2015 board dimensions**, if that preset is ever wanted for real. The rulebook does not say.
