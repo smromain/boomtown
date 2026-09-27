@@ -1181,8 +1181,22 @@ def _still(name, scale):
            % (base64.b64encode(data).decode("ascii"), w, h))
     return img, w, h
 
+def _shot(cid, scale):
+    """The screenshot capture.mjs takes of a screen that shows the table, which
+    dom-to-svg draws badly (no 3D tilt, shadows, striped band). None if there isn't one."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    f = os.path.join(here, "captures", cid + ".webp")
+    if not os.path.exists(f):
+        return None
+    w, h = int(round(1440 * scale)), int(round(900 * scale))
+    return ('<img src="data:image/webp;base64,%s" width="%d" height="%d" style="display:block" alt="">'
+            % (base64.b64encode(open(f, "rb").read()).decode("ascii"), w, h), w, h)
+
 def _frame(cid, caption, scale=1.0, dark=False, border=True):
-    svg, w, h = _still(cid[len("still:"):], scale) if cid.startswith("still:") else _capture(cid, scale)
+    if cid.startswith("still:"):
+        svg, w, h = _still(cid[len("still:"):], scale)
+    else:
+        svg, w, h = _shot(cid, scale) or _capture(cid, scale)
     return (w, h + 30,
             '<div style="display:flex;flex-direction:column;gap:10px;width:%dpx">'
             '<span class="mono" style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:%s">%s</span>'

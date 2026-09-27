@@ -25,11 +25,11 @@
  },
  "decision-buy-day": {
   "w": 480,
-  "h": 207
+  "h": 266
  },
  "decision-buy-night": {
   "w": 480,
-  "h": 207
+  "h": 266
  },
  "table-mid-day": {
   "w": 1440,
@@ -41,11 +41,11 @@
  },
  "reference-day": {
   "w": 1024,
-  "h": 574
+  "h": 558
  },
  "reference-night": {
   "w": 1024,
-  "h": 574
+  "h": 558
  },
  "decision-disposal-day": {
   "w": 448,
@@ -266,5 +266,13 @@
  "beat-victory-night": {
   "w": 1440,
   "h": 900
+ },
+ "decision-vote-day": {
+  "w": 448,
+  "h": 272
+ },
+ "decision-vote-night": {
+  "w": 448,
+  "h": 272
  }
 }

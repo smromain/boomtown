@@ -34,6 +34,7 @@ const arg = (name, fallback) => {
 };
 const ONLY = new Set((arg('only', 'menu,beats,game,online,couch')).split(','));
 const PNG = arg('png', null);
+const SHOTS = /^(table-|handoff-|after-|couch-play-)/;
 const APP = arg('url', 'http://localhost:5173/');
 const ROOM = arg('room', 'http://localhost:1999');
 
@@ -83,11 +84,48 @@ async function capture(page, id, rootSel = null) {
     }
     const root = (rootSel && document.querySelector(rootSel)) || document.documentElement;
     const rect = root.getBoundingClientRect();
+    // dom-to-svg drops CSS filters, and the header logo is brightened by one, so bake
+    // each filtered image's filter into its pixels for the length of the capture.
+    const baked = [];
+    for (const img of root.querySelectorAll('img')) {
+      const filter = getComputedStyle(img).filter;
+      if (!filter || filter === 'none' || !img.complete || !img.naturalWidth) continue;
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const ctx = c.getContext('2d');
+      ctx.filter = filter;
+      ctx.drawImage(img, 0, 0);
+      const was = [img.src, img.style.filter];
+      img.src = c.toDataURL('image/png');
+      img.style.filter = 'none';
+      await img.decode();
+      baked.push([img, was]);
+    }
     const doc = window.__domToSvg(root);
+    for (const [img, [src, filter]] of baked) { img.src = src; img.style.filter = filter; }
     return { svg: new XMLSerializer().serializeToString(doc), w: Math.round(rect.width), h: Math.round(rect.height) };
   }, rootSel);
-  fs.writeFileSync(path.join(OUT, `${id}.svg`), await embedRasters(out.svg));
+  // Plain href rather than xlink:href: some viewers drop the namespaced form, and the logo with it.
+  fs.writeFileSync(path.join(OUT, `${id}.svg`), (await embedRasters(out.svg)).replace(/\bxlink:href=/g, 'href='));
   if (PNG) await page.screenshot({ path: path.join(PNG, `${id}.png`) });
+  // Screens that show the table also go in as a picture. dom-to-svg cannot draw
+  // the board's 3D tilt, its shadows, the striped empty band or the art layered
+  // behind the log, so on the canvas these frames are screenshots; the SVG stays
+  // alongside for Figma.
+  if (SHOTS.test(id)) {
+    const png = (await page.screenshot()).toString('base64');
+    resampler ??= await (await browser.newContext()).newPage();
+    const webp = await resampler.evaluate(async (src) => {
+      const img = new Image();
+      img.src = src;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      return c.toDataURL('image/webp', 0.88).split(',')[1];
+    }, `data:image/png;base64,${png}`);
+    fs.writeFileSync(path.join(OUT, `${id}.webp`), Buffer.from(webp, 'base64'));
+  }
   manifest[id] = { w: out.w, h: out.h };
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 1) + '\n');
   console.log(`  ${id}  ${out.w}x${out.h}  ${Math.round(out.svg.length / 1024)}KB`);
