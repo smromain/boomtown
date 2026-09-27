@@ -370,7 +370,7 @@ first job, in seconds. `PROTOCOL_VERSION` is *not* this number and does not move
 | `prepare` | Resolves the version, validates its shape, creates and pushes the tag |
 | `build` (×3) | On macOS, Windows and Linux in parallel: `npm ci`, **typecheck, full test suite**, stamp the version, package installers, push to itch.io, upload artifacts |
 | `release` | Collects the three platforms' artifacts into one GitHub Release, with generated notes |
-| `deploy-party` | `wrangler deploy` — the online room on Cloudflare, from the same commit |
+| `deploy-party` | `wrangler deploy` — the online room on Cloudflare, from the same commit (the **Deploy room** workflow, which also runs by hand) |
 
 **The tests are the gate.** `build` runs `npm run typecheck` and `npm test` before it packages
 anything, so a red suite fails the release rather than shipping. There is no flag to skip that.
