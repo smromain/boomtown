@@ -11,7 +11,8 @@ import {
   seatOnClock,
   setupOptionsFor,
 } from '@boomtown/server';
-import { createGame } from '@boomtown/engine';
+import { createGame, type GameState } from '@boomtown/engine';
+import { botRng, heuristicPolicy } from '@boomtown/ai';
 
 const baseConfig = (over: Partial<RoomConfig> = {}): RoomConfig => ({
   seatCount: 3,
@@ -307,6 +308,32 @@ describe('GameRoom — bots inline', () => {
     const seat0 = seatViewMaybe(out, 0);
     if (seat0) {
       expect(seat0.activeSeat === 0 || seat0.status === 'over').toBe(true);
+    }
+  });
+});
+
+describe('GameRoom — bots on a Boomtown table', () => {
+  it('a human + 2 bots play to the end without the room sticking on a motion', async () => {
+    // Bots here are handed the room's live state. Weighing a motion used to
+    // settle that state in place, so a bot's own motion came back illegal and
+    // the room parked with it on the clock at end-check. Seeds 1–3 all did.
+    for (const seed of [1, 2, 3]) {
+      const r = new GameRoom(`VOTE0${seed}`, baseConfig({ edition: 'boomtown', visibility: 'hidden', bots: { 1: 6, 2: 6 }, seed }), new MemoryStore());
+      r.join('Ana', 't1', 'c1');
+      const started = await r.start();
+      if ('error' in started) throw new Error('start');
+      const human = heuristicPolicy({ level: 5 });
+      let rng = botRng(seed + 1);
+      const live = () => (r as unknown as { state: GameState }).state;
+      for (let guard = 0; seatOnClock(live()) !== null; guard++) {
+        if (guard > 3000) throw new Error('game did not terminate');
+        expect(seatOnClock(live())).toBe(0);
+        const choice = human.chooseMove(structuredClone(live()), 0, rng)!;
+        rng = choice.rng;
+        await r.command(0, choice.command);
+      }
+      expect(live().status).toBe('over');
+      expect(r.isPlaying()).toBe(false);
     }
   });
 });
