@@ -38,7 +38,18 @@ export interface SocketTransportOptions {
    * forever, with nothing on screen to explain it.
    */
   readonly connectTimeoutMs?: number;
+  /**
+   * How long a reopened socket waits for the room to hand its seat back before
+   * reporting `seat-lost`. Defaults to `REBIND_TIMEOUT_MS`.
+   */
+  readonly rebindTimeoutMs?: number;
 }
+
+/**
+ * How long a reopened socket waits for the room's `welcome`. The room answers a
+ * token it knows in the same breath as the socket opens, so this is generous.
+ */
+export const REBIND_TIMEOUT_MS = 5000;
 
 /** A lobby / protocol error that is not tied to a game command. */
 export interface LobbyError {
@@ -96,6 +107,13 @@ export interface SocketExtras {
   setLocked(locked: boolean): void;
   /** Host only: hand a seated player's seat to a bot. */
   eject(seat: number): void;
+  /**
+   * Drop the socket and come straight back by token. For a page returning from
+   * the background: a phone that slept can hold a socket that still reads as
+   * open and will never deliver another frame, so the table moved on and the
+   * phone did not.
+   */
+  reconnect(): void;
 }
 
 /**
@@ -153,6 +171,18 @@ export function socketTransport(
   let connectTimer: ReturnType<typeof setTimeout> | null = null;
   /** How many times the socket has opened — 1 is the first connect, 2+ a reconnect. */
   let opens = 0;
+  /**
+   * Armed when a socket that held a seat reopens, cleared by the room's
+   * `welcome`. If it fires, the room did not recognise our token — it rotated
+   * on a reconnect whose answer never arrived, or the seat went to a bot — and
+   * the socket is open but bound to nothing. Without this the page sits on its
+   * last view, reading as connected, while the game goes on without it.
+   */
+  let rebindTimer: ReturnType<typeof setTimeout> | null = null;
+  const clearRebind = () => {
+    if (rebindTimer !== null) clearTimeout(rebindTimer);
+    rebindTimer = null;
+  };
 
   const log = (
     direction: 'in' | 'out' | 'note' | 'warn',
@@ -203,6 +233,7 @@ export function socketTransport(
     log('in', message.type, summariseRoom(message));
     switch (message.type) {
       case 'welcome':
+        clearRebind();
         mySeat = message.seat;
         myToken = message.token;
         joined = true;
@@ -212,6 +243,7 @@ export function socketTransport(
       case 'table-welcome':
         // The couch table (#62): host authority, no seat. It resumes by token
         // exactly as a seat does.
+        clearRebind();
         myToken = message.token;
         isTable = true;
         joined = true;
@@ -346,6 +378,16 @@ export function socketTransport(
           // Resume: the room re-binds silently on the token, so 'open' is the
           // signal. Create/join wait for 'welcome' (or an 'error') below.
           if (isResume || joined) settle('resolve');
+          if (joined && opens > 1) {
+            clearRebind();
+            rebindTimer = setTimeout(() => {
+              rebindTimer = null;
+              const err: LobbyError = { code: 'seat-lost', message: 'the room did not hand this seat back' };
+              log('warn', 'reopened but not re-seated', { opens, seat: mySeat });
+              lastLobbyError = err;
+              for (const cb of lobbyErrorHandlers) cb(err);
+            }, options.rebindTimeoutMs ?? REBIND_TIMEOUT_MS);
+          }
         });
 
         socket.addEventListener('message', (event) => {
@@ -374,6 +416,7 @@ export function socketTransport(
     disconnect: () => {
       log('note', 'disconnect', { seat: mySeat, joined });
       settle('reject', new Error('disconnected before the room answered'));
+      clearRebind();
       handlers.clear();
       roomStateHandlers.clear();
       connectionHandlers.clear();
@@ -426,6 +469,11 @@ export function socketTransport(
     decline: (knockId: string) => send({ type: 'decline', knockId }),
     setLocked: (locked: boolean) => send({ type: 'set-locked', locked }),
     eject: (seat: number) => send({ type: 'eject', seat }),
+    reconnect: () => {
+      if (!socket) return;
+      log('note', 'reconnect requested', { seat: mySeat, joined });
+      socket.reconnect();
+    },
   };
 }
 

@@ -126,4 +126,46 @@ describe('the phone game (#62)', () => {
       { type: 'dispose-shares', seat: pending.seat, hold: 0, sell: pending.shares, trade: 0 },
     ]);
   });
+
+  it('opens a mini board on demand, with your tiles ringed and the picked one filled', async () => {
+    localStorage.clear();
+    const state = find(
+      (s) => s.step === 'place' && s.status === 'playing' && Object.values(s.cells).some((c) => c.kind === 'corporation'),
+    );
+    const seat = seatOnClock(state);
+    await mount(state, seat);
+
+    // Closed until asked for.
+    expect(screen.queryByRole('region', { name: 'The board' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show the board' }));
+    const board = screen.getByRole('region', { name: 'The board' });
+    const cells = board.querySelectorAll('.cell');
+    expect(cells).toHaveLength(state.ruleset.board.cols * state.ruleset.board.rows);
+
+    // Every placed tile is drawn, and every tile in hand is ringed.
+    for (const tile of Object.keys(state.cells)) {
+      expect(board.querySelector(`[data-tile="${tile}"]`)!.getAttribute('data-kind')).toMatch(/^(corp|loose)$/);
+    }
+    for (const tile of state.hands[seat]!) {
+      expect(board.querySelector(`[data-tile="${tile}"]`)).toHaveAttribute('data-kind', 'hand');
+    }
+
+    // Picking a tile in the rack marks it on the board.
+    const turn = screen.getByRole('region', { name: 'Your turn' });
+    const pick = within(turn).getAllByRole('button').find((b) => b.classList.contains('tile') && !b.hasAttribute('disabled'))!;
+    fireEvent.click(pick);
+    const id = pick.querySelector('.tileId')!.textContent!;
+    expect(board.querySelector(`[data-tile="${id}"]`)).toHaveAttribute('data-picked', 'true');
+
+    // A company's cells carry its industry pattern, always: a phone has no
+    // settings panel to turn patterns on from.
+    const corpCell = board.querySelector('[data-kind="corp"]') as HTMLElement | null;
+    expect(corpCell).not.toBeNull();
+    expect(corpCell!.style.getPropertyValue('--industry-pattern')).not.toBe('');
+
+    // And it stays open on this phone until closed.
+    expect(localStorage.getItem('boomtown.phone.board.v1')).toBe('open');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide the board' }));
+    expect(screen.queryByRole('region', { name: 'The board' })).not.toBeInTheDocument();
+  });
 });

@@ -7,7 +7,7 @@ const d = copy.phone.describe;
 /**
  * What placing a tile would do, in words (#62).
  *
- * The phone has no board — the big screen has it — so each tile carries the
+ * The phone's board is a small one, and closed by default, so each tile carries the
  * consequence the board would have shown: which corporation grows, which
  * merge, which loose tiles it would found a company with. Read only from the
  * seat's own view: the cells and corporations are public, and the effect is

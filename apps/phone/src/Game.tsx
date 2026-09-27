@@ -6,6 +6,7 @@ import { copy, fill } from '@desktop/copy/copy.js';
 import { BuySheet, DisposeSheet, EndTurnSheet, FoundSheet, PickSheet, VoteSheet } from './sheets.js';
 import { describeTile } from './tiles.js';
 import { Swatch } from './Swatch.js';
+import { MiniBoard, useBoardOpen } from './MiniBoard.js';
 
 const p = copy.phone;
 const STEP: Record<string, string> = {
@@ -32,6 +33,12 @@ export function Game({ client, seat, children }: { client: GameClient; seat: Sea
   const busy = useStore(client.store, (state) => state.inFlight != null);
   const error = useStore(client.store, (state) => state.lastError);
   const send = (command: Command) => client.dispatch(command);
+  const [boardOpen, toggleBoard] = useBoardOpen();
+  // The tile picked to place, held here rather than in the place step so the
+  // mini board can show where it lands. A new turn or a new hand clears it.
+  const [picked, setPicked] = useState<TileId | null>(null);
+  const turnKey = view ? `${view.activeSeat}:${view.step}:${view.handTiles.map((h) => h.tile).join()}` : '';
+  useEffect(() => setPicked(null), [turnKey]);
 
   if (!view) {
     return (
@@ -66,10 +73,19 @@ export function Game({ client, seat, children }: { client: GameClient; seat: Sea
         </p>
       )}
 
+      {view.status === 'playing' && (
+        <>
+          <button type="button" className="ghost boardToggle" aria-expanded={boardOpen} onClick={toggleBoard}>
+            {boardOpen ? p.hideBoard : p.showBoard}
+          </button>
+          {boardOpen && <MiniBoard view={view} picked={picked} />}
+        </>
+      )}
+
       {view.status === 'over' ? (
         <Standings view={view} />
       ) : mine ? (
-        <Turn view={view} busy={busy} send={send} />
+        <Turn view={view} busy={busy} send={send} picked={picked} onPick={setPicked} />
       ) : (
         <section className="card watching" aria-live="polite">
           <div className="serif">{view.seats[view.activeSeat]?.name}</div>
@@ -86,7 +102,19 @@ export function Game({ client, seat, children }: { client: GameClient; seat: Sea
   );
 }
 
-function Turn({ view, busy, send }: { view: ClientView; busy: boolean; send: (c: Command) => void }) {
+function Turn({
+  view,
+  busy,
+  send,
+  picked,
+  onPick,
+}: {
+  view: ClientView;
+  busy: boolean;
+  send: (c: Command) => void;
+  picked: TileId | null;
+  onPick: (tile: TileId) => void;
+}) {
   const decision = view.pendingDecision;
   const you = view.you;
 
@@ -121,7 +149,7 @@ function Turn({ view, busy, send }: { view: ClientView; busy: boolean; send: (c:
 
   switch (view.step) {
     case 'place':
-      return <PlaceTile view={view} busy={busy} send={send} />;
+      return <PlaceTile view={view} busy={busy} send={send} picked={picked} onPick={onPick} />;
     case 'found':
       return <FoundSheet view={view} busy={busy} send={send} />;
     case 'buy':
@@ -141,11 +169,19 @@ function Turn({ view, busy, send }: { view: ClientView; busy: boolean; send: (c:
  * Pick a tile, then place it: two taps, so a thumb brushing the rack can never
  * commit a merger.
  */
-function PlaceTile({ view, busy, send }: { view: ClientView; busy: boolean; send: (c: Command) => void }) {
-  const [picked, setPicked] = useState<TileId | null>(null);
-  const turn = `${view.you}:${view.step}:${view.handTiles.map((h) => h.tile).join()}`;
-  useEffect(() => setPicked(null), [turn]);
-
+function PlaceTile({
+  view,
+  busy,
+  send,
+  picked,
+  onPick,
+}: {
+  view: ClientView;
+  busy: boolean;
+  send: (c: Command) => void;
+  picked: TileId | null;
+  onPick: (tile: TileId) => void;
+}) {
   const playable = view.legalMoves.filter((m) => m.type === 'place-tile').map((m) => m.tile);
   const chosen = view.handTiles.find((h) => h.tile === picked) ?? null;
 
@@ -153,7 +189,7 @@ function PlaceTile({ view, busy, send }: { view: ClientView; busy: boolean; send
     <section className="card turn" aria-label={p.yourTurn}>
       <span className="kicker accent">{p.yourTurn}</span>
       <h2 className="serif">{copy.header.phase.place}</h2>
-      <Rack view={view} picked={picked} onPick={(tile) => setPicked(tile)} playable={playable} />
+      <Rack view={view} picked={picked} onPick={onPick} playable={playable} />
       {playable.length === 0 ? (
         <>
           <p className="note">{p.noPlayable}</p>

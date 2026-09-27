@@ -1,5 +1,6 @@
-import { INDUSTRIES, tierOf, type CorpView, type Industry } from '@boomtown/engine';
+import { INDUSTRIES, RULES, tierOf, type CorpView, type Industry } from '@boomtown/engine';
 import { useOwnView } from '../client/ownView.js';
+import { useLocalSeats } from '../client/GameClientProvider.js';
 import { IndustryMark } from './marks.js';
 import { industryTheme, patternedBackground } from './industryTheme.js';
 import { useIndustryPatterns } from '../settings/useSetting.js';
@@ -19,6 +20,9 @@ import { copy, fill } from '../copy/copy.js';
  */
 export function CorporationBand() {
   const view = useOwnView();
+  // A screen with no seat of its own — the couch table, or a table of bots —
+  // has no stake to show, so each card counts the shares out instead.
+  const seated = useLocalSeats().length > 0;
   if (!view) return null;
 
   const active = INDUSTRIES.filter((industry) => view.corporations[industry].founded);
@@ -46,7 +50,7 @@ export function CorporationBand() {
           key={industry}
           industry={industry}
           corp={view.corporations[industry]}
-          mine={view.yourHoldings[industry]}
+          mine={seated ? view.yourHoldings[industry] : null}
         />
       ))}
     </section>
@@ -83,13 +87,16 @@ export function TrayStrip() {
   );
 }
 
-function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView; mine: number }) {
+function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView; mine: number | null }) {
   const { color, ink } = industryTheme(industry);
   const tier = tierOf(industry);
   const patterns = useIndustryPatterns();
   const capFill = `linear-gradient(160deg, color-mix(in srgb, ${color} 88%, #fff), ${color})`;
-  const issued = 25 - corp.bankShares;
-  const pct = issued > 0 ? Math.round((mine / issued) * 100) : 0;
+  const total = RULES.sharesPerCorporation;
+  const issued = total - corp.bankShares;
+  // Seated: your stake, as a share of what is out. Unseated: what is out, as a
+  // share of all there are.
+  const pct = mine == null ? Math.round((issued / total) * 100) : issued > 0 ? Math.round((mine / issued) * 100) : 0;
   const { openCorp } = useReference();
 
   return (
@@ -137,8 +144,10 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
 
         <div className={styles.stake}>
           <div className={styles.stakeLabels}>
-            <span>{copy.game.yourStake}</span>
-            <span className="tabnum">{fill(copy.game.stakeOf, { mine, issued })}</span>
+            <span>{mine == null ? copy.game.sharesOut : copy.game.yourStake}</span>
+            <span className="tabnum">
+              {mine == null ? fill(copy.game.stakeOf, { mine: issued, issued: total }) : fill(copy.game.stakeOf, { mine, issued })}
+            </span>
           </div>
           <div className={styles.bar}>
             <div className={styles.barFill} style={{ width: `${pct}%`, background: color }} />

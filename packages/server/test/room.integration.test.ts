@@ -74,6 +74,10 @@ class TestClient {
   close(): void {
     this.ws.close();
   }
+
+  isClosed(): boolean {
+    return this.closed;
+  }
 }
 
 let clients: TestClient[] = [];
@@ -452,6 +456,38 @@ describe('PartyKit room — end to end', () => {
     const view = (await back.next('update')) as Extract<RoomMessage, { type: 'update' }>;
     expect(view.view.you).toBe(0);
     expect(view.view.status).toBe('playing');
+  });
+
+  it('closes the socket a seat left behind when it comes back by token', async () => {
+    // A phone that slept can leave a socket the room still holds, carrying the
+    // spent token in its state. Left open, a hibernation wake could restore the
+    // seat from it and refuse the phone's live token on the next reconnect.
+    const room = uniqueRoom();
+    const host = client(room);
+    await host.open;
+    host.send({
+      type: 'create-room',
+      config: { seatCount: 3, edition: 'classic', visibility: 'open', bots: { 1: 6, 2: 6 }, seed: 3 },
+    });
+    const welcome = (await host.next('welcome')) as Extract<RoomMessage, { type: 'welcome' }>;
+    host.send({ type: 'start' });
+    await host.next('update');
+
+    // Back by token while the old socket is still open.
+    const back = client(room, { token: welcome.token });
+    await back.open;
+    const rewelcome = (await back.next('welcome')) as Extract<RoomMessage, { type: 'welcome' }>;
+    expect(rewelcome.seat).toBe(0);
+    await new Promise((r) => setTimeout(r, 300));
+    expect(host.isClosed()).toBe(true);
+
+    // And the live token still works after that.
+    back.close();
+    await new Promise((r) => setTimeout(r, 300));
+    const again = client(room, { token: rewelcome.token });
+    await again.open;
+    const third = (await again.next('welcome')) as Extract<RoomMessage, { type: 'welcome' }>;
+    expect(third.seat).toBe(0);
   });
 
   // --- closed books, on the wire (#60) ---------------------------------

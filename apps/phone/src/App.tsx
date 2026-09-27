@@ -62,6 +62,9 @@ export const connectToRoom: Connect = async ({ address, name, token }) => {
 /** How long a resume waits for the room to hand the seat back before knocking afresh. */
 const RESUME_GRACE_MS = 3000;
 
+/** A glance at another app is not a sleep; anything longer reconnects on return. */
+const WAKE_RECONNECT_MS = 2000;
+
 type Screen =
   | { readonly kind: 'join'; readonly error: string | null }
   | { readonly kind: 'connecting' }
@@ -102,7 +105,7 @@ export function App({ connect = connectToRoom }: { connect?: Connect }) {
           // handed to a bot). Start over at the door.
           room.client.disconnect();
           clearSession();
-          setScreen({ kind: 'join', error: null });
+          setScreen({ kind: 'join', error: p.errors.seatLost });
           return;
         }
         setScreen({ kind: 'room', room });
@@ -288,9 +291,28 @@ function Room({ room, onLeave }: { room: PhoneRoom; onLeave: (error: string | nu
       transport.onLobbyError((error) => {
         if (error.code === 'knock-declined' || error.code === 'room-locked') onLeave(p.errors.declined);
         else if (error.code === 'room-full') onLeave(p.errors.full);
+        else if (error.code === 'seat-lost') onLeave(p.errors.seatLost);
       }),
     [transport, onLeave],
   );
+
+  // Back from the lock screen, come back by token rather than trust the socket:
+  // a phone that slept can hold one that still reads as open and has stopped
+  // delivering, which left a phone on "seat 1 is placing a tile" while the
+  // table was two turns on. The reconnect brings the room's current view.
+  useEffect(() => {
+    let hiddenAt: number | null = null;
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+        return;
+      }
+      if (hiddenAt !== null && Date.now() - hiddenAt >= WAKE_RECONNECT_MS) transport.reconnect();
+      hiddenAt = null;
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [transport]);
 
   const reconnecting = status !== 'open' && (
     <div className="banner" role="status">

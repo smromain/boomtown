@@ -155,6 +155,24 @@ export default class BoomtownRoom implements Party.Server {
       if (bound) {
         const name = url.searchParams.get('name') ?? '';
         roomLog(this.room.id, 'reconnected a seat by token', { seat: bound.seat, connection: connection.id });
+        // A socket the seat left behind — a phone that went to sleep, or a page
+        // that was refreshed — still carries the spent token in its state, and
+        // the room may not have seen it close. Left open, a hibernation wake
+        // restores the seat from whichever connection it reads last, which can
+        // be the stale one: the seat goes back to the spent token, and the
+        // phone holding the live one is refused on its next reconnect. Close
+        // them, exactly as the table does.
+        for (const other of this.room.getConnections<ConnectionState>()) {
+          if (other.id === connection.id) continue;
+          const state = other.state;
+          const claims = this.seatByConnection.get(other.id) === bound.seat ||
+            (state != null && 'seat' in state && state.seat === bound.seat);
+          if (!claims) continue;
+          roomLog(this.room.id, 'closing a stale connection for a reconnected seat', { seat: bound.seat, connection: other.id });
+          this.seatByConnection.delete(other.id);
+          other.setState(null);
+          other.close();
+        }
         this.seatByConnection.set(connection.id, bound.seat);
         // The token rotated on use: persist and return the new one, never the
         // one that was presented. Sending back the old token would keep a

@@ -67,6 +67,34 @@ describe('CorporationBand', () => {
   });
 });
 
+describe('CorporationBand stake row', () => {
+  it('shows your stake to a seated screen', async () => {
+    await renderPanel(<CorporationBand />, {
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']);
+        state.seats[0]!.holdings.video = 3;
+        state.bankShares.video = 20;
+      },
+    });
+    expect(screen.getByText('your stake')).toBeInTheDocument();
+    expect(screen.getByText('3 of 5')).toBeInTheDocument();
+  });
+
+  it('shows the shares out to a screen with no seat, like the couch table', async () => {
+    await renderPanel(<CorporationBand />, {
+      localSeats: [],
+      craft: (state) => {
+        seedCorp(state, 'video', ['2E', '3E', '4E']);
+        state.seats[0]!.holdings.video = 3;
+        state.bankShares.video = 20;
+      },
+    });
+    expect(screen.queryByText('your stake')).not.toBeInTheDocument();
+    expect(screen.getByText('shares out')).toBeInTheDocument();
+    expect(screen.getByText('5 of 25')).toBeInTheDocument();
+  });
+});
+
 describe('TrayStrip', () => {
   it('lists the unfounded companies, and not the founded ones', async () => {
     await renderPanel(<TrayStrip />, {
