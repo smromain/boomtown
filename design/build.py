@@ -1210,8 +1210,25 @@ def _board(file, title, lede, rows):
             '<span class="ser" style="font-size:32px">%s</span>'
             '<span style="font-size:13px;line-height:1.55;color:%s">%s</span></div>%s</div>'
             % (width, height, B_BG, B_INK, GUTTER, GAP, B_MUTED, title, B_MUTED, lede, "".join(body_rows)))
-    write(file, B_HELMET, body)
+    write(file, CAPTURE_HELMET, body)
     return width, height
+
+def _app_fonts():
+    """The app's own font files, embedded. The captures place every line of text
+    where the app drew it, so they must be set in the same faces: Google's DM Sans
+    at 400 is the Regular cut, the app's is Medium, and the narrower cut left
+    centred labels short of their centre."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    fonts = os.path.join(here, "..", "apps", "desktop", "src", "assets", "fonts")
+    faces = [("DM Serif Display", "DMSerifDisplay.ttf", "400"), ("DM Sans", "DMSans-Medium.ttf", "400 500"),
+             ("DM Sans", "DMSans-Bold.ttf", "600 800")]
+    return "".join('@font-face{font-family:"%s";src:url(data:font/ttf;base64,%s) format("truetype");font-weight:%s}'
+                   % (fam, base64.b64encode(open(os.path.join(fonts, f), "rb").read()).decode("ascii"), wt)
+                   for fam, f, wt in faces)
+
+# The captured boards set their own DM faces from the app, so only the mono comes from Google.
+CAPTURE_HELMET = B_HELMET.replace("family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&", "").replace(
+    "  <style>\n", "  <style>\n    " + _app_fonts() + "\n", 1)
 
 def _pair(cid, caption, scale=1.0):
     return [(cid + "-day", caption + " · day", scale), (cid + "-night", caption + " · night", scale)]
