@@ -310,3 +310,20 @@ describe('Header board switch (#70)', () => {
     expect(loadSettings().boardStyle).toBe('board-view');
   });
 });
+
+describe('Header once the game is over', () => {
+  it('turns the phase pill into a way home that leaves at once', async () => {
+    const user = userEvent.setup();
+    const onExit = vi.fn();
+    const { client } = await renderPanel(
+      <ReferenceProvider>
+        <Header onExit={onExit} />
+      </ReferenceProvider>,
+    );
+    client.store.setState((s) => ({ ...s, status: 'over' }));
+
+    const home = await screen.findByRole('button', { name: 'Exit To Home' });
+    await user.click(home);
+    expect(onExit).toHaveBeenCalledTimes(1);
+  });
+});
