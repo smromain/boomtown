@@ -17,7 +17,7 @@ npm install     # or npm ci
 ```
 
 Install scripts are allow-listed in the root `package.json` (`allowScripts`): `esbuild` for
-Vite/Vitest, `workerd` for the PartyKit dev server, `fsevents` on macOS.
+Vite/Vitest, `workerd` for the room's dev server, `fsevents` on macOS.
 
 **The Electron binary is a ~150 MB download.** Where that is unavailable — a sandbox, an offline CI
 — set `ELECTRON_SKIP_BINARY_DOWNLOAD=1`. Everything except launching the GUI still works.
@@ -26,7 +26,7 @@ Vite/Vitest, `workerd` for the PartyKit dev server, `fsevents` on macOS.
 
 ```bash
 npm run dev             # electron-vite dev: main, preload, renderer with HMR
-npm run server:dev      # the PartyKit room on :1999, which a dev build talks to by default
+npm run server:dev      # the room under wrangler dev on :1999 (Node 22), which a dev build talks to by default
 ```
 
 ### Without the Electron shell
@@ -61,8 +61,8 @@ default host, and the dev CSP, which only allows `connect-src` to localhost. Ove
 
 ```bash
 env -u ELECTRON_RUN_AS_NODE \
-  VITE_PARTYKIT_HOST=boomtown.smromain.partykit.dev \
-  BOOMTOWN_DEV_CONNECT_SRC="wss://boomtown.smromain.partykit.dev,https://boomtown.smromain.partykit.dev" \
+  VITE_PARTYKIT_HOST=playboomtown.party \
+  BOOMTOWN_DEV_CONNECT_SRC="wss://playboomtown.party,https://playboomtown.party" \
   npm run -w @boomtown/desktop dev
 ```
 
@@ -77,8 +77,8 @@ one. Give it its own port and profile:
 env -u ELECTRON_RUN_AS_NODE \
   BOOMTOWN_DEV_PORT=5273 \
   BOOMTOWN_DEV_USER_DATA="$(mktemp -d)" \
-  VITE_PARTYKIT_HOST=boomtown.smromain.partykit.dev \
-  BOOMTOWN_DEV_CONNECT_SRC="wss://boomtown.smromain.partykit.dev,https://boomtown.smromain.partykit.dev" \
+  VITE_PARTYKIT_HOST=playboomtown.party \
+  BOOMTOWN_DEV_CONNECT_SRC="wss://playboomtown.party,https://playboomtown.party" \
   npm run -w @boomtown/desktop dev
 ```
 
@@ -122,7 +122,7 @@ of a release, set `localStorage['boomtown.netlog'] = 'on'` and reload: capture a
 mirror come back, read from devtools rather than the overlay.
 
 Room-side, every lobby decision prints one line — visible in `npm run server:dev`, or
-`npx partykit tail` against the deployed room.
+`npx wrangler tail` (from `packages/server`) against the deployed room.
 
 ## Driving the app from a script
 

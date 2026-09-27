@@ -6,7 +6,7 @@ const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 /**
  * The couch-mode phone page (#62). It is built into the room's own package and
- * served by PartyKit beside the room (`serve` in `packages/server/partykit.json`),
+ * served by the room's Worker beside it (`assets` in `packages/server/wrangler.jsonc`),
  * at `/phone/` — one deploy ships both, so the page and the room can never
  * disagree about the protocol.
  *

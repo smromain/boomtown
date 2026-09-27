@@ -56,11 +56,11 @@ export type Outbound =
   | { readonly kind: 'broadcast'; readonly message: RoomMessage };
 
 /**
- * The authoritative game for one room, independent of PartyKit. It holds the
+ * The authoritative game for one room, independent of the Worker runtime. It holds the
  * `GameState`, applies commands through the one `reduce` path (KTD6), persists
  * each command before its events go out (KTD13), plays bot seats inline
  * (KTD7 — the edge has no worker threads and the policy is synchronous), and
- * returns the messages to send. The PartyKit adapter (`room.ts`) owns sockets
+ * returns the messages to send. The Durable Object adapter (`room.ts`) owns sockets
  * and wires `party.storage` in as the `KeyValueStore`.
  */
 export class GameRoom {
@@ -554,7 +554,7 @@ export class GameRoom {
    * Drive every consecutive bot seat until a human is on the clock or the game
    * ends. Each bot command is persisted before its effects are observable, the
    * same contract as a human command. A stuck bot loop or a persist failure
-   * parks the room read-only rather than throwing out of the PartyKit lifecycle.
+   * parks the room read-only rather than throwing out of the object's lifecycle.
    */
   private async runBots(): Promise<Outbound[]> {
     const out: Outbound[] = [];
@@ -650,7 +650,7 @@ export class GameRoom {
    *
    * A log that will not replay comes back `complete: false` and the end screen
    * falls back to the standings. Nothing here throws: this runs inside the
-   * PartyKit lifecycle, where a throw takes the room with it.
+   * object's lifecycle, where a throw takes the room with it.
    */
   private async endRecord(): Promise<Retrospective | undefined> {
     try {

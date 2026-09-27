@@ -35,7 +35,7 @@ change cannot land in one mode and miss another.
                           │                                     │
                   ┌───────▼─────────┐                 ┌─────────▼──────────────┐
                   │ packages/engine │◄────────────────│ packages/server        │
-                  │ reduce/viewFor  │   same engine   │ PartyKit room + bots   │
+                  │ reduce/viewFor  │   same engine   │ Durable Object + bots  │
                   └───────▲─────────┘                 └────────────────────────┘
                           │ legalMoves / evaluate
                   ┌───────┴─────────┐
@@ -121,7 +121,8 @@ A `Policy` over the engine's own `legalMoves` and `evaluate`. No LLM anywhere.
 
 ### `packages/server` — the authoritative room (≈2,000 lines)
 
-One PartyKit room object per game. `room.ts` is the PartyKit entry point; everything else is
+One Durable Object per game, on Cloudflare's `partyserver`. `worker.ts` is the Worker entry
+(`wrangler.jsonc`), `room.ts` and `directory.ts` the two object classes; everything else is
 testable core. Detail in `online-play.md`; the file map:
 
 | File | Owns |
@@ -134,7 +135,7 @@ testable core. Detail in `online-play.md`; the file map:
 | `tokens.ts` | 256-bit seat tokens and constant-time comparison |
 | `limits.ts` | Token-bucket rate limiting, connection cap, validation-failure strikes |
 | `lifecycle.ts` | The command ceiling and the idle-expiry alarm |
-| `storage.ts` | `CommandLog` over PartyKit storage, and a `MemoryStore` for tests |
+| `storage.ts` | `CommandLog` over Durable Object storage, and a `MemoryStore` for tests |
 
 ### `apps/desktop` — the Electron app
 

@@ -4,59 +4,105 @@
 > **Cutting a release**. This document owns the parts that outlive a run: the room, versioning, and
 > the itch.io pipeline. The rest of the documentation set is indexed in `README.md`.
 
-Two independent artifacts: the **online room** (PartyKit, for cross-machine play)
+Two independent artifacts: the **online room** (a Cloudflare Worker, for cross-machine play)
 and the **desktop app** (Electron installers). Neither depends on the other at
 runtime — a desktop build with no reachable room simply can't start online games.
 
-## The online room (PartyKit)
+## The online room (Cloudflare)
 
-Code: `packages/server/` — one PartyKit room object per game (KTD6). The wire
-contract is `@boomtown/protocol` (U15); the room reuses the pure engine and the
-bot policy directly.
+Code: `packages/server/` — one Durable Object per game (KTD6), written against
+Cloudflare's [`partyserver`](https://github.com/cloudflare/partykit/tree/main/packages/partyserver)
+and deployed with `wrangler` to our own Cloudflare account. The wire contract is
+`@boomtown/protocol` (U15); the room reuses the pure engine and the bot policy
+directly.
+
+It ran on PartyKit's hosted platform until September 2026. Two things moved it:
+PartyKit's deploy token is a GitHub login that lapses every week or two, so a
+release could not deploy without somebody logging in first; and the room could
+only live at `boomtown.smromain.partykit.dev`. A Cloudflare API token does not
+expire unless it is made to, and the Worker answers on our own domain.
+`partyserver` is PartyKit's library rebuilt on plain Durable Objects, so the
+port was the two server classes and the Worker around them — the URLs
+(`/parties/main/<room>`, `/parties/directory/<ticket>`) and `partysocket` on the
+client are unchanged.
+
+### What answers where
+
+One Worker (`src/worker.ts`, configured by `wrangler.jsonc`) owns the whole
+domain, **`playboomtown.party`**:
+
+| Path | What |
+|---|---|
+| `/parties/main/<address>` | the room, `BoomtownRoom` (`src/room.ts`) |
+| `/parties/directory/<ticket>` | the ticket directory, `TicketDirectory` (`src/directory.ts`) |
+| `/phone/` | the couch-mode phone page (#62), static assets from `public/` |
+| `/` | a redirect to the game's itch.io page (`LANDING_URL`) |
+| `www.…` | a redirect to the same path on the bare domain |
+
+The phone page and the room share a host on purpose: the phone page takes the
+room to be the host it was loaded from (`apps/phone/src/connection.ts`).
+`apps/phone` builds into `packages/server/public/phone/` (gitignored); the
+release workflow runs `npm run phone:build` before its deploy step. A landing
+page of our own would be an `index.html` in `public/` and the end of the redirect.
+
+Both objects use the **SQLite storage backend** (`new_sqlite_classes`). It is
+the only kind a new namespace can have, it is what the Workers free plan allows,
+and it offers the same key-value `get`/`put`/`list`/`delete` and alarms the room
+was written against.
 
 ### Deploy
 
 ```bash
 cd packages/server
-npx partykit login      # GitHub OAuth, once per machine
-npm run deploy           # = build apps/phone, then partykit deploy
+npx wrangler login       # once per machine, or set CLOUDFLARE_API_TOKEN
+npm run deploy           # = build apps/phone, then wrangler deploy
 ```
 
-The deploy carries the couch-mode phone page (#62): `apps/phone` builds into
-`packages/server/public/phone/` (gitignored), and `"serve": "public"` in `partykit.json` serves it at
-`/phone/` beside the room. The release workflow runs `npm run phone:build` before its deploy step.
-
-The room name is `boomtown` (`partykit.json`), so the deploy URL is
-`https://boomtown.<your-partykit-account>.partykit.dev`. **First deploy of a new
-subdomain takes a few minutes** for the edge TLS cert to be issued — an HTTP/WS
-probe fails with a TLS handshake error until then; this is normal.
-
-Currently deployed: **`boomtown.smromain.partykit.dev`**.
+wrangler needs **Node 22**. The custom domains in `wrangler.jsonc` are created
+on first deploy, DNS records and certificates included, provided the zone is on
+the same Cloudflare account.
 
 ### Verify
 
 ```bash
-# a plain GET returns 500 "No onRequest handler" — correct, the room is WS-only
-curl https://boomtown.<account>.partykit.dev/parties/main/probe
+curl -i https://playboomtown.party/parties/directory/AAAAAAAA   # 404 with CORS: the directory answers
+curl -I https://playboomtown.party/phone/                        # 200
 ```
 
 For a real check, `npm run test:server` from the repo root runs the integration
-suite against a local `partykit dev`; the deployed room runs the same code.
+suite against a local `wrangler dev`; the deployed room runs the same code.
+Logs: `npx wrangler tail` from `packages/server`, or Workers → boomtown →
+Observability in the dashboard.
 
 ### CI
 
-The `deploy-party` job in the release workflow (below) runs `npx partykit deploy`.
-The CLI only takes its non-interactive (headless) auth path when **both** of these
-repo secrets are present as env vars — set just one and the CLI silently falls back
-to reading `~/.config/partykit`, which doesn't exist in CI, and dies with
-`run npx partykit login`:
+The `deploy-party` job in the release workflow runs `wrangler deploy` with two
+repo secrets:
 
 | Secret | Value |
 |---|---|
-| `PARTYKIT_TOKEN` | a token from partykit.io → account → tokens |
-| `PARTYKIT_LOGIN` | your PartyKit account slug — the `<account>` in `boomtown.<account>.partykit.dev` (`smromain`) |
+| `CLOUDFLARE_ACCOUNT_ID` | the account ID from the Cloudflare dashboard's overview page |
+| `CLOUDFLARE_API_TOKEN` | a token from the **Edit Cloudflare Workers** template, zone resources limited to `playboomtown.party` |
 
-Set both at GitHub → repo Settings → Secrets and variables → Actions.
+It also reads the `ITCH_TARGET` variable (`user/project`) and passes
+`https://user.itch.io/project` as `LANDING_URL`; without it the bare domain is a 404
+and everything else deploys.
+
+### Cost
+
+The Workers **free** plan covers this: Durable Objects on SQLite storage are
+allowed there, and a hibernating room is not billed for the time it sits idle.
+The $5/month paid plan is the step up if a limit is ever reached. The domain is
+billed separately by the registrar.
+
+### The old room
+
+Builds up to `v2026.9.x` have `boomtown.smromain.partykit.dev` baked in. That
+deployment keeps running; it just cannot be redeployed without a PartyKit login.
+Players move over when they update (the itch app does this by itself), and
+anyone can point an older build at the new room under Settings → online host.
+Rooms do not migrate between the two, which costs nothing: a room lives for one
+game.
 
 ## Versioning
 

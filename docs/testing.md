@@ -11,7 +11,7 @@ current `main`.
 | `npm run test:engine` | The `engine` project (node): `packages/*/test/**` — engine, protocol, ai, client-core, and the room's own logic | 540 |
 | `npm run test:desktop` | The `desktop` project (jsdom): `apps/desktop/**/*.test.{ts,tsx}` — components through `@testing-library/react`, plus the Electron main-process modules | 512 |
 | `npm run test:phone` | The `phone` project (jsdom): `apps/phone/src/**/*.test.{ts,tsx}` — the couch-mode phone page's join, resume and decision sheets against a real engine | 8 |
-| `npm run test:server` | Integration: a real `partykit dev` room (workerd) | 29 |
+| `npm run test:server` | Integration: a real `wrangler dev` room (workerd) | 29 |
 | `npm run typecheck` | `tsc --noEmit` for all three tsconfigs | — |
 | `npm run lint` | eslint, flat config (including the no-`Math.random`/`Date.now` rule in the engine) | — |
 | `npm run smoke` | Builds and boots the real Electron app | — |
@@ -59,8 +59,8 @@ Against a real room over a real socket:
   connection receives, not about what the UI prints, so it cannot be made anywhere but here. The
   companion case runs the same script at a classic table and asserts nothing changed.
 - **A room that lost its memory between `start()` and the first move.** The dev server is stopped
-  and started again between the deal and the opening tile: PartyKit keeps each room's storage on
-  disk, so the second server rebuilds the room through the real `onStart` → `rehydrate` path and the
+  and started again between the deal and the opening tile: `wrangler dev` keeps each room's storage
+  on disk, so the second server rebuilds the room through the real `onStart` → `rehydrate` path and the
   opening move is accepted. That is the path a hibernation wake takes — only the trigger differs,
   because *when* workerd evicts a hibernating object is not something a client can ask for. The
   deterministic per-case proof (wakes playing, same deal, refuses a second `start`) is in

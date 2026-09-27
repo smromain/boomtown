@@ -13,7 +13,7 @@ document records history instead, it says so and lives under `history/`.
 | [`online-play.md`](online-play.md) | The room, and the security model — addresses and tickets, knock/admit, seat tokens, every limit |
 | [`development.md`](development.md) | How to run it, drive it and diagnose it, and every environment variable |
 | [`testing.md`](testing.md) | What is actually verified, by which suite, and what tests cannot catch |
-| [`deploying.md`](deploying.md) | Cutting a release, the PartyKit deploy, itch.io channels, versioning |
+| [`deploying.md`](deploying.md) | Cutting a release, the Cloudflare room deploy, itch.io channels, versioning |
 | [`decisions.md`](decisions.md) | What was chosen and why, what was reversed, what is still open |
 | [`screenshots/`](screenshots/) | Seventeen frames from one real game, in play order, and how to retake them |
 

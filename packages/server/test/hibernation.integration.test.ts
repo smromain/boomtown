@@ -16,25 +16,25 @@ import { PROTOCOL_VERSION, mintRoomAddress } from '@boomtown/protocol';
  * Losing its memory is the part a test cannot simply ask for: workerd decides
  * when to evict a hibernating object, and nothing a client sends forces it. So
  * this drives the same wake from the other end — **the dev server is stopped
- * and started again**. PartyKit persists each room's storage on disk under
- * `.partykit/state`, so the second server finds the first one's bytes, and the
+ * and started again**. `wrangler dev` persists each room's storage on disk
+ * under `--persist-to`, so the second server finds the first one's bytes, and the
  * room comes up through the real `onStart` -> `GameRoom.rehydrate` path on the
  * real substrate. That is the path hibernation takes; only the trigger differs.
  *
  * It runs on its own port with its own server, because the suite's shared
- * `partykit dev` (globalSetup) has to stay up for every other test.
+ * `wrangler dev` (globalSetup) has to stay up for every other test.
  */
 const PORT = 2001;
 const HOST = `127.0.0.1:${PORT}`;
 const serverDir = fileURLToPath(new URL('..', import.meta.url));
 /**
- * Its own persistence directory. Sharing `.partykit/state` with the suite's
+ * Its own persistence directory. Sharing `.wrangler/state` with the suite's
  * other dev server means two workerd processes holding the same SQLite files,
  * and the second one fails to come up. The directory is *not* cleaned between
  * this file's two boots — carrying the first server's bytes over is the whole
  * point.
  */
-const STATE_DIR = fileURLToPath(new URL('../.partykit/state-hibernation', import.meta.url));
+const STATE_DIR = fileURLToPath(new URL('../.wrangler/state-hibernation', import.meta.url));
 
 let server: ChildProcess | undefined;
 let serverOutput: () => string = () => '';
@@ -50,7 +50,7 @@ const portOpen = () =>
   });
 
 /**
- * Readiness is an answered HTTP request, not an open port: `partykit dev` binds
+ * Readiness is an answered HTTP request, not an open port: `wrangler dev` binds
  * before workerd has the bundle, and a socket that connects to a server with no
  * worker behind it accepts the WebSocket and then says nothing at all.
  *
@@ -71,10 +71,13 @@ const serving = () =>
   });
 
 async function startServer(): Promise<void> {
-  server = spawn('npx', ['partykit', 'dev', '--port', String(PORT), '--persist', STATE_DIR], {
+  server = spawn('npx', ['wrangler', 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', STATE_DIR], {
     cwd: serverDir,
+    // Its own process group, so stopping it reaches workerd: wrangler runs as a
+    // chain of child processes that outlive a signal sent to `npx` alone.
+    detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: process.env,
+    env: { ...process.env, WRANGLER_SEND_METRICS: 'false' },
   });
   let output = '';
   server.stdout?.on('data', (d: Buffer) => (output += d.toString()));
@@ -89,20 +92,32 @@ async function startServer(): Promise<void> {
     }
     await new Promise((r) => setTimeout(r, 1000));
   }
-  throw new Error(`partykit dev did not listen on ${PORT}\n${serverOutput()}`);
+  throw new Error(`wrangler dev did not listen on ${PORT}\n${serverOutput()}`);
 }
 
 async function stopServer(): Promise<void> {
   if (!server) return;
   const exited = new Promise((r) => server!.on('exit', r));
-  server.kill('SIGTERM');
+  killGroup(server, 'SIGTERM');
   await Promise.race([exited, new Promise((r) => setTimeout(r, 5000))]);
-  if (!server.killed) server.kill('SIGKILL');
+  killGroup(server, 'SIGKILL');
   server = undefined;
-  // Wait for the port to come free before the next boot claims it.
+  // Wait for the port to come free before the next boot claims it. A port that
+  // stays taken means the old server is still up, and a test that went on would
+  // talk to it and pass without the room ever having restarted.
   for (let attempt = 0; attempt < 30; attempt += 1) {
     if (!(await portOpen())) return;
     await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`the dev server on ${PORT} did not stop`);
+}
+
+function killGroup(child: ChildProcess, signal: NodeJS.Signals): void {
+  if (child.pid === undefined) return;
+  try {
+    process.kill(-child.pid, signal);
+  } catch {
+    // already gone
   }
 }
 

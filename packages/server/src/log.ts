@@ -1,6 +1,6 @@
 /**
- * Room-side logging. `console` in a PartyKit room reaches `partykit dev` and
- * `npx partykit tail` for a deployed room, which is the only window into a
+ * Room-side logging. `console` in the room reaches `wrangler dev` and
+ * `npx wrangler tail` for a deployed room, which is the only window into a
  * live game — so every lobby decision the room makes says so out loud, in one
  * line, prefixed with the room code.
  *

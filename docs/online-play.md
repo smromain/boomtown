@@ -1,6 +1,6 @@
 # Online play — the room and its security model
 
-One PartyKit room object per game, authoritative over everything. This is the part of the system
+One Durable Object per game (Cloudflare, via `partyserver`), authoritative over everything. This is the part of the system
 with an adversary, so it is documented in terms of what an attacker can and cannot do.
 
 Code: `packages/server/`. Wire contract: `packages/protocol/`. Client side:
@@ -147,8 +147,8 @@ none while `pace(true)` holds a covering beat, and one forced move after `LIMITS
 so a stuck table cannot stall a game. A table that disconnects stops being paced, and a client that
 never sends `pace` gets the old loop. Seat commands are never held.
 
-**The phone page.** `apps/phone` is served by the room itself at `/phone/` (`"serve": "public"` in
-`partykit.json`). The table's QR code is `https://<room host>/phone/#t=<ticket>`: the ticket rides in
+**The phone page.** `apps/phone` is served by the room itself at `/phone/` (the `assets` block in
+`packages/server/wrangler.jsonc`). The table's QR code is `https://<room host>/phone/#t=<ticket>`: the ticket rides in
 the fragment, which never reaches a server log. The page resolves the ticket, knocks, and keeps the
 seat token in `localStorage` so a locked phone or a reload resumes the seat. See
 `docs/plans/2026-09-25-feat-couch-mode-plan.md`.
@@ -160,8 +160,8 @@ seat token in `localStorage` so a locked phone or a reload resumes the seat. See
   packaged build ships neither the overlay nor the Settings switch, and captures nothing until
   `localStorage['boomtown.netlog']` is set to `on`, which mirrors the timeline to the console.
 - Room side: every lobby decision prints one line. `npm run server:dev` shows them locally;
-  `npx partykit tail` against the deployed room.
-- `npm run test:server` boots a real `partykit dev` room and plays against it. See `testing.md`.
+  `npx wrangler tail` (from `packages/server`) against the deployed room.
+- `npm run test:server` boots a real `wrangler dev` room and plays against it. See `testing.md`.
 
 ## What is not done
 

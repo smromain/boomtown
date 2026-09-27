@@ -1,0 +1,18 @@
+{
+  // The Worker side of the room: the files that run on Cloudflare's runtime and
+  // see its globals (Durable Objects, `Fetcher`), which the root config's Node
+  // types would collide with. Everything else in src/ is plain TypeScript and is
+  // checked by both. Node's types ride along only because client-core's netlog
+  // reads `localStorage` behind a `typeof` guard, a global Workers does not type.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types", "node"],
+    "paths": {
+      "@boomtown/engine": ["../engine/src/index.ts"],
+      "@boomtown/protocol": ["../protocol/src/index.ts"],
+      "@boomtown/ai": ["../ai/src/index.ts"],
+      "@boomtown/client-core": ["../client-core/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

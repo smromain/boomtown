@@ -14,7 +14,7 @@
  * checked headlessly has that shape of blind spot.
  *
  * Usage (needs both servers already up):
- *   cd packages/server && npx partykit dev &
+ *   npm run server:dev &
  *   cd apps/desktop && npm run web &
  *   node ../../.claude/skills/run-app/scripts/drive-online.mjs --out /tmp/online
  *

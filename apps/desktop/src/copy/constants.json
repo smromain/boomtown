@@ -291,7 +291,7 @@
     "levelValue": "{label}: {value}%",
     "levelOff": "{label}: off",
     "onlineHost": "Online host",
-    "onlineHostPlaceholder": "host.partykit.dev",
+    "onlineHostPlaceholder": "playboomtown.party",
     "onlineHostNote": "Blank uses the server the app ships with.",
     "patterns": "Industry patterns",
     "patternsNote": "A texture per industry on the board, so chains differ by shape as well as colour. The header has a switch for it mid-game.",
