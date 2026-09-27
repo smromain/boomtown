@@ -277,6 +277,7 @@ if (ONLY.has('game')) {
 
   const started = Date.now();
   let lastProgress = Date.now(), lastKey = '';
+  let moved = false;
   while (Date.now() - started < 15 * 60_000) {
     const s = await state();
     const key = JSON.stringify([s.dialogs, s.buttons.slice(0, 12), s.turn]);
@@ -312,7 +313,15 @@ if (ONLY.has('game')) {
     }
     if (inDialog(/Wind the game up/)) {
       await once('decision-vote', '[role=dialog]');
-      await clickIn(/Vote against/);
+      await clickIn(/^Vote to liquidate/);
+      continue;
+    }
+    if (inDialog(/Before you finish/)) {
+      // Out of useful tiles and short of the end size: move to liquidate once, which
+      // puts the vote to the other seats; if it fails, just end the turn.
+      await once('decision-end', '[role=dialog]');
+      if (!moved && (await clickIn(/^Move to liquidate/))) { moved = true; continue; }
+      await clickIn(/^End turn/);
       continue;
     }
     if (inDialog(/End the game/)) {
@@ -365,7 +374,11 @@ if (ONLY.has('game')) {
   // Each frame is a tab; Forward would step through the companies one by one.
   for (const [frame, tab] of [['standings', 'Standings'], ['market', 'Tracking the market'],
     ['companies', 'Company by company'], ['awards', 'Awards']]) {
-    await page.getByRole('tab', { name: tab }).or(page.getByRole('button', { name: tab, exact: true })).first().click();
+    // A script click: the carousel can sit under an inert layer while the victory beat clears.
+    await page.waitForFunction((t) => [...document.querySelectorAll('[role="tab"]')]
+      .some((el) => el.textContent.trim().startsWith(t)), tab, { timeout: 60000 });
+    await page.evaluate((t) => [...document.querySelectorAll('[role="tab"]')]
+      .find((el) => el.textContent.trim().startsWith(t)).click(), tab);
     await sleep(1200);
     await bothTones(page, `after-${frame}`);
   }
