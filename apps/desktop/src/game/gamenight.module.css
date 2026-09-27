@@ -1,0 +1,184 @@
+/* Advisors and Around the table (Game Night skin, prototype). */
+.panel {
+  padding: 14px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.live {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4cc38a;
+  box-shadow: 0 0 0 3px rgba(76, 195, 138, 0.25);
+}
+
+.advisors {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.advisor {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.bubble {
+  position: relative;
+  min-width: 0;
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 6px 10px 7px;
+}
+
+.bubble::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 12px;
+  border: 6px solid transparent;
+  border-right-color: var(--surface-2);
+  border-left: 0;
+}
+
+.advisor[data-mine] .bubble {
+  background: color-mix(in srgb, var(--gold) 14%, var(--surface));
+}
+
+.advisor[data-mine] .bubble::before {
+  border-right-color: color-mix(in srgb, var(--gold) 14%, var(--surface));
+}
+
+.advisor[data-clock] .bubble {
+  box-shadow: inset 0 0 0 2px var(--gold);
+}
+
+.bubbleHead {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.who {
+  font-weight: 900;
+  font-size: 13px;
+}
+
+.tag {
+  font-weight: 800;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cash {
+  margin-left: auto;
+  font-size: 15px;
+}
+
+.said {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.holdings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 5px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.holding {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+}
+
+.feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 9px;
+  align-items: center;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.item[data-headline] {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.line b {
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.medal {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border: 2px solid var(--surface);
+  box-shadow: 0 2px 0 rgba(27, 36, 56, 0.15);
+}
+
+.empty {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* A table-wide line (the register opening, the end announced) has no seat and
+   no chain; it gets a plain gold pip rather than an empty tile. */
+.medal:empty::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 30%, transparent);
+}

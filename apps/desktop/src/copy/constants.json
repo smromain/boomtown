@@ -503,6 +503,10 @@
     "yourTilesNamed": "Your tiles — {name}",
     "story": "Story",
     "shareholders": "Shareholders",
+    "advisors": "Advisors",
+    "advisorYou": "you",
+    "advisorBooksClosed": "books closed",
+    "advisorQuiet": "Hasn't moved yet.",
     "outOfPlay": "Out of play",
     "corporations": "Corporations",
     "inTray": "In the tray",
@@ -767,6 +771,7 @@
   },
   "story": {
     "label": "Story",
+    "aroundTheTable": "Around the table",
     "noMovesYet": "No moves yet. Place a tile to begin.",
     "heading": "{names} merge at {tile}",
     "proseLead": "Placing ",

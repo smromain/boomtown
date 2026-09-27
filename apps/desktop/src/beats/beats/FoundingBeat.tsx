@@ -5,6 +5,8 @@ import { industryTheme } from '../../game/industryTheme.js';
 import { soundManager } from '../../audio/soundManager.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import styles from '../beats.module.css';
+import { isGameNight } from '../../skin.js';
+import { Scene } from '../../art/Scene.js';
 import { copy } from '../../copy/copy.js';
 
 const HOLD_MS = 6000;
@@ -40,9 +42,10 @@ export function FoundingBeat({
         <div
           className={reduced ? undefined : styles.rise}
           style={{
-            width: 150,
-            height: 216,
-            borderRadius: 3,
+            width: isGameNight ? 240 : 150,
+            height: isGameNight ? 250 : 216,
+            borderRadius: isGameNight ? 18 : 3,
+            overflow: 'hidden',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -50,7 +53,16 @@ export function FoundingBeat({
             boxShadow: '0 40px 70px -20px var(--beat-shadow), inset 0 2px 0 rgba(255,255,255,.3)',
           }}
         >
-          <IndustryMark industry={industry} color={ink} size={54} />
+          {isGameNight ? (
+            <div className={styles.gnCharter} style={{ ['--gn-c' as string]: color, ['--gn-ci' as string]: ink }}>
+              <Scene industry={industry} className={styles.gnCharterScene} />
+              <span className={styles.gnCharterMark} style={{ background: color }}>
+                <IndustryMark industry={industry} color={ink} size={34} />
+              </span>
+            </div>
+          ) : (
+            <IndustryMark industry={industry} color={ink} size={54} />
+          )}
         </div>
         <div className={reduced ? undefined : styles.rise} style={{ width: 470 }}>
           <div className={styles.kicker}>{copy.beats.founding.kicker}</div>

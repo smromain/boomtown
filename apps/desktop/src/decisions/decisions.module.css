@@ -513,3 +513,38 @@
   border-radius: 6px;
   cursor: pointer;
 }
+
+.foundScene {
+  display: none;
+}
+
+/* Game Night skin (prototype): each corporation you could raise is a small
+   charter card, its scene over its name, so the choice reads as picking a
+   company rather than a word. */
+:global(:root[data-skin='gamenight']) .foundOption {
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--elev-1);
+  font-weight: 800;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+:global(:root[data-skin='gamenight']) .foundOption:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--elev-2), 0 0 0 3px var(--gold);
+}
+
+:global(:root[data-skin='gamenight']) .foundScene {
+  display: block;
+  width: 100%;
+  height: 58px;
+}
+
+:global(:root[data-skin='gamenight']) .foundName {
+  display: block;
+  padding: 0.5rem 0.7rem 0.6rem;
+  border-top: 4px solid var(--gn-c);
+}

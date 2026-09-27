@@ -1,7 +1,10 @@
 import { INDUSTRY_INFO, type TileId } from '@boomtown/engine';
 import { useGameClient, useLocalActiveView } from '../client/GameClientProvider.js';
 import { foundingOptions, tierOpening } from '../reference/priceReference.js';
+import type { CSSProperties } from 'react';
 import styles from './decisions.module.css';
+import { isGameNight } from '../skin.js';
+import { Scene } from '../art/Scene.js';
 import { copy, fill } from '../copy/copy.js';
 
 const TIERS = [1, 2, 3] as const;
@@ -85,7 +88,11 @@ export function FoundPrompt({ group }: { group: readonly TileId[] }) {
                     key={option.industry}
                     type="button"
                     className={styles.foundOption}
-                    style={{ borderColor: INDUSTRY_INFO[option.industry].color }}
+                    style={
+                      isGameNight
+                        ? ({ '--gn-c': INDUSTRY_INFO[option.industry].color } as CSSProperties)
+                        : { borderColor: INDUSTRY_INFO[option.industry].color }
+                    }
                     onClick={() =>
                       client.dispatch({
                         type: 'found-corporation',
@@ -95,7 +102,8 @@ export function FoundPrompt({ group }: { group: readonly TileId[] }) {
                       })
                     }
                   >
-                    {option.name}
+                    {isGameNight && <Scene industry={option.industry} className={styles.foundScene} />}
+                    <span className={styles.foundName}>{option.name}</span>
                   </button>
                 ))
               )}

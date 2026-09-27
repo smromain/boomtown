@@ -176,7 +176,7 @@
 
 .standings td:nth-child(1) {
   width: 40px;
-  font-family: 'DM Serif Display', Georgia, serif;
+  font-family: var(--serif);
   font-size: 19px;
   text-align: left;
 }
@@ -188,7 +188,7 @@
 }
 
 .standings .total {
-  font-family: 'DM Serif Display', Georgia, serif;
+  font-family: var(--serif);
   font-size: 24px;
   color: var(--ink);
 }
@@ -246,7 +246,7 @@
 }
 
 .sideTotal {
-  font-family: 'DM Serif Display', Georgia, serif;
+  font-family: var(--serif);
   font-size: 26px;
 }
 
@@ -275,7 +275,7 @@
 }
 
 .legendValue {
-  font-family: 'DM Serif Display', Georgia, serif;
+  font-family: var(--serif);
   font-size: 15px;
   min-width: 62px;
   text-align: right;
@@ -400,4 +400,23 @@
   .awardSub {
     display: none;
   }
+}
+
+/* Game Night skin (prototype): the carousel is a raised card like the rest of
+   the table, and the live tab is the gold "your move" pill. */
+:global(:root[data-skin='gamenight']) .panel {
+  border-top: 0;
+  border-radius: var(--radius);
+  box-shadow: var(--elev-2);
+}
+
+:global(:root[data-skin='gamenight']) .tabs {
+  border: 0;
+  box-shadow: var(--elev-1);
+}
+
+:global(:root[data-skin='gamenight']) .tab[data-live='true'] {
+  background: var(--gold);
+  color: var(--on-gold);
+  font-weight: 800;
 }

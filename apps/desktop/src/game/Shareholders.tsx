@@ -5,6 +5,8 @@ import { industryTheme } from './industryTheme.js';
 import { Panel } from '../ui/Panel.js';
 import styles from './game.module.css';
 import { copy } from '../copy/copy.js';
+import { isGameNight } from '../skin.js';
+import { Advisors } from './TableTalk.js';
 
 /**
  * The Shareholders panel from the Main artboard: each seat's holdings as
@@ -12,6 +14,11 @@ import { copy } from '../copy/copy.js';
  * industry mark, not just the dot), plus cash.
  */
 export function Shareholders() {
+  if (isGameNight) return <Advisors />;
+  return <ShareholdersTable />;
+}
+
+function ShareholdersTable() {
   // `useOwnView`, never `activeView`: a hot-seat client holds a view for every
   // seat, so reading the seat on the clock showed each bot its own cash and
   // holdings in turn — one full turn cycle disclosed the whole table, which is

@@ -18,6 +18,8 @@ import {
 } from './story.js';
 import styles from './game.module.css';
 import { copy, fill } from '../copy/copy.js';
+import { isGameNight } from '../skin.js';
+import { TableFeed } from './TableTalk.js';
 
 /**
  * The story panel from the Main artboard. When a merger is in play it narrates
@@ -38,6 +40,8 @@ export function StoryCard() {
   const merger = currentMerger(log);
 
   if (!view) return null;
+
+  if (!merger && isGameNight) return <TableFeed />;
 
   if (!merger) {
     const recent = log.slice(-7);
