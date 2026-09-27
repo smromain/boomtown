@@ -20,7 +20,7 @@ import { finalSettlement, type GameState, type Seat } from '@boomtown/engine';
  * mode: misreading where you stand is where the tension lives.
  */
 export function wouldWinBySettlingNow(state: GameState, seat: Seat): boolean {
-  const result = finalSettlement(state);
+  const result = settleACopy(state);
   return result.winners.includes(seat);
 }
 
@@ -35,8 +35,21 @@ export function wouldWinBySettlingNow(state: GameState, seat: Seat): boolean {
  * as a difficulty number.
  */
 export function backsMotion(state: GameState, seat: Seat, margin: number): boolean {
-  const result = finalSettlement(state);
+  const result = settleACopy(state);
   const mine = result.rankings.find((row) => row.seat === seat)?.total ?? 0;
   const best = Math.max(...result.rankings.filter((row) => row.seat !== seat).map((row) => row.total));
   return mine >= best * (1 + margin);
+}
+
+/**
+ * `finalSettlement` is the engine's settle step: it pays every seat out and
+ * zeroes their holdings in the state it is handed, which is right for the
+ * reducer's draft and wrong for anything a policy is given. The room hands a
+ * bot its live authoritative state, so asking "would I win if it ended now?"
+ * on that object settled the real game: the register emptied, the bot's own
+ * motion was then refused as illegal, and the room parked with the bot on the
+ * clock at end-check.
+ */
+function settleACopy(state: GameState): ReturnType<typeof finalSettlement> {
+  return finalSettlement(structuredClone(state));
 }

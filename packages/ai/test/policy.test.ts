@@ -114,6 +114,30 @@ describe('heuristic policy', () => {
     expect([...totals].sort((x, y) => y - x)).toEqual(totals);
   });
 
+  it('never changes the state it is handed, even when weighing a motion', () => {
+    // The room hands a bot its live authoritative state, not a redacted copy.
+    // Weighing a motion used to run final settlement on that object, which
+    // paid everyone out and emptied the register mid-game: the bot's own
+    // motion was then refused and the room stuck on it at end-check.
+    let state = game(1);
+    let rng = makeRng(3);
+    let weighed = 0;
+    for (let guard = 0; state.status === 'playing'; guard++) {
+      if (guard > 5000) throw new Error('game did not terminate');
+      const seat =
+        state.merger?.pending?.seat ?? state.motion?.pending?.seat ?? state.turnOrder[state.turnPointer]!;
+      if (legalMoves(state).some((m) => m.type === 'move-to-liquidate' || m.type === 'cast-vote')) weighed++;
+      const before = structuredClone(state);
+      const choice = heuristicPolicy({ level: 6 }).chooseMove(state, seat, rng)!;
+      expect(state).toEqual(before);
+      rng = choice.rng;
+      const result = reduce(state, choice.command);
+      if (!result.ok) throw new Error(`policy emitted an illegal ${choice.command.type}: ${result.error.code}`);
+      state = result.state;
+    }
+    expect(weighed).toBeGreaterThan(0);
+  });
+
   it('with no blunders, picks the move its own evaluator rates highest', () => {
     const state = game(2);
     const seat = state.turnOrder[state.turnPointer]!;
