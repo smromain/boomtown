@@ -148,7 +148,7 @@ export function CreateJoin({
           <div>
             <span className={`kicker ${form.eyebrow}`}>{couch ? copy.couch.eyebrow : copy.online.eyebrow}</span>
             <h1 className={form.title}>{couch ? copy.couch.title : copy.online.title}</h1>
-            <p className={form.lede}>{couch ? copy.couch.lede : copy.online.lede}</p>
+            {couch && <p className={form.lede}>{copy.couch.lede}</p>}
           </div>
           {!couch && (
             <div className={form.segment}>

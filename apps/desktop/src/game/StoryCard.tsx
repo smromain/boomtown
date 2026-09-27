@@ -132,7 +132,6 @@ export function StoryCard() {
             <Marquee className={`serif ${styles.renameName}`} style={{ color: eatenColor }}>
               {listOf(eatenNames)}
             </Marquee>
-            <span className={styles.renameNote}>{copy.story.consumingNote}</span>
           </div>
         ))}
 

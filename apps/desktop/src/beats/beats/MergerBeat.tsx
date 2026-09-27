@@ -307,7 +307,6 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
             transition: 'opacity 420ms ease 400ms, margin-top 400ms ease',
           }}
         >
-          <p>{copy.beats.merger.nameNote}</p>
           <p>{copy.beats.merger.sharesNote}</p>
           <p>
             <b>{copy.beats.merger.bellyNote}</b>

@@ -218,7 +218,7 @@ describe('the Boomtown preset in setup', () => {
     // Anchored on the field note, not on "books closed" alone: the how-to-play
     // summary explains the same rule, and a bare text match would find that
     // instead of the setting's own explanation.
-    expect(screen.getByText(/the ruleset fixes this/i)).toBeInTheDocument();
+    expect(screen.getByText(/always played with the books closed/i)).toBeInTheDocument();
 
     // and it is a preset rule, not a permanent one — the published editions
     // leave visibility to the table

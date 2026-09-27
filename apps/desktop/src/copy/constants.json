@@ -23,7 +23,6 @@
     "screenLabel": "Online game",
     "eyebrow": "online · one seat each",
     "title": "Play online",
-    "lede": "Open a room and hand out the code, or take a seat in someone else’s.",
     "modeCreate": "Create a room",
     "modeJoin": "Join with a code",
     "yourName": "Your name",
@@ -31,7 +30,7 @@
     "roll": "Roll",
     "roomCode": "Room code",
     "roomCodePlaceholder": "ABCD-1234",
-    "roomCodeNote": "Eight characters, from whoever set the room up. It stops working after about fifteen minutes.",
+    "roomCodeNote": "Codes expire after about fifteen minutes.",
     "holdToShow": "Hold to show",
     "holdToShowLabel": "Hold to show the room code",
     "table": "The table",
@@ -46,16 +45,16 @@
       "noName": "Enter a name, or roll one.",
       "noCode": "Enter a room code.",
       "failed": "Could not connect.",
-      "badCode": "That code is not working. It may have expired — codes last about fifteen minutes — or the room may already be full. Ask for a fresh one.",
+      "badCode": "That code isn’t working. It may have expired, or the room may be full. Ask for a fresh one.",
       "allBots": "Leave at least one seat for a person — an all-bot table is a local game, not a room."
     },
-    "noHostConfigured": "No online host is configured. This release was built without VITE_PARTYKIT_HOST (apps/desktop/.env.production) — set an “Online host” in Settings to play online."
+    "noHostConfigured": "No online host is configured. Set an “Online host” in Settings to play online."
   },
   "couch": {
     "screenLabel": "Couch game",
     "eyebrow": "couch game · this screen is the table",
     "title": "Couch game",
-    "lede": "Everyone watches the board here and plays their hand on their own phone. Nobody’s tiles or money ever show on this screen.",
+    "lede": "Everyone watches the board here and plays their hand on their own phone.",
     "tableName": "Table",
     "tableNote": "People join from their phones and bring their own names. Set a seat to a bot to fill it now.",
     "open": "Open the table",
@@ -74,10 +73,10 @@
     "knocking": "Knocking…",
     "joinNote": "Whoever has the mouse lets you in from the table.",
     "doorTitle": "Waiting to be let in…",
-    "doorNote": "Your name is on the big screen. Keep this page open; locking the phone is fine.",
+    "doorNote": "Keep this page open; locking the phone is fine.",
     "seatedTitle": "You’re in.",
     "seatedLede": "Seat {n} of {total} · the game starts from the table.",
-    "seatedNote": "Your tiles and your money will show here and only here. Keep your screen to yourself.",
+    "seatedNote": "Keep your screen to yourself.",
     "you": " (you)",
     "kindPhone": "phone",
     "kindBot": "bot",
@@ -93,7 +92,7 @@
     "place": "Place {tile}",
     "pickTile": "Tap a tile to see what it does.",
     "mergerOnTable": "The merger plays on the big screen.",
-    "foundingOnTable": "One tap founds it. The founding plays on the big screen, and you get your founder’s share.",
+    "foundingOnTable": "One tap founds it. The founding plays on the big screen.",
     "pickOne": "Pick one.",
     "reconnecting": "Reconnecting…",
     "reconnectingNote": "Your seat is held. The table waits for you if it’s your move.",
@@ -119,7 +118,7 @@
       "blocked": "blocked"
     },
     "describe": {
-      "nothing": "No effect. It sits on the board on its own.",
+      "nothing": "No effect.",
       "foundWith": "Founds a corporation with {tiles}",
       "grows": "{name} grows",
       "merges": "Merges {names}",
@@ -177,7 +176,7 @@
     "screenLabel": "New game",
     "eyebrow": "hot seat · one machine",
     "title": "New game",
-    "lede": "Pick a rule set and fill the seats. None of it can be changed once the first tile goes down.",
+    "lede": "None of this can change once the first tile goes down.",
     "howToPlay": "How to play",
     "players": "Players",
     "seats": "Seats",
@@ -209,7 +208,7 @@
       "closedDescription": "Closed — only your own",
       "openNote": "Every player’s cash and holdings are on show.",
       "closedNote": "Only your own cash and holdings are yours to see.",
-      "sealedNote": "{edition} is played with the books closed — the ruleset fixes this."
+      "sealedNote": "{edition} is always played with the books closed."
     },
     "errors": {
       "tooFewSeats": "Need at least {n} seats",
@@ -267,7 +266,7 @@
       "booksSetting": "a table setting",
       "booksClosed": "always closed"
     },
-    "footNote": "Boomtown is the default: Classic with the books closed and the ending put to a vote — our own variant rather than a published one, and it comes alive at three players or more. The other two are reconstructions, there for a table that wants the published rules; cash and price both climb faster in the Modern set, and Classic runs a little longer."
+    "footNote": "Boomtown is the default: Classic with the books closed and the ending put to a vote. It is our own variant and plays best at three or more. Classic and Modern are the published rules."
   },
   "settings": {
     "eyebrow": "preferences · this machine",
@@ -294,7 +293,7 @@
     "onlineHostPlaceholder": "playboomtown.party",
     "onlineHostNote": "Blank uses the server the app ships with.",
     "patterns": "Industry patterns",
-    "patternsNote": "A texture per industry on the board, so chains differ by shape as well as colour. The header has a switch for it mid-game.",
+    "patternsNote": "A texture per industry, so chains differ by shape as well as colour.",
     "logging": "Log online play",
     "loggingNote": "Ctrl/Cmd+Shift+L reads the log back.",
     "streaming": "Streaming mode",
@@ -304,7 +303,7 @@
     "boardStyle": "Board",
     "boardView": "Board View",
     "skyline": "Skyline",
-    "boardStyleNote": "Skyline raises a tower for every chain. It wants a graphics card that can keep up.",
+    "boardStyleNote": "Skyline wants a graphics card that can keep up.",
     "boardTrouble": "This machine couldn't draw Skyline this session, so the game is showing Board View.",
     "lighting": "Lighting",
     "day": "Day",
@@ -336,7 +335,7 @@
     "safeNote": "safe at {n} tiles",
     "stock": {
       "title": "Stock reference",
-      "sub": "{edition} rule set · price and bonuses by corporation size · highlighted rows are where the market stands now",
+      "sub": "{edition} rule set · highlighted rows are where the market stands now",
       "tier": "Tier {n}",
       "sizeColumn": "Size",
       "share": "Share",
@@ -386,7 +385,7 @@
     },
     "merger": {
       "title": "When corporations merge",
-      "note": "The only part of the game where order really matters. The tile you just placed **never counts** toward either corporation — not for size, price or bonuses. It joins the survivor once the dust settles.",
+      "note": "The tile you just placed **never counts** toward either corporation — not for size, price or bonuses. It joins the survivor once the dust settles.",
       "survivor": "**Biggest survives.** On a tie the player who placed the tile chooses. A corporation of {safe} tiles or more is safe and can never be dissolved — so two safe corporations can never merge at all.",
       "order": "**Defunct chains resolve one at a time, largest first**, each finished before the next begins.",
       "bonuses": "**Bonuses are paid** to its largest shareholders — {tiers} — priced at the size it was *before* the merger. Nothing is paid on the survivor.",
@@ -398,18 +397,17 @@
     "goingPublic": {
       "title": "Going public: the alternate ending",
       "note": "Nobody has to wait for one enormous corporation: a vote can be called to end the game early, and the table decides.",
-      "window": "**The window opens** once {quorum} corporations are safe. It closes again the moment the game could simply be ended the ordinary way — asking is pointless when one mega-corporation can simply announce the end.",
+      "window": "**The window opens** once {quorum} corporations are safe, and closes again once the game could be ended the ordinary way.",
       "moving": "**Any player, at the end of their own turn, may move to liquidate** — {allowance}. Motioning for a vote *is* voting for it; you cannot propose an ending and then vote it down.",
       "allowanceOne": "once each per game",
       "allowanceMany": "{n} times each per game",
-      "register": "**The register is published** the first time anyone moves, and stays public for the rest of the game. It is one vote per share held in a *safe* corporation — those are the only companies certain to still exist at settlement. *Stock in a chain that can still be eaten carries no vote.*",
+      "register": "**The register is published** the first time anyone moves, and stays public for the rest of the game. It is one vote per share held in a *safe* corporation. *Stock in a chain that can still be eaten carries no vote.*",
       "voting": "**Everyone votes in turn**, starting with the mover and going clockwise. It carries on {quota}% of the register with at least {backers} players behind it, and the game ends there and then. Settling now pays everyone out at once.",
-      "price": "**If it fails, everyone who backed it opens their books** — cash and holdings visible to the table for the rest of the game. That is the whole price of a yes: voting against costs nothing, so a speculative or spiteful motion is expensive and a sincere one is nearly free.",
-      "standing": "Calling a vote to go public is a *high risk, high reward* move. Read the table shrewdly and it can be a game-changer, read it wrong and it can spell disaster."
+      "price": "**If it fails, everyone who backed it opens their books** — cash and holdings visible to the table for the rest of the game. Voting against costs nothing."
     },
     "worthKnowing": {
       "title": "Worth knowing",
-      "closedBooks": "**The books are closed.** Cash and holdings are private — yours alone, and this rule set fixes it that way. What anyone owns has to be inferred from what they have been seen to buy, so a purchase is a statement as much as an investment.",
+      "closedBooks": "**The books are closed.** Cash and holdings are private — yours alone, and this rule set fixes it that way.",
       "finiteStock": "**Stock is finite.** An empty bank blocks buying, the founder's free share and 2-for-1 trades alike.",
       "noSelling": "**Shares don't sell on demand.** Stock only becomes cash in a merger or in the final settlement.",
       "broke": "**Being broke is playable.** With no cash you still place and draw. Nobody is knocked out.",
@@ -509,7 +507,7 @@
     "noPlayableTileNote": "No tile in hand can be placed this turn.",
     "noMovesYet": "No moves yet. Place a tile to begin.",
     "noCorporations": "No corporations founded yet. Place two adjacent tiles to start one.",
-    "trayAllFounded": "Every corporation is founded. The skyline is complete — for now.",
+    "trayAllFounded": "Every corporation is founded.",
     "trayNote": "Free to found again, under their own names.",
     "corpCardLabel": "{name} — stock reference",
     "tier": "Tier {n}",
@@ -571,13 +569,13 @@
       "titleCanEnd": "The game can end here",
       "titleBeforeFinish": "Before you finish",
       "titleOver": "Your turn is over",
-      "noteCanEnd": "A corporation is safe or at the end size. Ending is a choice — nobody is forced.",
+      "noteCanEnd": "A corporation is safe or at the end size.",
       "noteCanMove": "No corporation has reached the end size, but you may ask the table to wind the game up.",
       "noteOver": "Nothing left to do this turn.",
       "endGame": "End the game",
-      "endGameNote": "You finish this turn and nobody gets another. Final scoring follows.",
+      "endGameNote": "Nobody gets another turn. Final scoring follows.",
       "keepPlaying": "Keep playing",
-      "keepPlayingNote": "Pass to the next player and leave the ending for later.",
+      "keepPlayingNote": "Pass to the next player.",
       "endTurn": "End turn",
       "endTurnNote": "Pass to the next player.",
       "moveToLiquidate": "Move to liquidate",
@@ -600,11 +598,10 @@
         "play": "Play",
         "pause": "Pause",
         "next": "Forward",
-        "hint": "Back, play and forward — or the arrow keys, and space to hold it"
+        "hint": "← → to move · space to pause"
       },
       "standings": {
         "title": "Final standings",
-        "note": "net worth · cash + stock at closing price",
         "seat": "Seat",
         "cash": "Cash",
         "shares": "Shares",
@@ -614,13 +611,12 @@
       },
       "market": {
         "title": "Tracking the market",
-        "note": "net worth per turn, through settlement",
+        "note": "net worth per turn",
         "founded": "founded",
         "refounded": "founded again",
         "folded": "folded",
         "turns": "turn",
-        "settled": "settled",
-        "settledNote": "The last step on each line is settlement. This is the stage that occurs when the bank purchases every share back and paying every bonus at once, and the figures are what each seat settled for."
+        "settled": "settled"
       },
       "companies": {
         "title": "The market, company by company",
@@ -644,10 +640,9 @@
       },
       "awards": {
         "title": "Awards",
-        "note": "{n} earned this game · five at a time",
         "counter": "Page {n} of {total}",
         "shared": "shared",
-        "none": "Nobody earned one. It happens, and it is its own kind of game.",
+        "none": "Nobody earned one.",
         "items": {
           "synergies-realised": {
             "title": "Synergies Realised",
@@ -774,7 +769,6 @@
     "listAnd": " and ",
     "nowTradingAs": "Now trading under the joint name",
     "consuming": "{survivor} is consuming",
-    "consumingNote": "The joint name is settled once the merger resolves.",
     "renameNote": "Rolls off the tongue, doesn't it?",
     "resolveInPrompt": "Resolve the merger in the prompt.",
     "tiedFootnote": "Tied for a tier, so those bonuses are combined and split evenly.",
@@ -792,7 +786,7 @@
   "decisions": {
     "title": "Game decision",
     "handoffKicker": "Hand the machine to",
-    "handoffHint": "Only {name} should see the next screen — it shows their holdings.",
+    "handoffHint": "Only {name} should see the next screen.",
     "handoffButton": "I’m {name} — show my decision",
     "peek": "Peek at the board ↓",
     "resumeFounding": "Resume founding ↑",
@@ -839,7 +833,7 @@
       "for": "Vote to liquidate",
       "forNote": "Ends the game now if the motion carries. If it fails, you play the rest of the game with your cash and holdings visible to everyone.",
       "against": "Vote against",
-      "againstNote": "Play on. A vote against costs you nothing either way."
+      "againstNote": "Play on. Costs you nothing."
     }
   },
   "buy": {
@@ -874,7 +868,6 @@
     "merger": {
       "label": "Merger",
       "each": "each",
-      "nameNote": "The name grows with every company it consumes.",
       "sharesNote": "Your shares in it stay yours but remember:",
       "bellyNote": "the belly of capitalism is never full."
     },
@@ -885,15 +878,15 @@
       "carries": "The motion carries",
       "fails": "The motion fails",
       "sharesInFavour": "{yes} of {total} shares in favour",
-      "carriedNote": "The table votes to wind the game up. No further turns — final scoring follows.",
-      "backersOne": "{names} backed it and plays on with open books — cash and holdings visible to everyone for the rest of the game.",
-      "backersMany": "{names} backed it and play on with open books — cash and holdings visible to everyone for the rest of the game.",
+      "carriedNote": "No further turns. Final scoring follows.",
+      "backersOne": "{names} backed it and plays on with open books.",
+      "backersMany": "{names} backed it and play on with open books.",
       "continues": "The game continues."
     },
     "endgame": {
       "label": "The endgame is triggered",
       "kicker": "the game is over",
-      "note": "{name} called the end, finishing their turn. No other player gets another turn — final scoring follows."
+      "note": "{name} called the end. Final scoring follows."
     },
     "victory": {
       "label": "Victory",
@@ -976,7 +969,7 @@
     "label": "Leave the game",
     "title": "Leave this game?",
     "bodyLocal": "This table is not saved anywhere. Leaving ends the game for everyone at this screen.",
-    "bodyOnline": "Your seat is held for you — the room keeps it, and you can rejoin with the same link. The table plays on without you until you do.",
+    "bodyOnline": "Your seat is held, and you can rejoin with the same link. The table plays on without you until you do.",
     "confirm": "Leave the game",
     "cancel": "Stay at the table"
   }
