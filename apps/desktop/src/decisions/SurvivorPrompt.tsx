@@ -28,7 +28,10 @@ export function SurvivorPrompt({ decision }: { decision: Decision }) {
             className={styles.option}
             onClick={() => client.dispatch({ type: 'choose-survivor', seat: decision.seat, survivor: industry })}
           >
-            {view?.corporations[industry].displayName ?? industry} · {view?.corporations[industry].size} tiles
+            {fill(copy.decisions.chainOption, {
+              name: view?.corporations[industry].displayName ?? industry,
+              n: view?.corporations[industry].size ?? 0,
+            })}
           </button>
         ))}
       </div>

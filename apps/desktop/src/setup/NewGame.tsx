@@ -161,11 +161,11 @@ export function NewGame({
         <div className={form.actions}>
           {onBack && (
             <Button variant="ghost" onClick={onBack}>
-              Back
+              {copy.setup.back}
             </Button>
           )}
           <Button variant="primary" disabled={error != null} onClick={start}>
-            Start game
+            {copy.setup.start}
           </Button>
         </div>
       </section>

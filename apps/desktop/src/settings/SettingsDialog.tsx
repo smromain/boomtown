@@ -7,7 +7,7 @@ import { buildInfo } from './buildInfo.js';
 import type { PreviewKind } from '../beats/debug/fixtures.js';
 import { Choice } from '../setup/Choice.js';
 import { Button } from '../ui/Button.js';
-import { MUSIC_SOURCE, TRACKS, musicManager } from '../audio/musicManager.js';
+import { TRACKS, musicManager } from '../audio/musicManager.js';
 import { copy, fill } from '../copy/copy.js';
 import form from '../setup/form.module.css';
 import decisionStyles from '../decisions/decisions.module.css';
@@ -328,7 +328,7 @@ export function SettingsDialog({
                   </li>
                 ))}
               </ul>
-              <span className={styles.creditSource}>{MUSIC_SOURCE}</span>
+              <span className={styles.creditSource}>{copy.settings.musicSource}</span>
             </section>
 
             {import.meta.env.DEV && onDebugTrigger && (

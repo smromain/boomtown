@@ -61,9 +61,9 @@ export function TurnHandoff({ config }: { config: GameConfig }) {
       <div className={styles.card}>
         <p className={styles.kicker}>{copy.game.handoff.kicker}</p>
         <h2 className="serif">{name}</h2>
-        <p className={styles.hint}>Only {name} should see the next screen.</p>
+        <p className={styles.hint}>{fill(copy.game.handoff.hint, { name })}</p>
         <button type="button" className={styles.ready} onClick={() => claim(actor)}>
-          I&rsquo;m {name} — show my turn
+          {fill(copy.game.handoff.ready, { name })}
         </button>
       </div>
     </div>

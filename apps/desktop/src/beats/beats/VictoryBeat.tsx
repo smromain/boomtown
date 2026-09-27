@@ -19,16 +19,17 @@ interface SeatReveal {
 }
 
 function ordinal(n: number): string {
-  if (n % 100 >= 11 && n % 100 <= 13) return `${n}th`;
+  const o = copy.beats.victory.ordinal;
+  if (n % 100 >= 11 && n % 100 <= 13) return fill(o.other, { n });
   switch (n % 10) {
     case 1:
-      return `${n}st`;
+      return fill(o.one, { n });
     case 2:
-      return `${n}nd`;
+      return fill(o.two, { n });
     case 3:
-      return `${n}rd`;
+      return fill(o.few, { n });
     default:
-      return `${n}th`;
+      return fill(o.other, { n });
   }
 }
 
@@ -140,7 +141,7 @@ export function VictoryBeat({ view, dismiss }: { view: PlayerView; dismiss: () =
         }}
       />
       <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 16 }}>
-        <div className={styles.kicker}>{done ? 'game over' : 'tallying the score'}</div>
+        <div className={styles.kicker}>{done ? copy.beats.victory.over : copy.beats.victory.tallying}</div>
         <div
           className="serif"
           style={{
@@ -204,10 +205,10 @@ export function VictoryBeat({ view, dismiss }: { view: PlayerView; dismiss: () =
             transition: 'opacity 400ms ease, max-height 400ms ease, margin-top 400ms ease',
           }}
         >
-          seven start-ups, one skyline
+          {copy.app.tagline}
         </div>
       </div>
-      <span className={styles.hint}>{done ? 'click or press space to continue' : 'click or press space to advance'}</span>
+      <span className={styles.hint}>{done ? copy.beats.victory.hintContinue : copy.beats.victory.hintAdvance}</span>
     </div>
   );
 }
@@ -244,7 +245,7 @@ function SeatCard({
       }}
     >
       <div key={identityRevealed ? 'name' : 'placeholder'} className={`serif ${styles.rise}`} style={{ fontSize: 20, color: 'var(--beat-ink-1)' }}>
-        {identityRevealed ? `${rank}. ${nameOf(reveal.seat)}` : `${ordinal(rank)} place`}
+        {identityRevealed ? `${rank}. ${nameOf(reveal.seat)}` : fill(copy.beats.victory.place, { ordinal: ordinal(rank) })}
       </div>
       {reveal.lines.map((line, li) => (
         <div
@@ -288,14 +289,17 @@ function renderLine(
         </span>
       );
     case 'holding': {
-      const shareWord = line.shares === 1 ? 'share' : 'shares';
       return (
         <>
           <IndustryMark industry={line.industry} color={typeOf(line.industry)} size={20} />
           <span>
-            {line.shares} {shareWord} of {corpName(line.industry)} at ${line.price.toLocaleString()} each = $
-            {line.saleValue.toLocaleString()}
-            {line.bonus > 0 ? ` + $${line.bonus.toLocaleString()} bonus` : ''}
+            {fill(line.shares === 1 ? copy.beats.victory.holdingOne : copy.beats.victory.holdingMany, {
+              n: line.shares,
+              name: corpName(line.industry),
+              price: line.price.toLocaleString(),
+              value: line.saleValue.toLocaleString(),
+            })}
+            {line.bonus > 0 ? fill(copy.beats.victory.bonus, { amount: line.bonus.toLocaleString() }) : ''}
           </span>
         </>
       );

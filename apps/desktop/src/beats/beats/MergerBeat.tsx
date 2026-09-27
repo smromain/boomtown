@@ -159,8 +159,8 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
       />
       <div style={{ position: 'relative', width: 860, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
         <div className={styles.kicker}>
-          merger at {merger.placedTile}
-          {multi && !past('name') && ` · absorption ${chain + 1} of ${merger.chains.length}`}
+          {fill(copy.beats.merger.kicker, { tile: merger.placedTile })}
+          {multi && !past('name') && fill(copy.beats.merger.absorption, { n: chain + 1, total: merger.chains.length })}
         </div>
         <div className={styles.rule} />
 
@@ -386,8 +386,8 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
             transition: 'opacity 400ms ease 700ms, margin-top 620ms cubic-bezier(0.16,0.9,0.2,1)',
           }}
         >
-          {survivor?.size ?? 0} tiles under one name
-          {multi ? ` · ${merger.chains.length} companies eaten` : ''}
+          {fill(copy.beats.merger.mass, { n: survivor?.size ?? 0 })}
+          {multi ? fill(copy.beats.merger.eaten, { n: merger.chains.length }) : ''}
         </div>
       </div>
       <span className={styles.hint}>{copy.beats.hintAdvance}</span>

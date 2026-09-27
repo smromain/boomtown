@@ -7,7 +7,7 @@ import { SettingsDialog } from './SettingsDialog.js';
 import { buildInfo } from './buildInfo.js';
 import { partykitHost } from '../online/hostUrl.js';
 import { defaultConfig } from '../setup/gameConfig.js';
-import { MUSIC_SOURCE, TRACKS } from '../audio/musicManager.js';
+import { TRACKS } from '../audio/musicManager.js';
 import { copy, fill } from '../copy/copy.js';
 import { soundManager } from '../audio/soundManager.js';
 
@@ -239,7 +239,7 @@ describe('SettingsDialog music credits', () => {
       expect(credits).toHaveTextContent(track.title);
       expect(credits).toHaveTextContent(track.credit);
     }
-    expect(credits).toHaveTextContent(MUSIC_SOURCE);
+    expect(credits).toHaveTextContent(copy.settings.musicSource);
   });
 });
 

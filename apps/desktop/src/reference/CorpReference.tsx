@@ -54,7 +54,7 @@ export function CorpReference({
                 </div>
                 {data.safe && (
                   <span className={styles.safeTag} style={{ color: tint }}>
-                    ◇ safe
+                    {c.corp.safe}
                   </span>
                 )}
                 <Dialog.Close className={styles.close} aria-label={c.close}>
@@ -66,7 +66,7 @@ export function CorpReference({
                 <div>
                   <span className={styles.statLabel}>{c.corp.size}</span>
                   <span className={`serif tabnum ${styles.statValue}`}>
-                    {data.founded ? `${data.size} tiles` : 'in the tray'}
+                    {data.founded ? fill(c.corp.sizeValue, { n: data.size }) : c.corp.inTray}
                   </span>
                 </div>
                 <div>

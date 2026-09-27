@@ -60,9 +60,9 @@ export function FoundingBeat({
           </div>
           <div style={{ fontSize: 14, color: 'var(--beat-ink-2)', marginTop: 10, maxWidth: '34ch' }}>{corp.flavour}</div>
           <div style={{ display: 'flex', gap: 38, marginTop: 26, paddingTop: 18, borderTop: '1px solid var(--beat-rule)' }}>
-            <BeatStat label="headquarters" value={corp.hqTile ?? '—'} />
-            <BeatStat label="opening price" value={corp.sharePrice != null ? `$${corp.sharePrice}` : '—'} />
-            <BeatStat label="founder" value="+1 share" color="var(--beat-accent)" />
+            <BeatStat label={copy.beats.founding.headquarters} value={corp.hqTile ?? '—'} />
+            <BeatStat label={copy.beats.founding.openingPrice} value={corp.sharePrice != null ? `$${corp.sharePrice}` : '—'} />
+            <BeatStat label={copy.beats.founding.founder} value={copy.beats.founding.founderShare} color="var(--beat-accent)" />
           </div>
         </div>
       </div>

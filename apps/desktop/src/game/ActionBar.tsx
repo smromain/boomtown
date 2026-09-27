@@ -25,7 +25,7 @@ export function ActionBar() {
       <div className={styles.actionCard} aria-label={copy.game.noPlayableTile}>
         <p className={styles.actionPrompt}>{copy.game.noPlayableTileNote}</p>
         <Button variant="primary" disabled={busy} onClick={() => client.dispatch({ type: 'end-turn', seat: view.you })}>
-          Skip placement
+          {copy.game.skipPlacement}
         </Button>
       </div>
     );
