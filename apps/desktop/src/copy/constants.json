@@ -107,7 +107,8 @@
       "badCode": "That code isn’t working. It may have expired, or the table may be full. Ask for the one on screen now.",
       "declined": "The table turned you away.",
       "full": "Every seat at that table is taken.",
-      "failed": "Couldn’t reach the table. Check your connection and try again."
+      "failed": "Couldn’t reach the table. Check your connection and try again.",
+      "seatLost": "This phone lost its seat at the table. If the game is still going, whoever has the mouse can hand that seat to a bot."
     },
     "effects": {
       "nothing": "idle",
@@ -127,6 +128,9 @@
     },
     "foundTier": "tier {tier} · ${price} a share",
     "noPlayable": "No tile in hand can be placed this turn.",
+    "showBoard": "Show the board",
+    "hideBoard": "Hide the board",
+    "board": "The board",
     "skipTurn": "End turn"
   },
   "lobby": {
@@ -512,6 +516,7 @@
     "safeSuffix": " · safe",
     "sizeTiles": "{n} tiles",
     "yourStake": "your stake",
+    "sharesOut": "shares out",
     "stakeOf": "{mine} of {issued}",
     "waiting": {
       "label": "Waiting for another player",

@@ -15,7 +15,9 @@ function fakeRoom(name: string, over: { seat?: number | null; token?: string } =
   let seat = over.seat ?? null;
   let roomState: RoomState | null = null;
   const listeners = new Set<(state: RoomState) => void>();
+  const errorListeners = new Set<(error: { code: string; message: string }) => void>();
   const transport = {
+    reconnect: vi.fn(),
     seat: () => seat,
     token: () => over.token ?? 'tok-1',
     roomState: () => roomState,
@@ -25,7 +27,10 @@ function fakeRoom(name: string, over: { seat?: number | null; token?: string } =
     },
     connectionStatus: () => 'open' as const,
     onConnectionChange: () => () => {},
-    onLobbyError: () => () => {},
+    onLobbyError: (fn: (error: { code: string; message: string }) => void) => {
+      errorListeners.add(fn);
+      return () => errorListeners.delete(fn);
+    },
   };
   const room = {
     client: { disconnect: vi.fn() },
@@ -40,6 +45,10 @@ function fakeRoom(name: string, over: { seat?: number | null; token?: string } =
       roomState = state;
       for (const fn of listeners) fn(state);
     },
+    lobbyError(code: string) {
+      for (const fn of errorListeners) fn({ code, message: code });
+    },
+    transport,
   };
 }
 
@@ -116,5 +125,45 @@ describe('the phone page (#62)', () => {
     expect(connect).toHaveBeenCalledWith({ address: ADDRESS, name: 'Ana', token: 'tok-0' });
     // The rotated token replaces the old one.
     expect(loadSession()?.token).toBe('tok-2');
+  });
+
+  it('comes back by token when the phone wakes, not on a glance away', async () => {
+    saveSession({ address: ADDRESS, token: 'tok-0', name: 'Ana' });
+    const fake = fakeRoom('Ana', { seat: 0 });
+    fake.admit(0, lobby());
+    render(<App connect={async () => fake.room} />);
+    await flush();
+    await flush();
+
+    let visibility: DocumentVisibilityState = 'visible';
+    vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility);
+    const now = vi.spyOn(Date, 'now');
+    const flip = (to: DocumentVisibilityState, at: number) => {
+      visibility = to;
+      now.mockReturnValue(at);
+      act(() => void document.dispatchEvent(new Event('visibilitychange')));
+    };
+
+    flip('hidden', 1_000);
+    flip('visible', 1_500);
+    expect(fake.transport.reconnect).not.toHaveBeenCalled();
+
+    flip('hidden', 10_000);
+    flip('visible', 70_000);
+    expect(fake.transport.reconnect).toHaveBeenCalledTimes(1);
+    vi.restoreAllMocks();
+  });
+
+  it('sends a phone whose seat the room no longer knows back to the door, saying so', async () => {
+    saveSession({ address: ADDRESS, token: 'tok-0', name: 'Ana' });
+    const fake = fakeRoom('Ana', { seat: 0 });
+    fake.admit(0, lobby());
+    render(<App connect={async () => fake.room} />);
+    await flush();
+    await flush();
+
+    act(() => fake.lobbyError('seat-lost'));
+    expect(screen.getByRole('alert').textContent).toBe(copy.phone.errors.seatLost);
+    expect(loadSession()).toBeNull();
   });
 });
