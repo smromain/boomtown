@@ -83,24 +83,7 @@ async function capture(page, id, rootSel = null) {
     }
     const root = (rootSel && document.querySelector(rootSel)) || document.documentElement;
     const rect = root.getBoundingClientRect();
-    // dom-to-svg skips <canvas>; stand an <img> of each drawn canvas in its place.
-    const swapped = [];
-    for (const canvas of root.querySelectorAll('canvas')) {
-      const r = canvas.getBoundingClientRect();
-      if (!r.width || !r.height) continue;
-      let src;
-      // JPEG: a 3D scene is photographic, and as PNG it alone would push an artboard past 2 MB.
-      try { src = canvas.toDataURL('image/jpeg', 0.85); } catch { continue; }
-      const img = document.createElement('img');
-      img.src = src;
-      img.style.cssText = canvas.style.cssText;
-      Object.assign(img.style, { width: `${r.width}px`, height: `${r.height}px` });
-      await img.decode();
-      canvas.replaceWith(img);
-      swapped.push([img, canvas]);
-    }
     const doc = window.__domToSvg(root);
-    for (const [img, canvas] of swapped) img.replaceWith(canvas);
     return { svg: new XMLSerializer().serializeToString(doc), w: Math.round(rect.width), h: Math.round(rect.height) };
   }, rootSel);
   fs.writeFileSync(path.join(OUT, `${id}.svg`), await embedRasters(out.svg));
@@ -178,8 +161,7 @@ async function setTone(page, tone) {
 async function flip(page, to) {
   const label = to === 'night' ? 'Switch to night' : 'Switch to day';
   await page.evaluate((l) => document.querySelector(`[aria-label="${l}"]`)?.click(), label);
-  // Skyline relights its scene, which software WebGL takes a while to redraw.
-  await sleep((await page.locator('canvas').count()) ? 1500 : 350);
+  await sleep(350);
 }
 async function bothTones(page, id, rootSel) {
   await capture(page, `${id}-day`, rootSel);
@@ -198,20 +180,7 @@ if (process.argv.includes('--embed-only')) {
   await browser.close();
   process.exit(0);
 }
-// Skyline draws with WebGL, which dom-to-svg cannot read. Keeping the drawing
-// buffer lets capture() copy each canvas out as an image and put it in the SVG.
-const KEEP_WEBGL_BUFFER = () => {
-  const orig = HTMLCanvasElement.prototype.getContext;
-  HTMLCanvasElement.prototype.getContext = function (type, attrs) {
-    if (/webgl/.test(type)) attrs = { ...(attrs || {}), preserveDrawingBuffer: true };
-    return orig.call(this, type, attrs);
-  };
-};
-const newPage = async (opts = {}) => {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, ...opts });
-  await page.addInitScript(KEEP_WEBGL_BUFFER);
-  return page;
-};
+const newPage = (opts = {}) => browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, ...opts });
 
 // ---------------------------------------------------------------- menus and beats
 if (ONLY.has('menu') || ONLY.has('beats')) {
@@ -269,8 +238,7 @@ if (ONLY.has('menu') || ONLY.has('beats')) {
  */
 if (ONLY.has('game')) {
   const page = await newPage();
-  // forceSkyline lets headless Chromium's software WebGL draw the 3D board.
-  await page.goto(`${APP}?forceSkyline=1`, { waitUntil: 'networkidle' });
+  await page.goto(APP, { waitUntil: 'networkidle' });
   await setTone(page, 'day');
   await page.getByRole('button', { name: 'Local game' }).click(); await sleep(400);
   await page.getByRole('radio', { name: 'Bot', exact: true }).nth(2).click();
@@ -310,15 +278,6 @@ if (ONLY.has('game')) {
   const started = Date.now();
   let lastProgress = Date.now(), lastKey = '';
   let moved = false;
-  let skyline = false;
-  const setBoard = async (style) => {
-    const label = style === 'skyline' ? 'Switch to Skyline' : 'Switch to Board View';
-    await page.evaluate((l) => document.querySelector(`[aria-label="${l}"]`)?.click(), label);
-    skyline = style === 'skyline';
-    // The scene loads lazily and SwiftShader is slow to draw its first frame.
-    if (skyline) await page.waitForSelector('canvas', { timeout: 20000 }).catch(() => {});
-    await sleep(skyline ? 2500 : 500);
-  };
   while (Date.now() - started < 15 * 60_000) {
     const s = await state();
     const key = JSON.stringify([s.dialogs, s.buttons.slice(0, 12), s.turn]);
@@ -378,11 +337,6 @@ if (ONLY.has('game')) {
         await more.first().click(); await sleep(150);
         await more.first().click().catch(() => {}); await sleep(250);
         await once('decision-buy', '[role=dialog]');
-        if (seen.has('skyline-table') && !seen.has('skyline-buy')) {
-          await setBoard('skyline');
-          await once('skyline-buy');
-          await setBoard('board-view');
-        }
         const buy = page.locator('[role=dialog] button').filter({ hasText: /^Buy \d/ }).first();
         if (await buy.count()) { await buy.click(); await sleep(400); continue; }
       }
@@ -397,10 +351,6 @@ if (ONLY.has('game')) {
         await click('Reference'); await sleep(500);
         await once('reference', '[role=dialog]');
         await page.keyboard.press('Escape'); await sleep(300);
-        // Skyline has no Place buttons to drive, so visit it for one frame at a time.
-        await setBoard('skyline');
-        await once('skyline-table');
-        await setBoard('board-view');
       }
       // Prefer the tile that does the most, so the game reaches its decisions.
       const open = places.map((p) => p.slice('Place at '.length));

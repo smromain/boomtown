@@ -91,7 +91,8 @@ landed.
   heights encode size, safety and lineage) at about a quarter of the weight, behind a lazy import.
   The coordinates are painted into a canvas texture with the app's own font, so there is no font
   pipeline. The look lives in `board/skyline/scene.ts`; since 2026-09-27 the design canvas carries
-  it too, as a Skyline artboard captured from the app like every other screen (Steve asked for it).
+  it too, as a Skyline artboard of the itch.io page's screenshots (Steve asked for it); the scene is
+  WebGL, which the SVG capture cannot read.
 - **The vote's notice period.** Designed as a turn's delay between raising a motion and voting on
   it; did not ship at any seat count. At three seats it hands the table a free turn to gerrymander
   the register against a mover who has just published it — a fourth cost on one action, when the

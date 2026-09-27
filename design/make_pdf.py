@@ -14,7 +14,7 @@ ARTIFACT = "https://claude.ai/code/artifact/f1b58905-2da0-4cd0-9c2e-8d65624260a3
 
 CAPTIONS = {
   "Main.dc.html":         ("The table", "A player's seat mid-game, day and night — captured from the app"),
-  "Skyline.dc.html":      ("Skyline", "The same table on the 3D board, day and night — captured from the app"),
+  "Skyline.dc.html":      ("Skyline", "The same table on the 3D board — the itch.io page's screenshots"),
   "Decisions.dc.html":    ("Decisions", "Found, buy, survivor, disposal and the end — captured from the app"),
   "Beats.dc.html":        ("Beats", "The moments that take the screen, day and night — captured from the app"),
   "Reference.dc.html":    ("Stock reference", "The live price and bonus chart — captured from the app"),

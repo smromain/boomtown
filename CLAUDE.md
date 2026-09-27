@@ -165,11 +165,12 @@ those: it serves the renderer and drives it with Playwright.
 
 ## Working on the design canvas
 
-**The app is the design.** The canvas's screen artboards (table, the 3D Skyline board, decisions, beats, reference,
+**The app is the design.** The canvas's screen artboards (table, decisions, beats, reference,
 after the game, launch and setup, couch mode) are captured from the running app in day and night
 by `design/capture.mjs`, which plays it in a browser and writes each screen to `design/captures/` as
 an SVG with live text. `design/build.py` lays those out, reads the pool from `pool.ts` and the palette
-from `global.css`, and hand-draws only what has no screen: the rules model, merged names, the pool
+from `global.css`, shows the 3D Skyline board from the itch.io screenshots in `design/stills/` (it is WebGL, which
+dom-to-svg cannot read), and hand-draws only what has no screen: the rules model, merged names, the pool
 and the two earlier directions. The screens used to be drawn by hand, and drifted until the canvas
 showed a game that no longer existed. After a UI change:
 

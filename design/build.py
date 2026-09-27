@@ -2,6 +2,7 @@
 """Generates the Boomtown design-canvas artboards from one shared game state."""
 import json, os, io
 import re as _re
+import base64
 
 OUT = os.path.dirname(os.path.abspath(__file__))
 COLS = list(range(1, 13))
@@ -1169,8 +1170,19 @@ def _capture(cid, scale=1.0):
     svg = _re.sub(r"<svg\b", '<svg style="display:block;width:%dpx;height:%dpx"' % (round(w * scale), round(h * scale)), svg, count=1)
     return svg, round(w * scale), round(h * scale)
 
+def _still(name, scale):
+    """A screenshot from design/stills/, for a screen capture.mjs cannot turn into
+    SVG: Skyline is WebGL, which dom-to-svg does not see. These are the itch.io
+    page's screenshots, 1920x1080, shown at the same 1440 width as the captures."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    data = open(os.path.join(here, "stills", name), "rb").read()
+    w, h = int(round(1440 * scale)), int(round(810 * scale))
+    img = ('<img src="data:image/png;base64,%s" width="%d" height="%d" style="display:block" alt="">'
+           % (base64.b64encode(data).decode("ascii"), w, h))
+    return img, w, h
+
 def _frame(cid, caption, scale=1.0, dark=False, border=True):
-    svg, w, h = _capture(cid, scale)
+    svg, w, h = _still(cid[len("still:"):], scale) if cid.startswith("still:") else _capture(cid, scale)
     return (w, h + 30,
             '<div style="display:flex;flex-direction:column;gap:10px;width:%dpx">'
             '<span class="mono" style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:%s">%s</span>'
@@ -1319,9 +1331,10 @@ def build_captured():
         "in the top bar flips the whole app. The hand-off card covers the screen between two human seats.",
         [_pair("table-mid", "mid-game, placing a tile"), _pair("table-early", "turn 3"), _pair("handoff", "hand-off between seats")])
     B["Skyline.dc.html"] = _board("Skyline.dc.html", "Skyline",
-        "The same table with the 3D board, which the building in the top bar switches to. The board is WebGL, so "
-        "it comes into each frame as a picture; everything around it is live text like the other boards.",
-        [_pair("skyline-table", "mid-game, placing a tile"), _pair("skyline-buy", "buying stock over the board")])
+        "The same table with the 3D board, which the building in the top bar switches to. The board is WebGL, which "
+        "the capture cannot turn into SVG, so these are the itch.io page's screenshots rather than live captures.",
+        [[("still:02-skyline-day.png", "a four-seat table · day"), ("still:03-skyline-day-merger.png", "a merger · day")],
+         [("still:04-skyline-night-vote.png", "after a failed vote · night")]])
     B["Decisions.dc.html"] = _board("Decisions.dc.html", "Decisions",
         "Every choice the rules hand a player comes up as one of these, over the table. Each names the seat that owns it; "
         "Peek at the board lowers it without answering.",
