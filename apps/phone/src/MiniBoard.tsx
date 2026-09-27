@@ -2,6 +2,7 @@ import { useState, type ReactElement } from 'react';
 import { INDUSTRY_INFO, formatTile, type TileId } from '@boomtown/engine';
 import type { ClientView } from '@boomtown/client-core';
 import { copy } from '@desktop/copy/copy.js';
+import { patternedBackground } from '@desktop/game/industryTheme.js';
 
 const p = copy.phone;
 const BOARD_KEY = 'boomtown.phone.board.v1';
@@ -53,7 +54,12 @@ export function MiniBoard({ view, picked }: { view: ClientView; picked?: TileId 
           data-tile={tile}
           data-kind={kind}
           data-picked={picked === tile || undefined}
-          style={cell?.kind === 'corporation' ? { background: INDUSTRY_INFO[cell.industry].color } : undefined}
+          style={
+            // Patterns always on, as on every phone surface (see Swatch).
+            cell?.kind === 'corporation'
+              ? patternedBackground(cell.industry, INDUSTRY_INFO[cell.industry].color, true)
+              : undefined
+          }
         >
           {kind === 'empty' || kind === 'hand' ? tile : ''}
         </span>,

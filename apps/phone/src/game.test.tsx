@@ -129,7 +129,9 @@ describe('the phone game (#62)', () => {
 
   it('opens a mini board on demand, with your tiles ringed and the picked one filled', async () => {
     localStorage.clear();
-    const state = find((s) => Object.keys(s.cells).length >= 4 && s.step === 'place' && s.status === 'playing');
+    const state = find(
+      (s) => s.step === 'place' && s.status === 'playing' && Object.values(s.cells).some((c) => c.kind === 'corporation'),
+    );
     const seat = seatOnClock(state);
     await mount(state, seat);
 
@@ -154,6 +156,12 @@ describe('the phone game (#62)', () => {
     fireEvent.click(pick);
     const id = pick.querySelector('.tileId')!.textContent!;
     expect(board.querySelector(`[data-tile="${id}"]`)).toHaveAttribute('data-picked', 'true');
+
+    // A company's cells carry its industry pattern, always: a phone has no
+    // settings panel to turn patterns on from.
+    const corpCell = board.querySelector('[data-kind="corp"]') as HTMLElement | null;
+    expect(corpCell).not.toBeNull();
+    expect(corpCell!.style.getPropertyValue('--industry-pattern')).not.toBe('');
 
     // And it stays open on this phone until closed.
     expect(localStorage.getItem('boomtown.phone.board.v1')).toBe('open');

@@ -335,8 +335,10 @@ body {
 }
 
 .swatch {
-  width: 0.8rem;
-  height: 0.8rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  /* The industry pattern is sized in em; this sets its scale on the chip. */
+  font-size: 0.85rem;
   border-radius: 3px;
   flex-shrink: 0;
 }
@@ -451,6 +453,11 @@ body {
   color: var(--cell-empty-ink);
   background: var(--cell-empty);
   border-radius: 3px;
+}
+
+.miniboard .cell[data-kind='corp'] {
+  /* No label on a company's cell; the size only scales its pattern. */
+  font-size: 0.8rem;
 }
 
 .miniboard .cell[data-kind='loose'] {
