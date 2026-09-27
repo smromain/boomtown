@@ -90,8 +90,8 @@ landed.
   reproduced a flat design at 2.2 MB; Skyline draws something the CSS board cannot (a city whose
   heights encode size, safety and lineage) at about a quarter of the weight, behind a lazy import.
   The coordinates are painted into a canvas texture with the app's own font, so there is no font
-  pipeline. The design canvas has no Skyline artboard: the option is deliberately outside it, and the
-  look lives in `board/skyline/scene.ts`.
+  pipeline. The look lives in `board/skyline/scene.ts`; since 2026-09-27 the design canvas carries
+  it too, as a Skyline artboard captured from the app like every other screen (Steve asked for it).
 - **The vote's notice period.** Designed as a turn's delay between raising a motion and voting on
   it; did not ship at any seat count. At three seats it hands the table a free turn to gerrymander
   the register against a mover who has just published it — a fourth cost on one action, when the

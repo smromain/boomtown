@@ -32,7 +32,7 @@ Two files in `../design/` carry authority no prose can:
   `captures/` as an SVG. The canvas's screen artboards are those captures, not drawings.
 - `skyline.psd` — the source art for the launch backdrop, recoloured by `make_skyline.py`.
 
-Published design canvas, 13 artboards over 3 pages:
+Published design canvas, 14 artboards over 3 pages:
 <https://claude.ai/code/artifact/f1b58905-2da0-4cd0-9c2e-8d65624260a3>
 
 ## Documentation that lives elsewhere in the tree

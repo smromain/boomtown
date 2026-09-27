@@ -1318,6 +1318,10 @@ def build_captured():
         "Seen from a player's chair in a hot-seat game: two humans and a bot. Day is the default; the sun and moon "
         "in the top bar flips the whole app. The hand-off card covers the screen between two human seats.",
         [_pair("table-mid", "mid-game, placing a tile"), _pair("table-early", "turn 3"), _pair("handoff", "hand-off between seats")])
+    B["Skyline.dc.html"] = _board("Skyline.dc.html", "Skyline",
+        "The same table with the 3D board, which the building in the top bar switches to. The board is WebGL, so "
+        "it comes into each frame as a picture; everything around it is live text like the other boards.",
+        [_pair("skyline-table", "mid-game, placing a tile"), _pair("skyline-buy", "buying stock over the board")])
     B["Decisions.dc.html"] = _board("Decisions.dc.html", "Decisions",
         "Every choice the rules hand a player comes up as one of these, over the table. Each names the seat that owns it; "
         "Peek at the board lowers it without answering.",
@@ -1357,7 +1361,7 @@ def build_captured():
 def build_canvas():
     """Lay the artboards out left to right. The captured boards are as wide as
     their frames, so positions are computed rather than typed in."""
-    page1 = [("Main.dc.html", "Table"), ("Decisions.dc.html", "Decisions"), ("Beats.dc.html", "Beats"),
+    page1 = [("Main.dc.html", "Table"), ("Skyline.dc.html", "Skyline"), ("Decisions.dc.html", "Decisions"), ("Beats.dc.html", "Beats"),
              ("Reference.dc.html", "Stock reference"), ("After.dc.html", "After the game"),
              ("Menus.dc.html", "Launch and setup"), ("Phone.dc.html", "Couch mode"),
              ("Language.dc.html", "Visual language"), ("Names.dc.html", "Merged names"), ("Pool.dc.html", "The pool")]

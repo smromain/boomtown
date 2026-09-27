@@ -165,7 +165,7 @@ those: it serves the renderer and drives it with Playwright.
 
 ## Working on the design canvas
 
-**The app is the design.** The canvas's screen artboards (table, decisions, beats, reference,
+**The app is the design.** The canvas's screen artboards (table, the 3D Skyline board, decisions, beats, reference,
 after the game, launch and setup, couch mode) are captured from the running app in day and night
 by `design/capture.mjs`, which plays it in a browser and writes each screen to `design/captures/` as
 an SVG with live text. `design/build.py` lays those out, reads the pool from `pool.ts` and the palette
@@ -189,7 +189,7 @@ into `build.py`; an edit to a captured screen is a request to change the app. Di
 not markup: the editor rewrites `<path/>` as `<path></path>` and escapes `&`, so a raw diff is
 mostly noise.
 
-Published design canvas (13 artboards over 3 pages):
+Published design canvas (14 artboards over 3 pages):
 https://claude.ai/code/artifact/f1b58905-2da0-4cd0-9c2e-8d65624260a3
 
 ## Legal position, stated once

@@ -25,18 +25,28 @@
       "page": "page-1"
     },
     {
-      "file": "Decisions.dc.html",
+      "file": "Skyline.dc.html",
       "x": 3192,
       "y": 0,
+      "w": 3032,
+      "h": 2182,
+      "title": "Skyline",
+      "print": "flow",
+      "page": "page-1"
+    },
+    {
+      "file": "Decisions.dc.html",
+      "x": 6384,
+      "y": 0,
       "w": 2632,
-      "h": 1336,
+      "h": 1351,
       "title": "Decisions",
       "print": "flow",
       "page": "page-1"
     },
     {
       "file": "Beats.dc.html",
-      "x": 5984,
+      "x": 9176,
       "y": 0,
       "w": 3032,
       "h": 7112,
@@ -46,17 +56,17 @@
     },
     {
       "file": "Reference.dc.html",
-      "x": 9176,
+      "x": 12368,
       "y": 0,
       "w": 2200,
-      "h": 854,
+      "h": 870,
       "title": "Stock reference",
       "print": "flow",
       "page": "page-1"
     },
     {
       "file": "After.dc.html",
-      "x": 11536,
+      "x": 14728,
       "y": 0,
       "w": 3032,
       "h": 4154,
@@ -66,7 +76,7 @@
     },
     {
       "file": "Menus.dc.html",
-      "x": 14728,
+      "x": 17920,
       "y": 0,
       "w": 3032,
       "h": 6126,
@@ -76,7 +86,7 @@
     },
     {
       "file": "Phone.dc.html",
-      "x": 17920,
+      "x": 21112,
       "y": 0,
       "w": 3032,
       "h": 4690,
@@ -86,7 +96,7 @@
     },
     {
       "file": "Language.dc.html",
-      "x": 21112,
+      "x": 24304,
       "y": 0,
       "w": 1440,
       "h": 3240,
@@ -96,7 +106,7 @@
     },
     {
       "file": "Names.dc.html",
-      "x": 22712,
+      "x": 25904,
       "y": 0,
       "w": 1440,
       "h": 2680,
@@ -106,7 +116,7 @@
     },
     {
       "file": "Pool.dc.html",
-      "x": 24312,
+      "x": 27504,
       "y": 0,
       "w": 1440,
       "h": 1300,
@@ -154,7 +164,7 @@
     },
     {
       "id": "note-names",
-      "x": 22712,
+      "x": 25904,
       "y": -210,
       "w": 660,
       "page": "page-1",
@@ -162,7 +172,7 @@
     },
     {
       "id": "note-language",
-      "x": 21112,
+      "x": 24304,
       "y": -170,
       "w": 700,
       "page": "page-1",

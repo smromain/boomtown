@@ -41,11 +41,11 @@
  },
  "reference-day": {
   "w": 1024,
-  "h": 558
+  "h": 574
  },
  "reference-night": {
   "w": 1024,
-  "h": 558
+  "h": 574
  },
  "decision-disposal-day": {
   "w": 448,
@@ -65,11 +65,11 @@
  },
  "decision-end-day": {
   "w": 448,
-  "h": 244
+  "h": 259
  },
  "decision-end-night": {
   "w": 448,
-  "h": 244
+  "h": 259
  },
  "after-standings-day": {
   "w": 1440,
@@ -264,6 +264,22 @@
   "h": 844
  },
  "beat-victory-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "skyline-table-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "skyline-table-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "skyline-buy-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "skyline-buy-night": {
   "w": 1440,
   "h": 900
  }
