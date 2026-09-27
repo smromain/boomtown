@@ -244,6 +244,16 @@
   font-weight: 700;
 }
 
+.phaseButton {
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.phaseButton:hover {
+  filter: brightness(1.08);
+}
+
 /* Body */
 .body {
   flex-grow: 1;

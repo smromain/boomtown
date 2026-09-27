@@ -48,6 +48,7 @@ export function Header({ onExit, online = false }: { onExit?: (() => void) | und
   // a bot plays — reading as an instruction to a player who has no move.
   const view = useAnyView();
   const active = useLocalActiveView();
+  const over = useGameState((state) => state.status === 'over');
   const turn = useGameState((state) => state.log.filter((event) => event.type === 'turn-advanced').length + 1);
   const { openChart, openRules } = useReference();
   // Lives in the always-rendered brand region rather than the status block
@@ -279,7 +280,18 @@ export function Header({ onExit, online = false }: { onExit?: (() => void) | und
           </div>
           {/* The one genuinely turn-bound readout: it describes what the seat
               on the clock must do, so it stands down when that isn't you. */}
-          {active && <span className={styles.phase}>{PHASE[active.step]}</span>}
+          {over ? (
+            // Once the game is over the pill would go on reading "End the
+            // game?", so it becomes the way home instead. No speedbump: there
+            // is no table left to lose.
+            onExit && (
+              <button type="button" className={`${styles.phase} ${styles.phaseButton}`} onClick={onExit}>
+                {copy.header.exitToHome}
+              </button>
+            )
+          ) : (
+            active && <span className={styles.phase}>{PHASE[active.step]}</span>
+          )}
         </div>
       )}
     </header>

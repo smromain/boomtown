@@ -487,6 +487,7 @@
     "turn": "Turn",
     "reference": "Reference",
     "rules": "Rules",
+    "exitToHome": "Exit To Home",
     "phase": {
       "place": "Place a tile",
       "found": "Found a corporation",
