@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "dom-to-svg": "^0.12.2",
     "eslint": "^9.17.0",
     "partykit": "^0.0.115",
     "typescript": "^5.7.2",

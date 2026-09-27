@@ -41,7 +41,8 @@ apps/
   phone/         the couch-mode phone page (#62) — built by Vite into packages/server/public/phone,
                  served by the room; reuses desktop copy and pure modules through `@desktop`
 docs/            the documentation set above, plus plans/, history/ and screenshots/
-design/          build.py (design canvas + reference naming implementation), make_icon.py,
+design/          build.py (design canvas + reference naming implementation), capture.mjs (the app's
+                 screens, captured day and night), make_icon.py,
                  make_skyline.py (recolours skyline.psd into the launch backdrop)
 ```
 
@@ -157,34 +158,38 @@ tests stayed green, and anything about *timing* — whether a beat holds the scr
 whether the table plays on behind a curtain. Use the `run-app` skill (`.claude/skills/run-app/`) for
 those: it serves the renderer and drives it with Playwright.
 
-**Don't hand-edit generated files.** `design/*.dc.html` comes from `design/build.py`;
+**Don't hand-edit generated files.** `design/*.dc.html` comes from `design/build.py`, and
+`design/captures/*.svg` from `design/capture.mjs`;
 `apps/desktop/build/icon.png` from `make_icon.py`; `apps/desktop/src/assets/night/*.png` from
 `make_skyline.py`. Edit the generator and re-run it.
 
 ## Working on the design canvas
 
-`design/build.py` is the source of truth for every artboard. To change the design, edit `build.py`,
-then:
+**The app is the design.** The canvas's screen artboards (table, decisions, beats, reference,
+after the game, launch and setup, couch mode) are captured from the running app in day and night
+by `design/capture.mjs`, which plays it in a browser and writes each screen to `design/captures/` as
+an SVG with live text. `design/build.py` lays those out, reads the pool from `pool.ts` and the palette
+from `global.css`, and hand-draws only what has no screen: the rules model, merged names, the pool
+and the two earlier directions. The screens used to be drawn by hand, and drifted until the canvas
+showed a game that no longer existed. After a UI change:
 
 ```bash
-cd design && python3 build.py
+npm run -w @boomtown/desktop web & npm run server:dev &   # the renderer and the room
+node design/capture.mjs            # --only menu,beats,game,online,couch to redo part of it
+cd design && python3 build.py      # also re-seeds design/boomtown.html
 ```
 
-Then re-seed and republish via the `design` skill where the session has it, keeping
-`design/boomtown.html` as the file path so the artifact URL is preserved. Without that skill the
-`build.py` edits and the regenerated `.dc.html` files still stand; only the republish waits.
+Then publish `design/boomtown.html` to the canvas's URL (below); `build.py` has already put the new
+artboards into it. The canvas editor will not open an artboard file much over 2 MB, which is why
+`capture.mjs` resamples embedded art and `build.py` strips dom-to-svg's DOM annotations.
 
 **The canvas is editable in the browser and Steve edits it.** Before regenerating, re-read the
-published artifact and diff it against the working files — six flavour lines and two company names
-were edited in the browser on 2026-09-06 and had to be folded back into `build.py`. Diff *visible
-text*, not markup: the editor rewrites `<path/>` as `<path></path>` and escapes `&`, so a raw diff
-is mostly noise.
+published artifact and diff it against the working files. Edits to a hand-drawn board fold back
+into `build.py`; an edit to a captured screen is a request to change the app. Diff *visible text*,
+not markup: the editor rewrites `<path/>` as `<path></path>` and escapes `&`, so a raw diff is
+mostly noise.
 
-Note that `build.py`'s company pool has drifted from the one that ships
-(`packages/engine/src/pool.ts` is the pool of record), so **the canvas shows companies that are not
-in the game**. See *Known divergence* in `docs/naming.md`.
-
-Published design canvas (12 artboards over 3 pages):
+Published design canvas (13 artboards over 3 pages):
 https://claude.ai/code/artifact/f1b58905-2da0-4cd0-9c2e-8d65624260a3
 
 ## Legal position, stated once

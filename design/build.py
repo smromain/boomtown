@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Generates the Boomtown design-canvas artboards from one shared game state."""
 import json, os, io
+import re as _re
 
 OUT = os.path.dirname(os.path.abspath(__file__))
 COLS = list(range(1, 13))
@@ -32,45 +33,37 @@ def price(size, tier, edition="classic"):
 # ---------------------------------------------------------------- game state
 # One company per industry is drawn into each game, so there are always seven,
 # always one of each, and the industry marks stay unique on the board.
-POOL = {
-  "books":       (1, "#D7A329", "#221E12", [
-      ("Chapter Eleven",   "books, coffee, denial",             "Borders"),
-      ("Woolyworth",       "everything, sort of, cheap",        "Woolworth"),
-      ("Seers Roebeck",    "the catalogue was the internet",    "Sears Roebuck"),
-      ("Waldenbust",       "the finest bookstore at your local airport",          "Waldenbooks")]),
-  "electronics": (1, "#C64E25", "#FFFFFF", [
-      ("Radio Hut",        "batteries, phones and $70 HDMI cables",   "RadioShack"),
-      ("Circuit Village",  "the warranty is the product",       "Circuit City"),
-      ("Compuwas",         "beige boxes, bold promises",        "CompUSA"),
-      ("Fried Electronics","an aisle of cables you don't need", "Fry's")]),
-  "air":         (2, "#355C99", "#FFFFFF", [
-      ("Pan-Atlas",        "the glamour of air travel",         "Pan Am"),
-      ("Transworld Air",   "wings over everywhere",             "TWA"),
-      ("Braniffle",        "the plane is painted orange",       "Braniff"),
-      ("Concordia",        "there at breakfast, broke by lunch","Concorde")]),
-  "energy":      (2, "#4A9471", "#221E12", [
-      ("Enrun",            "energy, creatively accounted",      "Enron"),
-      ("Texicorps",        "a star, a pump, a lawsuit",         "Texaco"),
-      ("Standard Oyl",     "too big, then thirty-four pieces",  "Standard Oil"),
-      ("Wattage",          "power, unapologetically",           "generic utility")]),
-  "tech":        (2, "#AC7CEF", "#221E12", [
-      ("Blackcurrant",     "the keyboard people",               "BlackBerry"),
-      ("Noquia",           "indestructible, briefly essential", "Nokia"),
-      ("Palmistry",        "the future, in your palm, in 1998", "Palm"),
-      ("Netscapade",       "we were the internet once",         "Netscape")]),
-  "video":       (3, "#971D50", "#FFFFFF", [
-      ("Megahit Video",    "be kind, rewind",                   "Blockbuster"),
-      ("Tinseltown Video", "new releases and 42 copies of 'Next Friday'",   "Hollywood Video"),
-      ("Fotomatic",        "one hour, one kiosk, one photo",    "Fotomat"),
-      ("Tower of Records", "listening booths, teenage employees and no returns",   "Tower Records")]),
-  "toys":        (3, "#66CAD8", "#221E12", [
-      ("Toys \u042f Were",     "where a kid was a customer",        "Toys R Us"),
-      ("Kaybee Toyworks",  "the mall's loudest storefront",     "KB Toys"),
-      ("Chuck E. Wheeze",  "animatronics and birthday grief",   "Chuck E. Cheese"),
-      ("Discovery Zonked", "a ball pit of uncertain hygiene",   "Discovery Zone")]),
-}
+def _load_pool():
+    """The pool of record is packages/engine/src/pool.ts; read it rather than keep a copy.
+    A copy drifted once and put companies on the canvas that were not in the game. The
+    "riffing on" note never ships, so it comes from docs/naming.md, as does which
+    candidate the canvas draws (the row marked "<- drawn")."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    src = open(os.path.join(here, "..", "packages", "engine", "src", "pool.ts"), encoding="utf-8").read()
+    doc = open(os.path.join(here, "..", "docs", "naming.md"), encoding="utf-8").read()
+    info = {k: (int(t), c, i) for k, t, c, i in _re.findall(
+        r"(\w+): \{ tier: (\d), color: '(#[0-9A-Fa-f]{6})', ink: '(#[0-9A-Fa-f]{6})' \}", src)}
+    body = src[src.index("export const POOL"):]
+    pool, drawn, riff = {}, {}, {}
+    for row in _re.findall(r"^\| ([^|]+?) \| [^|]+ \| `[^`]*` \| `[^`]*` \| ([^|]+?) \|$", doc, _re.M):
+        name, note = row
+        if "drawn" in name:
+            name = name.split(" **")[0]
+            drawn[name] = True
+        riff[name] = note.replace("**", "")
+    q = r"""(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")"""
+    for key in info:
+        block = _re.search(r"\n  %s: \[(.*?)\n  \]," % key, body, _re.S).group(1)
+        cands = [(n1 or n2, f1 or f2, riff.get(n1 or n2, ""))
+                 for n1, n2, f1, f2 in _re.findall(r"baseName: %s, flavour: %s" % (q, q), block)]
+        assert len(cands) == 4, (key, cands)
+        pool[key] = info[key] + (cands,)
+    draw = {k: next((i for i, c in enumerate(pool[k][3]) if c[0] in drawn), 0) for k in pool}
+    return pool, draw
+
+POOL, _DRAWN = _load_pool()
 ORDER = ["books", "electronics", "air", "energy", "tech", "video", "toys"]
-DRAW = {k: 0 for k in ORDER}          # which candidate this game drew
+DRAW = _DRAWN                          # which candidate this game drew (naming.md's "<- drawn")
 CORP = {}
 for _k in ORDER:
     _tier, _col, _ink, _cands = POOL[_k]
@@ -437,204 +430,7 @@ B_HELMET = """  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?f
     @keyframes lPulse { 0%, 100% { box-shadow: inset 0 0 0 1.5px #D3A68F, inset 0 2px 3px rgba(94,74,52,.1), 0 2px 6px -3px rgba(179,70,47,.5); } 50% { box-shadow: inset 0 0 0 1.5px #D98A4E, inset 0 2px 3px rgba(94,74,52,.1), 0 2px 10px -3px rgba(217,138,78,.7); } }
   </style>"""
 
-# ------------------------------------------------- DIRECTION B — LANGUAGE
-# The crafted visual language build_b()/build_beats() implement (U1). Concrete,
-# not categorical: an implementer reads target values off this sheet.
-#
-# Elevation — three fixed levels, one light source (warm, from above). Level 1
-# is a resting card, 2 a raised panel (the corp band), 3 a floating plate (the
-# board). Never more than three; never a fourth "modal" level — dialogs reuse 3.
-L_ELEV = {
-    1: "0 1px 0 rgba(255,253,250,.8) inset, 0 2px 6px -3px rgba(94,74,52,.35)",
-    2: "0 1px 0 rgba(255,253,250,.8) inset, 0 10px 22px -14px rgba(94,74,52,.5)",
-    3: "0 1px 0 rgba(255,253,250,.8) inset, 0 24px 48px -20px rgba(94,74,52,.6), 0 8px 16px -8px rgba(94,74,52,.35)",
-}
-# Texture ceiling (R3) — the only texture the language allows anywhere, and
-# never above this opacity. Not a scanned-paper or canvas image: a two-stop
-# radial dot-grain standing in for print grain.
-L_GRAIN_MAX = 0.05
-L_GRAIN = "background-image:radial-gradient(rgba(28,25,23,.4) .6px, transparent 1.1px);background-size:3px 3px;opacity:%s;" % L_GRAIN_MAX
-# Framing devices — named so U6/U7 can implement them by name, not guess.
-# "cap band": a colour-filled header strip capping a card (the corp card's
-# industry cap, a dialog's title bar). "top rule": a 3px ink-or-accent rule
-# along a panel's top edge, for panels with no cap (Shareholders, Story).
-L_TOP_RULE = "border-top:3px solid %s;" % B_INK
-# Accent's role, stated once: primary call-to-action, the "safe" indicator, the
-# active/selected state, and a kicker's underline rule. Never a fill colour for
-# large surfaces and never decorative — every accent pixel means "act" or "true".
-L_TILT_DEG = 6  # the board's perspective rotateX — gentle, not showy (KTD6)
-
-
-def build_language():
-    def swatch(label, style, caption, w=220, h=96):
-        return (
-            '<div style="display:flex;flex-direction:column;gap:8px">'
-            '<div style="width:%dpx;height:%dpx;border-radius:6px;background:%s;%s"></div>'
-            '<div style="font-size:12px;font-weight:600">%s</div>'
-            '<div class="mono" style="font-size:10px;line-height:1.5;color:%s;max-width:%dpx">%s</div></div>'
-            % (w, h, B_PANEL, style, label, B_MUTED, w, caption)
-        )
-
-    elevation = "".join(
-        swatch("Elevation %d" % lvl, "box-shadow:%s" % shadow,
-               shadow.replace(", ", ",<br>"))
-        for lvl, shadow in L_ELEV.items()
-    )
-
-    framing = (
-        swatch("Cap band", "border-top:34px solid %s;position:relative" % CORP["tech"]["color"],
-               "A colour-filled strip capping a card — the corp card's industry cap, a dialog's title bar. Height is content-driven, never fixed.")
-        + swatch("Top rule", L_TOP_RULE,
-                 "A 3px ink rule along a panel's top edge — for panels with no cap: Shareholders, Story, Reference.")
-        + swatch("Texture ceiling", L_GRAIN, "Max texture anywhere: %d%% opacity dot-grain. Never a scanned-paper, canvas or wood-grain image (R3)." % int(L_GRAIN_MAX * 100))
-    )
-
-    accent_chips = "".join(
-        '<span style="display:inline-flex;align-items:center;gap:8px;background:%s;border:1px solid %s;'
-        'border-radius:20px;padding:7px 14px;font-size:12px">%s</span>'
-        % (B_PANEL, B_RULE, label)
-        for label in [
-            '<span style="width:9px;height:9px;border-radius:50%%;background:%s;display:inline-block"></span>Primary call-to-action' % B_ACCENT,
-            '<span style="color:%s">◇ safe</span> — the one status the accent marks' % B_ACCENT,
-            '<span style="color:%s;font-weight:700">Selected · active</span>' % B_ACCENT,
-            '<span style="border-bottom:2px solid %s;color:%s">kicker underline</span>' % (B_ACCENT, B_ACCENT),
-        ]
-    )
-
-    type_rows = "".join(
-        '<div style="display:flex;align-items:baseline;gap:18px;padding:10px 0;border-bottom:1px solid %s">'
-        '<span class="mono" style="width:120px;flex-shrink:0;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:%s">%s</span>'
-        '<span style="%s">%s</span></div>'
-        % (B_RULE, B_MUTED, role, style, sample)
-        for role, style, sample in [
-            ("Display", "font-family:'DM Serif Display',Georgia,serif;font-size:32px", "Noqurun"),
-            ("Kicker / label", "font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:%s" % B_MUTED, "a corporation is founded"),
-            ("Body", "font-size:14px;line-height:1.5", "Placing 9F hands the keyboard people a power company with imaginative books."),
-            ("Numeric / mono", "font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:20px", "$5,250 · 7D · 14"),
-        ]
-    )
-
-    def corp_flat(m):
-        return (
-            '<div style="width:230px;background:%s;border:1px solid %s;border-radius:3px;padding:13px 14px;'
-            'display:flex;flex-direction:column;gap:9px">'
-            '<div style="display:flex;align-items:center;gap:8px">%s<span style="font-size:16px">%s</span></div>'
-            '<span class="num" style="font-size:20px">%s</span></div>'
-            % (B_PANEL, B_RULE, b_mark(m["key"], m["color"], 20), m["display"], money(m["price"]))
-        )
-
-    def corp_crafted(m):
-        return (
-            '<div style="width:230px;background:%s;border:1px solid %s;border-top:3px solid %s;border-radius:3px;'
-            'box-shadow:%s;display:flex;flex-direction:column;overflow:hidden">'
-            '<div style="padding:11px 14px;display:flex;align-items:center;justify-content:space-between;'
-            'background:linear-gradient(160deg, color-mix(in srgb, %s 88%%, #fff), %s)">%s'
-            '<span style="font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;opacity:.8;color:%s">tier %d</span></div>'
-            '<div style="padding:12px 14px 15px;display:flex;flex-direction:column;gap:8px">'
-            '<div class="ser" style="font-size:20px">%s</div>'
-            '<span class="mono num" style="font-size:24px">%s</span></div></div>'
-            % (B_PANEL, B_RULE, m["color"], L_ELEV[1], m["color"], m["color"],
-               b_mark(m["key"], m["ink"], 22), m["ink"], m["tier"], m["display"], money(m["price"]))
-        )
-
-    sample = market()[3]  # Noquia (tech) — a representative mid-market corp
-    before_after = (
-        '<div style="display:flex;flex-direction:column;gap:8px">%s'
-        '<div class="mono" style="font-size:10px;color:%s">Before — flat card, 1px border, no cap</div></div>'
-        '<div style="display:flex;align-items:center;justify-content:center;width:36px">%s</div>'
-        '<div style="display:flex;flex-direction:column;gap:8px">%s'
-        '<div class="mono" style="font-size:10px;color:%s">After — industry cap band, elevation-1 shadow, ink-on-colour badge</div></div>'
-        % (corp_flat(sample), B_MUTED, chevron(B_MUTED, 20), corp_crafted(sample), B_MUTED)
-    )
-
-    illustration_brief = (
-        '<div style="display:flex;flex-direction:column;gap:10px;max-width:900px">'
-        '<div style="font-size:13px;line-height:1.6;color:%s">'
-        '<strong style="color:%s">Subject:</strong> the skyline the seven corporations are building — abstracted '
-        'building silhouettes and cranes, not literal logos or people. <strong style="color:%s">Treatment:</strong> '
-        'flat, faceted shapes in one or two industry-adjacent tones over the warm paper ground — figurative '
-        'silhouette, not photographic, not cartoon-mascot. <strong style="color:%s">Relationship to Saxon City:</strong> '
-        'the skyline is the same "corporations as subject" idea the whole direction is built on, seen from outside '
-        'instead of from the ledger. <strong style="color:%s">References:</strong> Wingspan\'s box-cover skyline '
-        'silhouette, Ticket to Ride Europe\'s title-screen skyline, and the WPA travel-poster flat-shape tradition. '
-        '<strong style="color:%s">Avoid:</strong> photographic skylines, any real building silhouette, cute mascot '
-        'figures, gradients heavier than the elevation scale above.</div></div>'
-        % (B_INK, B_ACCENT, B_ACCENT, B_ACCENT, B_ACCENT, B_ACCENT)
-    )
-
-    def section(title, inner):
-        return (
-            '<div style="display:flex;flex-direction:column;gap:16px">'
-            '<div class="ser" style="font-size:22px;border-bottom:1px solid %s;padding-bottom:10px">%s</div>'
-            '%s</div>' % (B_RULE, title, inner)
-        )
-
-    # Day and night (#64): one lighting switch in the top bar repaints the whole
-    # app by redefining the ground tokens under :root[data-lighting="night"].
-    # Day is the default. Values are global.css's; this is where they are drawn.
-    lighting_pairs = [
-        ("--bg", "ground", "#FAF6F0", "#171412"),
-        ("--surface", "panel", "#FFFFFF", "#201C19"),
-        ("--surface-2", "sunken panel", "#F1EAE0", "#2A2521"),
-        ("--ink", "type", "#1C1917", "#F3ECE2"),
-        ("--muted", "labels", "#867A6D", "#A39686"),
-        ("--rule", "hairlines", "#E7DED2", "#3A332D"),
-        ("--accent", "act / true", "#B3462F", "#E0784F"),
-        ("--board-bg", "board", "#FAF6F0", "#1C1917"),
-        ("--cell-empty", "empty cell", "#F1EAE0", "#26211D"),
-        ("--chrome-bg", "top bar", "#1C1917", "#0E0C0B"),
-    ]
-    def tone_column(label, idx, ground, ink, note):
-        rows = "".join(
-            '<div style="display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid %s">'
-            '<span style="width:34px;height:22px;border-radius:3px;background:%s;box-shadow:0 0 0 1px rgba(128,110,90,.35);flex-shrink:0"></span>'
-            '<span class="mono" style="width:110px;font-size:10.5px">%s</span>'
-            '<span style="flex:1;font-size:11px;opacity:.75">%s</span>'
-            '<span class="mono" style="font-size:10.5px;opacity:.75">%s</span></div>'
-            % ("rgba(128,110,90,.25)", pair[idx], pair[0], pair[1], pair[idx].lower())
-            for pair in lighting_pairs)
-        return (
-            '<div style="flex:1;min-width:0;background:%s;color:%s;border-radius:6px;padding:18px 20px;box-shadow:0 0 0 1px %s">'
-            '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">'
-            '<span class="ser" style="font-size:20px">%s</span>'
-            '<span class="mono" style="font-size:10px;opacity:.7">%s</span></div>%s</div>'
-            % (ground, ink, B_RULE, label, note, rows))
-    lighting = (
-        '<div style="display:flex;flex-direction:column;gap:12px">'
-        '<div style="font-size:13px;line-height:1.55;color:%s;max-width:900px">One switch, a sun/moon button in the '
-        'top bar beside the speaker, repaints the whole app: the table, the board, every panel and modal, and the beat '
-        'curtain, which takes the table\'s tone rather than being ink chrome. <strong style="color:%s">Day is the default.</strong> '
-        'It is a preference of this screen, never a table rule, and the flip is instant. The night set keeps every '
-        'industry type shade at AA on the night panel; the elevation scale drops its top-lit inset highlight and '
-        'uses black shadows.</div>'
-        '<div style="display:flex;gap:20px;width:1200px">%s%s</div></div>'
-        % (B_MUTED, B_ACCENT,
-           tone_column("Day", 2, "#FAF6F0", "#1C1917", "default"),
-           tone_column("Night", 3, "#171412", "#F3ECE2", 'data-lighting="night"'))
-    )
-
-    body = (
-        '<div style="width:1440px;min-height:2500px;background:%s;color:%s;'
-        'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:44px 60px 60px;'
-        'display:flex;flex-direction:column;gap:34px">'
-        '<div style="display:flex;flex-direction:column;gap:8px">'
-        '<span class="mono" style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:%s">Boomtown · visual language</span>'
-        '<span class="ser" style="font-size:34px">The crafted system (U1)</span>'
-        '<span style="font-size:13px;color:%s;max-width:820px">Anchors unchanged — %s / %s, DM Serif Display + DM Sans. '
-        'Depth comes from elevation, framing and one texture ceiling, never from material mimicry (R3). '
-        'This sheet is the spec build_b() and build_beats() implement.</span></div>'
-        '%s%s%s%s%s%s%s</div>'
-        % (B_BG, B_INK, B_MUTED, B_MUTED, B_BG, B_ACCENT,
-           section("Elevation scale — three levels, one warm light source", '<div style="display:flex;gap:20px">%s</div>' % elevation),
-           section("Framing &amp; texture ceiling", '<div style="display:flex;gap:20px">%s</div>' % framing),
-           section("Corporation card — before / after", '<div style="display:flex;align-items:center;gap:18px">%s</div>' % before_after),
-           section("Type hierarchy — four roles, not two", type_rows),
-           section("The accent's role — stated, not decorative", '<div style="display:flex;gap:12px;flex-wrap:wrap">%s</div>' % accent_chips),
-           section("Day and night — one switch, two values per token", lighting),
-           section("Illustration style brief (seed — refined at U9)", illustration_brief))
-    )
-    write("Language.dc.html", B_HELMET, body)
-
+# The industry marks, drawn — the pool and names artboards use them.
 def b_mark(key, color, size=26):
     """A drawn corporate mark per industry — placeholder identities, one per corporation."""
     g = {
@@ -648,224 +444,6 @@ def b_mark(key, color, size=26):
     }[key]
     return ('<svg width="%d" height="%d" viewBox="0 0 24 24" fill="none" stroke="%s" stroke-width="1.6" '
             'stroke-linecap="round" stroke-linejoin="round">%s</svg>' % (size, size, color, g))
-
-NAME_TO_KEY = {c["name"]: k for k, c in CORP.items()}
-
-def b_band():
-    rows = market()
-    active = [m for m in rows if m["size"] > 0]
-    tray = [m for m in rows if m["size"] == 0]
-    cards = []
-    for m in active:
-        pct = int(round(m["mine"] / 25.0 * 100))
-        marks = "".join(b_mark(k, CORP[k]["color"], 15) for k in m["eaten"])
-        lineage = ('<span style="display:inline-flex;align-items:center;gap:5px;padding-left:9px;'
-                   'margin-left:3px;border-left:1px solid %s">%s</span>' % (B_RULE, marks)) if m["eaten"] else ""
-        sub = m["flavor"]
-        # Cap band (U1 framing device): a colour-filled strip holding the mark
-        # (ink-on-colour, matching the shareholder-chip and HQ-badge treatment)
-        # and the tier label — not just a border-top hairline.
-        cap = (
-          '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;'
-          'background:linear-gradient(160deg, color-mix(in srgb, %s 88%%, #fff), %s);color:%s">'
-          '%s<span class="mono" style="font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;opacity:.85">'
-          'tier %d%s</span></div>'
-          % (m["color"], m["color"], m["ink"], b_mark(m["key"], m["ink"], 22), m["tier"],
-             '<span style="margin-left:8px">%s safe</span>' % icon("safe", m["ink"], 12) if m["safe"] else "")
-        )
-        cards.append(
-          '<div style="flex-grow:%d;flex-basis:0;min-width:0;background:%s;border:1px solid %s;border-radius:4px;'
-          'box-shadow:%s;display:flex;flex-direction:column;overflow:hidden">%s'
-          '<div style="padding:12px 14px 15px;display:flex;flex-direction:column;gap:9px;flex-grow:1">'
-          '<div><div class="ser" style="font-size:19px;line-height:1.1">%s</div>'
-          '<div style="font-size:11px;line-height:1.3;color:%s;margin-top:3px;height:29px;overflow:hidden">%s</div></div>'
-          '<div style="display:flex;align-items:center;gap:8px">'
-          '<span class="ser num" style="font-size:22px">%s</span>'
-          '<span style="font-size:11px;color:%s" class="num">%d tiles</span>%s</div>'
-          '<div style="display:flex;flex-direction:column;gap:5px;margin-top:auto">'
-          '<div style="display:flex;justify-content:space-between;font-size:11px;color:%s">'
-          '<span>your stake</span><span class="num">%d of %d</span></div>'
-          '<div style="height:5px;background:%s;border-radius:0;overflow:hidden">'
-          '<div style="width:%d%%;height:100%%;background:%s"></div></div></div></div></div>'
-          % (m["slots"], B_PANEL, B_RULE, L_ELEV[1], cap,
-             m["display"], B_MUTED, sub,
-             money(m["price"]), B_MUTED, m["size"], lineage,
-             B_MUTED, m["mine"], 25 - m["bank"], B_RULE, pct, m["color"]))
-    chips = "".join(
-      '<div style="display:flex;align-items:center;gap:8px;opacity:.55">%s'
-      '<span class="ser" style="font-size:14px">%s</span></div>'
-      % (b_mark(m["key"], m["color"], 17), m["name"]) for m in tray)
-    tray_col = ('<div style="width:154px;flex-shrink:0;border:1.5px dashed %s;border-radius:4px;padding:13px 14px;'
-                'display:flex;flex-direction:column;gap:11px;background:repeating-linear-gradient(135deg,'
-                'rgba(203,189,169,.16) 0 10px, transparent 10px 20px), rgba(255,255,255,.4)">'
-                '<div class="mono" style="font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:%s">In the tray</div>'
-                '%s<div style="font-size:10.5px;line-height:1.4;color:%s;margin-top:auto">Free to found again, '
-                'under their own names.</div></div>' % (B_RULE, B_MUTED, "".join(chips), B_MUTED))
-    return '<div style="display:flex;gap:12px;align-items:stretch">%s%s</div>' % ("".join(cards), tray_col)
-
-def b_rack():
-    tiles = []
-    for t, kind, note in HAND:
-        sel = t == SELECTED
-        tiles.append(
-          '<div style="width:58px;display:flex;flex-direction:column;align-items:center;gap:7px">'
-          '<div style="width:52px;height:52px;border-radius:9px;display:flex;align-items:center;justify-content:center;'
-          'font-size:19px;font-weight:700;%s" class="mono num">%s</div>'
-          '<span class="mono" style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:%s">%s</span></div>'
-          % ("background:%s;color:#FFF;box-shadow:%s" % (B_ACCENT, L_ELEV[1]) if sel else
-             ("background:%s;color:%s;border:1px dashed %s;opacity:.55" % (B_BG, B_MUTED, B_MUTED) if kind == "dead"
-              else "background:%s;color:%s;border:1px solid %s;box-shadow:0 3px 0 %s,0 8px 14px -6px rgba(60,45,30,.4)"
-                   % (B_PANEL, B_INK, B_RULE, B_RULE)),
-             t, B_ACCENT if sel else B_MUTED,
-             {"found":"found","grow":"grow","merge":"merge","dead":"dead","none":"idle"}[kind]))
-    return ('<div style="display:flex;flex-direction:column;gap:10px">'
-            '<div class="ser" style="font-size:16px">Your tiles</div>'
-            '<div style="display:flex;gap:10px">%s</div></div>' % "".join(tiles))
-
-def b_story():
-    return (
-      '<div style="background:%s;%sborder-radius:4px;box-shadow:%s;padding:18px 20px;display:flex;'
-      'flex-direction:column;gap:13px">'
-      '<div style="display:flex;align-items:center;gap:9px">%s<span class="ser" style="font-size:19px">'
-      'Blackcurrant takes over Enrun</span></div>'
-      '<div style="font-size:14px;line-height:1.5;color:%s">Placing <strong style="color:%s" class="num">9F</strong> '
-      'hands the keyboard people a power company with imaginative books. Blackcurrant is larger at '
-      '<span class="num">7</span> tiles, so Enrun is dissolved at <span class="num">6</span>.</div>'
-      '<div style="display:flex;align-items:center;gap:14px;background:%s;border:1px solid %s;border-radius:3px;'
-      'padding:12px 16px">'
-      '<div style="font-size:11px;color:%s;width:96px;flex-shrink:0;line-height:1.35">The survivor<br>is renamed</div>'
-      '<div class="ser" style="font-size:26px;color:%s">%s</div>'
-      '<div style="font-size:11px;color:%s;line-height:1.45;flex-grow:1">The stem keeps everything it has ever '
-      'eaten, and the card widens into Enrun\'s slot to hold it.</div></div>'
-      '<div style="display:flex;gap:10px;border-top:1px solid %s;padding-top:13px">'
-      '<div style="flex-grow:1"><div style="font-size:11px;color:%s">You and Nadia, tied at 3 shares</div>'
-      '<div class="ser num" style="font-size:23px;color:%s">$5,250 each</div></div>'
-      '<div style="flex-grow:1"><div style="font-size:11px;color:%s">June, 1 share</div>'
-      '<div class="ser num" style="font-size:23px;color:%s">no bonus</div></div></div>'
-      '<div style="font-size:11px;line-height:1.45;color:%s">Tied for primary, so the two bonuses are combined and split.</div></div>'
-      % (B_PANEL, L_TOP_RULE, L_ELEV[1], b_mark("tech", CORP["tech"]["color"], 22), B_MUTED, B_INK,
-         B_BG, B_RULE, B_MUTED, CORP["tech"]["color"], display_name("Blackcurrant", ["Enrun"]), B_MUTED,
-         B_RULE, B_MUTED, B_INK, B_MUTED, B_MUTED, B_MUTED))
-
-def b_portfolio():
-    rows = []
-    for i, (name, cash, h) in enumerate(PLAYERS):
-        # Icon + colour, not colour alone (accessibility) — the same
-        # ink-on-colour badge treatment as the corp-card cap and the HQ marker.
-        chips = "".join(
-                        '<span style="display:inline-flex;align-items:center;gap:4px">'
-                        '<span style="width:15px;height:15px;border-radius:50%%;background:%s;display:flex;'
-                        'align-items:center;justify-content:center;flex-shrink:0">%s</span>'
-                        '<span class="mono" style="font-size:11px">%d</span></span>'
-                        % (CORP[k]["color"], b_mark(k, CORP[k]["ink"], 10), v)
-                        for k, v in h.items() if v)
-        rows.append('<div style="display:flex;align-items:center;justify-content:space-between;height:27px;'
-                    'border-bottom:1px solid %s;%s">'
-                    '<span style="width:70px;font-size:13px;font-weight:%d">%s</span>'
-                    '<div style="display:flex;gap:11px;flex-grow:1">%s</div>'
-                    '<span class="ser num" style="font-size:16px">%s</span></div>'
-                    % (B_RULE, "" if i < 3 else "border-bottom:none", 700 if i == 0 else 400,
-                       name + (" ·" if i == 0 else ""), chips, money(cash)))
-    return ('<div style="background:%s;%sborder-radius:4px;box-shadow:%s;padding:14px 18px">'
-            '<div class="ser" style="font-size:15px;margin-bottom:6px">Shareholders</div>%s</div>'
-            % (B_PANEL, L_TOP_RULE, L_ELEV[1], "".join(rows)))
-
-def b_board_crafted(cell=48, gap=5, hdr=22, tilt=L_TILT_DEG):
-    """The crafted board (U1/U2): lit warm paper, elevation-3 shadow scale, a
-    gentle CSS-3D tilt (rotateX only — no canvas/WebGL, KTD6), industry cells as
-    a subtle gradient with a lifted HQ badge. Static-frame equivalent of the
-    handoff's Direction D board treatment, ported into the shared generator."""
-    rows = ['<div style="height:%dpx"></div>' % hdr]
-    for c in COLS:
-        rows.append('<div style="display:flex;align-items:center;justify-content:center;font-size:10px;'
-                     'letter-spacing:.08em;color:%s;height:%dpx">%d</div>' % (B_MUTED, hdr, c))
-    for r in ROWS:
-        rows.append('<div style="display:flex;align-items:center;justify-content:center;font-size:10px;'
-                     'letter-spacing:.08em;color:%s">%s</div>' % (B_MUTED, r))
-        for c in COLS:
-            t = "%d%s" % (c, r)
-            kind, meta = cell_state(t)
-            base = ('display:flex;align-items:center;justify-content:center;border-radius:8px;'
-                    'font-size:11px;font-weight:500;letter-spacing:.03em;position:relative;')
-            if kind == "corp":
-                co = CORP[meta]
-                d1 = "color-mix(in srgb, %s 74%%, #1C1917)" % co["color"]
-                d2 = "color-mix(in srgb, %s 56%%, #1C1917)" % co["color"]
-                lift = 2.3 if HQ.get(meta) == t else 2
-                cellstyle = (base +
-                    'background:linear-gradient(170deg, color-mix(in srgb, %s 88%%, #fff) 0%%, %s 62%%, %s 100%%);'
-                    'color:%s;font-weight:600;box-shadow:0 %.1fpx 0 %s, 0 %.1fpx 0 %s, 0 %.1fpx 10px -4px rgba(60,45,30,.55), '
-                    'inset 0 1px 0 rgba(255,255,255,.3);transform:translateZ(%.1fpx);'
-                    % (co["color"], co["color"], d1, co["ink"], lift, d1, lift * 2, d2, lift * 2 + 4, lift * 3))
-                if HQ.get(meta) == t:
-                    inner = (
-                        '<span style="width:28px;height:28px;border-radius:50%%;background:%s;display:flex;'
-                        'align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.4),'
-                        'inset 0 1px 0 rgba(255,255,255,.2)">%s</span>'
-                        '<span style="position:absolute;right:3px;bottom:2px;font-size:7px;padding:1px 3px;'
-                        'border-radius:3px;background:rgba(0,0,0,.3);color:#fff;letter-spacing:.03em" class="mono">%s</span>'
-                        % (co["ink"], b_mark(meta, co["color"], 15), t)
-                    )
-                else:
-                    inner = t
-                rows.append('<div style="%s">%s</div>' % (cellstyle, inner))
-            elif kind == "uninc":
-                rows.append('<div style="%sbackground:linear-gradient(180deg,#BDB2A4,#A4988A);color:#fff;'
-                            'box-shadow:0 1.5px 0 #8D8274,0 3px 0 #7B7163,0 5px 8px -3px rgba(60,45,30,.5),'
-                            'inset 0 1px 0 rgba(255,255,255,.25)">%s</div>' % (base, t))
-            elif kind == "target":
-                if meta == "merge":
-                    rows.append('<div style="%sbackground:#F6EFE4;color:%s;animation:lPulse 2.2s ease-in-out infinite">%s</div>'
-                               % (base, B_ACCENT, t))
-                elif meta == "dead":
-                    rows.append('<div style="%sbackground:#EFE7DB;color:%s;opacity:.85;box-shadow:inset 0 0 0 1.5px %s,'
-                               'inset 0 2px 3px rgba(94,74,52,.16)"><s style="text-decoration-thickness:2px">%s</s></div>'
-                               % (base, B_ACCENT, B_ACCENT, t))
-                else:
-                    rows.append('<div style="%sbackground:#F6EFE4;color:%s;box-shadow:inset 0 0 0 1.5px #C6B8A6,'
-                               'inset 0 2px 3px rgba(94,74,52,.1)">%s</div>' % (base, B_MUTED, t))
-            else:
-                rows.append('<div style="%sbackground:#EFE7DB;color:#B6A897;box-shadow:inset 0 2px 3px rgba(94,74,52,.16),'
-                            'inset 0 -1px 0 rgba(255,253,250,.7)">%s</div>' % (base, t))
-    return (
-        '<div style="position:relative;padding:16px 16px 24px;border-radius:10px;box-sizing:border-box;'
-        'background:linear-gradient(180deg,#F7F0E5,#EFE6D9);box-shadow:%s, 0 46px 70px -28px rgba(60,45,30,.55),'
-        '0 10px 20px -8px rgba(60,45,30,.35);transform:rotateX(%ddeg);transform-style:preserve-3d;'
-        'transform-origin:50%% 100%%">'
-        '<div style="display:grid;grid-template-columns:%dpx repeat(12, %dpx);grid-auto-rows:%dpx;gap:%dpx;'
-        'font-variant-numeric:tabular-nums">%s</div></div>'
-        % (L_ELEV[3], tilt, hdr, cell, cell, gap, "".join(rows))
-    )
-
-
-def build_b():
-    body = (
-      '<div style="width:1440px;height:900px;background:%s;color:%s;font-family:\'DM Sans\',Helvetica,Arial,sans-serif;'
-      'font-size:13px;display:flex;flex-direction:column;overflow:hidden;padding:0">'
-      '<div style="height:70px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;'
-      'padding:0 36px;background:%s;color:%s;box-shadow:0 14px 30px -18px rgba(28,25,23,.85)">'
-      '<div style="display:flex;align-items:center;gap:14px"><span class="ser" style="font-size:24px">Boomtown</span>'
-      '<span style="width:1px;height:20px;background:#46403A"></span>'
-      '<span class="mono" style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#9C9086">seven start-ups, one skyline</span></div>'
-      '<div style="display:flex;align-items:center;gap:22px;font-size:12px;color:#9C9086">'
-      '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase">Classic</span>'
-      '<span style="display:flex;align-items:baseline;gap:7px"><span class="mono" style="font-size:10px;letter-spacing:.16em;'
-      'text-transform:uppercase">turn</span><span class="ser num" style="font-size:19px;color:%s">14</span></span>'
-      '<span style="border:1px solid #46403A;border-radius:3px;padding:7px 14px;font-size:11px;letter-spacing:.08em;'
-      'text-transform:uppercase;color:%s">Reference</span>'
-      '<span style="background:%s;color:#FFF;padding:8px 16px;border-radius:3px;font-size:11px;letter-spacing:.1em;'
-      'text-transform:uppercase;font-weight:700">Place a tile</span></div></div>'
-      '<div style="flex-grow:1;display:flex;flex-direction:column;gap:16px;padding:20px 36px 26px;min-height:0">'
-      '%s'
-      '<div style="flex-grow:1;display:flex;gap:28px;min-height:0">'
-      '<div style="flex-shrink:0;display:flex;align-items:center">%s</div>'
-      '<div style="flex-grow:1;display:flex;flex-direction:column;gap:14px;min-height:0">%s%s%s</div>'
-      '</div></div></div>'
-      % (B_BG, B_INK, B_INK, B_BG, B_BG, B_BG, B_ACCENT,
-         b_band(),
-         b_board_crafted(),
-         b_story(), b_portfolio(), b_rack()))
-    write("Main.dc.html", B_HELMET, body)
 
 # =============================================================== DIRECTION C
 C_BG, C_PANEL, C_INK, C_MUTED, C_RULE, C_ACC = "#0D1114", "#151B1F", "#E7ECEA", "#7E8D92", "#232E33", "#E5B93C"
@@ -1158,12 +736,13 @@ def r_table():
              R_INK if n1[i] != "—" else R_MUTED, n1[i], R_INK if n2[i] != "—" else R_MUTED, n2[i],
              R_INK if n3[i] != "—" else R_MUTED, n3[i],
              money(PRICE_ROWS[i]), money(PRIMARY[i]), R_ACC, money(SECOND2015[i]), money(TERTIARY[i])))
+    tiers = tuple(", ".join(CORP[k]["name"] for k in ORDER if CORP[k]["tier"] == t) for t in (1, 2, 3))
     note = ('<div style="padding:12px 14px;font-size:11.5px;line-height:1.55;color:%s">'
-            'Tier 1 = Chapter 11, Radio Hut · Tier 2 = Pan-Atlas, Enrun, Blackcurrant · Tier 3 = Megahit Video, Toys Я Were. '
+            'Tier 1 = %s · Tier 2 = %s · Tier 3 = %s. '
             'Primary is always 10× the share price and tertiary (classic: minority) is always 5×. '
             '<strong style="color:%s">The 2015 secondary column is not a multiple of anything</strong> — it is a printed lookup and must ship as data. '
             'Verified against the rulebook\'s own example: a five-tile tier-3 corporation pays 7,000 / 5,000 / 3,500.</div>'
-            % (R_MUTED, R_ACC))
+            % ((R_MUTED,) + tiers + (R_ACC,)))
     return '<div style="background:%s;border:1px solid %s;border-radius:3px;padding:14px 0 0">%s%s%s</div>' % (R_PANEL, R_RULE, head, "".join(rows), note)
 
 def r_example():
@@ -1381,10 +960,11 @@ def n_lineage():
          R_INK, before, R_MUTED, acq, CORP[key]["color"], after, R_MUTED, len(after), R_MUTED, slots)
       for i, (key, before, acq, after, slots, _f) in enumerate(LINEAGE))
     note = ('<div style="padding:13px 16px;font-size:11.5px;line-height:1.55;color:%s">'
-            'Merger one already happened — it is why Megahit is sitting on a two-slot card. By the end one '
+            'Merger one already happened — it is why @VIDEO@ is sitting on a two-slot card. By the end one '
             'corporation is carrying '
             '<strong style="color:%s">%d letters</strong> and six companies\' worth of history. Nothing truncates: '
             'the card grows instead.</div>' % (R_MUTED, R_ACC, len(LINEAGE[-1][3])))
+    note = note.replace("@VIDEO@", CORP["video"]["name"])
     return '<div style="background:%s;border:1px solid %s;border-radius:3px;padding:16px 0 0">%s%s%s</div>' % (R_PANEL, R_RULE, head, rows, note)
 
 def n_stage(label, turn, cards, tray):
@@ -1428,7 +1008,7 @@ def n_consolidation():
     L = LINEAGE
     stages = [
       ("Everyone is founded", "turn 6", [(k, CORP[k]["name"], 1) for k in ORDER], 0),
-      ("Megahit has eaten one", "turn 14 — the table",
+      ("%s has eaten one" % CORP["video"]["name"], "turn 14 — the table",
        [("books", CORP["books"]["name"], 1), ("electronics", CORP["electronics"]["name"], 1),
         ("energy", CORP["energy"]["name"], 1), ("tech", CORP["tech"]["name"], 1),
         ("video", L[0][3], 2)], 2),
@@ -1553,1871 +1133,262 @@ def build_pool():
     write("Pool.dc.html", R_HELMET, body)
 
 
-# =============================================================== REFERENCE CHART
-def ladder(tier, edition="classic"):
-    """Every band a corporation of this tier can occupy, cheapest first."""
-    bands = BANDS_CLASSIC if edition == "classic" else BANDS_2015
-    out = []
-    for b, label in enumerate(bands):
-        r = b + (tier - 1)
-        out.append((label, PRICE_ROWS[r], PRIMARY[r], SECOND2015[r], TERTIARY[r], r))
-    return out
+# =============================================================== CAPTURED FROM THE APP
+# The screens are no longer drawn here. design/capture.mjs plays the running app
+# in day and in night and writes each screen as an SVG with live text; these
+# builders only lay those SVGs out as artboards. The hand-drawn versions drifted
+# from the app until the canvas showed a game that no longer existed (2026-09-27).
+# To change a screen, change the app, then re-run capture.mjs and this script.
 
-def here_at(row, tier):
-    """Which corporations currently sit on this row of this tier's column."""
-    return [m for m in market() if m["tier"] == tier and m["size"] > 0
-            and row_index(m["size"], tier) == row]
+CAPTURES = os.path.join(OUT, "captures")
+GUTTER, GAP = 48, 56
 
-def r_chip(m, size=11):
-    return ('<span style="display:inline-flex;align-items:center;gap:5px;background:%s;color:#FFF;'
-            'border-radius:2px;padding:2px 7px;font-size:%dpx;font-weight:500;white-space:nowrap">'
-            '%s<span class="num" style="opacity:.75">%d</span></span>'
-            % (m["color"], size, m["display"], m["size"]))
+def _capture(cid, scale=1.0):
+    """One captured frame, inline, with its ids made unique so two frames in one
+    artboard cannot borrow each other's clip paths or gradients."""
+    path = os.path.join(CAPTURES, cid + ".svg")
+    if not os.path.exists(path):
+        raise SystemExit("missing design/captures/%s.svg — run `node design/capture.mjs` first" % cid)
+    svg = open(path, encoding="utf-8").read()
+    svg = _re.sub(r"<\?xml[^>]*\?>|<!--.*?-->", "", svg, flags=_re.S)
+    # dom-to-svg writes coordinates to a dozen places; two is past what a pixel
+    # can show, and it keeps each artboard under the editor's file-size ceiling.
+    # dom-to-svg annotates every group with where it came from in the DOM; the
+    # canvas has no use for that, and it is a third of the file.
+    svg = _re.sub(r' (?:data-[\w-]+|aria-owns|class)="[^"]*"', "", svg)
+    prev = None
+    while prev != svg:
+        prev, svg = svg, _re.sub(r"<g>\s*</g>|<g/>", "", svg)
+    svg = _re.sub(r"(?<![\w#;,])(-?\d+\.\d{3,})", lambda m: ("%.2f" % float(m.group(1))).rstrip("0").rstrip("."), svg)
+    ids = set(_re.findall(r'\bid="([^"]+)"', svg))
+    pre = _re.sub(r"\W", "", cid) + "-"
+    if ids:
+        pat = "|".join(_re.escape(i) for i in sorted(ids, key=len, reverse=True))
+        svg = _re.sub(r'(\bid="|url\(#|href="#)(%s)(?=["\)])' % pat, lambda m: m.group(1) + pre + m.group(2), svg)
+    w, h = (float(x) for x in _re.search(r'<svg[^>]*\bwidth="([\d.]+)"[^>]*\bheight="([\d.]+)"', svg).groups())
+    svg = _re.sub(r"<svg\b", '<svg style="display:block;width:%dpx;height:%dpx"' % (round(w * scale), round(h * scale)), svg, count=1)
+    return svg, round(w * scale), round(h * scale)
 
-def ref_chart():
-    tiers = [(1, [m for m in market() if m["tier"] == 1]),
-             (2, [m for m in market() if m["tier"] == 2]),
-             (3, [m for m in market() if m["tier"] == 3])]
-    cols = "196px 196px 196px 104px 116px 116px"
-    head = ('<div style="display:grid;grid-template-columns:%s;border-bottom:2px solid %s">%s'
-            '<div style="padding:9px 12px;text-align:right;font-size:10px;letter-spacing:.12em;'
-            'text-transform:uppercase;color:%s;align-self:end">Share</div>'
-            '<div style="grid-column:span 2;padding:9px 12px;text-align:center;font-size:10px;'
-            'letter-spacing:.12em;text-transform:uppercase;color:%s;align-self:end;'
-            'border-left:1px solid %s">Shareholder bonus</div></div>'
-            % (cols, B_INK,
-               "".join('<div style="padding:9px 12px;border-right:1px solid %s;display:flex;'
-                       'flex-direction:column;gap:5px">'
-                       '<span style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:%s">'
-                       'Tier %d</span><div style="display:flex;flex-wrap:wrap;gap:4px">%s</div></div>'
-                       % (B_RULE, B_MUTED, t,
-                          "".join('<span style="font-size:11.5px;color:%s;%s">%s</span>'
-                                  % (m["color"] if m["size"] else B_MUTED,
-                                     "" if m["size"] else "opacity:.6",
-                                     m["display"] + ("," if i < len(ms) - 1 else ""))
-                                  for i, m in enumerate(ms)))
-                       for t, ms in tiers),
-               B_MUTED, B_MUTED, B_RULE))
-    rows = []
-    for r in range(11):
-        cells = []
-        for t in (1, 2, 3):
-            band = None
-            for label, price, maj, sec, mino, rr in ladder(t):
-                if rr == r:
-                    band = label
-            sitting = here_at(r, t) if band else []
-            cells.append(
-              '<div style="padding:0 12px;border-right:1px solid %s;display:flex;align-items:center;'
-              'gap:8px;min-height:40px;%s">'
-              '<span class="num" style="font-size:13px;color:%s;width:44px">%s</span>%s</div>'
-              % (B_RULE, "background:rgba(179,70,47,.045)" if sitting else "",
-                 B_INK if band else B_MUTED, band or "—",
-                 "".join(r_chip(m) for m in sitting)))
-        rows.append(
-          '<div style="display:grid;grid-template-columns:%s;border-bottom:1px solid %s">%s'
-          '<div style="padding:0 12px;display:flex;align-items:center;justify-content:flex-end;'
-          'font-size:14px;font-weight:700" class="num">%s</div>'
-          '<div style="padding:0 12px;display:flex;align-items:center;justify-content:flex-end;'
-          'font-size:13px;border-left:1px solid %s" class="num">%s</div>'
-          '<div style="padding:0 12px;display:flex;align-items:center;justify-content:flex-end;'
-          'font-size:13px;color:%s" class="num">%s</div></div>'
-          % (cols, "rgba(231,222,210,.7)", "".join(cells),
-             money(PRICE_ROWS[r]), B_RULE, money(PRIMARY[r]), B_MUTED, money(TERTIARY[r])))
-    return ('<div style="border:1px solid %s;border-radius:3px;overflow:hidden">%s%s</div>'
-            % (B_RULE, head, "".join(rows)))
+def _frame(cid, caption, scale=1.0, dark=False, border=True):
+    svg, w, h = _capture(cid, scale)
+    return (w, h + 30,
+            '<div style="display:flex;flex-direction:column;gap:10px;width:%dpx">'
+            '<span class="mono" style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:%s">%s</span>'
+            '<div style="width:%dpx;height:%dpx;overflow:hidden;border-radius:6px;%s">%s</div></div>'
+            % (w, B_MUTED, caption, w, h, "box-shadow:0 0 0 1px %s" % B_RULE if border else "", svg))
 
-def ref_modal():
-    return (
-      '<div style="width:1000px;background:%s;border-radius:5px;box-shadow:0 24px 60px rgba(28,25,23,.35);'
-      'overflow:hidden">'
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;'
-      'border-bottom:1px solid %s">'
-      '<div><div class="ser" style="font-size:24px">Stock reference</div>'
-      '<div style="font-size:11.5px;color:%s;margin-top:3px">Classic ruleset · price and bonuses by '
-      'corporation size · highlighted rows are where the market stands now</div></div>'
-      '<div style="display:flex;align-items:center;gap:14px">'
-      '<span style="font-size:11px;color:%s">safe at 11 tiles</span>'
-      '<div style="width:30px;height:30px;border:1px solid %s;border-radius:3px;display:flex;'
-      'align-items:center;justify-content:center;color:%s">'
-      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
-      'stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></div></div></div>'
-      '<div style="padding:20px 24px 22px">%s</div>'
-      '<div style="display:flex;gap:26px;padding:14px 24px 18px;border-top:1px solid %s;background:%s">'
-      '<div style="font-size:11px;line-height:1.5;color:%s;flex-grow:1">Majority is always ten times the '
-      'share price and minority five times. A merged corporation prices on the <strong>survivor\'s</strong> '
-      'tier — Megahitvilas is tier 3 whatever it swallows.</div>'
-      '<div style="font-size:11px;line-height:1.5;color:%s;width:300px">The whole table is generated from the '
-      'ruleset. The 2015 preset renders different bands and a third bonus column, from the same component.</div>'
-      '</div></div>'
-      % (B_PANEL, B_RULE, B_MUTED, B_MUTED, B_RULE, B_MUTED, ref_chart(), B_RULE, B_BG, B_MUTED, B_MUTED))
+def _board(file, title, lede, rows):
+    """An artboard: a title, a line on what it shows, then rows of frames. Each
+    row is a list of (capture id, caption[, scale]). Returns the artboard's size."""
+    body_rows, width, height = [], 0, 210
+    for row in rows:
+        cells = [_frame(*cell) for cell in row]
+        rw = sum(c[0] for c in cells) + GAP * (len(cells) - 1)
+        rh = max(c[1] for c in cells)
+        width, height = max(width, rw), height + rh + GAP
+        body_rows.append('<div style="display:flex;gap:%dpx;align-items:flex-start">%s</div>'
+                         % (GAP, "".join(c[2] for c in cells)))
+    width += 2 * GUTTER
+    body = ('<div style="width:%dpx;box-sizing:border-box;min-height:%dpx;background:%s;color:%s;'
+            'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:40px %dpx 48px;'
+            'display:flex;flex-direction:column;gap:%dpx">'
+            '<div style="display:flex;flex-direction:column;gap:9px;max-width:960px">'
+            '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">'
+            'Boomtown · captured from the app</span>'
+            '<span class="ser" style="font-size:32px">%s</span>'
+            '<span style="font-size:13px;line-height:1.55;color:%s">%s</span></div>%s</div>'
+            % (width, height, B_BG, B_INK, GUTTER, GAP, B_MUTED, title, B_MUTED, lede, "".join(body_rows)))
+    write(file, B_HELMET, body)
+    return width, height
 
-def ref_company():
-    m = [x for x in market() if x["key"] == "video"][0]
-    cur = row_index(m["size"], m["tier"])
-    ns = next_step(m["size"], m["tier"])
-    holders = sorted(((p[0], p[2].get("video", 0)) for p in PLAYERS), key=lambda x: -x[1])
-    bonus = [money(PRIMARY[cur]), money(TERTIARY[cur])]
-    lad = "".join(
-      '<div style="display:grid;grid-template-columns:1fr 84px 96px 96px;align-items:center;height:31px;'
-      'padding:0 14px;border-bottom:1px solid rgba(231,222,210,.7);%s">'
-      '<div class="num" style="font-size:12.5px;color:%s">%s tiles</div>'
-      '<div class="num" style="text-align:right;font-size:13px;font-weight:%d">%s</div>'
-      '<div class="num" style="text-align:right;font-size:12px;color:%s">%s</div>'
-      '<div class="num" style="text-align:right;font-size:12px;color:%s">%s</div></div>'
-      % ("background:rgba(179,70,47,.07)" if rr == cur else "", B_INK if rr == cur else B_MUTED, label,
-         700 if rr == cur else 400, money(price), B_MUTED, money(maj), B_MUTED, money(mino))
-      for label, price, maj, sec, mino, rr in ladder(m["tier"]))
-    who = "".join(
-      '<div style="display:flex;align-items:center;justify-content:space-between;height:26px;font-size:12px">'
-      '<span style="color:%s">%s%s</span><span class="num" style="color:%s">%s</span></div>'
-      % (B_INK if n == "You" else B_MUTED, n,
-         " · primary" if i == 0 else (" · secondary" if i == 1 else ""),
-         B_INK if i < 2 else B_MUTED,
-         ("%d sh — %s" % (v, money(PRIMARY[cur] if i == 0 else TERTIARY[cur]))) if i < 2 and v else "%d sh" % v)
-      for i, (n, v) in enumerate(holders))
-    return (
-      '<div style="width:620px;background:%s;border-radius:5px;box-shadow:0 24px 60px rgba(28,25,23,.35);'
-      'overflow:hidden">'
-      '<div style="padding:20px 22px 16px;border-bottom:1px solid %s;display:flex;align-items:flex-start;gap:14px">'
-      '%s<div style="flex-grow:1"><div class="ser" style="font-size:23px;color:%s">%s</div>'
-      '<div style="font-size:11px;color:%s;margin-top:3px">%s</div></div>'
-      '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;letter-spacing:.1em;'
-      'text-transform:uppercase;color:%s">%s safe</span></div>'
-      '<div style="display:flex;border-bottom:1px solid %s">%s</div>'
-      '<div style="padding:14px 22px 6px;display:flex;align-items:baseline;justify-content:space-between">'
-      '<span style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:%s">Tier 3 ladder</span>'
-      '<span style="font-size:11px;color:%s">next step at <span class="num" style="color:%s">%d tiles</span> '
-      '→ <span class="num" style="color:%s">%s</span></span></div>'
-      '<div style="margin:8px 8px 0">%s</div>'
-      '<div style="padding:14px 22px 18px;border-top:1px solid %s;background:%s">'
-      '<div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:%s;margin-bottom:7px">'
-      'If it paid out today</div>%s</div></div>'
-      % (B_PANEL, B_RULE, b_mark("video", m["color"], 30), m["color"], m["display"], B_MUTED, m["flavor"],
-         m["color"], icon("safe", m["color"], 12), B_RULE,
-         "".join('<div style="flex-grow:1;padding:13px 22px;%s">'
-                 '<div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:%s">%s</div>'
-                 '<div class="ser num" style="font-size:22px;margin-top:3px;color:%s">%s</div></div>'
-                 % ("border-right:1px solid %s" % B_RULE if i < 2 else "", B_MUTED, a, c, b)
-                 for i, (a, b, c) in enumerate([("Size", "%d tiles" % m["size"], B_INK),
-                                                ("Share price", money(m["price"]), B_INK),
-                                                ("You hold", "%d — %s" % (m["mine"], money(m["mine"] * m["price"])), m["color"])])),
-         B_MUTED, B_MUTED, B_INK, ns[0] if ns else 0, m["color"], money(ns[1]) if ns else "—",
-         lad, B_RULE, B_BG, B_MUTED, who))
+def _pair(cid, caption, scale=1.0):
+    return [(cid + "-day", caption + " · day", scale), (cid + "-night", caption + " · night", scale)]
 
-def build_reference():
-    def screen(caption, note, modal):
-        return ('<div style="display:flex;flex-direction:column;gap:12px">'
-                '<div style="display:flex;align-items:baseline;gap:12px">'
-                '<span style="font-size:13px;font-weight:600">%s</span>'
-                '<span style="font-size:11.5px;color:%s">%s</span></div>'
-                '<div style="width:1440px;height:860px;position:relative;overflow:hidden;background:%s;'
-                'border:1px solid %s;border-radius:3px">'
-                '<div style="position:absolute;inset:0;padding:22px 36px;display:flex;flex-direction:column;gap:22px">'
-                '%s<div style="display:flex;gap:28px"><div style="flex-shrink:0">%s</div></div></div>'
-                '<div style="position:absolute;inset:0;background:rgba(28,25,23,.52)"></div>'
-                '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">'
-                '%s</div></div></div>'
-                % (caption, B_MUTED, note, B_BG, B_RULE, b_band(), b_board_crafted(), modal))
-    body = (
-      '<div style="width:1440px;min-height:2100px;background:%s;color:%s;font-family:\'DM Sans\',Helvetica,Arial,sans-serif;'
-      'font-size:13px;padding:40px 0 48px;display:flex;flex-direction:column;gap:30px;align-items:center">'
-      '<div style="width:1440px;padding:0 36px;display:flex;flex-direction:column;gap:9px">'
-      '<span style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">Boomtown · web version</span>'
-      '<span class="ser" style="font-size:32px">Stock reference</span>'
-      '<span style="font-size:13px;line-height:1.5;color:%s;max-width:820px">The paper game ships a printed '
-      'reference card. The digital one can do the thing cardboard cannot: show where every corporation actually '
-      'stands right now, under the current names. Opens from the <strong>Reference</strong> button in the header, '
-      'from any price in the market, or with <strong>?</strong>; a single corporation card opens by clicking its '
-      'card in the band.</span></div>'
-      '%s%s</div>'
-      % (B_BG, B_INK, B_MUTED, B_MUTED,
-         screen("The full chart", "every tier, every band, with the market's live positions marked", ref_modal()),
-         screen("One corporation", "opened from its card in the band — its own ladder, and what it would pay today",
-                ref_company())))
-    write("Reference.dc.html", B_HELMET, body)
+BOARDS = {}
 
-# =============================================================== BEATS (U3)
-# Five still-frame artboards — the peak visual of each beat R6/R7 need that
-# isn't already covered by Main (the everyday/F3 baseline) or Reference. Launch
-# is the Main-menu treatment (U9); first-tile is a note on the board, not its
-# own frame (per U3's approach). Each frame is captioned with its motion/sound
-# spec so it stands alone as an implementer's target, the way a storyboard
-# panel would — the still image is what U11 animates into and out of.
+# ------------------------------------------------- the visual language, from the app
+# Read off apps/desktop/src/styles/global.css and industryTheme.ts, so the sheet
+# shows the values that ship rather than a spec the app has moved past.
 
-# The curtain takes the table's tone (#64). Day and night are one set of beat
-# tokens with two values each, read off global.css (--beat-*): the frames below
-# are drawn from a tone, never from literals, so each beat is drawn once and
-# rendered twice. Day is the default and leads; night is its twin.
-BEAT_TONES = {
-    "day": {
-        "label": "Day", "bg": B_BG, "bg2": "#F1EAE0", "ink": B_INK, "ink1": B_INK, "ink2": "#5C5147",
-        "muted": B_MUTED, "hint": B_MUTED, "rule": "#C6B8A6", "hairline": B_RULE, "accent": B_ACCENT,
-        "edge": B_INK, "shadow": "rgba(94,74,52,.5)",
-        "grain": "rgba(28,25,23,.4)",
-    },
-    "night": {
-        "label": "Night", "bg": "#171412", "bg2": "#110F0D", "ink": "#F3ECE2", "ink1": "#E2D9CC", "ink2": "#B8AC9F",
-        "muted": "#9C9086", "hint": "#7D7266", "rule": "#46403A", "hairline": "#3A332D", "accent": "#D98A4E",
-        "edge": "transparent", "shadow": "rgba(0,0,0,.7)",
-        "grain": "rgba(255,248,238,.5)",
-    },
-}
-BEAT_SHADE = "#1C1917"  # darkens a corporation colour for a bevel, in either tone
+def _css_tokens():
+    here = os.path.dirname(os.path.abspath(__file__))
+    css = open(os.path.join(here, "..", "apps", "desktop", "src", "styles", "global.css"), encoding="utf-8").read()
+    css = _re.sub(r"/\*.*?\*/", "", css, flags=_re.S)
+    def block(sel):
+        body = _re.search(_re.escape(sel) + r"\s*\{(.*?)\n\}", css, _re.S).group(1)
+        return {k: " ".join(v.split()) for k, v in _re.findall(r"(--[\w-]+):\s*([^;]+);", body)}
+    day = block(":root")
+    night = dict(day, **block(':root[data-lighting="night"]'))
+    def resolve(tokens, v, depth=0):
+        m = _re.fullmatch(r"var\((--[\w-]+)\)", v)
+        return resolve(tokens, tokens[m.group(1)], depth + 1) if m and depth < 8 else v
+    return ({k: resolve(day, v) for k, v in day.items()}, {k: resolve(night, v) for k, v in night.items()})
 
-def beat_frame(caption, spec, inner, t=None):
-    """A curtain frame in tone t; t=None is the table itself (buy stock is not a curtain)."""
-    if t is None:
-        bg, ink, extra, tag = B_BG, B_INK, "", ""
-    else:
-        bg = "linear-gradient(180deg, %s, %s)" % (t["bg"], t["bg2"])
-        ink = t["ink"]
-        extra = "border-top:3px solid %s;" % t["edge"]
-        tag = ('<span class="mono" style="font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;'
-               'padding:2px 8px;border-radius:10px;border:1px solid %s;color:%s">%s</span>'
-               % (B_RULE, B_MUTED, t["label"]))
-    grain = ('' if t is None else
-             '<div style="position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(%s .6px, transparent 1.1px);'
-             'background-size:3px 3px;opacity:%s"></div>' % (t["grain"], L_GRAIN_MAX))
-    return (
-      '<div style="display:flex;flex-direction:column;gap:10px">'
-      '<div style="display:flex;align-items:baseline;gap:12px">'
-      '<span style="font-size:13px;font-weight:600">%s</span>%s'
-      '<span class="mono" style="font-size:11px;color:%s">%s</span></div>'
-      '<div style="width:1440px;height:760px;position:relative;overflow:hidden;background:%s;color:%s;%s'
-      'border-radius:5px;box-shadow:0 0 0 1px %s;display:flex;align-items:center;justify-content:center">%s%s</div></div>'
-      % (caption, tag, B_MUTED, spec, bg, ink, extra, B_RULE, grain, inner)
-    )
+def _type_shades():
+    here = os.path.dirname(os.path.abspath(__file__))
+    src = open(os.path.join(here, "..", "apps", "desktop", "src", "game", "industryTheme.ts"), encoding="utf-8").read()
+    return {k: (p, n) for k, p, n in _re.findall(r"(\w+): \{ onPaper: '(#[0-9A-Fa-f]{6})', onNight: '(#[0-9A-Fa-f]{6})' \}", src)}
 
-def beat_kicker(text, t):
-    return '<span class="mono" style="font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:%s">%s</span>' % (t["accent"], text)
-
-def build_beats():
-    m = market()
-    survivor = [x for x in m if x["key"] == "tech"][0]
-    accreted = display_name(CORP["tech"]["name"], [CORP["energy"]["name"]])
-    founding_ind = "video"
-    founding = CORP[founding_ind]
-    tone_note = "the curtain takes the table's tone"
-
-    # 1. Founding — the plinth takeover (F2-adjacent; the model U11 animates as
-    # entrance/hold/exit). Peak = the panel fully arrived, plinth lit.
-    def founding_frame(t):
-        return beat_frame(
-          "Founding — peak frame", "3.0s hold, skippable · sound: founding.wav · curtain-drop entrance, %s" % tone_note,
-          '<div style="position:relative;display:flex;align-items:center;gap:56px">'
-          '<div style="width:150px;height:216px;border-radius:3px;overflow:hidden;display:flex;align-items:center;'
-          'justify-content:center;background:linear-gradient(165deg, color-mix(in srgb, %s 84%%, #fff), %s 55%%, '
-          'color-mix(in srgb, %s 48%%, %s));box-shadow:0 40px 70px -20px %s,inset 0 2px 0 rgba(255,255,255,.3)">%s</div>'
-          '<div style="width:470px">%s'
-          '<div style="height:1px;width:60px;margin:10px 0 2px;background:%s"></div>'
-          '<div class="ser" style="font-size:60px;line-height:1.1;margin-top:12px">%s</div>'
-          '<div style="font-size:14px;color:%s;margin-top:10px;max-width:34ch">%s</div>'
-          '<div style="display:flex;gap:38px;margin-top:26px;padding-top:18px;border-top:1px solid %s">%s</div></div></div>'
-          % (founding["color"], founding["color"], founding["color"], BEAT_SHADE, t["shadow"], b_mark(founding_ind, "#FAF6F0", 52),
-             beat_kicker("a corporation is founded", t), t["rule"], founding["name"], t["ink2"], founding["flavor"], t["rule"],
-             "".join('<span style="display:flex;flex-direction:column;gap:3px">'
-                     '<span class="mono" style="font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:%s">%s</span>'
-                     '<span class="ser" style="font-size:21px;%s">%s</span></span>'
-                     % (t["muted"], lab, "color:%s" % t["accent"] if lab == "founder" else "", val)
-                     for lab, val in [("headquarters", HQ.get(founding_ind, "7D")), ("opening price", money(400)), ("founder", "+1 share")])),
-          t)
-
-    # 2. Buy-stock — the lightest beat: an in-place flourish on the holdings
-    # row, not a screen takeover, so it has no curtain and no tone of its own.
-    buy_row = (
-      '<div style="width:520px;background:%s;%sborder-radius:4px;box-shadow:%s;padding:22px 26px;'
-      'display:flex;flex-direction:column;gap:14px">'
-      '<div class="ser" style="font-size:17px;color:%s">Shareholders</div>'
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;'
-      'border-radius:4px;background:color-mix(in srgb, %s 12%%, transparent);box-shadow:0 0 0 1.5px color-mix(in srgb, %s 45%%, transparent)">'
-      '<span style="font-size:14px;font-weight:700;color:%s">You ·</span>'
-      '<span style="display:inline-flex;align-items:center;gap:8px">%s'
-      '<span class="ser mono" style="font-size:15px;color:%s">+2</span></span>'
-      '<span class="ser mono" style="font-size:19px">$3,650</span></div>'
-      '<div style="font-size:11px;color:%s">Bought 2 %s at $500 — 3 of 9 now yours.</div></div>'
-      % (B_PANEL, L_TOP_RULE, L_ELEV[1], B_INK, survivor["color"], survivor["color"], B_INK,
-         b_mark("tech", survivor["ink"], 16), survivor["color"], B_MUTED, survivor["name"])
-    )
-    buy_frame = beat_frame(
-      "Buy stock — peak frame", "0.9s flourish, not skippable-hold · sound: buy.wav · a coin arcs into the row, the row glows and settles · no curtain",
-      buy_row
-    )
-
-    # 3. Merger — the name-reveal peak (F1's load-bearing moment): the accreted
-    # name at scale, industry glow behind it. On cream the glow carries the beat
-    # that the tonal jump used to.
-    def merger_frame(t):
-        return beat_frame(
-          "Merger — name-reveal peak frame", "6-stage sequence ~9.1s total, skippable · sound: merger.wav · collide → blend → name → mass → bonus → settle",
-          '<div style="position:absolute;left:50%%;top:50%%;width:900px;height:620px;margin:-310px 0 0 -450px;'
-          'pointer-events:none;background:radial-gradient(50%% 50%% at 50%% 50%%, color-mix(in srgb, %s 30%%, transparent) 0%%, transparent 72%%)"></div>'
-          '<div style="position:relative;width:860px;display:flex;flex-direction:column;align-items:center;text-align:center">'
-          '%s<div style="width:60px;height:1px;margin:12px 0 0;background:%s"></div>'
-          '<div class="ser" style="font-size:112px;line-height:1.02;letter-spacing:-.035em;margin-top:18px;'
-          'text-shadow:0 0 60px color-mix(in srgb, %s 45%%, transparent)">%s</div>'
-          '<div style="max-width:46ch;font-size:13px;line-height:1.55;color:%s;margin-top:14px">Its name grows '
-          'with a piece of every company it takes over. Your shares in it stay yours.</div>'
-          '<div style="display:flex;gap:76px;margin-top:46px">%s</div></div>'
-          % (survivor["color"], beat_kicker("merger at %s" % "4E", t), t["rule"], survivor["color"], accreted, t["ink2"],
-             "".join('<div style="text-align:left"><span class="mono" style="font-size:10px;letter-spacing:.18em;'
-                     'text-transform:uppercase;color:%s">%s</span><span class="ser mono" style="display:block;'
-                     'font-size:56px;line-height:1.05;margin-top:6px;letter-spacing:-.03em">%s</span></div>'
-                     % (t["muted"], who, money(amt)) for who, amt in [("Mara · majority", 4000), ("Otto · minority", 2000)])),
-          t)
-
-    # 4. Endgame trigger — a table-level beat (fires for every seat): the
-    # threshold is announced before the final round plays out.
-    def endgame_frame(t):
-        return beat_frame(
-          "Endgame trigger — peak frame", "2.4s hold, skippable · sound: endgame.wav · curtain drops, rule underlines, lifts on dismiss",
-          '<div style="position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px">%s'
-          '<div class="ser" style="font-size:64px;margin-top:6px">The endgame is triggered</div>'
-          '<div style="font-size:14px;color:%s;max-width:52ch;line-height:1.55">%s is safe at %d tiles. '
-          'Any player may announce the end from here — once called, this is the final round.</div>'
-          '<div style="display:flex;gap:12px;margin-top:10px">%s</div></div>'
-          % (beat_kicker("final round approaching", t), t["ink2"], survivor["display"], survivor["size"],
-             "".join('<span style="display:inline-flex;align-items:center;gap:7px;border:1px solid %s;'
-                     'border-radius:20px;padding:8px 16px;font-size:12px;color:%s">%s<span class="ser">%s</span></span>'
-                     % (t["rule"], t["ink1"], b_mark(x["key"], x["color"], 16), x["display"]) for x in m if x["size"] > 0)),
-          t)
-
-    # 5. Victory — final settlement. The tagline callback ties it back to the
-    # launch beat's "seven start-ups, one skyline" line.
-    standings = sorted(((p[0], p[1] + sum(v * m2["price"] for k, v in p[2].items()
-                        for m2 in [next(x for x in m if x["key"] == k)])) for p in PLAYERS), key=lambda x: -x[1])
-    def victory_frame(t):
-        return beat_frame(
-          "Victory — peak frame", "4.0s hold before standings become interactive · sound: victory.wav · slow curtain lift, names rise in sequence",
-          '<div style="position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px">%s'
-          '<div class="ser" style="font-size:76px">%s wins</div>'
-          '<div style="display:flex;flex-direction:column;gap:2px;margin-top:10px;width:420px">%s</div>'
-          '<div class="mono" style="font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:%s;margin-top:18px">seven start-ups, one skyline</div></div>'
-          % (beat_kicker("game over", t), standings[0][0],
-             "".join('<div style="display:flex;justify-content:space-between;padding:9px 4px;'
-                     'border-bottom:1px solid %s;color:%s"><span class="ser" style="font-size:16px">%d. %s</span>'
-                     '<span class="mono num" style="font-size:16px">%s</span></div>'
-                     % (t["hairline"], t["accent"] if i == 0 else t["ink2"], i + 1, n, money(total))
-                     for i, (n, total) in enumerate(standings)),
-             t["hint"]),
-          t)
-
-    day, night = BEAT_TONES["day"], BEAT_TONES["night"]
-    frames = [founding_frame(day), founding_frame(night), buy_frame,
-              merger_frame(day), merger_frame(night), endgame_frame(day), endgame_frame(night),
-              victory_frame(day), victory_frame(night)]
-    body = (
-      '<div style="width:1440px;min-height:7700px;background:%s;color:%s;font-family:\'DM Sans\',Helvetica,Arial,sans-serif;'
-      'font-size:13px;padding:40px 0 48px;display:flex;flex-direction:column;gap:34px;align-items:center">'
-      '<div style="width:1440px;padding:0 36px;display:flex;flex-direction:column;gap:9px">'
-      '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">Boomtown · beat still-frames (U3, #64)</span>'
-      '<span class="ser" style="font-size:32px">The five beats without their own screen</span>'
-      '<span style="font-size:13px;line-height:1.5;color:%s;max-width:900px">Launch is the Main-menu treatment (U9); '
-      'first-tile is a note on the board, not its own frame. Each frame below is the beat\'s peak visual — what U11 '
-      'animates into (entrance) and out of (exit); the caption line under each title is that beat\'s timing/sound spec.</span>'
-      '<span style="font-size:13px;line-height:1.5;color:%s;max-width:900px">The curtain is the ground, not chrome: it '
-      'takes the table\'s day or night tone from the lighting switch in the top bar, so a beat never jumps from cream '
-      'to near-black (#64). Each curtain beat is drawn in <strong>Day</strong>, the default, with its <strong>Night</strong> '
-      'twin beneath. By day the curtain carries a 3px ink top rule, a warm shadow on its leading edge while it drops, and '
-      'the brick accent; by night it is the old ink curtain with the ember accent. Buy stock plays on the table itself '
-      'and has no curtain.</span></div>'
-      '%s</div>'
-      % (B_BG, B_INK, B_MUTED, B_MUTED, B_MUTED, "".join(frames))
-    )
-    write("Beats.dc.html", B_HELMET, body)
-
-# =============================================================== AFTER THE GAME
-# The post-game retrospective (#68 per-turn standings, #69 superlatives). Both
-# issues asked to be designed as ONE screen rather than two things bolted on,
-# and both sit *behind* the victory beat's last-to-first reveal — this is what
-# the table looks at afterwards, not the payoff itself.
-#
-# ---------------------------------------------------------------------------
-# THE COLOUR FINDING, which decided the form of the graph.
-#
-# #68 asks for "a deliberate palette for seats, legible against the cream
-# ground and distinct from the seven corporation colours". That palette was
-# searched for, not guessed at: 12,000 candidates in OKLCH through the dataviz
-# skill's own validator (lightness band, chroma floor, all-pairs CVD
-# separation, normal-vision floor, contrast). The result:
-#
-#   seats  ΔE>=15 from a corp colour   ΔE>=12        ΔE>=10
-#   6      no candidate                no candidate  no candidate
-#   5      no candidate                no candidate  passes (CVD 9.1)
-#   4      no candidate                passes        passes
-#
-# At six seats there is **no** palette that is both colourblind-safe and
-# distinct from the corporation palette. The seven board colours already
-# saturate the usable space — which is exactly why `pool.ts` had to re-space
-# them for luminance in the first place. So the graph does not encode seats by
-# hue at all, and the two directions below are the two honest ways out. The
-# same finding answers #69's "Colour, literally" question: an award is tinted
-# by the corporation it is *about*, never by whose award it is.
-# ---------------------------------------------------------------------------
-
-# Net worth per seat per turn. Illustrative, but shaped like a real game: an
-# early leader, a merger that pays somebody else, and a last-round overtake —
-# which is the whole reason to draw this rather than print the final table.
-AFTER_TURNS = list(range(0, 15))
-AFTER_SERIES = [
-  # name, per-turn net worth, final rank
-  ("Nadia", [6000,6000,6300,7100,7400,9800,10200,10600,11400,11800,12300,12900,13400,15600,16400]),
-  ("You",   [6000,6000,6200,6600,7800,8100,8600,12400,12800,13100,13600,14100,14600,15100,17300]),
-  ("June",  [6000,6100,6400,6900,7200,7600,8000,8300,8900,9400,9900,10300,11000,11600,12100]),
-  ("Ravi",  [6000,5900,6100,6300,6600,6900,7100,7000,7300,7600,7900,8100,8400,8600,8900]),
-]
-# The company timeline. Colour on this artboard belongs to corporations and to
-# nothing else, so every marker below is tinted by the company it names and the
-# *glyph* says what happened to it: a filled dot for a founding, a hollow one
-# for a refounding — a name can come back, and held stock in it goes live again
-# (`docs/rules.md`) — and a dashed rule for the merger that ended it. The label
-# text stays in ink; the mark carries the identity.
-# Four panels and a note row; measured from the render.
-AFTER_H = 2889
-
-AFTER_EVENTS = [
-  (1,  "found",   "books"),
-  (2,  "found",   "electronics"),
-  (3,  "found",   "energy"),
-  (5,  "fold",    "electronics"),
-  (6,  "found",   "video"),
-  (7,  "fold",    "energy"),
-  (9,  "refound", "electronics"),
-  (11, "found",   "tech"),
-  (13, "fold",    "video"),
+LANG_GROUPS = [
+    ("Ground", ["--bg", "--surface", "--surface-2", "--ink", "--muted", "--rule", "--accent", "--on-accent", "--input", "--error"]),
+    ("Chrome — the top bar and launch screen", ["--chrome-bg", "--chrome-ink", "--chrome-muted", "--chrome-rule"]),
+    ("Board", ["--board-bg", "--board-plate-top", "--board-plate-bottom", "--board-base", "--cell-empty", "--cell-empty-ink", "--cell-uninc", "--cell-ring"]),
+    ("Beat curtain", ["--beat-bg", "--beat-bg-2", "--beat-ink", "--beat-ink-1", "--beat-ink-2", "--beat-muted", "--beat-hint", "--beat-rule", "--beat-accent", "--beat-edge"]),
+    ("Notices and washes", ["--notice-warn-bg", "--notice-warn-ink", "--notice-error-bg", "--notice-error-ink", "--band-empty-wash", "--skyline-ink-body", "--skyline-ink-window"]),
 ]
 
-# Cash comes from the same table the Main artboard prints, so the two agree.
-AFTER_CASH = {name: cash for name, cash, _ in PLAYERS}
-AFTER_SHARES = {name: sum(h.values()) for name, _, h in PLAYERS}
+def build_language():
+    day, night = _css_tokens()
+    def column(label, tokens, ground, ink, names):
+        rows = "".join(
+            '<div style="display:flex;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid rgba(128,110,90,.22)">'
+            '<span style="width:34px;height:20px;border-radius:3px;background:%s;box-shadow:0 0 0 1px rgba(128,110,90,.35);flex-shrink:0"></span>'
+            '<span class="mono" style="flex:1;font-size:10.5px">%s</span>'
+            '<span class="mono" style="font-size:10.5px;opacity:.75">%s</span></div>'
+            % (tokens[n], n, tokens[n].lower()) for n in names)
+        return ('<div style="flex:1;min-width:0;background:%s;color:%s;border-radius:6px;padding:14px 18px;box-shadow:0 0 0 1px %s">'
+                '<div class="mono" style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.7;margin-bottom:6px">%s</div>%s</div>'
+                % (ground, ink, B_RULE, label, rows))
+    groups = "".join(
+        '<div style="display:flex;flex-direction:column;gap:10px"><div class="ser" style="font-size:19px">%s</div>'
+        '<div style="display:flex;gap:18px">%s%s</div></div>'
+        % (title, column("Day", day, day["--bg"], day["--ink"], names), column("Night", night, night["--bg"], night["--ink"], names))
+        for title, names in LANG_GROUPS)
 
-AF_FRAMES = [
-  # tab label, how long it holds, why it holds that long
-  ("Standings", 8, "one read"),
-  ("Tracking the market", 10, "one read"),
-  ("Company by company", 30, "5 companies at 6s"),
-  ("Awards", 30, "5 pages at 6s"),
-]
+    def elev(tokens, tone):
+        return ('<div style="flex:1;background:%s;color:%s;border-radius:6px;padding:26px;display:flex;gap:22px;box-shadow:0 0 0 1px %s">%s</div>'
+                % (tokens["--bg"], tokens["--ink"], B_RULE, "".join(
+                    '<div style="flex:1;height:84px;border-radius:6px;background:%s;box-shadow:%s;display:flex;align-items:flex-end;'
+                    'padding:10px 12px;font-size:12px">%s · elevation %d</div>' % (tokens["--surface"], tokens["--elev-%d" % i], tone, i)
+                    for i in (1, 2, 3))))
+    elevation = '<div style="display:flex;gap:18px">%s%s</div>' % (elev(day, "day"), elev(night, "night"))
 
-def b_chip(key, kind, x, y, size=18):
-    """A company event on a chart's axis: the corporation's own mark, in a chip
-    whose treatment says what happened to it. Words along a time axis cannot be
-    made not to collide — three companies folding within a turn of each other
-    printed "FOLDEDOLDED" on a fifty-turn game, and a label's rendered width is
-    a guess, so the layout reserving room for it is a guess too. A chip is a
-    fixed 18px and can be laid out exactly."""
-    corp = CORP[key]
-    solid = kind == "found"
-    inset = (size - 12) / 2.0
-    strike = ('<line x1="2.5" y1="%.1f" x2="%.1f" y2="2.5" stroke="%s" stroke-width="1.5" opacity=".7"/>'
-              % (size - 2.5, size - 2.5, B_INK)) if kind == "fold" else ""
-    return ('<g transform="translate(%.1f %.1f)">'
-            '<rect width="%d" height="%d" rx="4" fill="%s" stroke="%s" stroke-width="1.5" opacity="%s"/>'
-            '<g transform="translate(%.1f %.1f)" opacity="%s">%s</g>%s</g>'
-            % (x - size / 2.0, y, size, size,
-               corp["color"] if solid else B_PANEL, corp["color"],
-               ".5" if kind == "fold" else "1",
-               inset, inset, ".55" if kind == "fold" else "1",
-               b_mark(key, corp["ink"] if solid else corp["color"], 12), strike))
+    shades = _type_shades()
+    industries = "".join(
+        '<div style="display:grid;grid-template-columns:150px 92px 1fr 1fr;align-items:center;gap:14px;padding:8px 0;border-bottom:1px solid %s">'
+        '<span style="font-size:13px">%s <span style="color:%s">· tier %d</span></span>'
+        '<span style="height:30px;border-radius:4px;background:%s;color:%s;display:flex;align-items:center;justify-content:center;'
+        'font-size:10.5px" class="mono">%s</span>'
+        '<span style="background:%s;padding:7px 10px;border-radius:4px;color:%s;font-weight:700;font-size:13px">%s <span class="mono" style="font-weight:400;font-size:10.5px">%s on paper</span></span>'
+        '<span style="background:%s;padding:7px 10px;border-radius:4px;color:%s;font-weight:700;font-size:13px">%s <span class="mono" style="font-weight:400;font-size:10.5px">%s at night</span></span></div>'
+        % (B_RULE, k, B_MUTED, POOL[k][0], POOL[k][1], POOL[k][2], POOL[k][1].lower(),
+           day["--surface"], shades[k][0], CORP[k]["name"], shades[k][0].lower(),
+           night["--surface"], shades[k][1], CORP[k]["name"], shades[k][1].lower())
+        for k in ORDER)
 
-def b_chipkey(key):
-    """What the three treatments mean, since the words came off the axis."""
-    items = [("found", "founded"), ("refound", "founded again"), ("fold", "folded")]
-    out = []
-    for kind, label in items:
-        out.append('<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:%s">'
-                   '<svg width="18" height="18">%s</svg>%s</span>'
-                   % (B_MUTED, b_chip(key, kind, 9, 0), label))
-    return '<span style="display:inline-flex;flex-wrap:wrap;gap:4px 14px">%s</span>' % "".join(out)
+    type_rows = "".join(
+        '<div style="display:flex;align-items:baseline;gap:18px;padding:10px 0;border-bottom:1px solid %s">'
+        '<span class="mono" style="width:150px;flex-shrink:0;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:%s">%s</span>'
+        '<span style="%s">%s</span></div>' % (B_RULE, B_MUTED, role, style, sample)
+        for role, style, sample in [
+            ("Display · serif", "font-family:%s;font-size:34px" % day["--serif"].replace('"', "'"), "Blackcurrun takes over Enrun"),
+            ("Kicker", "font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:%s" % B_MUTED, "a corporation is founded"),
+            ("Body · sans", "font-family:%s;font-size:14px;line-height:1.5" % day["--sans"].replace('"', "'"), "Placing 9F hands %s a power company with imaginative books." % CORP["tech"]["name"]),
+            ("Numbers", "font-family:%s;font-variant-numeric:tabular-nums;font-size:20px" % day["--sans"].replace('"', "'"), "$5,250 · 7D · 14 tiles"),
+        ])
 
-
-def af_tabs(active, progress=0.45):
-    """The tab row doubles as the carousel's position. A tab is still a tab —
-    clicking one goes there and holds it — but left alone the row advances on
-    its own, and the sliver under the live pill says how much of this frame is
-    left. Nothing here is a control the table has to operate to see everything;
-    the screen plays itself."""
-    out = []
-    for i, (t, _secs, _why) in enumerate(AF_FRAMES):
-        on = i == active
-        bar = ('<span style="position:absolute;left:3px;right:3px;bottom:3px;height:2px;'
-               'border-radius:999px;background:%s;opacity:.35">'
-               '<span style="position:absolute;left:0;top:0;bottom:0;width:%d%%;border-radius:999px;'
-               'background:%s"></span></span>' % (B_BG, int(progress * 100), B_BG)) if on else ""
-        out.append('<span style="position:relative;padding:7px 15px 9px;border-radius:999px;'
-                   'font-size:12.5px;%s">%s%s</span>'
-                   % ("background:%s;color:%s;font-weight:600" % (B_INK, B_BG) if on
-                      else "color:%s" % B_MUTED, t, bar))
-    return ('<div style="display:inline-flex;gap:3px;padding:3px;border:1px solid %s;border-radius:999px;'
-            'background:%s">%s</div>' % (B_RULE, B_PANEL, "".join(out)))
-
-def af_transport(playing=True):
-    """Back, play/pause, forward. The screen plays itself, but nobody should
-    have to wait out a frame they have finished with or lose one they were
-    still reading — and with `prefers-reduced-motion` the automatic cycle does
-    not run at all, which makes these the only way through rather than a
-    convenience on top of it. They step the *innermost* cycle: forward from the
-    last company rolls into the awards, and pausing stops both."""
-    def button(glyph):
-        return ('<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;'
-                'height:30px;border:1px solid %s;border-radius:999px;background:%s">%s</span>'
-                % (B_RULE, B_PANEL, glyph))
-    back = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M10 3 L5 8 L10 13" fill="none" stroke="%s" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' % B_INK
-    fwd = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M6 3 L11 8 L6 13" fill="none" stroke="%s" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' % B_INK
-    hold = ('<svg width="13" height="13" viewBox="0 0 14 14"><rect x="3" y="2.5" width="3" height="9" rx="1" fill="%s"/>'
-            '<rect x="8" y="2.5" width="3" height="9" rx="1" fill="%s"/></svg>' % (B_INK, B_INK)) if playing else (
-            '<svg width="13" height="13" viewBox="0 0 14 14"><path d="M4 2.5 L11.5 7 L4 11.5 Z" fill="%s"/></svg>' % B_INK)
-    return ('<span style="display:inline-flex;align-items:center;gap:4px">%s%s%s</span>'
-            % (button(back), button(hold), button(fwd)))
-
-def af_frame(i, inner, progress=0.45, playing=True):
-    """One state of the screen, drawn whole: the tab row as it stands on that
-    frame, the transport beside it, and the panel under both."""
-    label, secs, why = AF_FRAMES[i]
-    return ('<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:12px">'
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:20px">%s'
-            '<span style="display:inline-flex;align-items:center;gap:14px">'
-            '<span style="font-size:11px;color:%s">frame %d of %d · holds %ds · %s</span>%s</span></div>'
-            '<div style="display:flex;gap:22px;align-items:flex-start">%s</div></div>'
-            % (af_tabs(i, progress), B_MUTED, i + 1, len(AF_FRAMES), secs, why,
-               af_transport(playing), inner))
-
-def af_panel(title, note, inner, w=None):
-    return ('<div style="%sbackground:%s;%sborder-radius:4px;box-shadow:%s;padding:18px 20px 20px;'
-            'display:flex;flex-direction:column;gap:14px">'
-            '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px">'
-            '<span class="ser" style="font-size:19px">%s</span>'
-            '<span style="font-size:11px;color:%s">%s</span></div>%s</div>'
-            % ("width:%dpx;" % w if w else "flex:1;", B_PANEL, L_TOP_RULE, L_ELEV[1], title, B_MUTED, note, inner))
-
-AF_COLS = "40px 1fr 150px 110px 180px 200px 118px"
-
-def af_standings():
-    """The standings, as numbers.
-
-    This row used to carry a sparkline per seat, and it was the graph below at
-    a tenth the resolution — the useful thing in a standings table is the
-    figures. The width is better spent splitting net worth into the parts it is
-    made of, which is also the only place the reader can check the arithmetic:
-    cash plus stock at closing price, published by settlement.
-    """
-    head = ('<div style="display:grid;grid-template-columns:%s;gap:18px;padding:0 4px 8px;'
-            'border-bottom:1px solid %s;font-size:10px;letter-spacing:.14em;text-transform:uppercase;'
-            'color:%s" class="mono">%s</div>'
-            % (AF_COLS, B_RULE, B_MUTED,
-               "".join('<span style="%s">%s</span>' % ("text-align:right" if i >= 2 else "", h)
-                       for i, h in enumerate(["", "seat", "cash", "shares", "stock at close",
-                                              "net worth", "vs start"]))))
-    rows = []
-    ranked = sorted(AFTER_SERIES, key=lambda s: -s[1][-1])
-    for i, (name, vals) in enumerate(ranked):
-        lead = i == 0
-        cash = AFTER_CASH[name]
-        stock = vals[-1] - cash
-        delta = vals[-1] - vals[0]
-        rows.append(
-          '<div style="display:grid;grid-template-columns:%s;align-items:baseline;gap:18px;'
-          'padding:13px 4px;border-bottom:1px solid %s">'
-          '<span class="ser" style="font-size:19px;color:%s">%d</span>'
-          '<span style="font-size:16px;%s">%s</span>'
-          '<span class="num" style="font-size:15px;text-align:right;color:%s">%s</span>'
-          '<span class="num" style="font-size:15px;text-align:right;color:%s">%d</span>'
-          '<span class="num" style="font-size:15px;text-align:right;color:%s">%s</span>'
-          '<span class="ser num" style="font-size:24px;text-align:right;%s">%s</span>'
-          '<span class="num" style="font-size:12.5px;text-align:right;color:%s">%s%s</span></div>'
-          % (AF_COLS, B_RULE, B_ACCENT if lead else B_MUTED, i + 1,
-             "font-weight:700" if lead else "", name,
-             B_MUTED, money(cash), B_MUTED, AFTER_SHARES[name], B_MUTED, money(stock),
-             "color:%s" % B_ACCENT if lead else "", money(vals[-1]),
-             B_MUTED, "+" if delta >= 0 else "−", money(abs(delta))[1:]))
-    return af_panel("Final standings", "net worth · cash + stock at closing price", head + "".join(rows))
-
-def af_key():
-    """The marker key, in the panel's own note slot: a glyph and a word each."""
-    def glyph(inner):
-        return '<svg width="14" height="12" style="display:block;overflow:visible">%s</svg>' % inner
-    items = [
-      (glyph('<circle cx="7" cy="6" r="4" fill="%s"/>' % B_INK), "founded"),
-      (glyph('<circle cx="7" cy="6" r="3.5" fill="%s" stroke="%s" stroke-width="1.6"/>' % (B_PANEL, B_INK)),
-       "founded again"),
-      (glyph('<line x1="7" y1="0" x2="7" y2="12" stroke="%s" stroke-width="1.5" stroke-dasharray="3 3"/>' % B_MUTED),
-       "folded"),
-    ]
-    return ('<span style="display:inline-flex;align-items:center;gap:14px;color:%s">'
-            '<span>net worth per turn</span>%s</span>'
-            % (B_MUTED, "".join('<span style="display:inline-flex;align-items:center;gap:5px">%s%s</span>' % it
-                                for it in items)))
-
-def af_graph_lit(W=1050, H=330):
-    """One chart across the full width, the way the Mario Party end screen does
-    it: the plot takes the room and a legend sits down the right with each
-    seat's final figure.
-
-    The seat being read is in the accent and the rest are recessive ink, every
-    line direct-labelled at the legend. Identity is the label; the accent only
-    says which line you are following, and hovering or tabbing promotes any of
-    them — so the chart has as many readings as there are seats.
-
-    The company timeline rides the x-axis underneath it, because a line that
-    doubles in a turn is answering something: a founding, a refounding, or the
-    merger that ended a company somebody was holding.
-    """
-    PAD_L, PAD_B, PAD_R, PAD_T = 40, 74, 8, 14
-    allv = [v for _, vals in AFTER_SERIES for v in vals]
-    lo, hi = min(allv) * 0.96, max(allv) * 1.02
-    n = len(AFTER_TURNS)
-    def xy(i, v):
-        return (PAD_L + i * (W - PAD_L - PAD_R) / (n - 1),
-                H - PAD_B - (v - lo) * (H - PAD_B - PAD_T) / (hi - lo))
-
-    # One faint rule per turn, a number every other one — the reference's own
-    # x-axis. At this width every turn gets its own column without crowding.
-    ticks = []
-    for i in AFTER_TURNS:
-        x = xy(i, lo)[0]
-        ticks.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="1"/>'
-                     % (x, PAD_T - 6, x, H - PAD_B, B_RULE if i % 2 == 0 else B_BG))
-        if i % 2 == 0:
-            ticks.append('<text x="%.1f" y="%d" font-size="10" fill="%s" text-anchor="middle" '
-                         'class="num">%d</text>' % (x, H - PAD_B + 15, B_MUTED, i))
-    # money gridlines, so a reader can price the gap between two lines
-    for v in range(5000, int(hi), 5000):
-        y = xy(0, v)[1]
-        ticks.append('<line x1="%d" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
-                     'stroke-dasharray="2 5"/>'
-                     '<text x="%d" y="%.1f" font-size="9" fill="%s" text-anchor="end" '
-                     'dominant-baseline="middle" class="num">%s</text>'
-                     % (PAD_L, y, xy(n - 1, lo)[0], y, B_RULE, PAD_L - 7, y, B_MUTED, money(v)))
-
-    # The company timeline, on the axis: one mark per event, each in a chip
-    # whose treatment says what happened. It replaced a coloured square and a
-    # word — words along a time axis cannot be made not to collide, and the
-    # mark says *which* company, which the word never did.
-    marks = []
-    for t, kind, ind in AFTER_EVENTS:
-        x, y = xy(t, lo)[0], H - PAD_B
-        marks.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
-                     'stroke-dasharray="%s" opacity=".55"/>'
-                     % (x, PAD_T - 6, x, y + 26, B_MUTED if kind == "fold" else CORP[ind]["color"],
-                        "3 3" if kind == "fold" else "1 4"))
-        marks.append(b_chip(ind, kind, x, y + 26))
-
-    lines = []
-    for name, vals in AFTER_SERIES:
-        lit = name == "You"
-        pts = [xy(i, v) for i, v in enumerate(vals)]
-        d = "M" + " L".join("%.1f %.1f" % p for p in pts)
-        lines.append('<path d="%s" fill="none" stroke="%s" stroke-width="%s" stroke-linejoin="round" '
-                     'stroke-linecap="round" opacity="%s"/><circle cx="%.1f" cy="%.1f" r="%d" fill="%s"/>'
-                     % (d, B_ACCENT if lit else B_INK, "2.5" if lit else "1.5", "1" if lit else ".32",
-                        pts[-1][0], pts[-1][1], 4 if lit else 3, B_ACCENT if lit else B_INK))
-    svg = ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;overflow:visible">'
-           '<line x1="%d" y1="%d" x2="%.1f" y2="%d" stroke="%s" stroke-width="1"/>%s%s%s</svg>'
-           % (W, H, W, H, PAD_L, H - PAD_B, xy(n - 1, lo)[0], H - PAD_B, B_RULE,
-              "".join(ticks), "".join(marks), "".join(lines)))
-
-    # The legend — the reference's right-hand column: who, where they finished,
-    # and a swatch of their own line so the two read as one thing.
-    legend = []
-    for i, (name, vals) in enumerate(sorted(AFTER_SERIES, key=lambda s: -s[1][-1])):
-        lit = name == "You"
-        legend.append(
-          '<div style="display:grid;grid-template-columns:16px 26px 1fr auto;align-items:center;gap:9px;'
-          'padding:9px 0;border-bottom:1px solid %s">'
-          '<svg width="16" height="8" style="display:block"><line x1="0" y1="4" x2="16" y2="4" '
-          'stroke="%s" stroke-width="%s" opacity="%s" stroke-linecap="round"/></svg>'
-          '<span class="ser" style="font-size:14px;color:%s">%d</span>'
-          '<span style="font-size:13.5px;%s">%s</span>'
-          '<span class="ser num" style="font-size:16px">%s</span></div>'
-          % (B_RULE, B_ACCENT if lit else B_INK, "2.5" if lit else "1.5", "1" if lit else ".4",
-             B_ACCENT if lit else B_MUTED, i + 1, "font-weight:700" if lit else "", name,
-             money(vals[-1])))
-    return af_panel("Tracking the market",
-                    '<span style="display:inline-flex;align-items:center;gap:14px;color:%s">'
-                    '<span>net worth per turn</span>%s</span>' % (B_MUTED, b_chipkey("books")),
-                    '<div style="display:flex;gap:26px;align-items:flex-start">'
-                    '<div style="flex:1;min-width:0">%s</div>'
-                    '<div style="width:236px;flex-shrink:0;padding-top:4px">%s</div></div>'
-                    % (svg, "".join(legend)))
-
-# Every candidate from #69, kept — the set is not trimmed, it is *paged*. Each
-# is tinted by the corporation it is genuinely about (the one that died, the one
-# that was built) and left neutral otherwise, which is the answer the seat-colour
-# finding forces on "Colour, literally".
-#   title, subtitle, winner, the number, corporation it is about, Boomtown-only
-AFTER_AWARDS = [
-  ("Synergies Realised", "turned other people's companies into your bonus",
-   "Nadia", "3 chains folded on her tile", "electronics", False),
-  ("Professional Mourner", "made more money from companies dying than from any of them living",
-   "You", money(9000) + " of it in bonuses", "energy", False),
-  ("Rug-Puller", "founded it, let everyone buy in, then pulled the floor out",
-   "You", "Radio Hut · 9 shares left with the others", "electronics", False),
-  ("Sentimental Value", "still holding stock in companies that no longer exist",
-   "Ravi", "11 shares kept through a merger", "books", False),
-  ("Quietly Developing The Suburbs", "placed more tiles that did nothing than anyone",
-   "June", "9 tiles, no effect", None, False),
-  ("Right Place, Right Collapse", "was holding the most of it when it went under",
-   "You", money(4000) + " on Radio Hut", "electronics", False),
-  ("Fire Sale Enthusiast", "sold up the moment the floor went",
-   "June", money(6300) + " in disposals", "video", False),
-  ("Money Was No Object", "spent it as fast as the bank could count it",
-   "Nadia", money(31400) + " across 14 turns", None, False),
-  ("Cash Is A Position", "spent the game waiting for a bargain that never came",
-   "Nadia", money(8200) + " still in hand", None, False),
-  ("Paper Baron", "most shares held when the music stopped",
-   "Nadia", "16 certificates", None, False),
-  ("Buy High, Buy Often", "never once let a price put them off",
-   "You", "34 shares bought", None, False),
-  ("All Eggs, One Basket", "one company, total conviction",
-   "Ravi", "6 of 12 shares in Megahit Video", "video", False),
-  ("A Little Of Everything", "a stake in everything, a position in nothing",
-   "You", "5 companies, none above 5 shares", None, False),
-  ("Too Big To Fail (Briefly)", "built the biggest thing on the board",
-   "June", "Chapter Eleven at 11 tiles", "books", False),
-  ("Serial Entrepreneur", "founded the most corporations",
-   "You", "3 of them, one of them twice", None, False),
-  ("Took The Money", "sold at defunct prices and never looked back",
-   "June", "14 shares at the close", None, False),
-  ("Strictly A Passenger", "never founded a thing, somehow still here",
-   "Nadia", "0 foundings, 2nd place", None, False),
-  ("Zoning Issues", "left more of the board unbuildable than anyone",
-   "June", "5 dead tiles swept", None, False),
-  ("Called Last Orders", "ended it while they were ahead",
-   "You", "end announced on turn 14", None, True),
-  ("Shareholder Activist", "would rather put it to the table",
-   "Ravi", "2 motions raised", None, True),
-  ("Showed Everyone Their Hand", "backed a motion, lost the vote, played on with the books open",
-   "Ravi", "open from turn 6", None, True),
-  ("Institutional Investor", "the heaviest vote in the room",
-   "Nadia", "16 shares behind it", None, True),
-]
-AF_PAGE = 5
-AF_PAGES = (len(AFTER_AWARDS) + AF_PAGE - 1) // AF_PAGE
-
-def af_awards():
-    """#69 — all of them, five at a time.
-
-    Choosing three or four per game means ranking "interesting", which is a
-    design problem with no good answer; paging the whole earned set means the
-    table sees every one of them and nobody has to decide. Five is what fits a
-    row without the eye having to hunt, and the cycle is slow enough to read
-    aloud — the thing this screen is for."""
-    out = []
-    for title, sub, who, stat, ind, _bt in AFTER_AWARDS[:AF_PAGE]:
-        tint = CORP[ind]["color"] if ind else B_RULE
-        # Three columns, not two: the name, then the line that explains the
-        # joke, then who won it. A title left and a winner hard right leaves a
-        # hole across the middle of a 1312px row — the same hole the chart had.
-        out.append(
-          '<div style="display:grid;grid-template-columns:3px 310px 1fr 250px;align-items:center;'
-          'gap:16px;padding:13px 0;border-bottom:1px solid %s">'
-          '<span style="align-self:stretch;border-radius:2px;background:%s"></span>'
-          '<span class="ser" style="font-size:17px">%s</span>'
-          '<span style="font-size:12.5px;color:%s;line-height:1.45">%s</span>'
-          '<span style="text-align:right;display:flex;flex-direction:column;gap:3px">'
-          '<span style="font-size:14px;font-weight:700">%s</span>'
-          '<span class="num" style="font-size:11.5px;color:%s">%s</span></span></div>'
-          % (B_RULE, tint, title, B_MUTED, sub, who, B_MUTED, stat))
-
-    dots = "".join('<span style="width:%s;height:6px;border-radius:999px;background:%s"></span>'
-                   % ("20px" if i == 0 else "6px", B_ACCENT if i == 0 else B_RULE)
-                   for i in range(AF_PAGES))
-    pager = ('<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;'
-             'padding-top:12px">'
-             '<span style="display:inline-flex;align-items:center;gap:6px">%s</span>'
-             '<span style="font-size:11px;color:%s">page 1 of %d · turns over every 6 seconds · '
-             'hover or focus holds it</span></div>' % (dots, B_MUTED, AF_PAGES))
-    return af_panel("Awards", "%d earned this game · five at a time" % len(AFTER_AWARDS),
-                    "".join(out) + pager)
-
-def af_pool():
-    """The whole set on one panel — what #69 is actually asking to agree. The
-    subtitle is the joke; the line under it is the part that has to be right,
-    and it is what the fold over the command log computes."""
-    defs = [
-      ("Synergies Realised", "mergemaker on the most <code>corporation-defunct</code>"),
-      ("Professional Mourner", "largest sum of <code>bonus-paid</code>"),
-      ("Rug-Puller", "founded it, merged it away, others still holding"),
-      ("Sentimental Value", "most <code>shares-disposed.hold</code>"),
-      ("Quietly Developing The Suburbs", "most <code>tile-placed</code> with outcome <code>nothing</code>"),
-      ("Right Place, Right Collapse", "largest single <code>bonus-paid</code>"),
-      ("Fire Sale Enthusiast", "largest <code>shares-disposed.proceeds</code>"),
-      ("Money Was No Object", "largest sum of <code>shares-bought.cost</code>"),
-      ("Cash Is A Position", "least spent, most unspent at the close"),
-      ("Paper Baron", "most holdings at settlement"),
-      ("Buy High, Buy Often", "most shares bought across the game"),
-      ("All Eggs, One Basket", "most concentrated holding at the close"),
-      ("A Little Of Everything", "most diversified holding at the close"),
-      ("Too Big To Fail (Briefly)", "peak <code>corporation-grew.newSize</code>, to the placer"),
-      ("Serial Entrepreneur", "most <code>found-corporation</code> commands"),
-      ("Took The Money", "most shares sold at defunct prices"),
-      ("Strictly A Passenger", "founded nothing, finished mid-table or better"),
-      ("Zoning Issues", "most <code>dead-tiles-swept</code>"),
-      ("Called Last Orders", "the seat on <code>end-announced</code>"),
-      ("Shareholder Activist", "most <code>motion-raised</code>"),
-      ("Showed Everyone Their Hand", "in <code>books-opened</code> after a lost vote"),
-      ("Institutional Investor", "largest <code>vote-cast.weight</code>"),
-    ]
-    bt = {t for t, _s, _w, _st, _i, b in AFTER_AWARDS if b}
-    items = []
-    for title, rule in defs:
-        items.append(
-          '<div style="break-inside:avoid;padding:7px 0;display:flex;flex-direction:column;gap:2px">'
-          '<span style="font-size:13px">%s%s</span>'
-          '<span style="font-size:11px;color:%s;line-height:1.4">%s</span></div>'
-          % (title,
-             ('<span class="mono" style="margin-left:7px;font-size:8.5px;letter-spacing:.12em;'
-              'padding:2px 5px;border-radius:3px;border:1px solid %s;color:%s;vertical-align:2px">BT</span>'
-              % (B_RULE, B_MUTED)) if title in bt else "",
-             B_MUTED, rule))
-    return af_panel("The whole set",
-                    "22 in the pool · <span style=\"letter-spacing:.12em\">BT</span> = Boomtown tables only",
-                    '<div style="column-count:3;column-gap:40px">%s</div>' % "".join(items))
-
-def af_note(title, body):
-    return ('<div style="width:430px;border:1px dashed %s;border-radius:4px;padding:15px 17px;'
-            'display:flex;flex-direction:column;gap:7px">'
-            '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">%s</span>'
-            '<span style="font-size:11.5px;line-height:1.55;color:%s">%s</span></div>'
-            % (B_RULE, B_ACCENT, title, B_INK, body))
-
-def build_after():
-    total = sum(s for _t, s, _w in AF_FRAMES)
-    header = (
-      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:10px">'
-      '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">'
-      'Boomtown · after the game (#68 + #69)</span>'
-      '<span class="ser" style="font-size:34px">The shape of the game, once it is over</span>'
-      '<span style="font-size:13px;line-height:1.55;color:%s;max-width:1000px">Four frames, turning over on '
-      'their own: the standings every game already ends on, the per-turn graph, the market company by company, '
-      'and the awards. It sits <em>behind</em> the victory beat\'s last-to-first reveal — that is the payoff, '
-      'this is what the table talks over afterwards, and a screen nobody has to drive is the right shape for '
-      'that. Every frame is still a tab: click one and it holds. Disclosure is free here — settlement already '
-      'publishes every seat\'s cash and holdings — which is why the whole-table version of any of this belongs '
-      'at the end and nowhere else. Back, play and forward step it by hand \u2014 and the arrow keys and space '
-      'do the same \u2014 because with <code>prefers-reduced-motion</code> nothing cycles on its own, which '
-      'makes those controls the way through rather than a convenience on top of one.</span>'
-      '<div style="display:flex;align-items:baseline;gap:14px;margin-top:4px">'
-      '<span class="ser num" style="font-size:20px">%d seconds</span>'
-      '<span style="font-size:11.5px;color:%s">all the way round · every frame below is one state of the same '
-      'screen</span></div></div>' % (B_MUTED, B_MUTED, total, B_MUTED)
-    )
-
-    seat_max = mk_seat_max([mk_market_series(k) for k in ORDER if MARKET[k]["spans"]])
-    frames = "".join([
-      af_frame(0, af_standings(), 0.62),
-      af_frame(1, af_graph_lit(), 0.30),
-      af_frame(2, af_panel("The market, company by company",
-                           "company 2 of 5 in this frame · "
-                           "<span style=\"white-space:nowrap\">◆ majority changed hands</span>",
-                           mk_stage("video", seat_max, 14000)), 0.44, playing=False),
-      af_frame(3, af_awards(), 0.18),
-    ])
-
-    pool = ('<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:12px">'
-            '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;'
-            'color:%s">not a frame — the set behind the awards frame, for reference</span>%s</div>'
-            % (B_MUTED, af_pool()))
-
-    notes = (
-      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
-      % (af_note("A frame that cycles holds for all of it",
-                 "Two of the four have a carousel of their own — five companies, five pages of awards — "
-                 "and two cycles running at different rates is how a screen stops being readable. So the outer "
-                 "one waits: a frame with an inner cycle holds until the inner cycle has been all the way "
-                 "round, which is why those two hold 30 seconds and the flat ones hold 8 and 10. One thing "
-                 "moves at a time, and it is always the innermost."),
-         af_note("Why the seats have no colours",
-                 "#68 asks for a seat palette that is colourblind-safe <em>and</em> distinct from the seven "
-                 "corporation colours. 12,000 candidates through the dataviz validator say it does not exist at "
-                 "six seats — not at ΔE 15 from the board palette, not at 12, not at 10. The board already "
-                 "spends the usable space. So identity is the label, the row and the dash, never the hue — and "
-                 "the colour you do see belongs to companies, which already own it."),
-         af_note("What the y-axis is",
-                 "Net worth — cash plus stock at closing price — and it says so on the panel rather than "
-                 "leaving it inferred. Cash alone would show a fully-invested player as broke. It must come from "
-                 "settlement's own arithmetic, never from <code>evaluate()</code>, which is a bot's opinion "
-                 "with growth headroom priced in."))
-    )
+    def section(title, note, inner):
+        return ('<div style="display:flex;flex-direction:column;gap:14px">'
+                '<div style="border-bottom:1px solid %s;padding-bottom:10px"><div class="ser" style="font-size:24px">%s</div>'
+                '<div style="font-size:12.5px;color:%s;margin-top:4px;max-width:900px">%s</div></div>%s</div>'
+                % (B_RULE, title, B_MUTED, note, inner))
     body = (
-      '<div style="width:1440px;min-height:%dpx;background:%s;color:%s;'
-      'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:40px 0 44px;'
-      'display:flex;flex-direction:column;gap:30px;align-items:center">%s%s%s%s</div>'
-      % (AFTER_H, B_BG, B_INK, header, frames, pool, notes)
-    )
-    write("After.dc.html", B_HELMET, body)
-
-# ---------------------------------------------------------------- canvas
-
-# =========================================================== company by company
-# One chart per company, stacked by seat, y in money. The line chart says who
-# won and the radar would have said who was positioned where; this says what
-# each *company* was worth and who owned it while it was worth that — which is
-# the market from the company's side rather than the player's.
-#
-# The stacks answer the seat-palette problem by not needing a seat palette: a
-# cell is one company, so its segments are steps of that company's own hue.
-# Colour says which company, lightness says where a seat came in the ownership
-# of it, and the names sit under the cell rather than in a shared legend.
-#
-# A stack's total height is the traded value of the company — shares out times
-# the current price — so the silhouette is the company's whole life: founded,
-# bought into, revalued, and gone.
-
-# turn -> size, and seat -> {turn: holding from that turn on}. Written as steps
-# because that is how a game produces them; expanded below. Consistent with the
-# timeline on the after-game artboard, and the closing holdings match the table
-# the Main artboard prints.
-MARKET = {
-  "books": {
-    "spans": [(1, 14)],
-    "size": {1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 7: 7, 8: 8, 9: 9, 11: 10, 13: 11},
-    "held": {"June": {1: 1, 2: 3, 5: 4, 9: 5, 12: 6},
-             "Nadia": {3: 2, 6: 4, 10: 6, 13: 7},
-             "You": {4: 1, 7: 3, 11: 4},
-             "Ravi": {8: 2}},
-  },
-  "electronics": {
-    "spans": [(2, 5), (9, 14)],
-    "size": {2: 2, 3: 3, 4: 4, 5: 5, 9: 2, 10: 3, 12: 4, 14: 5},
-    "held": {"You": {2: 3, 3: 4, 9: 2},
-             "Nadia": {3: 2, 4: 3, 9: 0},
-             "June": {4: 2, 9: 0, 11: 3},
-             "Ravi": {4: 2, 9: 0, 10: 3}},
-  },
-  "energy": {
-    "spans": [(3, 7)],
-    "size": {3: 2, 4: 3, 5: 4, 6: 5, 7: 6},
-    "held": {"You": {3: 3}, "Nadia": {4: 3}, "June": {5: 1}, "Ravi": {}},
-  },
-  "video": {
-    "spans": [(6, 13)],
-    "size": {6: 2, 7: 3, 8: 4, 9: 5, 10: 6, 11: 7, 12: 8, 13: 9},
-    "held": {"Ravi": {6: 2, 8: 4, 10: 6},
-             "June": {7: 2, 9: 4, 11: 5},
-             "Nadia": {8: 2, 12: 4},
-             "You": {9: 1}},
-  },
-  "tech": {
-    "spans": [(11, 14)],
-    "size": {11: 2, 12: 3, 13: 4, 14: 5},
-    "held": {"You": {11: 2, 12: 4, 14: 5},
-             "Nadia": {11: 1, 13: 3},
-             "June": {12: 2},
-             "Ravi": {13: 1}},
-  },
-  "air": {"spans": [], "size": {}, "held": {}},
-  "toys": {"spans": [], "size": {}, "held": {}},
-}
-MARKET_SEATS = ["You", "Nadia", "June", "Ravi"]
-
-def mk_mix(hexcol, pct):
-    """`pct` of the way from the colour to paper. The steps have to survive a
-    2px gap between segments, so they are wide apart rather than even."""
-    r, g, b = (int(hexcol[i:i + 2], 16) for i in (1, 3, 5))
-    pr, pg, pb = (int(B_PANEL[i:i + 2], 16) for i in (1, 3, 5))
-    return "#%02X%02X%02X" % tuple(min(255, max(0, int(round(c + (p - c) * pct))))
-                                  for c, p in ((r, pr), (g, pg), (b, pb)))
-
-MK_DASH = ["", "7 4", "1.5 3.5", "10 3.5 1.5 3.5", "16 5", "1.5 3.5 7 3.5"]
-
-# A six-handed table over forty-six turns — the case the stacked version could
-# not survive, kept as a frame on the artboard so the claim can be checked
-# rather than believed. The majority changes hands four times in it.
-STRESS_SEATS = ["You", "Nadia", "June", "Ravi", "Otto", "Mara"]
-STRESS_TURNS = list(range(0, 47))
-STRESS = {
-  "spans": [(3, 46)],
-  "size": {3: 2, 5: 3, 7: 4, 9: 5, 11: 6, 14: 8, 17: 11, 20: 14, 24: 18, 28: 22,
-           33: 26, 38: 30, 43: 34},
-  "held": {"You":   {4: 1, 9: 2, 15: 3, 22: 4, 31: 6, 39: 7},
-           "Nadia": {5: 2, 12: 3, 20: 5, 27: 6},
-           "June":  {6: 1, 14: 3, 19: 4, 29: 5},
-           "Ravi":  {7: 1, 18: 2, 35: 3},
-           "Otto":  {11: 1, 24: 2},
-           "Mara":  {13: 1, 33: 2}},
-}
-
-def mk_series(spec, seats, turns, tier):
-    """Expand the steps into a per-turn record: size, price, holdings, value."""
-    live = set()
-    for a, b in spec["spans"]:
-        live |= set(range(a, b + 1))
-    out, size, held = {}, 0, {s: 0 for s in seats}
-    for t in turns:
-        if t in spec["size"]: size = spec["size"][t]
-        for s in seats:
-            if t in spec["held"].get(s, {}): held[s] = spec["held"][s][t]
-        if t not in live:
-            size = 0
-            continue
-        p = price(size, tier) or 0
-        out[t] = {"size": size, "price": p, "held": dict(held),
-                  "value": {s: held[s] * p for s in seats}}
-    return out
-
-def mk_market_series(ind):
-    return mk_series(MARKET[ind], MARKET_SEATS, AFTER_TURNS, CORP[ind]["tier"])
-
-def mk_rank(series, seats):
-    """Order for the side table and the labels: who ended up holding most,
-    peak then name breaking a tie. It orders a *list*, not a stack — nothing
-    on the chart depends on it any more."""
-    if not series: return list(seats)
-    last = series[max(series)]["held"]
-    peak = {s: max((r["held"][s] for r in series.values()), default=0) for s in seats}
-    return sorted(seats, key=lambda s: (-last[s], -peak[s], s))
-
-def mk_leads(series, seats):
-    """The turns the majority changed hands. A tie holds the incumbent, which
-    is not the rule for a bonus but is the right reading of "changed hands" —
-    nobody took it off anyone."""
-    out, cur = [], None
-    for t in sorted(series):
-        held = series[t]["held"]
-        top = max(held.values())
-        if top == 0: continue
-        winners = [s for s in seats if held[s] == top]
-        if cur in winners: continue
-        if len(winners) > 1: continue
-        if cur is not None: out.append((t, winners[0]))
-        cur = winners[0]
-    return out
-
-def mk_holder_runs(series, seats):
-    """Who the two bonuses would pay, turn by turn, collapsed into runs.
-
-    Ranked by shares held, ties kept together rather than broken — a tie for
-    largest is a real position in the rules (`docs/rules.md`, *Bonus ties*: the
-    primary and secondary bonuses combine and halve, and the next holder down
-    becomes secondary), so the lane says "Nadia · June" and means it. Consecutive
-    turns with the same answer become one block, which is the whole point: a
-    reader wants the tenure, not forty-six repetitions of a name.
-    """
-    rows = [[], []]
-    for t in sorted(series):
-        held = series[t]["held"]
-        levels = sorted({v for v in held.values() if v > 0}, reverse=True)
-        for lane in (0, 1):
-            who = ([s for s in seats if held[s] == levels[lane]]
-                   if lane < len(levels) else [])
-            label = " · ".join(who)
-            if rows[lane] and rows[lane][-1][2] == label and rows[lane][-1][1] == t - 1:
-                rows[lane][-1][1] = t
-            else:
-                rows[lane].append([t, t, label])
-    return rows
-
-def mk_chart(ind, series, seats, W, H, turns, spans, seat_max, total_max,
-             big=False, strip_only=False, demo_turn=None):
-    """One company: a line per seat, under a strip of what the company itself
-    was worth.
-
-    The stacked version this replaces could not answer two questions from the
-    table — six seats, and a company that lives forty turns — and both had the
-    same root. A stack has to be ordered, and every order is a lie for some
-    part of the game: order by the end and the seat who led for twenty turns is
-    drawn in the wrong step throughout; order turn by turn and the bands cross
-    every time the lead moves, which at six seats is most turns.
-
-    Lines have no order to get wrong. The lead changing hands *is* the picture
-    — two lines crossing, marked with a ◆ — rather than something the drawing
-    has to survive, and forty-six turns is a longer line rather than forty-six
-    shoved bars.
-
-    The two readings get their own heights rather than one shared axis. The
-    company's total is six times any one seat's line at a six-handed table, so
-    a common scale would flatten the fight into the bottom sixth of the plot.
-    The strip is the company; the plot under it is whose.
-    """
-    corp = CORP[ind]
-    PAD_B, PAD_R = (116, 100) if big else (6, 0)
-    STRIP_Y, STRIP_H = (30, 44) if big else (0, H - PAD_B)
-    PLOT_Y = STRIP_Y + STRIP_H + 38
-    n = len(turns)
-    def x(t): return t * (W - PAD_R) / (n - 1)
-    def ys(v): return STRIP_Y + STRIP_H - (v / total_max) * STRIP_H     # the strip
-    def y(v): return H - PAD_B - (v / seat_max) * (H - PAD_B - PLOT_Y)  # the seats
-    if not series:
-        return ""
-
-    ink = mk_mix(corp["color"], -0.24)     # the hue, darkened enough to draw with
-    parts = []
-
-    # --- the company: its whole worth, as one band ---------------------------
-    for a, b in spans:
-        span = [t for t in sorted(series) if a <= t <= b]
-        if len(span) < 2: continue
-        pts = [(x(t), ys(sum(series[t]["value"].values()))) for t in span]
-        d = "M" + " L".join("%.1f %.1f" % p for p in pts)
-        base = ys(0)
-        parts.append('<path d="%s L%.1f %.1f L%.1f %.1f Z" fill="%s" opacity=".18"/>'
-                     '<path d="%s" fill="none" stroke="%s" stroke-width="1.5" opacity=".55"/>'
-                     % (d, pts[-1][0], base, pts[0][0], base, corp["color"], d, ink))
-    parts.append('<line x1="0" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1"/>'
-                 % (ys(0), x(turns[-1]), ys(0), B_RULE))
-    if big:
-        peak = max(sum(r["value"].values()) for r in series.values())
-        parts.append('<text x="0" y="%d" font-size="9" fill="%s" '
-                     'style="letter-spacing:.11em;text-transform:uppercase">the company · %s at its '
-                     'peak</text>' % (STRIP_Y - 20, B_MUTED, money(peak)))
-        parts.append('<text x="%.1f" y="%.1f" font-size="9" fill="%s" dominant-baseline="middle" '
-                     'class="num">%s</text>' % (x(turns[-1]) + 8, ys(total_max) + 5, B_MUTED,
-                                                money(total_max)))
-
-    if strip_only:
-        return ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;'
-                'overflow:visible">%s</svg>' % (W, H, W, H, "".join(parts)))
-
-    # --- the seats: one line each, on their own scale ------------------------
-    step = 2000 if seat_max <= 9000 else 5000
-    for v in range(step, int(seat_max) + 1, step):
-        parts.append('<line x1="0" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
-                     'stroke-dasharray="2 5"/>'
-                     '<text x="2" y="%.1f" font-size="9" fill="%s" dominant-baseline="after-edge" '
-                     'class="num">%s</text>'
-                     % (y(v), x(turns[-1]), y(v), B_RULE, y(v) - 2, B_MUTED, money(v)))
-    parts.append('<text x="0" y="%.1f" font-size="9" fill="%s" '
-                 'style="letter-spacing:.11em;text-transform:uppercase">each seat\'s holding</text>'
-                 % (PLOT_Y - 20, B_MUTED))
-
-    for i, s in enumerate(seats):
-        dash = MK_DASH[i % len(MK_DASH)]
-        for a, b in spans:
-            span, seen = [], False
-            for t in sorted(series):
-                if not a <= t <= b: continue
-                seen = seen or series[t]["held"][s] > 0
-                if seen: span.append(t)
-            if len(span) < 2: continue
-            parts.append('<path d="M%s" fill="none" stroke="%s" stroke-width="2" '
-                         'stroke-linejoin="round" stroke-linecap="round"%s><title>%s</title></path>'
-                         % (" L".join("%.1f %.1f" % (x(t), y(series[t]["value"][s])) for t in span),
-                            ink, ' stroke-dasharray="%s"' % dash if dash else "",
-                            "%s \u2014 %d shares at turn %d, %s"
-                            % (s, series[span[-1]]["held"][s], span[-1],
-                               money(series[span[-1]]["value"][s]))))
-
-    parts.append('<line x1="0" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1"/>'
-                 % (y(0), x(turns[-1]), y(0), B_RULE))
-
-    # The majority changing hands: the event the table asked about, marked
-    # where it happens rather than left to be inferred from a crossing —
-    # straddling the axis like a tick rather than sitting in the row the turn
-    # numbers use, where it printed over them.
-    for t, _who in mk_leads(series, seats):
-        parts.append('<path d="M%.1f %.1f l4.5 5.5 l-4.5 5.5 l-4.5 -5.5 Z" fill="%s"/>'
-                     % (x(t), y(0) - 6, B_ACCENT))
-
-    # founded / founded again / folded, ruled through both plots so the
-    # company's turn and the seats' turn are the same turn
-    # The company's own history, on the axis: the mark in a chip whose
-    # treatment says founded, founded again or folded. The words that used to
-    # sit along the top collided with the panel's own caption.
-    for i, (a, b) in enumerate(spans):
-        parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
-                     'stroke-dasharray="1 4" opacity=".75"/>'
-                     % (x(a), STRIP_Y, x(a), y(0) + 26, corp["color"]))
-        parts.append(b_chip(ind, "found" if i == 0 else "refound", x(a), y(0) + 26))
-        if b < turns[-1]:
-            parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1" '
-                         'stroke-dasharray="3 3"/>' % (x(b), STRIP_Y, x(b), y(0) + 26, B_MUTED))
-            parts.append(b_chip(ind, "fold", x(b), y(0) + 26))
-
-    tick = 1 if n <= 16 else (2 if n <= 26 else 5)
-    for t in turns:
-        if t % tick == 0:
-            parts.append('<text x="%.1f" y="%.1f" font-size="10" fill="%s" text-anchor="middle" '
-                         'class="num">%d</text>' % (x(t), y(0) + 18, B_MUTED, t))
-
-    # Under the turns, who the bonuses would pay. The lines say how close it
-    # was; this says who was actually holding the position, which is the thing
-    # the money keys off and the one question a line chart makes you squint at.
-    half = (W - PAD_R) / (n - 1) / 2
-    lanes = mk_holder_runs(series, seats)
-    for lane, runs in enumerate(lanes):
-        top = y(0) + 54 + lane * 23
-        parts.append('<text x="%.1f" y="%.1f" font-size="8.5" fill="%s" dominant-baseline="middle" '
-                     'style="letter-spacing:.09em;text-transform:uppercase">%s</text>'
-                     % (x(turns[-1]) + 10, top + 9, B_MUTED,
-                        "largest holder" if lane == 0 else "second largest"))
-        for i, (a, b, label) in enumerate(runs):
-            if not label: continue
-            x0 = max(0.0, x(a) - half) + 1
-            x1 = min(x(turns[-1]), x(b) + half) - 1
-            wide = x1 - x0
-            # Every block is hoverable, the unlabelled ones most of all — an
-            # abbreviation is only honest if the whole name is one hover away,
-            # and a block with no room for any text at all still has to be
-            # able to say what it is.
-            tip = "%s \u2014 %s, turn%s %s" % (
-                label, "largest holder" if lane == 0 else "second largest",
-                "" if a == b else "s", a if a == b else "%d\u2013%d" % (a, b))
-            parts.append('<rect x="%.1f" y="%.1f" width="%.1f" height="18" rx="2.5" fill="%s" '
-                         'opacity="%s"><title>%s</title></rect>'
-                         % (x0, top, wide, corp["color"], ".26" if lane == 0 else ".13", tip))
-            # A block too narrow for its name gets an initial, and a *tie* too
-            # narrow for both names gets nothing at all — "YJR" is not a
-            # shorter way of saying anything. The block itself still shows that
-            # the position turned over, which at that width is the reading.
-            text = (label if wide >= 7.2 * len(label) + 8
-                    else label[0] if " · " not in label and wide >= 15 else "")
-            if text:
-                parts.append('<text x="%.1f" y="%.1f" font-size="9.5" fill="%s" text-anchor="middle" '
-                             'dominant-baseline="middle">%s</text>'
-                             % ((x0 + x1) / 2, top + 10, B_INK, text))
-
-
-    # The readout, drawn in place at one turn so the hover state is part of
-    # the artboard rather than a promise in a caption. Live, it follows the
-    # pointer or the arrow keys, and the lanes hand over the names the blocks
-    # are too narrow to print.
-    if demo_turn is not None and demo_turn in series:
-        t = demo_turn
-        rec = series[t]
-        rows = sorted(((rec["held"][s], s) for s in seats if rec["held"][s]), reverse=True)
-        levels = sorted({h for h, _s in rows}, reverse=True)
-        cw, ch = 168, 34 + 17 * len(rows)
-        cx0 = min(x(t) + 14, W - PAD_R - cw)
-        cy0 = PLOT_Y + 6
-        parts.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1"/>'
-                     % (x(t), STRIP_Y, x(t), y(0) + 34 + 23 + 18, B_INK))
-        for h, seat in rows:
-            parts.append('<circle cx="%.1f" cy="%.1f" r="3.5" fill="%s"/>'
-                         % (x(t), y(rec["value"][seat]), ink))
-        parts.append('<rect x="%.1f" y="%.1f" width="%d" height="%d" rx="4" fill="%s" stroke="%s" '
-                     'stroke-width="1"/>' % (cx0, cy0, cw, ch, B_PANEL, B_RULE))
-        parts.append('<text x="%.1f" y="%.1f" font-size="9" fill="%s" '
-                     'style="letter-spacing:.11em;text-transform:uppercase">turn %d · %s</text>'
-                     % (cx0 + 11, cy0 + 17, B_MUTED, t, money(sum(rec["value"].values()))))
-        for i, (h, seat) in enumerate(rows):
-            yy = cy0 + 34 + i * 17
-            tag = ("largest" if h == levels[0] else
-                   "second" if len(levels) > 1 and h == levels[1] else "")
-            parts.append('<text x="%.1f" y="%.1f" font-size="10.5" fill="%s">%s</text>'
-                         '<text x="%.1f" y="%.1f" font-size="10" fill="%s" text-anchor="end" '
-                         'class="num">%d sh</text>'
-                         % (cx0 + 11, yy, B_INK, seat, cx0 + cw - 11, yy,
-                            B_ACCENT if tag == "largest" else B_MUTED, h))
-            if tag:
-                parts.append('<text x="%.1f" y="%.1f" font-size="8" fill="%s" '
-                             'style="letter-spacing:.09em;text-transform:uppercase">%s</text>'
-                             % (cx0 + 58, yy, B_MUTED, tag))
-
-    # Direct labels at the end of every line — the thing that makes six of them
-    # readable. Pushed apart where they would collide, with a leader back to
-    # the line each belongs to.
-    tlast = max(series)
-    want = sorted(((series[tlast]["value"][s], s) for s in seats), key=lambda p: -p[0])
-    prev = -1e9
-    for v, s in want:
-        yy = max(y(v), prev + 14)
-        prev = yy
-        parts.append('<path d="M%.1f %.1f L%.1f %.1f" stroke="%s" stroke-width="1" fill="none" '
-                     'opacity=".55"/>'
-                     '<text x="%.1f" y="%.1f" font-size="10.5" fill="%s" dominant-baseline="middle">'
-                     '%s</text>'
-                     '<text x="%.1f" y="%.1f" font-size="10" fill="%s" dominant-baseline="middle" '
-                     'text-anchor="end" class="num">%s</text>'
-                     % (x(tlast), y(v), x(tlast) + 9, yy, B_RULE,
-                        x(tlast) + 14, yy, B_INK, s, W, yy, B_MUTED, money(v)))
-
-    return ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block;overflow:visible">'
-            '%s</svg>' % (W, H, W, H, "".join(parts)))
-
-def mk_dashswatch(i, ink, w=22):
-    dash = MK_DASH[i % len(MK_DASH)]
-    return ('<svg width="%d" height="8" style="display:block;flex-shrink:0">'
-            '<line x1="0" y1="4" x2="%d" y2="4" stroke="%s" stroke-width="2" stroke-linecap="round"%s/></svg>'
-            % (w, w, ink, ' stroke-dasharray="%s"' % dash if dash else ""))
-
-def mk_side(ind, series, seats, note):
-    corp = CORP[ind]
-    ink = mk_mix(corp["color"], -0.24)
-    last = series[max(series)]
-    rows = []
-    for s in mk_rank(series, seats):
-        if not last["held"][s]: continue
-        rows.append(
-          '<div style="display:grid;grid-template-columns:24px 1fr auto auto;align-items:center;gap:10px;'
-          'padding:8px 0;border-bottom:1px solid %s">%s'
-          '<span style="font-size:13.5px">%s</span>'
-          '<span class="num" style="font-size:12px;color:%s">%d sh</span>'
-          '<span class="ser num" style="font-size:15px;min-width:64px;text-align:right">%s</span></div>'
-          % (B_RULE, mk_dashswatch(seats.index(s), ink), s, B_MUTED, last["held"][s],
-             money(last["value"][s])))
-    return ('<div style="width:326px;flex-shrink:0;display:flex;flex-direction:column;gap:9px">'
-            '<div style="display:flex;align-items:center;gap:10px">%s'
-            '<span class="ser" style="font-size:23px">%s</span></div>'
-            '<span style="font-size:12px;color:%s;font-style:italic">%s</span>'
-            '<div style="display:flex;align-items:baseline;gap:10px;padding:6px 0 2px">'
-            '<span class="ser num" style="font-size:29px">%s</span>'
-            '<span style="font-size:11.5px;color:%s">held by the table</span></div>'
-            '<div style="border-top:1px solid %s">%s</div>'
-            '<span style="font-size:11px;color:%s;padding-top:2px;line-height:1.5">%s</span></div>'
-            % (b_mark(ind, corp["color"], 25), corp["name"], B_MUTED, corp["flavor"],
-               money(sum(last["value"].values())), B_MUTED, B_RULE, "".join(rows), B_MUTED, note))
-
-# One seat scale for every frame of a game, so a seat's line means the same
-# thing whichever company is on the stage.
-def mk_seat_max(gseries):
-    peak = max((max(r["value"].values()) for s in gseries for r in s.values()), default=0)
-    return int(-(-peak // 2000)) * 2000
-
-def mk_stage(ind, seat_max, total_max):
-    series = mk_market_series(ind)
-    svg = mk_chart(ind, series, MARKET_SEATS, 900, 360, AFTER_TURNS, MARKET[ind]["spans"],
-                   seat_max, total_max, big=True)
-    leads = mk_leads(series, MARKET_SEATS)
-    note = "founded turn %d · %d shares still in the bank · the majority changed hands %d %s" % (
-        MARKET[ind]["spans"][0][0], 25 - sum(series[max(series)]["held"].values()),
-        len(leads), "time" if len(leads) == 1 else "times")
-    return ('<div style="display:flex;gap:30px;align-items:flex-start">'
-            '<div style="flex:1;min-width:0">%s</div>%s</div>'
-            % (svg, mk_side(ind, series, MARKET_SEATS, note)))
-
-def mk_thumb(ind, total_max, active):
-    """One frame of the filmstrip: the company's own band and nothing else. Six
-    lines at this size would be a smudge, and what a filmstrip is for is
-    telling you which company you are about to see."""
-    corp = CORP[ind]
-    series = mk_market_series(ind)
-    svg = mk_chart(ind, series, MARKET_SEATS, 152, 50, AFTER_TURNS,
-                   MARKET[ind]["spans"], 1, total_max, strip_only=True) if series else ""
-    return ('<div style="display:flex;flex-direction:column;gap:6px;padding:9px 10px 10px;'
-            'border-radius:4px;%s">'
-            '<div style="display:flex;align-items:center;gap:6px">%s'
-            '<span style="font-size:11.5px;%s;white-space:nowrap;overflow:hidden;'
-            'text-overflow:ellipsis">%s</span></div>%s</div>'
-            % ("background:%s;box-shadow:inset 0 0 0 1px %s" % (B_BG, B_RULE) if active
-               else "opacity:.62",
-               b_mark(ind, corp["color"] if svg else B_RULE, 15),
-               "font-weight:700" if active else "color:%s" % B_MUTED, corp["name"],
-               svg or '<div style="height:50px;display:flex;align-items:center;font-size:10px;color:%s">'
-                      'never founded</div>' % B_MUTED))
-
-def mk_stress():
-    """The frame the objections asked for: six seats, forty-six turns, the
-    majority moving four times. Its own pair of scales, because a company that
-    trades this long is worth twice what a short one is and borrowing the short
-    game's axis would flatter it."""
-    ind = "tech"
-    series = mk_series(STRESS, STRESS_SEATS, STRESS_TURNS, CORP[ind]["tier"])
-    svg = mk_chart(ind, series, STRESS_SEATS, 900, 360, STRESS_TURNS, STRESS["spans"],
-                   mk_seat_max([series]), 26000, big=True, demo_turn=13)
-    leads = mk_leads(series, STRESS_SEATS)
-    note = ("founded turn 3 · still trading at turn 46 · the majority changed hands %d times — %s"
-            % (len(leads), ", ".join("%s on turn %d" % (w, t) for t, w in leads)))
-    return af_panel("The same frame at the far end of the table",
-                    "six seats · forty-six turns · drawn with the hover readout open at turn 13",
-                    '<div style="display:flex;gap:30px;align-items:flex-start">'
-                    '<div style="flex:1;min-width:0">%s</div>%s</div>'
-                    % (svg, mk_side(ind, series, STRESS_SEATS, note)))
-
-MARKET_H = 1479
-
-def build_market():
-    feature = "books"
-    gseries = [mk_market_series(k) for k in ORDER if MARKET[k]["spans"]]
-    seat_max = mk_seat_max(gseries)
-    total_max = 14000
-    strip = ('<div style="display:grid;grid-template-columns:repeat(7, 1fr);gap:10px;'
-             'border-top:1px solid %s;padding-top:14px">%s</div>'
-             % (B_RULE, "".join(mk_thumb(k, total_max, k == feature) for k in ORDER)))
-    pager = ('<div style="display:flex;align-items:center;justify-content:space-between;gap:16px">'
-             '<span style="font-size:11px;color:%s">company 1 of 7 · turns over every 6 seconds · '
-             'hover, focus or click a frame to hold it</span>'
-             '<span style="font-size:11px;color:%s">every frame of a game shares both scales — '
-             '%s across the strip, %s across the seats</span></div>'
-             % (B_MUTED, B_MUTED, money(total_max), money(seat_max)))
-
-    header = (
-      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:10px">'
-      '<span class="mono" style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:%s">'
-      'Boomtown · after the game (#68) · company by company</span>'
-      '<span class="ser" style="font-size:34px">Who owned what, while it was worth something</span>'
-      '<span style="font-size:13px;line-height:1.55;color:%s;max-width:1000px">One company at a time: a band '
-      'for what the company was worth, and under it a line per seat for whose it was. The stacked version this '
-      'replaces could not answer two questions from the table — six seats, and a company that lives forty '
-      'turns — and both had the same root: a stack has to be ordered, and every order is a lie for some part '
-      'of the game. Lines have no order to get wrong, and the majority changing hands becomes the picture '
-      'rather than a problem the drawing has to survive. Under the turns, two lanes say plainly who the '
-      'two bonuses would pay — a tie kept as a tie, because the rules pay it as one.</span></div>'
-      % (B_MUTED, B_MUTED))
-
-    panel = ('<div style="width:1440px;box-sizing:border-box;padding:0 44px">%s</div>'
-             % af_panel("The market, company by company",
-                        '<span style="display:inline-flex;align-items:center;gap:14px">%s'
-                        '<span style="white-space:nowrap">◆ majority changed hands</span>'
-                        '<span style="white-space:nowrap">hover a lane block for the whole name</span>'
-                        '</span>' % b_chipkey("books"),
-                        '<div style="display:flex;flex-direction:column;gap:18px">%s%s%s</div>'
-                        % (mk_stage(feature, seat_max, total_max), strip, pager)))
-    stress = '<div style="width:1440px;box-sizing:border-box;padding:0 44px">%s</div>' % mk_stress()
-
-    notes = (
-      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
-      % (af_note("Why the stacks went",
-                 "Two objections, one root. Order the stack by the final holding and a seat who led for twenty "
-                 "turns is drawn in the wrong step the whole way; order it turn by turn and the bands cross "
-                 "every time the lead moves, which at six seats is most turns. There is no third order. A line "
-                 "per seat has nothing to order — and the crossing that broke the stack is the thing worth "
-                 "seeing, so it is marked with a ◆ on the axis and counted in the panel. An abbreviation is "
-                 "only honest when the whole name is one hover away, so every lane block answers with its own "
-                 "— the unlabelled ones most of all — and the readout drawn open below gives the whole "
-                 "table at that turn."),
-         af_note("Two heights, not one axis",
-                 "The company's total is six times any one seat's line at a six-handed table, so drawing both "
-                 "against one scale flattens the fight into the bottom sixth of the plot. The band up top is "
-                 "the company on its own scale; the plot under it is the seats on theirs. They share the turn "
-                 "axis and every rule — founded, folded, the majority moving — is drawn through both, so the "
-                 "company's turn and the seats' turn are visibly the same turn."),
-         af_note("Why the height is money and not shares",
-                 "Inside one company the two rank identically — everybody pays the same price — so money costs "
-                 "nothing in fidelity and adds the company's own rise and fall. It also means every line steps "
-                 "together when the price band moves, which is honest: each position really did revalue at "
-                 "once. The bank's unsold shares stay out; they would flatten every frame to one height."))
-    )
-
-    body = (
-      '<div style="width:1440px;min-height:%dpx;background:%s;color:%s;'
-      'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:40px 0 44px;'
-      'display:flex;flex-direction:column;gap:26px;align-items:center">%s%s%s%s</div>'
-      % (MARKET_H, B_BG, B_INK, header, panel, stress, notes)
-    )
-    write("Market.dc.html", B_HELMET, body)
-
-# =============================================================== COUCH MODE — THE PHONE
-# The phone half of couch mode (#62): the desktop is the table everybody
-# watches, and each player holds their hand on their own phone. The phone
-# shows only what is private to its seat — rack, books, the buy, every
-# decision owed — and never the board, the beats or the story, which are the
-# table's. Each frame is one screen at 390x844 (a common phone viewport), in
-# the same Direction B language as the table so the two read as one game.
-
-PH_W, PH_H = 390, 844
-PHONE_H = 5050
-
-def ph_frame(caption, spec, inner):
-    return (
-      '<div style="display:flex;flex-direction:column;gap:12px;width:%dpx">'
-      '<div style="display:flex;flex-direction:column;gap:3px;min-height:48px">'
-      '<span style="font-size:13px;font-weight:600">%s</span>'
-      '<span class="mono" style="font-size:10.5px;line-height:1.45;color:%s">%s</span></div>'
-      '<div style="width:%dpx;height:%dpx;box-sizing:border-box;border:9px solid #1C1917;border-radius:46px;'
-      'overflow:hidden;position:relative;background:%s;box-shadow:%s">'
-      '<div style="position:absolute;top:9px;left:50%%;transform:translateX(-50%%);width:96px;height:26px;'
-      'border-radius:14px;background:#1C1917;z-index:2"></div>'
-      '<div style="position:absolute;inset:0;padding:48px 20px 26px;box-sizing:border-box;display:flex;'
-      'flex-direction:column;gap:14px">%s</div></div></div>'
-      % (PH_W, caption, B_MUTED, spec, PH_W, PH_H, B_BG, L_ELEV[3], inner)
-    )
-
-def ph_top(name, cash, seat_note):
-    """The strip every in-game screen opens with: who this phone is, and its cash."""
-    return (
-      '<div style="display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:12px;'
-      'border-bottom:1px solid %s">'
-      '<div><div class="mono" style="font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:%s">%s</div>'
-      '<div class="ser" style="font-size:24px;line-height:1.1">%s</div></div>'
-      '<div style="text-align:right"><div class="mono" style="font-size:9.5px;letter-spacing:.16em;'
-      'text-transform:uppercase;color:%s">cash</div><div class="ser num" style="font-size:24px">%s</div></div></div>'
-      % (B_RULE, B_MUTED, seat_note, name, B_MUTED, money(cash))
-    )
-
-def ph_button(label, primary=True, note=None, disabled=False):
-    style = ("background:%s;color:#FFF;box-shadow:%s" % (B_ACCENT, L_ELEV[1]) if primary and not disabled else
-             "background:%s;color:%s;border:1px solid %s" % (B_PANEL, B_MUTED if disabled else B_INK, B_RULE))
-    n = ('<div style="font-size:11.5px;line-height:1.4;color:%s;margin-top:6px;text-align:center">%s</div>'
-         % (B_MUTED, note)) if note else ""
-    return ('<div><div style="height:54px;border-radius:10px;display:flex;align-items:center;justify-content:center;'
-            'font-size:16px;font-weight:700;%s">%s</div>%s</div>' % (style, label, n))
-
-def ph_kicker(text, color=None):
-    return ('<div class="mono" style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:%s">%s</div>'
-            % (color or B_MUTED, text))
-
-def ph_chip(k, n):
-    return ('<span style="display:inline-flex;align-items:center;gap:5px">'
-            '<span style="width:20px;height:20px;border-radius:50%%;background:%s;display:flex;align-items:center;'
-            'justify-content:center">%s</span><span class="mono num" style="font-size:13px">%d</span></span>'
-            % (CORP[k]["color"], b_mark(k, CORP[k]["ink"], 13), n))
-
-def ph_holdings(h):
-    return ('<div style="display:flex;flex-wrap:wrap;gap:10px 14px">%s</div>'
-            % "".join(ph_chip(k, v) for k, v in h.items() if v))
-
-EFFECT_WORD = {"found": "found", "grow": "grow", "merge": "merge", "dead": "dead", "none": "idle"}
-
-def ph_rack(live, selected=None):
-    """The hand as a list, not a row: at phone width a tile needs its
-    consequence beside it, because the board that would explain it is on the TV."""
-    rows = []
-    for t, kind, note in HAND:
-        sel = live and t == selected
-        dead = kind == "dead"
-        tile = ('<div style="width:50px;height:50px;flex-shrink:0;border-radius:9px;display:flex;align-items:center;'
-                'justify-content:center;font-size:17px;font-weight:700;%s" class="mono num">%s</div>'
-                % ("background:%s;color:#FFF;box-shadow:%s" % (B_ACCENT, L_ELEV[1]) if sel else
-                   ("background:%s;color:%s;border:1px dashed %s;opacity:.55" % (B_BG, B_MUTED, B_MUTED) if dead else
-                    "background:%s;color:%s;border:1px solid %s;box-shadow:0 3px 0 %s"
-                    % (B_PANEL, B_INK, B_RULE, B_RULE)), t))
-        rows.append(
-          '<div style="display:flex;align-items:center;gap:12px;padding:6px 8px;border-radius:10px;%s%s">%s'
-          '<div style="display:flex;flex-direction:column;gap:2px;min-width:0">'
-          '<span style="display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.14em;'
-          'text-transform:uppercase;color:%s" class="mono">%s%s</span>'
-          '<span style="font-size:13.5px;line-height:1.3;color:%s">%s</span></div></div>'
-          % ("background:color-mix(in srgb, %s 10%%, transparent);box-shadow:0 0 0 1.5px %s;" % (B_ACCENT, B_ACCENT) if sel else "",
-             "opacity:.62;" if not live and not dead else "",
-             tile, B_ACCENT if sel else B_MUTED, icon(kind, B_ACCENT if sel else B_MUTED, 12), EFFECT_WORD[kind],
-             B_MUTED if dead else B_INK, note))
-    return '<div style="display:flex;flex-direction:column;gap:6px">%s</div>' % "".join(rows)
-
-def ph_stepper(k, price_, n, bank, note=None):
-    c = CORP[k]
-    btn = lambda s, on=True: ('<div style="width:44px;height:44px;border-radius:50%%;display:flex;align-items:center;'
-                             'justify-content:center;font-size:22px;font-weight:500;%s">%s</div>'
-                             % ("border:1.5px solid %s;color:%s" % (B_INK, B_INK) if on else
-                                "border:1.5px solid %s;color:%s" % (B_RULE, B_RULE), s))
-    return (
-      '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:%s;border:1px solid %s;'
-      'border-radius:10px;%s">'
-      '<span style="width:34px;height:34px;border-radius:7px;background:%s;display:flex;align-items:center;'
-      'justify-content:center;flex-shrink:0">%s</span>'
-      '<div style="flex-grow:1;min-width:0"><div class="ser" style="font-size:16px;line-height:1.15">%s</div>'
-      '<div style="font-size:11.5px;color:%s" class="num">%s · %s</div></div>'
-      '%s<span class="ser num" style="font-size:22px;width:18px;text-align:center">%d</span>%s</div>'
-      % (B_PANEL, B_RULE, "box-shadow:0 0 0 1.5px %s;" % c["color"] if n else "",
-         c["color"], b_mark(k, c["ink"], 20), c["name"], B_MUTED, money(price_), "%d in bank" % bank,
-         btn("&minus;", n > 0), n, btn("+")))
-
-def ph_split(label, n, sub, on=True):
-    btn = lambda s, ok: ('<div style="width:40px;height:40px;border-radius:50%%;display:flex;align-items:center;'
-                        'justify-content:center;font-size:20px;border:1.5px solid %s;color:%s">%s</div>'
-                        % (B_INK if ok else B_RULE, B_INK if ok else B_RULE, s))
-    return ('<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:%s;border:1px solid %s;'
-            'border-radius:10px"><div style="flex-grow:1"><div style="font-size:15px;font-weight:700">%s</div>'
-            '<div style="font-size:11.5px;color:%s">%s</div></div>%s'
-            '<span class="ser num" style="font-size:22px;width:20px;text-align:center">%d</span>%s</div>'
-            % (B_PANEL, B_RULE, label, B_MUTED, sub, btn("&minus;", n > 0), n, btn("+", on)))
-
-def ph_qr(size=180, masked=False):
-    """A stand-in QR: deterministic modules plus the three finder squares. It
-    only has to read as a QR code on the canvas; the real one is generated."""
-    n = 25
-    cell = size / float(n)
-    seed = 7
-    rects = []
-    def finder(x, y):
-        return ('<rect x="%g" y="%g" width="%g" height="%g" fill="#1C1917"/>'
-                '<rect x="%g" y="%g" width="%g" height="%g" fill="#FFF"/>'
-                '<rect x="%g" y="%g" width="%g" height="%g" fill="#1C1917"/>'
-                % (x*cell, y*cell, 7*cell, 7*cell, (x+1)*cell, (y+1)*cell, 5*cell, 5*cell,
-                   (x+2)*cell, (y+2)*cell, 3*cell, 3*cell))
-    for yy in range(n):
-        for xx in range(n):
-            if (xx < 8 and yy < 8) or (xx > n-9 and yy < 8) or (xx < 8 and yy > n-9):
-                continue
-            seed = (seed * 1103515245 + 12345) & 0x7fffffff
-            if seed % 100 < 47:
-                rects.append('<rect x="%g" y="%g" width="%g" height="%g" fill="#1C1917"/>'
-                             % (xx*cell, yy*cell, cell+.2, cell+.2))
-    body = finder(0, 0) + finder(n-7, 0) + finder(0, n-7) + "".join(rects)
-    svg = ('<svg width="%d" height="%d" viewBox="0 0 %d %d" style="display:block">%s</svg>'
-           % (size, size, size, size, body))
-    if masked:
-        return ('<div style="width:%dpx;height:%dpx;border-radius:6px;background:repeating-linear-gradient(135deg,'
-                '%s 0 10px, %s 10px 20px);display:flex;align-items:center;justify-content:center;'
-                'border:1px solid %s"><span class="mono" style="font-size:11px;letter-spacing:.14em;'
-                'text-transform:uppercase;color:%s;background:%s;padding:6px 10px;border-radius:4px">'
-                'hold to show</span></div>'
-                % (size, size, B_RULE, B_BG, B_RULE, B_MUTED, B_PANEL))
-    return ('<div style="background:#FFF;padding:12px;border-radius:6px;border:1px solid %s;box-shadow:%s">%s</div>'
-            % (B_RULE, L_ELEV[1], svg))
-
-def ph_table_lobby(masked=False):
-    """The desktop as the table, before the deal: 16:9, scaled to sit beside the phones."""
-    seats = [("Nadia", "phone", True), ("Ravi", "phone", True), ("Bot 3", "bot", True), (None, "open", False)]
-    rows = "".join(
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;'
-      'border-bottom:1px solid %s"><span style="display:flex;align-items:center;gap:10px;font-size:15px">'
-      '<span style="width:9px;height:9px;border-radius:50%%;background:%s"></span>%s</span>'
-      '<span class="mono" style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:%s">%s</span></div>'
-      % (B_RULE, "#3E8E5A" if ok else B_RULE, name or '<span style="color:%s">Open seat</span>' % B_MUTED,
-         B_MUTED, kind) for name, kind, ok in seats)
-    knock = ('<div style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 12px;'
-             'background:%s;border:1px solid %s;border-radius:6px"><span style="flex-grow:1;font-size:14px">'
-             '<strong>Quick Tycoon</strong> <span style="color:%s">is knocking from a phone</span></span>'
-             '<span style="font-size:13px;font-weight:700;color:%s;padding:8px 12px">Turn away</span>'
-             '<span style="font-size:13px;font-weight:700;color:#FFF;background:%s;padding:8px 14px;border-radius:5px">'
-             'Let in</span></div>' % (B_PANEL, B_RULE, B_MUTED, B_MUTED, B_ACCENT))
-    code = "••••-••••" if masked else "KQ7M-3XPA"
-    return (
-      '<div style="width:880px;height:495px;box-sizing:border-box;border:10px solid #1C1917;border-radius:10px;'
-      'background:%s;box-shadow:%s;padding:34px 40px;display:flex;gap:44px">'
-      '<div style="display:flex;flex-direction:column;align-items:center;gap:14px;width:230px">%s'
-      '<div class="mono num" style="font-size:24px;letter-spacing:.22em">%s</div>'
-      '<div style="font-size:12.5px;line-height:1.45;color:%s;text-align:center">Scan with your phone\'s camera, '
-      'or go to the address on the card and type the code.</div></div>'
-      '<div style="flex-grow:1;display:flex;flex-direction:column">'
-      '%s<div class="ser" style="font-size:34px;margin:4px 0 14px">Take a seat</div>%s%s'
-      '<div style="margin-top:auto;display:flex;justify-content:flex-end">'
-      '<span style="font-size:15px;font-weight:700;color:#FFF;background:%s;opacity:.45;padding:13px 26px;'
-      'border-radius:8px">Waiting for players…</span></div></div></div>'
-      % (B_BG, L_ELEV[3], ph_qr(200, masked), code, B_MUTED,
-         ph_kicker("couch game · the table"), rows, knock, B_ACCENT)
-    )
-
-def build_phone():
-    m = {x["key"]: x for x in market()}
-    you_cash, you_h = PLAYERS[0][1], PLAYERS[0][2]
-
-    # --- getting in ---------------------------------------------------------
-    join = ph_frame(
-      "1 · Join", "opened from the QR · the code arrives in the link, never typed",
-      '<div style="display:flex;flex-direction:column;gap:6px;margin-top:18px">%s'
-      '<div class="ser" style="font-size:34px;line-height:1.05">Boomtown</div>'
-      '<div style="font-size:14px;color:%s">You\'re joining the table on the big screen.</div></div>'
-      '<div style="display:flex;flex-direction:column;gap:8px;margin-top:22px">%s'
-      '<div style="display:flex;gap:8px"><div style="flex-grow:1;height:52px;border-radius:10px;border:1px solid %s;'
-      'background:%s;display:flex;align-items:center;padding:0 14px;font-size:17px">Quick Tycoon</div>'
-      '<div style="height:52px;padding:0 16px;border-radius:10px;border:1px solid %s;display:flex;align-items:center;'
-      'font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:%s" class="mono">Roll</div></div></div>'
-      '<div style="margin-top:auto">%s</div>'
-      % (ph_kicker("couch game"), B_MUTED, ph_kicker("your name"), B_RULE, B_PANEL, B_RULE, B_MUTED,
-         ph_button("Knock", note="Whoever has the mouse lets you in from the table.")))
-
-    door = ph_frame(
-      "2 · At the door", "knocked · the host admits from the TV · a decline sticks",
-      '<div style="margin:auto 0;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center">'
-      '<div style="width:78px;height:78px;border-radius:50%%;border:2px dashed %s;display:flex;align-items:center;'
-      'justify-content:center" class="ser"><span style="font-size:30px">QT</span></div>'
-      '<div class="ser" style="font-size:26px;line-height:1.15">Waiting to be<br>let in…</div>'
-      '<div style="font-size:14px;line-height:1.5;color:%s;max-width:26ch">Your name is on the big screen. '
-      'Keep this page open; locking the phone is fine.</div></div>'
-      % (B_ACCENT, B_MUTED))
-
-    seated = ph_frame(
-      "3 · Seated", "admitted · seat and token held in the tab · the deal starts from the table",
-      '%s<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">'
-      '<div class="ser" style="font-size:28px;line-height:1.1">You\'re in.</div>'
-      '<div style="font-size:14px;color:%s">Seat 4 of 4 · the game starts from the table.</div></div>'
-      '<div style="display:flex;flex-direction:column">%s</div>'
-      '<div style="margin-top:auto;font-size:12.5px;line-height:1.5;color:%s;border-top:1px solid %s;padding-top:12px">'
-      'Your tiles and your money will show here and only here. Keep your screen to yourself.</div>'
-      % (ph_kicker("couch game"), B_MUTED,
-         "".join('<div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid %s;'
-                 'font-size:15px"><span style="font-weight:%d">%s</span><span class="mono" style="font-size:10px;'
-                 'letter-spacing:.14em;text-transform:uppercase;color:%s">%s</span></div>'
-                 % (B_RULE, 700 if n == "Quick Tycoon" else 400, n + (" (you)" if n == "Quick Tycoon" else ""), B_MUTED, k)
-                 for n, k in [("Nadia", "phone"), ("Ravi", "phone"), ("Bot 3", "bot"), ("Quick Tycoon", "phone")]),
-         B_MUTED, B_RULE))
-
-    # --- playing -------------------------------------------------------------
-    offturn = ph_frame(
-      "4 · Watching", "not your turn · rack read-only, effects stay live (#61) · your books",
-      '%s<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:%s;border:1px solid %s;'
-      'border-radius:10px"><span style="width:10px;height:10px;border-radius:50%%;background:%s;flex-shrink:0"></span>'
-      '<span style="font-size:14.5px"><strong>Ravi</strong> is buying stock… <span style="color:%s">watch the table</span>'
-      '</span></div>%s%s<div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">%s%s</div>'
-      % (ph_top("Quick Tycoon", you_cash, "seat 4"), B_PANEL, B_RULE, "#D98A4E", B_MUTED,
-         ph_kicker("your tiles"), ph_rack(False), ph_kicker("your shares"), ph_holdings(you_h)))
-
-    place = ph_frame(
-      "5 · Your turn — place a tile", "tap a tile, then place it · two taps, so a thumb can't commit a merger",
-      '%s<div style="display:flex;align-items:center;justify-content:space-between">'
-      '<div class="ser" style="font-size:22px;color:%s">Your turn</div>%s</div>%s'
-      '<div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">%s</div>'
-      % (ph_top("Quick Tycoon", you_cash, "seat 4"), B_ACCENT, ph_kicker("place a tile"), ph_rack(True, SELECTED),
-         ph_button("Place 9F", note="Blackcurrant absorbs Enrun. The merger plays on the big screen.")))
-
-    buy_rows = [("books", 0, None), ("electronics", 1, None),
-                ("tech", 2, None), ("video", 0, None)]
-    cost = sum(m[k]["price"] * n for k, n, _ in buy_rows)
-    buy = ph_frame(
-      "6 · Buy stock", "up to three shares · the phone adds up, the room judges · buy nothing is always there",
-      '%s<div style="display:flex;align-items:baseline;justify-content:space-between">'
-      '<div class="ser" style="font-size:22px">Buy stock</div>'
-      '<span class="mono num" style="font-size:12px;color:%s">3 of 3 picked</span></div>'
-      '<div style="display:flex;flex-direction:column;gap:8px">%s</div>'
-      '<div style="display:flex;justify-content:space-between;font-size:13px;color:%s;padding:0 2px">'
-      '<span>%s in hand</span><span class="num">%s left</span></div>'
-      '<div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">%s%s</div>'
-      % (ph_top("Quick Tycoon", you_cash, "seat 4"), B_MUTED,
-         "".join(ph_stepper(k, m[k]["price"], n, m[k]["bank"], note) for k, n, note in buy_rows),
-         B_MUTED, money(you_cash), money(you_cash - cost),
-         ph_button("Buy 3 for %s" % money(cost)), ph_button("Buy nothing and end turn", primary=False)))
-
-    endcheck = ph_frame(
-      "7 · End of turn (Boomtown)", "the same three choices the table's end-of-turn prompt offers",
-      '%s<div style="display:flex;flex-direction:column;gap:6px">'
-      '<div class="ser" style="font-size:24px">Before you finish</div>'
-      '<div style="font-size:13.5px;line-height:1.5;color:%s">No corporation has reached the end size, but you may '
-      'ask the table to wind the game up.</div></div>'
-      '<div style="margin-top:auto;display:flex;flex-direction:column;gap:14px">%s%s</div>'
-      % (ph_top("Quick Tycoon", you_cash - cost, "seat 4"), B_MUTED,
-         ph_button("End turn", note="Pass to the next player."),
-         ph_button("Move to liquidate", primary=False,
-                   note="Everyone votes their shares in safe corporations. If it fails, every backer plays on with open books — including you.")))
-
-    # --- decisions -------------------------------------------------------------
-    en, bc = m["energy"], m["tech"]
-    dispose = ph_frame(
-      "8 · A merger you're in", "dispose of defunct stock · keep, sell, trade 2-for-1 · quick splits first",
-      '%s<div style="display:flex;align-items:center;gap:10px">'
-      '<span style="width:34px;height:34px;border-radius:7px;background:%s;display:flex;align-items:center;'
-      'justify-content:center">%s</span><div class="ser" style="font-size:21px;line-height:1.1">Dispose of Enrun stock</div></div>'
-      '<div style="font-size:13px;line-height:1.5;color:%s">You hold <strong style="color:%s">3</strong> · sells at '
-      '%s a share · trade is 2-for-1 into Blackcurrant (%d in bank)</div>'
-      '<div style="display:flex;gap:8px">%s</div>'
-      '<div style="display:flex;flex-direction:column;gap:8px">%s%s%s</div>'
-      '<div style="margin-top:auto">%s</div>'
-      % (ph_top("Quick Tycoon", you_cash, "seat 4"), en["color"], b_mark("energy", en["ink"], 20), B_MUTED, B_INK,
-         money(en["price"]), bc["bank"],
-         "".join('<span style="font-size:12.5px;padding:8px 11px;border-radius:18px;border:1px solid %s;%s">%s</span>'
-                 % (B_RULE, "", s)
-                 for i, s in enumerate(["Keep all", "Sell all", "Trade the most I can"])),
-         ph_split("Trade", 2, "for 1 Blackcurrant"), ph_split("Sell", 1, "for %s" % money(en["price"])),
-         ph_split("Keep", 0, "live again if Enrun is refounded", on=False),
-         ph_button("Confirm", note="1 Blackcurrant and %s. Nothing is final until you confirm." % money(en["price"]))))
-
-    vote = ph_frame(
-      "9 · The vote", "a motion to liquidate · everyone votes at once, so every phone shows this together",
-      '%s<div class="ser" style="font-size:26px;line-height:1.1">Wind the game up?</div>'
-      '<div style="font-size:13.5px;line-height:1.5;color:%s">Nadia moved to liquidate — you vote '
-      '<strong style="color:%s">16 shares</strong>.</div>'
-      '<div style="display:flex;flex-direction:column;gap:6px"><div style="height:8px;background:%s;border-radius:4px;'
-      'overflow:hidden;display:flex"><div style="width:34%%;background:%s"></div></div>'
-      '<div style="font-size:12px;color:%s" class="num">19 of 56 shares in favour so far; 29 carries it.</div></div>'
-      '<div style="margin-top:auto;display:flex;flex-direction:column;gap:14px">%s%s</div>'
-      % (ph_top("Quick Tycoon", you_cash, "seat 4"), B_MUTED, B_INK, B_RULE, "#3E8E5A", B_MUTED,
-         ph_button("Vote to liquidate",
-                   note="Ends the game now if the motion carries. If it fails, you play on with open books."),
-         ph_button("Vote against", primary=False, note="Play on. A vote against costs you nothing either way.")))
-
-    tray = [k for k in ORDER if SIZE[k] == 0]
-    found = ph_frame(
-      "10 · Found a corporation", "pick one · survivor and defunct order use this same one-tap list",
-      '%s<div class="ser" style="font-size:24px">Found a corporation</div>'
-      '<div style="font-size:13.5px;color:%s">You · new group of 2 tiles</div>'
-      '<div style="display:flex;flex-direction:column;gap:10px">%s</div>'
-      '<div style="margin-top:auto;font-size:12.5px;line-height:1.5;color:%s">One tap founds it. The founding plays '
-      'on the big screen, and you get your founder\'s share.</div>'
-      % (ph_top("Quick Tycoon", you_cash, "seat 4"), B_MUTED,
-         "".join('<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:%s;'
-                 'border:1px solid %s;border-left:5px solid %s;border-radius:10px">'
-                 '<span style="width:38px;height:38px;border-radius:8px;background:%s;display:flex;align-items:center;'
-                 'justify-content:center">%s</span><div style="flex-grow:1"><div class="ser" style="font-size:17px">%s</div>'
-                 '<div style="font-size:11.5px;color:%s" class="num">tier %d · %s a share · bonus from %s</div></div>%s</div>'
-                 % (B_PANEL, B_RULE, CORP[k]["color"], CORP[k]["color"], b_mark(k, CORP[k]["ink"], 22),
-                    CORP[k]["name"], B_MUTED, CORP[k]["tier"], money(price(2, CORP[k]["tier"])),
-                    money(PRIMARY[row_index(2, CORP[k]["tier"])]), chevron(B_MUTED)) for k in tray),
-         B_MUTED))
-
-    lost = ph_frame(
-      "11 · Connection lost", "phone locked or network dropped · the seat is held by its token, the table waits",
-      '%s<div style="margin:auto 0;display:flex;flex-direction:column;gap:14px;text-align:center;align-items:center">'
-      '<div class="ser" style="font-size:24px">Reconnecting…</div>'
-      '<div style="font-size:14px;line-height:1.5;color:%s;max-width:27ch">Your seat is held. The table waits for you '
-      'if it\'s your move.</div></div>'
-      % (ph_top("Quick Tycoon", you_cash, "seat 4"), B_MUTED))
-
-    header = (
-      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;gap:40px;align-items:flex-end">'
-      '<div style="flex-grow:1">%s<div class="ser" style="font-size:44px;line-height:1.05;margin-top:8px">'
-      'Your hand, in your hand</div>'
-      '<div style="font-size:15px;line-height:1.55;color:%s;margin-top:10px;max-width:78ch">Couch mode (#62). The '
-      'desktop is the table everybody watches; each player holds their hand on their own phone. The phone shows '
-      'what is private to its seat and nothing else — the board, the beats and the story stay on the big screen. '
-      'It is a thin page served by the room: it draws the hand and the legal moves the room already sends, and '
-      'sends back the one you tap.</div></div></div>' % (ph_kicker("couch mode · the phone"), B_MUTED))
-
-    def row(title, frames):
-        return ('<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:18px">'
-                '<div class="ser" style="font-size:24px;border-top:3px solid %s;padding-top:12px">%s</div>'
-                '<div style="display:flex;gap:44px;align-items:flex-start">%s</div></div>'
-                % (B_INK, title, "".join(frames)))
-
-    table = (
-      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;flex-direction:column;gap:18px">'
-      '<div class="ser" style="font-size:24px;border-top:3px solid %s;padding-top:12px">The table, before the deal</div>'
-      '<div style="display:flex;gap:40px;align-items:flex-start">%s'
-      '<div style="display:flex;flex-direction:column;gap:14px;width:380px">%s'
-      '<div style="font-size:13px;line-height:1.55;color:%s">Under streaming mode the QR and the code are replaced, '
-      'not blurred, the same way the lobby code is — a QR is the code, and a stream that shows it has shared it. '
-      'Whoever is in the room holds <em>Hold to show</em> while the phones scan.</div>'
-      '<div style="font-size:13px;line-height:1.55;color:%s">The QR carries the eight-character ticket, not the room\'s '
-      'address: it expires in about fifteen minutes and is retired when the last seat fills, so a photo of it is '
-      'worth one knock the host can turn away.</div></div></div></div>'
-      % (B_INK, ph_table_lobby(False), '<div style="transform:scale(.43);transform-origin:top left;width:380px;height:215px">%s</div>'
-         % ph_table_lobby(True), B_MUTED, B_MUTED))
-
-    notes = (
-      '<div style="width:1440px;box-sizing:border-box;padding:0 44px;display:flex;gap:22px;align-items:flex-start">%s%s%s</div>'
-      % (af_note("Only what is yours",
-                 "The phone is the private surface and nothing else. No board: the TV has it, and a phone-sized "
-                 "board is a worse copy of the thing everybody is already looking at. So each tile carries its "
-                 "consequence in words — “Blackcurrant absorbs Enrun” — which is what the board would have "
-                 "told you. A mini-board can earn its place later; the first version bets on people looking up."),
-         af_note("Thumbs, not a mouse",
-                 "Every target is at least 44px and every commit is a second tap on a labelled button: pick the tile, "
-                 "then Place 9F. A merger can't happen because a thumb brushed the rack. Steppers replace the "
-                 "desktop's tile pickers for buying and disposal, with the quick splits kept as chips above them."),
-         af_note("What the room already sends",
-                 "Each seat's update carries its view, its hand with every tile's effect, and every legal command. "
-                 "Pick-one screens (place, found, survivor, defunct order, vote, end of turn) map straight onto "
-                 "that list. Buying and disposal are the two built from the view and the ruleset, and the room's "
-                 "reduce rejects anything wrong, as it does for every client now.")))
-
-    body = (
-      '<div style="width:1440px;min-height:%dpx;box-sizing:border-box;background:%s;color:%s;'
-      'font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:13px;padding:44px 0 48px;'
-      'display:flex;flex-direction:column;gap:44px">%s%s%s%s%s%s</div>'
-      % (PHONE_H, B_BG, B_INK, header, table,
-         row("Getting in", [join, door, seated]),
-         row("Playing a turn", [offturn, place, buy]),
-         row("Decisions", [endcheck, dispose, vote]),
-         row("", [found, lost]) + notes)
-    )
-    write("Phone.dc.html", B_HELMET, body)
-
+        '<div style="width:1440px;box-sizing:border-box;min-height:%dpx;background:%s;color:%s;font-family:\'DM Sans\',Helvetica,Arial,sans-serif;'
+        'font-size:13px;padding:40px 48px 60px;display:flex;flex-direction:column;gap:38px">'
+        '<div style="display:flex;flex-direction:column;gap:9px"><span class="mono" style="font-size:10px;letter-spacing:.16em;'
+        'text-transform:uppercase;color:%s">Boomtown · read from the app\'s stylesheet</span>'
+        '<span class="ser" style="font-size:34px">Visual language</span>'
+        '<span style="font-size:13px;line-height:1.55;color:%s;max-width:900px">Every value on this sheet is read from '
+        'apps/desktop/src/styles/global.css and industryTheme.ts when the canvas is built, so it is what ships. One switch '
+        'in the top bar flips the whole app between the two columns; day is the default (#64).</span></div>'
+        '%s%s%s%s</div>'
+        % (LANGUAGE_H, B_BG, B_INK, B_MUTED, B_MUTED,
+           section("Colour tokens", "The same names in both tones; night redefines them under :root[data-lighting=\"night\"].", '<div style="display:flex;flex-direction:column;gap:26px">%s</div>' % groups),
+           section("Elevation", "Three levels and one light source. By night the top-lit highlight all but goes and the shadows turn black.", elevation),
+           section("The seven industries", "Board colour with its ink, and the type shade that clears AA on each ground (#19).", industries),
+           section("Type", "DM Serif Display for names and moments, DM Sans for everything else.", type_rows)))
+    write("Language.dc.html", B_HELMET, body)
+    return 1440, LANGUAGE_H
+
+LANGUAGE_H = 3240
+
+def build_captured():
+    B = BOARDS
+    B["Main.dc.html"] = _board("Main.dc.html", "The table",
+        "Seen from a player's chair in a hot-seat game: two humans and a bot. Day is the default; the sun and moon "
+        "in the top bar flips the whole app. The hand-off card covers the screen between two human seats.",
+        [_pair("table-mid", "mid-game, placing a tile"), _pair("table-early", "turn 3"), _pair("handoff", "hand-off between seats")])
+    B["Decisions.dc.html"] = _board("Decisions.dc.html", "Decisions",
+        "Every choice the rules hand a player comes up as one of these, over the table. Each names the seat that owns it; "
+        "Peek at the board lowers it without answering.",
+        [_pair("decision-found", "found a corporation") + _pair("decision-buy", "buy stock"),
+         _pair("decision-survivor", "choose the survivor") + _pair("decision-disposal", "dispose of defunct stock"),
+         _pair("decision-end", "the game can end here")])
+    B["Beats.dc.html"] = _board("Beats.dc.html", "Beats",
+        "The moments that take the screen. The curtain takes the table's tone (#64): cream by day, ink by night. "
+        "The merger frames are two stages of one sequence: the bonuses paid, then the survivor's new name.",
+        [_pair("beat-founding", "founding"), _pair("beat-merger-1", "merger · bonuses"), _pair("beat-merger-2", "merger · the new name"),
+         _pair("beat-super-merger-2", "three-way merger · the new name"), _pair("beat-motion", "a motion fails"),
+         _pair("beat-endgame", "the endgame is triggered"), _pair("beat-victory", "victory")])
+    B["Reference.dc.html"] = _board("Reference.dc.html", "Stock reference",
+        "The printed reference card, made live: where every corporation stands right now, under its current name. "
+        "Opens from Reference in the top bar.",
+        [_pair("reference", "the full chart")])
+    B["After.dc.html"] = _board("After.dc.html", "After the game",
+        "The carousel behind the victory beat (#68, #69): four frames that turn over on their own, each a tab you can hold.",
+        [_pair("after-standings", "standings"), _pair("after-market", "tracking the market"),
+         _pair("after-companies", "company by company"), _pair("after-awards", "awards")])
+    B["Menus.dc.html"] = _board("Menus.dc.html", "Launch and setup",
+        "Everything before the first tile: the launch screen, settings, the three ways to start a table, and the online "
+        "room, where having the code gets you a knock, not a seat.",
+        [_pair("launch", "launch"), _pair("settings", "settings"), _pair("new-game", "a local game"),
+         _pair("online", "play online"), _pair("online-lobby", "the room, with someone knocking"),
+         [("online-knocking-day", "the joiner, waiting at the door · day")]])
+    phones = [("phone-join", "join"), ("phone-knocking", "knocking"), ("phone-seated", "let in"), ("phone-turn", "your turn"),
+              ("phone-found", "found a corporation"), ("phone-buy", "buy stock"), ("phone-disposal", "a merger's stock"),
+              ("phone-waiting", "someone else's turn")]
+    B["Phone.dc.html"] = _board("Phone.dc.html", "Couch mode",
+        "The desktop is the table and each hand is on its own phone (#62). Nothing private reaches the big screen, "
+        "so couch play needs no hand-off card. The phone page is drawn by day only.",
+        [_pair("couch-setup", "opening a couch table"), _pair("couch-table", "the table, with a phone knocking"),
+         _pair("couch-play", "the big screen in play"),
+         [(c, t, 0.8) for c, t in phones[:4]], [(c, t, 0.8) for c, t in phones[4:]]])
 
 def build_canvas():
+    """Lay the artboards out left to right. The captured boards are as wide as
+    their frames, so positions are computed rather than typed in."""
+    page1 = [("Main.dc.html", "Table"), ("Decisions.dc.html", "Decisions"), ("Beats.dc.html", "Beats"),
+             ("Reference.dc.html", "Stock reference"), ("After.dc.html", "After the game"),
+             ("Menus.dc.html", "Launch and setup"), ("Phone.dc.html", "Couch mode"),
+             ("Language.dc.html", "Visual language"), ("Names.dc.html", "Merged names"), ("Pool.dc.html", "The pool")]
+    sizes = dict(BOARDS, **{"Names.dc.html": (1440, 2680), "Pool.dc.html": (1440, 1300)})
+    artboards, x = [], 0
+    for f, title in page1:
+        w, h = sizes[f]
+        artboards.append({"file": f, "x": x, "y": 0, "w": w, "h": h, "title": title, "print": "flow", "page": "page-1"})
+        x += w + 160
+    artboards += [
+        {"file": "RulesModel.dc.html", "x": 0, "y": 0, "w": 1440, "h": 4720, "title": "Rules model", "print": "flow", "page": "page-2"},
+        {"file": "BoardRoom.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "A - Board Room", "page": "page-3"},
+        {"file": "TradingFloor.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "C - Trading Floor", "page": "page-3"},
+    ]
+    at = {a["file"]: a["x"] for a in artboards if a["page"] == "page-1"}
     doc = {
       "pages": [{"id": "page-1", "name": "Boomtown"},
                 {"id": "page-2", "name": "Rules model"},
                 {"id": "page-3", "name": "Earlier directions"}],
-      "artboards": [
-        {"file": "Main.dc.html",  "x": 0, "y": 0, "w": 1440, "h": 900,  "title": "Table", "page": "page-1"},
-        {"file": "Language.dc.html", "x": 1560, "y": 940, "w": 1440, "h": 1900, "title": "Visual language", "print": "flow", "page": "page-1"},
-        {"file": "Beats.dc.html", "x": 3120, "y": 940, "w": 1440, "h": 4300, "title": "Beat still-frames", "print": "flow", "page": "page-1"},
-        {"file": "Names.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 2680, "title": "Merged names", "print": "flow", "page": "page-1"},
-        {"file": "Pool.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "The pool", "print": "flow", "page": "page-1"},
-        {"file": "Reference.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 2210, "title": "Stock reference", "print": "flow", "page": "page-1"},
-        {"file": "After.dc.html", "x": 4680, "y": 2350, "w": 1440, "h": 2976, "title": "After the game", "print": "flow", "page": "page-1"},
-        {"file": "Market.dc.html", "x": 6240, "y": 0, "w": 1440, "h": 1566, "title": "Company by company", "print": "flow", "page": "page-1"},
-        {"file": "Phone.dc.html", "x": 7800, "y": 0, "w": 1440, "h": PHONE_H, "title": "Couch mode - the phone", "print": "flow", "page": "page-1"},
-        {"file": "RulesModel.dc.html",   "x": 0, "y": 0, "w": 1440, "h": 4720, "title": "Rules model",
-         "print": "flow", "page": "page-2"},
-        {"file": "BoardRoom.dc.html",    "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "A - Board Room", "page": "page-3"},
-        {"file": "TradingFloor.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "C - Trading Floor", "page": "page-3"},
-      ],
+      "artboards": artboards,
       "annotations": [
-        {"id": "note-table", "x": 0, "y": -210, "w": 700, "page": "page-1",
-         "text": "Turn 14. Tile 9F is selected and Blackcurrant is about to swallow Enrun - and be renamed Blackcurrun for it.\nThe board state is rule-checked: Chapter 11 at 11 tiles and Megahit Video at 12 are both safe, which is what makes 3F a permanently dead tile. 6A and 12H each found a corporation, and two headquarters are still free."},
-        {"id": "note-names", "x": 760, "y": -210, "w": 660, "page": "page-1",
+        {"id": "note-table", "x": 0, "y": -210, "w": 760, "page": "page-1",
+         "text": "Every screen on this page is captured from the running app, in day and in night: design/capture.mjs plays it in a browser and writes each screen as an SVG with live text, and build.py lays them out. To change a screen, change the app and re-run both. The canvas used to draw the screens by hand, and drifted until it showed a game that no longer existed."},
+        {"id": "note-names", "x": at["Names.dc.html"], "y": -210, "w": 660, "page": "page-1",
          "text": "Seven companies that were once unassailable and then got eaten - which is what happens to every corporation on this board. Parodies of defunct brands, not live ones. Nothing here has been trademark-searched, and the backwards R is trade dress rather than wordplay: swap it first if anyone gets nervous."},
-        {"id": "note-after", "x": 4680, "y": 2140, "w": 700, "page": "page-1",
-         "text": "The post-game screen (#68 + #69), designed as one thing because both issues asked for that. It is a carousel now, not a page: four frames that turn over on their own, 78 seconds all the way round, each still a tab you can click to hold. Every block below is one state of the same screen. The seats deliberately have no colours - a palette both colourblind-safe and distinct from the seven corporation colours does not exist at six seats, and 12,000 candidates through the dataviz validator say so."},
-        {"id": "note-market", "x": 6240, "y": -210, "w": 700, "page": "page-1",
-         "text": "The third reading of the same game (#68): one company at a time, a band for what it was worth and a line per seat for whose it was. It started as stacked bars and the table killed them - a stack has to be ordered, and no order survives six seats trading the majority back and forth over forty turns. The second frame is that worst case, drawn, so the claim can be checked."},
-        {"id": "note-phone", "x": 7800, "y": -210, "w": 700, "page": "page-1",
-         "text": "Couch mode (#62): the desktop is the table and each player's hand is on their own phone. The phone is a thin page served by the room, drawing the hand and the legal moves the room already sends. Nothing private ever reaches the big screen, so couch play needs no hand-off card and streams as it is."},
+        {"id": "note-language", "x": at["Language.dc.html"], "y": -170, "w": 700, "page": "page-1",
+         "text": "Read from the app's stylesheet when the canvas is built, so the values are the ones that ship. The pool and names artboards read packages/engine/src/pool.ts the same way."},
         {"id": "note-rules", "x": 0, "y": -150, "w": 700, "page": "page-2",
          "text": "The sheet to argue with before any code exists. Every disagreement between the two rulebooks is listed as a config key rather than a fork."},
         {"id": "note-earlier", "x": 0, "y": -170, "w": 700, "page": "page-3",
-         "text": "The two directions not taken, kept for reference. Board Room makes the board the subject; Trading Floor makes the money the subject. Both show the same position as the Boomtown table."},
+         "text": "The two directions not taken, kept for reference. Board Room makes the board the subject; Trading Floor makes the money the subject."},
       ],
       "launch": {"view": "canvas", "page": "page-1"},
     }
@@ -3425,7 +1396,29 @@ def build_canvas():
         f.write(json.dumps(doc, indent=2, ensure_ascii=False))
     print("wrote canvas.json")
 
+def reseed():
+    """Put the regenerated artboards into boomtown.html, the published canvas page,
+    whose editable state is the "files" record in its appifact-doc script block.
+    Publishing that one file to the canvas's URL is then the whole republish."""
+    page = os.path.join(OUT, "boomtown.html")
+    if not os.path.exists(page):
+        return
+    src = io.open(page, encoding="utf-8").read()
+    tag = '<script type="application/json" id="appifact-doc">'
+    a = src.index(tag) + len(tag)
+    b = src.index("</script>", a)
+    doc = json.loads(src[a:b])
+    layout = json.load(io.open(os.path.join(OUT, "canvas.json"), encoding="utf-8"))
+    files = {x["file"]: io.open(os.path.join(OUT, x["file"]), encoding="utf-8").read() for x in layout["artboards"]}
+    files["canvas.json"] = io.open(os.path.join(OUT, "canvas.json"), encoding="utf-8").read()
+    doc["content"]["files"] = files
+    raw = json.dumps(doc, ensure_ascii=False).replace("</", "<\\/")
+    io.open(page, "w", encoding="utf-8").write(src[:a] + raw + src[b:])
+    print("re-seeded boomtown.html (%.1f MB)" % ((a + len(raw) + len(src) - b) / 1e6))
+
 if __name__ == "__main__":
-    build_a(); build_b(); build_c(); build_rules(); build_names(); build_pool(); build_reference()
-    build_language(); build_beats(); build_market(); build_after(); build_phone()
+    build_a(); build_c(); build_rules(); build_names(); build_pool()
+    build_captured()
+    BOARDS["Language.dc.html"] = build_language()
     build_canvas()
+    reseed()

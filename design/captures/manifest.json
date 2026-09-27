@@ -1,0 +1,266 @@
+{
+ "handoff-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "handoff-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "table-early-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "table-early-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "decision-found-day": {
+  "w": 704,
+  "h": 276
+ },
+ "decision-found-night": {
+  "w": 704,
+  "h": 276
+ },
+ "decision-buy-day": {
+  "w": 480,
+  "h": 207
+ },
+ "decision-buy-night": {
+  "w": 480,
+  "h": 207
+ },
+ "table-mid-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "table-mid-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "reference-day": {
+  "w": 1024,
+  "h": 558
+ },
+ "reference-night": {
+  "w": 1024,
+  "h": 558
+ },
+ "decision-disposal-day": {
+  "w": 448,
+  "h": 348
+ },
+ "decision-disposal-night": {
+  "w": 448,
+  "h": 348
+ },
+ "decision-survivor-day": {
+  "w": 448,
+  "h": 190
+ },
+ "decision-survivor-night": {
+  "w": 448,
+  "h": 190
+ },
+ "decision-end-day": {
+  "w": 448,
+  "h": 244
+ },
+ "decision-end-night": {
+  "w": 448,
+  "h": 244
+ },
+ "after-standings-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "after-standings-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "after-market-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "after-market-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "after-companies-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "after-companies-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "after-awards-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "after-awards-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "online-knocking-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "online-lobby-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "online-lobby-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "phone-join": {
+  "w": 390,
+  "h": 844
+ },
+ "phone-knocking": {
+  "w": 390,
+  "h": 844
+ },
+ "couch-table-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "couch-table-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "phone-seated": {
+  "w": 390,
+  "h": 844
+ },
+ "phone-turn": {
+  "w": 390,
+  "h": 844
+ },
+ "couch-play-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "couch-play-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "phone-waiting": {
+  "w": 390,
+  "h": 844
+ },
+ "launch-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "settings-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "new-game-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "online-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "couch-setup-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-founding-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-merger-1-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-merger-2-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-super-merger-1-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-super-merger-2-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-motion-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-endgame-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-victory-day": {
+  "w": 1440,
+  "h": 900
+ },
+ "launch-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "settings-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "new-game-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "online-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "couch-setup-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-founding-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-merger-1-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-merger-2-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-super-merger-1-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-super-merger-2-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-motion-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "beat-endgame-night": {
+  "w": 1440,
+  "h": 900
+ },
+ "phone-found": {
+  "w": 390,
+  "h": 844
+ },
+ "phone-disposal": {
+  "w": 390,
+  "h": 844
+ },
+ "phone-buy": {
+  "w": 390,
+  "h": 844
+ }
+}
