@@ -154,12 +154,12 @@
 .gn-sway {
   transform-box: view-box;
   transform-origin: 506px 32px;
-  animation: gn-sway 3.2s ease-in-out infinite alternate;
+  animation: gn-sway 2.6s ease-in-out infinite alternate;
 }
 
 @keyframes gn-sway {
-  from { transform: rotate(-2.5deg); }
-  to { transform: rotate(2.5deg); }
+  from { transform: rotate(-7deg); }
+  to { transform: rotate(7deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
