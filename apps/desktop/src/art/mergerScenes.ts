@@ -216,12 +216,15 @@ export const LOAD: Record<Industry, Load> = {
   },
   air: {
     top: 28,
+    // The air card's plane, levelled and shrunk to hang from the hook.
     art: `
-<path class="gn-fl" d="M30 36 l12 14 h6 l-6 -14z" fill="var(--gn-t)"/>
-<path class="gn-fl" d="M2 34 q24 -7 62 -4 q8 1 10 4 q-2 3 -10 4 q-40 3 -62 -4z" fill="var(--gn-lite)"/>
-<path class="gn-fl" d="M28 32 l14 -14 h6 l-6 16z" fill="var(--gn-t)"/>
-<path class="gn-fl" d="M2 34 l-2 -12 h6 l8 10z" fill="var(--gn-t)"/>
-<g fill="var(--gn-glass)"><circle cx="22" cy="33" r="1.4"/><circle cx="30" cy="32.5" r="1.4"/><circle cx="50" cy="32.5" r="1.4"/><circle cx="58" cy="33" r="1.4"/></g>`,
+<g transform="translate(-47 0) scale(0.75) rotate(10 70 30)">
+<path class="gn-fl" d="M72.3 43.9 L65.4 29.3 L73.2 27.3 L86.9 37.3z" fill="var(--gn-t)"/>
+<path class="gn-fl" d="M114.3 29.8 L109.4 17.6 L117.2 17.8 L127.9 27.3z" fill="var(--gn-t)"/>
+<g transform="translate(70 30) rotate(-10)"><path class="gn-fl" d="M0 14 q30 -8 84 -4 q10 1 12 5 q-2 4 -12 5 q-54 4 -84 -6z" fill="var(--gn-lite)"/></g>
+<path class="gn-fl" d="M117.2 38.1 L134.8 35.4 L123 58.1 L115.2 59.6z" fill="var(--gn-t)"/>
+<g fill="var(--gn-glass)"><circle cx="102.7" cy="36.6" r="1.5"/><circle cx="109.9" cy="35.2" r="1.5"/><circle cx="118.2" cy="33.7" r="1.5"/><circle cx="126.5" cy="32.2" r="1.5"/><circle cx="133.8" cy="31.0" r="1.5"/><circle cx="140.9" cy="29.8" r="1.5"/></g>
+</g>`,
   },
 };
 
