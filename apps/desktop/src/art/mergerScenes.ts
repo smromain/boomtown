@@ -62,9 +62,24 @@ export const HQ: Record<Industry, string> = {
 <circle cx="268" cy="114" r="2.2" fill="var(--gn-lite)"/>`,
 
   tech: `
-<rect class="gn-fl" x="52" y="94" width="38" height="38" rx="3" fill="var(--gn-c)"/>
-<rect class="gn-fl" x="61" y="94" width="20" height="13" fill="var(--gn-lite)"/>
-<rect class="gn-fl" x="59" y="114" width="24" height="18" fill="var(--gn-wall)"/>
+<rect class="gn-fl" x="14" y="94" width="38" height="38" rx="3" fill="var(--gn-c)"/>
+<rect class="gn-fl" x="23" y="94" width="20" height="13" fill="var(--gn-lite)"/>
+<rect class="gn-fl" x="21" y="114" width="24" height="18" fill="var(--gn-wall)"/>
+<path class="gn-ln" d="M78 122 V132 M90 122 V132" style="stroke-width:3"/>
+<path class="gn-fl" d="M73 132 h8 v-3 h-8z M87 132 h8 v-3 h-8z" fill="var(--gn-line)"/>
+<path class="gn-ln" d="M70 96 l-9 -12 M98 100 l9 6" style="stroke-width:3"/>
+<circle class="gn-fl" cx="60" cy="82" r="3.2" fill="var(--gn-skin1)"/>
+<path class="gn-ln" d="M108 106 V80" style="stroke-width:1.6"/>
+<path class="gn-fl" d="M100 74 h22 l6 7 l-6 7 h-22z" fill="var(--gn-c)"/>
+<circle class="gn-fl" cx="108" cy="107" r="3.2" fill="var(--gn-skin1)"/>
+<rect class="gn-fl" x="68" y="72" width="32" height="52" rx="7" fill="#2b2f3a"/>
+<rect class="gn-fl" x="72" y="80" width="24" height="34" rx="2" fill="var(--gn-win)" style="stroke-width:1.4"/>
+<circle class="gn-fl" cx="84" cy="91" r="7" fill="var(--gn-skin1)"/>
+<circle cx="81.5" cy="90" r="1.1" fill="var(--gn-line)"/><circle cx="86.5" cy="90" r="1.1" fill="var(--gn-line)"/>
+<path class="gn-ln" d="M81 94 q3 2.4 6 0" style="stroke-width:1.2"/>
+<g fill="var(--gn-c)"><rect x="75" y="103" width="5" height="5" rx="1"/><rect x="82" y="103" width="5" height="5" rx="1"/><rect x="89" y="103" width="5" height="5" rx="1"/></g>
+<rect x="79" y="75" width="10" height="2" rx="1" fill="var(--gn-lite)"/>
+<circle cx="84" cy="119" r="2.4" fill="var(--gn-lite)"/>
 <rect class="gn-fl" x="118" y="16" width="136" height="116" fill="var(--gn-wall)"/>
 <rect class="gn-fl" x="130" y="26" width="112" height="38" rx="5" fill="var(--gn-c)"/>
 <circle class="gn-ln" cx="186" cy="45" r="13" style="stroke:var(--gn-lite)"/>
@@ -102,13 +117,26 @@ export const HQ: Record<Industry, string> = {
 <ellipse class="gn-fl" cx="56" cy="66" rx="12" ry="14" fill="#C64E25"/>
 <path class="gn-fl" d="M76 132 L90 72 H234 L248 132Z" fill="var(--gn-lite)"/>
 <path class="gn-fl" d="M106 132 L112 72 H132 L128 132Z M152 132 L152 72 H172 L172 132Z M196 132 L192 72 H212 L218 132Z" fill="var(--gn-c)"/>
-<path class="gn-fl" d="M147 132 q15 -36 30 0z" fill="var(--gn-line)"/>
+<path class="gn-fl" d="M134 132 q28 -62 56 0z" fill="var(--gn-line)"/>
 <path class="gn-fl" d="M64 76 L162 20 L260 76Z" fill="var(--gn-c)"/>
 <path class="gn-fl" d="${scallop(64, 76, 10, 19.6, 10)}" fill="var(--gn-lite)"/>
 <path class="gn-ln" d="M162 20 V4"/><path class="gn-fl" d="M162 4 l18 5 l-18 5z" fill="var(--gn-sun)"/>
-<path class="gn-fl" d="M266 132 q2 -18 22 -18 q16 0 20 14 l-4 4z" fill="var(--gn-seal)"/>
-<circle class="gn-fl" cx="288" cy="110" r="6" fill="var(--gn-seal)"/>
-<path class="gn-fl" d="M281 110 l7 -12 l7 12z" fill="var(--gn-c)"/>`,
+<g transform="translate(10 0)"><path class="gn-ln" d="M286 112 V132 M293 112 V132 M306 112 V132 M313 112 V132" style="stroke-width:3"/>
+<path class="gn-ln" d="M282 100 q-6 4 -4 12" style="stroke-width:1.6"/>
+<path class="gn-fl" d="M306 96 L316 66 L325 68 L318 98z" fill="#f2c14e"/>
+<path class="gn-fl" d="M282 100 q0 -8 10 -8 h20 q8 0 8 8 v6 q0 8 -8 8 h-22 q-8 0 -8 -8z" fill="#f2c14e"/>
+<path class="gn-ln" d="M318 59 l-2 -6 M324 58 l0 -6" style="stroke-width:1.6"/>
+<path class="gn-fl" d="M312 66 q2 -10 12 -9 q10 1 12 7 q-2 5 -10 5 q-8 1 -14 -3z" fill="#f2c14e"/>
+<g fill="#b8742a"><circle cx="292" cy="100" r="3"/><circle cx="304" cy="104" r="3.2"/><circle cx="313" cy="97" r="2.4"/><circle cx="297" cy="108" r="2"/><circle cx="317" cy="83" r="2"/><circle cx="314" cy="91" r="1.8"/><circle cx="320" cy="74" r="1.6"/></g>
+<circle cx="327" cy="62" r="1.5" fill="var(--gn-line)"/></g>
+<g transform="translate(6 0)"><path class="gn-ln" d="M276 129 q7 -2 5 -9 q-2 -6 3 -8" style="stroke-width:1.6"/>
+<path class="gn-fl" d="M250 132 q0 -15 13 -15 q12 0 14 11 l-2 4z" fill="var(--gn-seal)"/>
+<circle class="gn-fl" cx="250" cy="108" r="5.5" fill="var(--gn-seal)"/><circle cx="250" cy="108" r="2.6" fill="#f3a6b8"/>
+<circle class="gn-fl" cx="261" cy="107" r="5.5" fill="var(--gn-seal)"/><circle cx="261" cy="107" r="2.6" fill="#f3a6b8"/>
+<path class="gn-fl" d="M249 119 l-9 3 l9 3z" fill="var(--gn-seal)"/>
+<circle class="gn-fl" cx="255" cy="117" r="7" fill="var(--gn-seal)"/>
+<circle cx="240" cy="122" r="1.8" fill="#f3a6b8"/><circle cx="252" cy="116" r="1.3" fill="var(--gn-line)"/>
+<path class="gn-fl" d="M251 105 l5 -10 l5 10z" fill="var(--gn-c)"/></g>`,
 
   air: `
 <path class="gn-ln" d="M30 132 V94"/><path class="gn-fl" d="M30 94 l20 3 v6 l-20 3z" fill="var(--gn-c)"/>
@@ -214,8 +242,8 @@ export function crane(load: Industry): string {
 <path class="gn-ln" d="M38 -10 q-5 5 0 9" style="stroke-width:2"/>
 ${art}
 </g></g>
-<path class="gn-ln" d="M456 116 C420 128 368 108 318 116" style="stroke-dasharray:6 7"/>
-<path class="gn-fl" d="M316 116 l13 -8 l0 13z" fill="var(--gn-line)"/>`;
+<path class="gn-ln" d="M456 116 C436 126 396 110 354 116" style="stroke-dasharray:6 7"/>
+<path class="gn-fl" d="M350 116 l13 -8 l0 13z" fill="var(--gn-line)"/>`;
 }
 
 export function mergerScene(survivor: Industry, defunct: Industry): string {
