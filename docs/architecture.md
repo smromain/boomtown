@@ -223,6 +223,6 @@ hook.
 | `design/*.dc.html`, `design/boomtown.html` | `design/build.py` | Also the reference implementation of the naming rules |
 | `apps/desktop/build/icon.png` | `design/make_icon.py` | Stdlib only; re-run after changing the logo |
 | `apps/desktop/src/assets/night/*.png` | `design/make_skyline.py` | Recolours `design/skyline.psd` onto the palette; needs `psd-tools` + `pillow` |
-| `docs/screenshots/web/*.webp` | `docs/screenshots/make_web_copies.py` | Half-size copies for the README |
+| `docs/screenshots/web/*.webp` | `docs/screenshots/make_web_copies.py` | 1600-wide copies for the README |
 
 None of these are hand-edited. Edit the generator.

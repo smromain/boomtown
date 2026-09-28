@@ -6,13 +6,15 @@
 
 A desktop game reminiscent of the board game **Acquire**. Two published editions ship as data alongside **Boomtown**, our own variant with closed
 books and an ending put to a vote; the sequenced merger is modelled exactly, and the same headless
-engine drives local hot‑seat, AI opponents, and online play against an authoritative server.
+engine drives local hot‑seat, couch play with phones as hands, AI opponents, and online play
+against an authoritative server.
 
 ---
 
 ## Install
 
-Grab the current release from **[Releases](https://github.com/smromain/boomtown/releases/latest)**.
+Grab the current release from **[Releases](https://github.com/smromain/boomtown/releases/latest)**
+or **[itch.io](https://metr0polis.itch.io/boomtown)**.
 No build step, no Node, nothing to configure — the app plays hot‑seat and against bots offline, and
 online against the room the release was built for.
 
@@ -45,75 +47,48 @@ Add/Remove Programs (Windows), or delete the AppImage (Linux).
 
 ## Screenshots
 
-Seventeen frames from one real game, in the order a table meets them. Shown here as half‑size
-web copies — the whole gallery is under 600 KB. The full‑resolution 3200 × 2000 originals are in
-`docs/screenshots/`, which also records how they were taken and what to watch for if they are
-retaken.
-
-### Sitting down
+The Game Night look, as it appears on the itch.io page. Shown here as 1600‑wide web copies; the
+1920 × 1080 originals are in `docs/screenshots/`, which also records how they were taken.
 
 | | |
 |---|---|
-| ![Title screen](docs/screenshots/web/01-title-screen.webp) | ![New game](docs/screenshots/web/02-new-game.webp) |
-| Title screen — a local game, or a room to join | Setup: the three editions, the seats, closed books |
+| ![Title screen](docs/screenshots/web/01-title-screen.webp) | ![A company is founded](docs/screenshots/web/04-a-company-is-founded.webp) |
+| Title screen: a local game, a room online, or a couch game | The founding beat: headquarters, price, founder's share |
 
-![The hand-off card](docs/screenshots/web/03-hot-seat-handoff.webp)
+![The table by day](docs/screenshots/web/02-the-table-by-day.webp)
 
-*Hot‑seat is private by construction: an opaque hand‑off card covers the screen between two human
-seats, so the next player never sees the last one's rack.*
-
-### A turn
-
-![Turn one](docs/screenshots/web/04-first-turn.webp)
-
-*Turn one — an empty board and six playable tiles.*
+*The table late in a game: the companies along the top, the board, the story of the last merger, and
+the advisors at each seat.*
 
 | | |
 |---|---|
-| ![Founding prompt](docs/screenshots/web/05-founding-prompt.webp) | ![A corporation is founded](docs/screenshots/web/06-a-corporation-is-founded.webp) |
-| Choosing which name comes out of the tray | The founding beat: headquarters, price, founder's share |
-
-![Buying stock](docs/screenshots/web/07-buy-stock.webp)
-
-*Up to three shares a turn, with what the bank still holds shown alongside.*
-
-![The table mid-game](docs/screenshots/web/08-the-table-mid-game.webp)
-
-*The whole screen mid‑game — cards, board, the story of what just happened, and the register of
-shareholders.*
+| ![Buying stock](docs/screenshots/web/05-buy-stock.webp) | ![The table at night](docs/screenshots/web/03-the-table-by-night.webp) |
+| Up to three shares a turn, with what the bank still holds | The same table at night |
 
 ### The merger
 
 Merger resolution is the only genuinely sequenced part of the game, and it gets the most screen.
 
-![Merger at 9G](docs/screenshots/web/09-merger-at-9g.webp)
+| | |
+|---|---|
+| ![A merger](docs/screenshots/web/06-a-merger.webp) | ![Disposing of shares](docs/screenshots/web/07-disposing-of-shares.webp) |
+| The merger beat: the crane moves one company into the other | Keep, sell or trade two‑for‑one, in mergemaker‑clockwise order, with the bonuses already paid |
 
-*The sequence opens on the tile that caused it.*
+### Skyline
+
+![Skyline by day](docs/screenshots/web/10-skyline-by-day.webp)
+
+*The 3D board, an option per machine: every chain a district, its headquarters a tower that grows
+with the chain.*
+
+![Skyline at night](docs/screenshots/web/11-skyline-by-night.webp)
+
+### After the game
 
 | | |
 |---|---|
-| ![Choosing the survivor](docs/screenshots/web/10-choosing-the-survivor.webp) | ![The merged name](docs/screenshots/web/11-the-merged-name.webp) |
-| The mergemaker breaking a tie between equal corporations | The survivor's accreted display name |
-
-![Disposing of dead stock](docs/screenshots/web/12-disposing-of-dead-stock.webp)
-
-*Hold, sell, or trade two‑for‑one — in mergemaker‑clockwise order, with the bonuses already paid.*
-
-### Ending it
-
-| | |
-|---|---|
-| ![End of turn](docs/screenshots/web/13-end-of-turn.webp) | ![Motion to liquidate](docs/screenshots/web/14-motion-to-liquidate.webp) |
-| End of turn: end it, or move to liquidate | The vote, with the register tallying shares live |
-
-![The motion fails](docs/screenshots/web/15-the-motion-fails.webp)
-
-*A motion that fails costs its backer their privacy: they play on with open books.*
-
-| | |
-|---|---|
-| ![Tallying the score](docs/screenshots/web/16-tallying-the-score.webp) | ![Final standings](docs/screenshots/web/17-final-standings.webp) |
-| Final scoring, counted up from last place | Game over: cash, stock and total per seat |
+| ![Tracking the market](docs/screenshots/web/08-tracking-the-market.webp) | ![Awards](docs/screenshots/web/09-awards.webp) |
+| Every seat's net worth, turn by turn | The awards |
 
 ---
 
@@ -128,10 +103,12 @@ packages/
   ai/            non‑LLM bot Policy — heuristic scoring, optional lookahead, one 1–10 dial
   client-core/   GameSession, GameTransport (local / worker / socket), Zustand store, reconcile,
                  bot driver, and netlog (the online‑play diagnostic timeline)
-  server/        the authoritative room (Cloudflare Durable Objects) — seats, command log, server‑side bots
+  server/        the authoritative room (Cloudflare Durable Objects, at playboomtown.party) — seats,
+                 command log, server‑side bots
 apps/
-  desktop/       Electron app — hardened shell, 2D board, panels, decision modals, beats,
-                 sound, settings, reference chart, online lobby
+  desktop/       Electron app — hardened shell, board (flat or 3D Skyline), panels, decision modals,
+                 beats, sound, settings, reference chart, online lobby, after‑game carousel
+  phone/         the couch‑mode phone page — built into the room and served at /phone/
 docs/            the documentation set — architecture, rules, naming, online play, development,
                  testing, deploying, decisions; plus plans/, history/ and screenshots/
 design/          build.py — generates the design canvas AND is the reference impl of the naming
@@ -198,6 +175,9 @@ tiles.
 fill as people arrive; bot seats are filled by the room itself. The room is authoritative — it deals,
 validates every command, plays the bots, and sends each client only its own filtered view.
 
+**Couch game.** The screen is the table and each player's hand is on their own phone, joined from a
+QR code. Nobody's tiles or money ever show on the shared screen.
+
 By default a dev build talks to `localhost:1999`, so run the room alongside it:
 
 ```bash
@@ -256,23 +236,25 @@ every lobby decision prints one line — visible in `wrangler dev`, or `npx wran
 
 ## Testing
 
-Tests run under a **Vitest workspace** with two projects:
+Tests run under a **Vitest workspace** with three projects:
 
 | Project | Environment | Covers |
 |---|---|---|
-| `engine` | node | `packages/*/test/**` — engine, protocol, ai, client‑core, and the room's own logic (467 tests) |
-| `desktop` | jsdom | `apps/desktop/**/*.test.{ts,tsx}` — components via `@testing-library/react`, plus the Electron main‑process modules (390 tests) |
+| `engine` | node | `packages/*/test/**` — engine, protocol, ai, client‑core, and the room's own logic (542 tests) |
+| `desktop` | jsdom | `apps/desktop/**/*.test.{ts,tsx}` — components via `@testing-library/react`, plus the Electron main‑process modules (525 tests) |
+| `phone` | jsdom | `apps/phone/src/**/*.test.{ts,tsx}` — the couch‑mode phone page (11 tests) |
 
-Integration tests live outside both, because they boot a real `wrangler dev` room (workerd) and are
+Integration tests live outside all three, because they boot a real `wrangler dev` room (workerd) and are
 too slow for the default suite.
 
 ```bash
-npm test                # both projects, once (857 tests)
+npm test                # all three projects, once (1078 tests)
 npm run test:watch      # watch mode
 npm run test:engine     # just the node project
-npm run test:desktop    # just the jsdom project
-npm run test:server     # integration: a real room under wrangler dev, end to end (20 tests)
-npm run typecheck       # tsc --noEmit for both tsconfigs
+npm run test:desktop    # just the desktop project
+npm run test:phone      # just the phone project
+npm run test:server     # integration: a real room under wrangler dev, end to end (30 tests)
+npm run typecheck       # tsc --noEmit for every tsconfig
 npm run lint            # eslint (flat config)
 npm run smoke           # build + boot the real Electron app, verify it renders
 ```
@@ -475,14 +457,18 @@ Worker to keep bot lookahead off the main thread; `socketTransport` speaks to th
 WebSocket. Everything above the interface — the Zustand store, dispatch, view reconciliation — is
 identical for all three, which is why the panels have no idea whether a game is local or online.
 
-### Desktop first, 2D board
+### Desktop first, two boards over one grid
 
 The Electron app is the primary product, not a web app packaged later — though the transport split
-keeps a browser build reachable. The board is a **flat CSS grid** (`apps/desktop/src/board/`): the
-108 cells sized by `aspect-ratio` so the board scales to fill its space, per‑industry colours,
-click‑to‑place, the industry mark on each headquarters. This reverses an earlier "deliberately
-basic 3D / React Three Fiber" call — see `docs/decisions.md`. Panels use Radix primitives for
-accessible modals and CSS Modules for styling.
+keeps a browser build reachable. The default board is a **tilted CSS grid** (`apps/desktop/src/board/`):
+the 108 cells sized by `aspect-ratio` so the board scales to fill its space, per‑industry colours,
+click‑to‑place. **Skyline** (`board/skyline/`, plain three.js, loaded only when picked) is a
+per‑machine option that draws every chain as a district and its headquarters as a tower. Both paint
+one cell model over one DOM grid, so tests and screen readers see the same board either way — see
+`docs/decisions.md`. Panels use Radix primitives for accessible modals and CSS Modules for styling.
+
+The illustrated **Game Night** look (hand‑drawn company scenes, a crane for every merger) is the
+default; `?skin=classic` in the renderer's URL brings back the earlier one.
 
 ### Moments are staged, and hot‑seat is private by construction
 
@@ -592,7 +578,7 @@ what is current versus archival. The set:
 | `docs/testing.md` | What each suite guarantees, what tests cannot catch, and the conventions worth keeping |
 | `docs/deploying.md` | The room on Cloudflare, versioning, and the itch.io pipeline |
 | `docs/decisions.md` | What was decided and why, what was reversed, what is still open, and the traps already hit |
-| `docs/screenshots/` | Seventeen frames from one real game, in play order — what each shows, and how to retake them |
+| `docs/screenshots/` | Eleven frames in the Game Night look, in play order — what each shows, and how to retake them |
 | `docs/plans/` | The four plans the project was built from, with a status note per plan |
 | `docs/history/` | Archival — the original design document, the phase‑D follow‑ups, and the session handoffs |
 | `design/build.py` | Generates the design canvas **and** is the reference implementation of the naming rules — port it, don't reimplement it |
