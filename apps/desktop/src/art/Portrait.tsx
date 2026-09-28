@@ -1,7 +1,7 @@
 /**
  * Drawn portraits for the Game Night skin (prototype). A seat's portrait is
  * picked by its position at the table, so it is stable for a whole game and
- * needs nothing from the engine. Ten heads, each just a head: shoulders cut off
+ * needs nothing from the engine. Nine heads, each just a head: shoulders cut off
  * by the round frame read as a stray shape. `LINEUP` deals them to seats so a
  * table of four already has two animals at it and a table of six has all four.
  */
@@ -9,7 +9,6 @@ import styles from './portrait.module.css';
 
 const FACES: readonly string[] = [
   "<g class=\"gn-rough\"><circle cx=\"20\" cy=\"18\" r=\"8.5\" fill=\"var(--gn-skin1)\" stroke=\"var(--gn-line)\" stroke-width=\"1.6\"/><path d=\"M11 20 q-2 -13 9 -13 q11 0 9 13 l-3 -6 q-6 1 -12 -3z\" fill=\"#3b2a22\" stroke=\"var(--gn-line)\" stroke-width=\"1.4\"/><circle cx=\"17\" cy=\"19\" r=\"1\" fill=\"var(--gn-line)\"/><circle cx=\"23\" cy=\"19\" r=\"1\" fill=\"var(--gn-line)\"/><path d=\"M17.5 23 q2.5 2 5 0\" fill=\"none\" stroke=\"var(--gn-line)\" stroke-width=\"1.2\" stroke-linecap=\"round\"/></g>",
-  "<g class=\"gn-rough\"><circle cx=\"20\" cy=\"18\" r=\"8.5\" fill=\"var(--gn-skin3)\" stroke=\"var(--gn-line)\" stroke-width=\"1.6\"/><path d=\"M12 15 q8 -10 16 0 q-8 -3 -16 0z\" fill=\"#1d1715\" stroke=\"var(--gn-line)\" stroke-width=\"1.4\"/><path d=\"M12.5 20.5 q7.5 11 15 0 q-2.5 1.5 -4 1.5 q-3.5 -1 -7 0 q-1.5 0 -4 -1.5z\" fill=\"#1d1715\"/><path d=\"M17 24 q3 2.6 6 0\" fill=\"none\" stroke=\"#fbfaf6\" stroke-width=\"1.3\" stroke-linecap=\"round\"/><circle cx=\"17\" cy=\"18.5\" r=\"1\" fill=\"var(--gn-line)\"/><circle cx=\"23\" cy=\"18.5\" r=\"1\" fill=\"var(--gn-line)\"/></g>",
   "<g class=\"gn-rough\"><circle cx=\"20\" cy=\"5.5\" r=\"4\" fill=\"#241a17\" stroke=\"var(--gn-line)\" stroke-width=\"1.4\"/><circle cx=\"20\" cy=\"18\" r=\"8.5\" fill=\"var(--gn-skin2)\" stroke=\"var(--gn-line)\" stroke-width=\"1.6\"/><path d=\"M11.5 17 q1 -9 8.5 -9 q7.5 0 8.5 9 q-5 -5 -17 0z\" fill=\"#241a17\" stroke=\"var(--gn-line)\" stroke-width=\"1.4\"/><circle cx=\"17\" cy=\"19\" r=\"1\" fill=\"var(--gn-line)\"/><circle cx=\"23\" cy=\"19\" r=\"1\" fill=\"var(--gn-line)\"/><path d=\"M17.5 23 q2.5 1.6 5 0\" fill=\"none\" stroke=\"var(--gn-line)\" stroke-width=\"1.2\" stroke-linecap=\"round\"/></g>",
   "<g class=\"gn-rough\"><circle cx=\"20\" cy=\"18\" r=\"8.5\" fill=\"var(--gn-skin1)\" stroke=\"var(--gn-line)\" stroke-width=\"1.6\"/><path d=\"M11 16 q-1 -4 3 -5 q1 -4 5 -3 q3 -3 6 0 q4 -1 4 4 q3 2 1 5 q-3 -3 -6 -2 q-3 -2 -6 0 q-4 -2 -7 1z\" fill=\"#c9793a\" stroke=\"var(--gn-line)\" stroke-width=\"1.3\"/><circle cx=\"16.5\" cy=\"19\" r=\"2.6\" fill=\"none\" stroke=\"var(--gn-line)\" stroke-width=\"1.3\"/><circle cx=\"23.5\" cy=\"19\" r=\"2.6\" fill=\"none\" stroke=\"var(--gn-line)\" stroke-width=\"1.3\"/><path d=\"M19.1 19 h1.8\" stroke=\"var(--gn-line)\" stroke-width=\"1.2\"/><path d=\"M18 23.5 q2 1.4 4 0\" fill=\"none\" stroke=\"var(--gn-line)\" stroke-width=\"1.2\" stroke-linecap=\"round\"/></g>",
   "<g class=\"gn-rough\"><circle cx=\"20\" cy=\"18.5\" r=\"8.5\" fill=\"var(--gn-skin2)\" stroke=\"var(--gn-line)\" stroke-width=\"1.6\"/><path d=\"M11 16 q9 -11 18 0 z\" fill=\"#c64e25\" stroke=\"var(--gn-line)\" stroke-width=\"1.4\"/><path d=\"M27 15.5 h6 q0 2 -6 2z\" fill=\"#c64e25\" stroke=\"var(--gn-line)\" stroke-width=\"1.2\"/><circle cx=\"17\" cy=\"19.5\" r=\"1\" fill=\"var(--gn-line)\"/><circle cx=\"23\" cy=\"19.5\" r=\"1\" fill=\"var(--gn-line)\"/><path d=\"M17.5 23.5 q2.5 2 5 0\" fill=\"none\" stroke=\"var(--gn-line)\" stroke-width=\"1.2\" stroke-linecap=\"round\"/></g>",
@@ -20,8 +19,8 @@ const FACES: readonly string[] = [
   "<g class=\"gn-rough\"><ellipse cx=\"20\" cy=\"17.5\" rx=\"8.3\" ry=\"9\" fill=\"#fbfaf6\" stroke=\"var(--gn-line)\" stroke-width=\"1.6\"/><path d=\"M12.6 11 q-5.5 1 -5 11 q0.5 5 4.5 3.5 q2 -1 1.5 -6 q-0.5 -4 -1 -8.5z\" fill=\"#1d1715\" stroke=\"var(--gn-line)\" stroke-width=\"1.3\"/><path d=\"M27.4 11 q5.5 1 5 11 q-0.5 5 -4.5 3.5 q-2 -1 -1.5 -6 q0.5 -4 1 -8.5z\" fill=\"#1d1715\" stroke=\"var(--gn-line)\" stroke-width=\"1.3\"/><ellipse cx=\"16.8\" cy=\"16.5\" rx=\".9\" ry=\"1.5\" fill=\"var(--gn-line)\"/><ellipse cx=\"23.2\" cy=\"16.5\" rx=\".9\" ry=\"1.5\" fill=\"var(--gn-line)\"/><ellipse cx=\"20\" cy=\"21\" rx=\"2.6\" ry=\"1.9\" fill=\"#1d1715\" stroke=\"var(--gn-line)\" stroke-width=\"1\"/><path d=\"M20 22.8 v1.6 M16.8 24.2 q3.2 2.6 6.4 0\" fill=\"none\" stroke=\"var(--gn-line)\" stroke-width=\"1.1\" stroke-linecap=\"round\"/></g>"
 ];
 
-/** Faces 0–5 are people; 6 mouse, 7 dinosaur, 8 giraffe, 9 beagle. */
-const LINEUP: readonly number[] = [0, 6, 1, 9, 8, 7, 2, 3, 4, 5];
+/** Faces 0–4 are people; 5 mouse, 6 dinosaur, 7 giraffe, 8 beagle. */
+const LINEUP: readonly number[] = [0, 5, 1, 8, 7, 6, 2, 3, 4];
 
 /** The ring colour behind each seat's portrait. */
 export const SEAT_COLOURS: readonly string[] = ['#355C99', '#C64E25', '#4A9471', '#D7A329', '#AC7CEF', '#66CAD8'];
