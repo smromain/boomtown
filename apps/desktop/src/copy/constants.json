@@ -310,6 +310,7 @@
     "day": "Day",
     "night": "Night",
     "musicCredits": "Music credits",
+    "musicSource": "All tracks sourced from OpenGameArt.org",
     "buildLabel": "This build",
     "buildVersion": "v{version} · released {date}",
     "buildUnreleased": "Unreleased build · {date}",
@@ -360,7 +361,10 @@
       "shares": "{n} sh",
       "sharesWithCash": "{n} sh — ${amount}",
       "fullChart": "See the full chart",
-      "nextStep": "next step at"
+      "nextStep": "next step at",
+      "safe": "◇ safe",
+      "sizeValue": "{n} tiles",
+      "inTray": "in the tray"
     }
   },
   "rules": {
@@ -519,11 +523,13 @@
     "yourStake": "your stake",
     "sharesOut": "shares out",
     "stakeOf": "{mine} of {issued}",
+    "skipPlacement": "Skip placement",
     "waiting": {
       "label": "Waiting for another player",
       "bot": "Bot",
       "player": "Player",
       "doing": "{name} is {doing}…",
+      "nextPlayer": "the next player",
       "nudge": "{name} is taking a while — nudge them",
       "steps": {
         "place": "placing a tile",
@@ -537,7 +543,9 @@
     },
     "handoff": {
       "label": "Turn handoff",
-      "kicker": "Hand the machine to"
+      "kicker": "Hand the machine to",
+      "hint": "Only {name} should see the next screen.",
+      "ready": "I’m {name} — show my turn"
     },
     "gameOver": {
       "label": "Game over",
@@ -621,6 +629,7 @@
         "folded": "folded",
         "turns": "turn",
         "settled": "settled",
+        "chipLabel": "{name} — {event}, turn {turn}",
         "settledNote": "The last step on each line is settlement. This is the stage that occurs when the bank purchases every share back and paying every bonus at once, and the figures are what each seat settled for."
       },
       "companies": {
@@ -645,7 +654,7 @@
       },
       "awards": {
         "title": "Awards",
-        "note": "{n} earned this game · five at a time",
+        "note": "{n} earned this game",
         "counter": "Page {n} of {total}",
         "shared": "shared",
         "none": "Nobody earned one. It happens, and it is its own kind of game.",
@@ -792,6 +801,7 @@
   },
   "decisions": {
     "title": "Game decision",
+    "chainOption": "{name} · {n} tiles",
     "handoffKicker": "Hand the machine to",
     "handoffHint": "Only {name} should see the next screen — it shows their holdings.",
     "handoffButton": "I’m {name} — show my decision",
@@ -829,6 +839,8 @@
       "sellMore": "sell more",
       "tradeFewer": "trade fewer",
       "tradeMore": "trade more",
+      "receivedOne": "→ {n} share",
+      "receivedMany": "→ {n} shares",
       "confirm": "Confirm"
     },
     "vote": {
@@ -864,7 +876,11 @@
     "hintAdvance": "click or press space to advance · esc to skip the rest",
     "founding": {
       "label": "A corporation is founded",
-      "kicker": "a corporation is founded"
+      "kicker": "a corporation is founded",
+      "headquarters": "headquarters",
+      "openingPrice": "opening price",
+      "founder": "founder",
+      "founderShare": "+1 share"
     },
     "buyStock": {
       "label": "{name} bought stock",
@@ -874,6 +890,10 @@
     },
     "merger": {
       "label": "Merger",
+      "kicker": "merger at {tile}",
+      "absorption": " · absorption {n} of {total}",
+      "mass": "{n} tiles under one name",
+      "eaten": " · {n} companies eaten",
       "each": "each",
       "nameNote": "The name grows with every company it consumes.",
       "sharesNote": "Your shares in it stay yours but remember:",
@@ -899,7 +919,16 @@
     "victory": {
       "label": "Victory",
       "cashOnHand": "cash on hand: ${amount}",
-      "total": "total: ${amount}"
+      "total": "total: ${amount}",
+      "tallying": "tallying the score",
+      "over": "game over",
+      "hintAdvance": "click or press space to advance",
+      "hintContinue": "click or press space to continue",
+      "place": "{ordinal} place",
+      "ordinal": {"one": "{n}st", "two": "{n}nd", "few": "{n}rd", "other": "{n}th"},
+      "holdingOne": "{n} share of {name} at ${price} each = ${value}",
+      "holdingMany": "{n} shares of {name} at ${price} each = ${value}",
+      "bonus": " + ${amount} bonus"
     }
   },
   "board": {

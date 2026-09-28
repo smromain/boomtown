@@ -29,7 +29,7 @@ const STEP_LABEL: Record<string, string> = {
  */
 function activeName(state: GameClientState, config: GameConfig): string {
   const seat = state.activeSeat;
-  if (seat == null) return 'the next player';
+  if (seat == null) return copy.game.waiting.nextPlayer;
   return anyView(state)?.seats[seat]?.name ?? config.seats[seat]?.name ?? fill(copy.common.playerFallback, { n: seat + 1 });
 }
 

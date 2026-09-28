@@ -16,9 +16,6 @@ export interface Track {
   readonly credit: string;
 }
 
-/** Where every track came from, named once in the credits. */
-export const MUSIC_SOURCE = 'All tracks sourced from OpenGameArt.org';
-
 /** The order the back/forward buttons walk, first track first. */
 export const TRACKS: readonly Track[] = [
   {

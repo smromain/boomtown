@@ -28,10 +28,10 @@ export function EndgameBeat({ seat, view, dismiss }: { seat: Seat; view: PlayerV
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 14 }}>
         <div className={styles.kicker}>{copy.beats.endgame.kicker}</div>
         <div className={`serif ${reduced ? '' : styles.rise}`} style={{ fontSize: 64, marginTop: 6 }}>
-          The endgame is triggered
+          {copy.beats.endgame.label}
         </div>
         <div style={{ fontSize: 14, color: 'var(--beat-ink-2)', maxWidth: '52ch', lineHeight: 1.55 }}>
-          {who} called the end, finishing their turn. No other player gets another turn — final scoring follows.
+          {fill(copy.beats.endgame.note, { name: who })}
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 10, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 700 }}>
           {active.map((industry) => (
