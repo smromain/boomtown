@@ -74,6 +74,7 @@
   --gn-star: #ffffff;
   --gn-line: #1c2a47;
   --gn-road: #d9d4c7;
+  --gn-crane: #f3b93a;
   --gn-skin1: #f2c9a1;
   --gn-skin2: #c68b5e;
   --gn-skin3: #8d5a3b;
@@ -113,6 +114,7 @@
   --gn-win: #ffd166;
   --gn-line: #0b1120;
   --gn-road: #3a4358;
+  --gn-crane: #d9a02c;
 
   --gn-map: url("../assets/citymap-night.svg");
   --gn-map-fade: rgba(18, 26, 43, 0.8);
@@ -144,4 +146,20 @@
 }
 .gn-rough {
   filter: url(#gn-rough);
+}
+
+/* The crane's load swings a little on its hook (merger drawings). */
+.gn-sway {
+  transform-box: view-box;
+  transform-origin: 506px 32px;
+  animation: gn-sway 3.2s ease-in-out infinite alternate;
+}
+
+@keyframes gn-sway {
+  from { transform: rotate(-2.5deg); }
+  to { transform: rotate(2.5deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gn-sway { animation: none; }
 }

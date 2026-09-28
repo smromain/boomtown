@@ -797,6 +797,7 @@
   },
   "decisions": {
     "title": "Game decision",
+    "mergerBanner": "Merger at {tile}",
     "handoffKicker": "Hand the machine to",
     "handoffHint": "Only {name} should see the next screen — it shows their holdings.",
     "handoffButton": "I’m {name} — show my decision",

@@ -1094,3 +1094,13 @@
 :global(:root[data-skin='gamenight']) .rackTile[data-effect='found'] .rackTileEffect {
   color: var(--gold);
 }
+
+/* Game Night skin (prototype): the merger narration opens on the drawing of it. */
+.storyScene {
+  display: block;
+  width: calc(100% + 40px);
+  aspect-ratio: 4 / 1;
+  height: auto;
+  margin: -18px -20px 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+}

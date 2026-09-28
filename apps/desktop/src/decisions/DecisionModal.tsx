@@ -12,6 +12,9 @@ import { FoundPrompt } from './FoundPrompt.js';
 import { SurvivorPrompt } from './SurvivorPrompt.js';
 import { VotePrompt } from './VotePrompt.js';
 import styles from './decisions.module.css';
+import { isGameNight } from '../skin.js';
+import { MergerScene } from '../art/MergerScene.js';
+import { currentMerger } from '../game/story.js';
 import { copy, fill } from '../copy/copy.js';
 
 const d = copy.decisions;
@@ -58,6 +61,7 @@ export function DecisionModal() {
   // to a local human. `view` would then be null and every name would silently
   // fall back to "Player N" — including the disposing seat's own name.
   const anyView = useAnyView();
+  const merger = currentMerger(useGameState((state) => state.log));
   const seatName = (seat: number) =>
     anyView?.seats[seat]?.name ?? fill(copy.common.playerFallback, { n: seat + 1 });
   const { claim, needsHandoff } = useHotSeat();
@@ -94,6 +98,17 @@ export function DecisionModal() {
     setSell(0);
     setTrade(0);
   }, [disposalKey]);
+
+  // Game Night draws the merger over the decisions it owes: the survivor's
+  // headquarters and the company being swung onto it. The survivor is still
+  // open while one is being chosen, so that prompt goes without a drawing.
+  const mergerTile = merger?.placedTile ?? null;
+  const merging =
+    merger?.survivor && decision?.type === 'dispose-shares'
+      ? { survivor: merger.survivor, defunct: decision.defunct }
+      : merger?.survivor && decision?.type === 'choose-defunct-order' && decision.options[0]
+        ? { survivor: merger.survivor, defunct: decision.options[0] }
+        : null;
 
   if (!open) return null;
 
@@ -148,6 +163,12 @@ export function DecisionModal() {
             </div>
           ) : (
             <>
+              {isGameNight && merging && mergerTile && (
+                <div className={styles.mergerHero}>
+                  <MergerScene survivor={merging.survivor} defunct={merging.defunct} className={styles.mergerHeroArt} />
+                  <span className={styles.mergerBanner}>{fill(d.mergerBanner, { tile: mergerTile })}</span>
+                </div>
+              )}
               {decision?.type === 'choose-survivor' && <SurvivorPrompt decision={decision} />}
               {decision?.type === 'cast-vote' && <VotePrompt decision={decision} />}
               {decision?.type === 'choose-defunct-order' && <DefunctOrderPrompt decision={decision} />}
