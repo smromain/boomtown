@@ -513,3 +513,80 @@
   border-radius: 6px;
   cursor: pointer;
 }
+
+.foundScene {
+  display: none;
+}
+
+/* Game Night skin (prototype): each corporation you could raise is a small
+   charter card, its scene over its name, so the choice reads as picking a
+   company rather than a word. */
+:global(:root[data-skin='gamenight']) .foundOption {
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--elev-1);
+  font-weight: 800;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+:global(:root[data-skin='gamenight']) .foundOption:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--elev-2), 0 0 0 3px var(--gold);
+}
+
+:global(:root[data-skin='gamenight']) .foundScene {
+  display: block;
+  width: 100%;
+  height: 58px;
+}
+
+:global(:root[data-skin='gamenight']) .foundName {
+  display: block;
+  padding: 0.5rem 0.7rem 0.6rem;
+  border-top: 4px solid var(--gn-c);
+}
+
+/* Game Night skin (prototype): a merger decision opens under a drawing of the
+   merger — the survivor's headquarters and the crane bringing the company it
+   is taking — with the tile on a ribbon across the join. */
+.mergerHero {
+  position: relative;
+  /* The drawing's own proportions, so a narrow dialog shows all of it rather
+     than cropping the crane off the side. */
+  aspect-ratio: 4 / 1;
+  margin: -1.25rem -1.25rem 1.6rem;
+}
+
+.mergerHeroArt {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.mergerBanner {
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 8px 26px;
+  background: var(--chrome-bg);
+  color: var(--chrome-ink);
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 50%, 100% 100%, 0 100%, 12px 50%);
+}
+
+:global(:root[data-skin='gamenight']) .content {
+  border-radius: var(--radius);
+}
+
+:global(:root[data-skin='gamenight']) .minimizeButton {
+  z-index: 2;
+}

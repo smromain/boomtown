@@ -23,3 +23,17 @@
 .panel[data-frame='rule'] {
   border: 1px solid var(--rule);
 }
+
+/* Game Night (prototype skin): rounded plaques on a hard underside, no rules. */
+:global(:root[data-skin='gamenight']) .panel {
+  border-radius: var(--radius);
+}
+
+:global(:root[data-skin='gamenight']) .panel[data-frame='top-rule'] {
+  border-top: 0;
+}
+
+:global(:root[data-skin='gamenight']) .panel[data-frame='rule'] {
+  border: 0;
+  box-shadow: var(--elev-1);
+}

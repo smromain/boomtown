@@ -8,6 +8,9 @@ import { Marquee } from './Marquee.js';
 import { Skyline } from '../art/Skyline.js';
 import { useReference } from '../reference/ReferenceContext.js';
 import styles from './band.module.css';
+import type { CSSProperties } from 'react';
+import { isGameNight } from '../skin.js';
+import { Scene } from '../art/Scene.js';
 import { copy, fill } from '../copy/copy.js';
 
 /**
@@ -109,8 +112,18 @@ function CorpCard({ industry, corp, mine }: { industry: Industry; corp: CorpView
     >
       {/* Cap band (U1 framing device): a colour-filled strip holding the
           ink-on-colour mark and the tier — not just a border-top hairline. */}
-      <div className={styles.cap} style={{ ...patternedBackground(industry, capFill, patterns), color: ink }}>
-        <IndustryMark industry={industry} color={ink} size={22} />
+      <div
+        className={styles.cap}
+        style={
+          isGameNight
+            ? ({ '--gn-c': color, '--gn-ci': ink, color: ink } as CSSProperties)
+            : { ...patternedBackground(industry, capFill, patterns), color: ink }
+        }
+      >
+        {isGameNight && <Scene industry={industry} className={styles.capScene} />}
+        <span className={styles.capMark} style={isGameNight ? { background: color } : undefined}>
+          <IndustryMark industry={industry} color={ink} size={22} />
+        </span>
         <span className={styles.capTier}>
           {fill(copy.game.tier, { n: tier })}
           {corp.safe && copy.game.safeSuffix}

@@ -18,6 +18,9 @@ import {
 } from './story.js';
 import styles from './game.module.css';
 import { copy, fill } from '../copy/copy.js';
+import { isGameNight } from '../skin.js';
+import { TableFeed } from './TableTalk.js';
+import { MergerScene } from '../art/MergerScene.js';
 
 /**
  * The story panel from the Main artboard. When a merger is in play it narrates
@@ -38,6 +41,8 @@ export function StoryCard() {
   const merger = currentMerger(log);
 
   if (!view) return null;
+
+  if (!merger && isGameNight) return <TableFeed />;
 
   if (!merger) {
     const recent = log.slice(-7);
@@ -94,6 +99,9 @@ export function StoryCard() {
 
   return (
     <Panel as="section" frame="top-rule" className={`${styles.card} ${styles.story}`} aria-label={copy.story.label}>
+      {isGameNight && merger.survivor && eaten[0] && (
+        <MergerScene survivor={merger.survivor} defunct={eaten[0]} className={styles.storyScene} />
+      )}
       <div className={styles.storyHeading} style={{ color: survivorColor }}>
         {merger.survivor && <IndustryMark industry={merger.survivor} color={survivorColor} size={22} />}
         <span className="serif">

@@ -54,3 +54,43 @@
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* Game Night (prototype skin): plaques with a hard underside; gold is the one
+   colour that means "your move". */
+:global(:root[data-skin='gamenight']) .button {
+  font-weight: 800;
+  border-radius: 12px;
+  padding: 0.6rem 1.15rem;
+}
+
+:global(:root[data-skin='gamenight']) .primary {
+  background: var(--gold);
+  color: var(--on-gold);
+  box-shadow: 0 4px 0 var(--gold-edge);
+}
+
+:global(:root[data-skin='gamenight']) .primary:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--gold-edge);
+}
+
+:global(:root[data-skin='gamenight']) .secondary {
+  background: var(--surface-2);
+  border: 0;
+  box-shadow: 0 3px 0 var(--edge);
+}
+
+:global(:root[data-skin='gamenight']) .secondary:hover:not(:disabled) {
+  box-shadow: 0 3px 0 var(--edge), inset 0 0 0 2px var(--gold);
+}
+
+:global(:root[data-skin='gamenight']) .onChrome {
+  border: 2px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+:global(:root[data-skin='gamenight']) .onChrome:hover:not(:disabled) {
+  border-color: var(--gold);
+  color: var(--gold);
+}

@@ -1,0 +1,167 @@
+/*
+ * Game Night (prototype skin). Everything here is scoped to
+ * `:root[data-skin="gamenight"]`, which `skin.ts` stamps on <html>, so the
+ * shipped look is untouched under `?skin=classic`. The board keeps its own
+ * tokens: only the chrome around it changes.
+ */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("../assets/fonts/BricolageGrotesque.woff2") format("woff2");
+  font-weight: 400 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Nunito Sans";
+  src: url("../assets/fonts/NunitoSans.woff2") format("woff2");
+  font-weight: 400 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Nunito Sans";
+  src: url("../assets/fonts/NunitoSans-Italic.woff2") format("woff2");
+  font-weight: 400 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+:root[data-skin="gamenight"] {
+  --sans: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --serif: "Bricolage Grotesque", "Nunito Sans", system-ui, sans-serif;
+  --display-weight: 700;
+
+  --bg: #dde5e0;
+  --surface: #ffffff;
+  --surface-2: #eef2f5;
+  --ink: #1b2438;
+  --muted: #5d6a7e;
+  --rule: #e3e9ed;
+  /* --accent stays the shipped brick: the board's placement targets use it,
+     and the board is not being reskinned. Gold is the skin's own "your move"
+     colour, for primary buttons and your seat. */
+  --gold: #f3b93a;
+  --on-gold: #2a1e04;
+  --gold-edge: #b9831a;
+  --gold-ink: #9a6a0e; /* gold that reads as text on white */
+  --input: #f3f6f8;
+  --error: #c2412d;
+
+  --chrome-bg: #1c2a47;
+  --chrome-ink: #ffffff;
+  --chrome-muted: #a9b8d6;
+  --chrome-rule: #3a4e76;
+
+  --edge: #b8c7c3; /* the hard underside every plaque sits on */
+  --elev-1: 0 3px 0 var(--edge), 0 10px 22px -14px rgba(27, 36, 56, 0.35);
+  --elev-2: 0 3px 0 var(--edge), 0 16px 30px -14px rgba(27, 36, 56, 0.4);
+  --elev-3: 0 4px 0 var(--edge), 0 30px 60px -20px rgba(10, 16, 30, 0.45);
+  --frame-top-rule: 0 solid transparent;
+  --radius: 16px;
+
+  --beat-edge: var(--chrome-bg);
+  --beat-shade: #1b2438;
+
+  /* The drawings: flat colour, one ink line. */
+  --gn-sky: #bfe2ea;
+  --gn-sun: #ffd166;
+  --gn-hill: #a9d19a;
+  --gn-hill2: #8fbf85;
+  --gn-wall: #f6e7cf;
+  --gn-glass: #274062;
+  --gn-lite: #ffffff;
+  --gn-rock: #b7a58f;
+  --gn-seal: #6f7f8f;
+  --gn-win: #ffe7a3;
+  --gn-star: #ffffff;
+  --gn-line: #1c2a47;
+  --gn-road: #d9d4c7;
+  --gn-crane: #f3b93a;
+  --gn-trail: rgba(28, 42, 71, 0.2);
+  --gn-skin1: #f2c9a1;
+  --gn-skin2: #c68b5e;
+  --gn-skin3: #8d5a3b;
+
+  /* The city under the table, kept quiet: roads and blocks a shade off the
+     ground, so it reads as place without competing with the board. */
+  --gn-map: url("../assets/citymap-day.svg");
+  --gn-map-fade: rgba(221, 229, 224, 0.82);
+}
+
+:root[data-skin="gamenight"][data-lighting="night"] {
+  --bg: #121a2b;
+  --surface: #1f2a41;
+  --surface-2: #18223a;
+  --ink: #eef2f8;
+  --muted: #98a6bf;
+  --rule: #2c3a57;
+  --input: #18223a;
+  --gold-ink: #f3b93a;
+  --error: #f08a74;
+  --chrome-bg: #0b1120;
+  --chrome-rule: #2c3a57;
+  --edge: #0b1120;
+  --elev-1: 0 3px 0 var(--edge), 0 10px 22px -14px rgba(0, 0, 0, 0.6);
+  --elev-2: 0 3px 0 var(--edge), 0 16px 30px -14px rgba(0, 0, 0, 0.7);
+  --elev-3: 0 4px 0 var(--edge), 0 30px 60px -20px rgba(0, 0, 0, 0.8);
+  --beat-shade: #000;
+
+  --gn-sky: #23335a;
+  --gn-sun: #f4ecc8;
+  --gn-hill: #2f5a4a;
+  --gn-hill2: #27493d;
+  --gn-wall: #4a3f52;
+  --gn-glass: #ffd98a;
+  --gn-rock: #5c5550;
+  --gn-seal: #9aa7b4;
+  --gn-win: #ffd166;
+  --gn-line: #0b1120;
+  --gn-road: #3a4358;
+  --gn-crane: #d9a02c;
+  --gn-trail: rgba(255, 255, 255, 0.28);
+
+  --gn-map: url("../assets/citymap-night.svg");
+  --gn-map-fade: rgba(18, 26, 43, 0.8);
+}
+
+:root[data-skin="gamenight"] .serif {
+  font-family: var(--serif);
+  font-weight: var(--display-weight);
+  letter-spacing: -0.01em;
+}
+
+:root[data-skin="gamenight"] .kicker {
+  font-weight: 800;
+}
+
+
+/* Scene and portrait linework. */
+.gn-ln {
+  fill: none;
+  stroke: var(--gn-line);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gn-fl {
+  stroke: var(--gn-line);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.gn-rough {
+  filter: url(#gn-rough);
+}
+
+/* The crane's load swings a little on its hook (merger drawings). */
+.gn-sway {
+  transform-box: view-box;
+  transform-origin: 506px 32px;
+  animation: gn-sway 2.6s ease-in-out infinite alternate;
+}
+
+@keyframes gn-sway {
+  from { transform: rotate(-7deg); }
+  to { transform: rotate(7deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gn-sway { animation: none; }
+}

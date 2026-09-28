@@ -359,3 +359,9 @@
   color: inherit;
   cursor: pointer;
 }
+
+/* Game Night skin (prototype): the table is a city map, so the stage's shaded
+   pool fades out into it instead of sitting on it as a grey square. */
+:global(:root[data-skin='gamenight']) .stage {
+  background: radial-gradient(closest-side, rgba(27, 36, 56, 0.16) 55%, rgba(27, 36, 56, 0) 100%);
+}

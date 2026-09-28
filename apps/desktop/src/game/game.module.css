@@ -993,3 +993,114 @@
     gap: 14px;
   }
 }
+
+/* ---- Game Night (prototype skin) ---- */
+
+/* The city under the table: a street map a shade off the ground, faded out
+   where the board sits so it frames the table rather than competing with it. */
+:global(:root[data-skin='gamenight']) .body {
+  background:
+    radial-gradient(ellipse 58% 62% at 38% 58%, var(--gn-map-fade) 0%, var(--gn-map-fade) 35%, transparent 80%),
+    var(--gn-map) 0 0 / 320px 320px,
+    var(--bg);
+}
+
+:global(:root[data-skin='gamenight']) .boardSlot {
+  background: transparent;
+}
+
+:global(:root[data-skin='gamenight']) .header {
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--chrome-bg) 70%, #000);
+}
+
+:global(:root[data-skin='gamenight']) .muteButton[aria-pressed='true'],
+:global(:root[data-skin='gamenight']) .exitButton:hover {
+  color: var(--gold);
+}
+
+:global(:root[data-skin='gamenight']) .turnNumber {
+  display: inline-block;
+  padding: 3px 8px 2px;
+  border-radius: 9px;
+  background: var(--gold);
+  color: var(--on-gold);
+}
+
+:global(:root[data-skin='gamenight']) .card {
+  padding: 14px 16px 12px;
+}
+
+:global(:root[data-skin='gamenight']) .cardHeading {
+  font-family: var(--sans);
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+:global(:root[data-skin='gamenight']) .actionCard,
+:global(:root[data-skin='gamenight']) .waiting {
+  border-radius: var(--radius);
+}
+
+/* Your hand sits on a navy rack; the tiles are plaques on it. */
+:global(:root[data-skin='gamenight']) .rackHeading {
+  font-size: 14px;
+}
+
+:global(:root[data-skin='gamenight']) .rackTiles {
+  padding: 8px 10px 4px;
+  border-radius: 14px;
+  background: #2c3f66;
+}
+
+:global(:root[data-skin='gamenight'][data-lighting='night']) .rackTiles {
+  background: #0f1830;
+}
+
+:global(:root[data-skin='gamenight']) .rackTileId {
+  border: 0;
+  border-radius: 10px;
+  font-family: var(--serif);
+  font-weight: 700;
+  box-shadow: 0 3px 0 #9fb0cf;
+}
+
+:global(:root[data-skin='gamenight'][data-lighting='night']) .rackTileId {
+  background: #2c3a57;
+  box-shadow: 0 3px 0 #0b1120;
+}
+
+:global(:root[data-skin='gamenight']) .rackTile:not(:disabled):hover .rackTileId {
+  background: var(--gold);
+  color: var(--on-gold);
+  box-shadow: 0 3px 0 var(--gold-edge);
+}
+
+:global(:root[data-skin='gamenight']) .rackTile[data-effect='merge'] .rackTileId {
+  box-shadow: 0 3px 0 #9fb0cf, inset 0 0 0 2px var(--accent);
+}
+
+:global(:root[data-skin='gamenight']) .rackTileEffect {
+  font-weight: 800;
+  color: #c8d4ec;
+}
+
+:global(:root[data-skin='gamenight']) .rackTile[data-effect='merge'] .rackTileEffect {
+  color: #ffb09f;
+}
+
+:global(:root[data-skin='gamenight']) .rackTile[data-effect='found'] .rackTileEffect {
+  color: var(--gold);
+}
+
+/* Game Night skin (prototype): the merger narration opens on the drawing of it. */
+.storyScene {
+  display: block;
+  width: calc(100% + 40px);
+  aspect-ratio: 4 / 1;
+  height: auto;
+  margin: -18px -20px 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+}

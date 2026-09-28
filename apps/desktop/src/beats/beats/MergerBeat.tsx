@@ -8,6 +8,8 @@ import { useIndustryPatterns } from '../../settings/useSetting.js';
 import { useReducedMotion } from '../useReducedMotion.js';
 import { useBeatType } from '../beatTone.js';
 import styles from '../beats.module.css';
+import { isGameNight } from '../../skin.js';
+import { MergerScene } from '../../art/MergerScene.js';
 import { copy, fill } from '../../copy/copy.js';
 
 /**
@@ -163,6 +165,12 @@ export function MergerBeat({ merger, view, dismiss }: { merger: MergerStory; vie
           {multi && !past('name') && fill(copy.beats.merger.absorption, { n: chain + 1, total: merger.chains.length })}
         </div>
         <div className={styles.rule} />
+
+        {/* Game Night: each absorption is drawn — the survivor's headquarters
+            and the crane swinging the chain being eaten across to it. */}
+        {isGameNight && merger.survivor && activeDefunct && at.chain != null && (
+          <MergerScene key={chain} survivor={merger.survivor} defunct={activeDefunct} className={styles.gnMergerScene} />
+        )}
 
         {/* collide: the surviving name so far leans into the chain being eaten. */}
         <div

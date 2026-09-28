@@ -177,6 +177,21 @@
   white-space: nowrap;
 }
 
+/* Game Night sets the notes in Nunito Sans, which runs wider than the shipped
+   face, so a fixed plate width let the longest note spill off its plate. The
+   plates size to the longest note instead and stay equal: equal grid columns
+   in a shrink-wrapped row resolve to the widest plate's own width. */
+:global(:root[data-skin='gamenight']) .launchChoice {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+}
+
+:global(:root[data-skin='gamenight']) .launchPlate {
+  width: auto;
+  min-width: 14.5rem;
+}
+
 /* Settings is not a way into the game, so it does not get a plate — it is a
    chip on the chrome, the weight the tray strip gives a name nobody is
    choosing right now. */

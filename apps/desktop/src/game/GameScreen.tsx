@@ -28,6 +28,8 @@ import { ReferenceProvider } from '../reference/ReferenceContext.js';
 import type { GameConfig } from '../setup/gameConfig.js';
 import type { GameState } from '@boomtown/engine';
 import styles from './game.module.css';
+import { isGameNight } from '../skin.js';
+import { GameNightDefs } from '../art/Scene.js';
 
 /**
  * The playing surface: the board on the left, a right rail carrying the story,
@@ -177,6 +179,7 @@ function PlayArea({
 
   return (
     <div className={styles.screen}>
+      {isGameNight && <GameNightDefs />}
       <Header onExit={onExit} online={online} />
       <div className={styles.body}>
         <CorporationBand />
