@@ -161,7 +161,11 @@ export function DisposalPrompt({
         >
           +
         </button>
-        <span>→ {check.received} share{check.received === 1 ? '' : 's'}</span>
+        <span>
+          {fill(check.received === 1 ? copy.decisions.disposal.receivedOne : copy.decisions.disposal.receivedMany, {
+            n: check.received,
+          })}
+        </span>
       </div>
 
       <p className={styles.error}>{check.valid ? '' : check.reason}</p>

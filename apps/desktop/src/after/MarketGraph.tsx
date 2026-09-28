@@ -5,7 +5,7 @@ import { IndustryMark } from '../game/marks.js';
 import { industryTheme } from '../game/industryTheme.js';
 import { dashFor, linePath, moneyAxis, netWorthSeries, placeLabels } from './series.js';
 import styles from './after.module.css';
-import { copy } from '../copy/copy.js';
+import { copy, fill } from '../copy/copy.js';
 
 const W = 1000;
 const H = 330;
@@ -171,14 +171,14 @@ export const MarketGraph = memo(function MarketGraph({
                     kind={event.kind}
                     x={at}
                     y={y(axis.floor) + 30 + slot.row * (CHIP + 6)}
-                    label={`${nameOf(event.industry)} — ${labelFor(event.kind)}, turn ${event.turn}`}
+                    label={fill(after.chipLabel, { name: nameOf(event.industry), event: labelFor(event.kind), turn: event.turn })}
                   />
                 ) : (
                   // Not a bare dot: a coloured dot this small is one no
                   // colourblind player can place (#19), so the overflow mark
                   // is the industry's glyph, in the shade that reads on paper.
                   <g data-overflow-mark={event.industry} transform={`translate(${(at - 7).toFixed(1)} ${(y(axis.floor) - 7).toFixed(1)})`}>
-                    <title>{`${nameOf(event.industry)} — ${labelFor(event.kind)}, turn ${event.turn}`}</title>
+                    <title>{fill(after.chipLabel, { name: nameOf(event.industry), event: labelFor(event.kind), turn: event.turn })}</title>
                     <IndustryMark industry={event.industry} color={info.type} size={10} />
                   </g>
                 )}
