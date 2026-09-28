@@ -868,12 +868,11 @@
   opacity: 0.72;
 }
 
-.rackHeading {
-  font-size: 15px;
-}
-
 .rackTiles {
+  /* the rack fills the strip's height, so it lines up with the card beside it */
+  flex: 1;
   display: flex;
+  align-items: center;
   gap: 10px;
 }
 
@@ -973,10 +972,6 @@
     height: 20px;
   }
 
-  .rackHeading {
-    font-size: 13px;
-  }
-
   .rackTile {
     width: 48px;
   }
@@ -1045,10 +1040,6 @@
 }
 
 /* Your hand sits on a navy rack; the tiles are plaques on it. */
-:global(:root[data-skin='gamenight']) .rackHeading {
-  font-size: 14px;
-}
-
 :global(:root[data-skin='gamenight']) .rackTiles {
   padding: 8px 10px 4px;
   border-radius: 14px;

@@ -504,7 +504,6 @@
   "game": {
     "board": "Board",
     "yourTiles": "Your tiles",
-    "yourTilesNamed": "Your tiles — {name}",
     "story": "Story",
     "shareholders": "Shareholders",
     "advisors": "Advisors",

@@ -2,7 +2,7 @@ import type { HandTileEffect } from '@boomtown/client-core';
 import { useGameClient, useGameState } from '../client/GameClientProvider.js';
 import { useOwnView } from '../client/ownView.js';
 import styles from './game.module.css';
-import { copy, fill } from '../copy/copy.js';
+import { copy } from '../copy/copy.js';
 
 const EFFECT_LABEL: Record<HandTileEffect, string> = {
   nothing: 'idle',
@@ -48,11 +48,9 @@ export function TileRack() {
   if (view.handTiles.length === 0) return null;
 
   const yourTurn = view.activeSeat === view.you;
-  const name = view.seats[view.you]?.name ?? fill(copy.common.seatFallback, { n: view.you });
 
   return (
     <section className={styles.rack} aria-label={copy.game.yourTiles} data-idle={!yourTurn || undefined}>
-      <div className={`serif ${styles.rackHeading}`}>{fill(copy.game.yourTilesNamed, { name })}</div>
       <div className={styles.rackTiles}>
         {view.handTiles.map(({ tile, effect, playable }) => (
           <button

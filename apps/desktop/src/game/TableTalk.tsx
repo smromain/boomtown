@@ -68,7 +68,7 @@ export function Advisors() {
             : [];
           return (
             <div key={seat.name} className={styles.advisor} data-mine={mine || undefined} data-clock={onClock || undefined}>
-              <Portrait seat={index} size={36} />
+              <Portrait seat={index} name={seat.name} size={36} />
               <div className={styles.bubble}>
                 <div className={styles.bubbleHead}>
                   <span className={styles.who}>{seat.name}</span>
@@ -135,7 +135,7 @@ export function TableFeed() {
             return (
               <li key={log.length - moves.length + index} className={styles.item} data-headline={headline || undefined}>
                 {seat != null ? (
-                  <Portrait seat={seat} size={28} />
+                  <Portrait seat={seat} name={name} size={28} />
                 ) : industry ? (
                   <span className={styles.medal} style={{ background: industryTheme(industry).color }}>
                     <IndustryMark industry={industry} color={industryTheme(industry).ink} size={14} />
