@@ -1,8 +1,9 @@
 /**
  * Drawn portraits for the Game Night skin (prototype). Nine heads, each just a
  * head: shoulders cut off by the round frame read as a stray shape. The head
- * comes from the seat's name (its length, modulo the number of heads), so it
- * follows the player rather than the chair; the ring colour stays the seat's.
+ * comes from the name's length plus the seat number, modulo the number of heads,
+ * so a table of default names (all the same length) still mixes. The ring colour
+ * is the seat's.
  */
 import styles from './portrait.module.css';
 
@@ -21,13 +22,13 @@ const FACES: readonly string[] = [
 /** The ring colour behind each seat's portrait. */
 export const SEAT_COLOURS: readonly string[] = ['#355C99', '#C64E25', '#4A9471', '#D7A329', '#AC7CEF', '#66CAD8'];
 
-/** Which head a name gets. */
-export function faceIndex(name: string): number {
-  return name.length % FACES.length;
+/** Which head a seat gets. */
+export function faceIndex(name: string, seat: number): number {
+  return (name.length + seat) % FACES.length;
 }
 
 export function Portrait({ seat, name, size = 36 }: { seat: number; name: string; size?: number }) {
-  const face = FACES[faceIndex(name)]!;
+  const face = FACES[faceIndex(name, seat)]!;
   return (
     <span
       className={styles.portrait}
