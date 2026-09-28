@@ -15,7 +15,7 @@ document records history instead, it says so and lives under `history/`.
 | [`testing.md`](testing.md) | What is actually verified, by which suite, and what tests cannot catch |
 | [`deploying.md`](deploying.md) | Cutting a release, the Cloudflare room deploy, itch.io channels, versioning |
 | [`decisions.md`](decisions.md) | What was chosen and why, what was reversed, what is still open |
-| [`screenshots/`](screenshots/) | Seventeen frames from one real game, in play order, and how to retake them |
+| [`screenshots/`](screenshots/) | Eleven frames in the Game Night look, in play order, and how to retake them |
 
 Start with `architecture.md` for the system or `rules.md` for the game. `../CLAUDE.md` is the short
 version of both, plus the constraints a change has to respect.

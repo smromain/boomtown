@@ -7,11 +7,11 @@ current `main`.
 
 | Command | What runs | Count |
 |---|---|---|
-| `npm test` | All three Vitest projects | **1060** |
-| `npm run test:engine` | The `engine` project (node): `packages/*/test/**` — engine, protocol, ai, client-core, and the room's own logic | 540 |
-| `npm run test:desktop` | The `desktop` project (jsdom): `apps/desktop/**/*.test.{ts,tsx}` — components through `@testing-library/react`, plus the Electron main-process modules | 512 |
-| `npm run test:phone` | The `phone` project (jsdom): `apps/phone/src/**/*.test.{ts,tsx}` — the couch-mode phone page's join, resume and decision sheets against a real engine | 8 |
-| `npm run test:server` | Integration: a real `wrangler dev` room (workerd) | 29 |
+| `npm test` | All three Vitest projects | **1078** |
+| `npm run test:engine` | The `engine` project (node): `packages/*/test/**` — engine, protocol, ai, client-core, and the room's own logic | 542 |
+| `npm run test:desktop` | The `desktop` project (jsdom): `apps/desktop/**/*.test.{ts,tsx}` — components through `@testing-library/react`, plus the Electron main-process modules | 525 |
+| `npm run test:phone` | The `phone` project (jsdom): `apps/phone/src/**/*.test.{ts,tsx}` — the couch-mode phone page's join, resume and decision sheets against a real engine | 11 |
+| `npm run test:server` | Integration: a real `wrangler dev` room (workerd) | 30 |
 | `npm run typecheck` | `tsc --noEmit` for all three tsconfigs | — |
 | `npm run lint` | eslint, flat config (including the no-`Math.random`/`Date.now` rule in the engine) | — |
 | `npm run smoke` | Builds and boots the real Electron app | — |

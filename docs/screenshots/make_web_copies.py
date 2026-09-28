@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Regenerate the half-size web copies the README embeds.
+"""Regenerate the web copies the README embeds.
 
-The originals are 3200 x 2000 PNGs (a 1600 x 1000 viewport at 2x) and total
-~8.3 MB, which is too much to put at the top of a README. This halves them to
-1600 x 1000 and writes WebP at quality 88 into web/ -- about 600 KB for all
-seventeen, still sharp above the ~900px a README column gives them.
+The originals are 1920 x 1080 PNGs and total ~4.5 MB, which is too much to put
+at the top of a README. This scales them to 1600 wide and writes WebP at
+quality 88 into web/ -- still sharp above the ~900px a README column gives
+them.
 
 Run after retaking any screenshot:
 
@@ -20,6 +20,7 @@ from pathlib import Path
 from PIL import Image
 
 QUALITY = 88
+WIDTH = 1600
 HERE = Path(__file__).parent
 WEB = HERE / "web"
 
@@ -36,12 +37,13 @@ def main() -> int:
     for src in originals:
         dst = WEB / (src.stem + ".webp")
         image = Image.open(src).convert("RGB")
-        half = image.resize((image.width // 2, image.height // 2), Image.LANCZOS)
-        half.save(dst, quality=QUALITY, method=6)
+        scale = min(1, WIDTH / image.width)
+        small = image.resize((round(image.width * scale), round(image.height * scale)), Image.LANCZOS)
+        small.save(dst, quality=QUALITY, method=6)
         total_in += src.stat().st_size
         total_out += dst.stat().st_size
         print(f"{dst.name:36} {src.stat().st_size / 1024:7.0f} KB"
-              f" -> {dst.stat().st_size / 1024:6.0f} KB  {half.size[0]}x{half.size[1]}")
+              f" -> {dst.stat().st_size / 1024:6.0f} KB  {small.size[0]}x{small.size[1]}")
 
     # Anything in web/ without an original is a leftover from a renamed shot.
     for stale in sorted(WEB.glob("*.webp")):
