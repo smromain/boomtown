@@ -75,6 +75,7 @@
   --gn-line: #1c2a47;
   --gn-road: #d9d4c7;
   --gn-crane: #f3b93a;
+  --gn-trail: rgba(28, 42, 71, 0.2);
   --gn-skin1: #f2c9a1;
   --gn-skin2: #c68b5e;
   --gn-skin3: #8d5a3b;
@@ -115,6 +116,7 @@
   --gn-line: #0b1120;
   --gn-road: #3a4358;
   --gn-crane: #d9a02c;
+  --gn-trail: rgba(255, 255, 255, 0.28);
 
   --gn-map: url("../assets/citymap-night.svg");
   --gn-map-fade: rgba(18, 26, 43, 0.8);
