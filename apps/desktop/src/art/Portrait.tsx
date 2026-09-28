@@ -1,9 +1,8 @@
 /**
- * Drawn portraits for the Game Night skin (prototype). A seat's portrait is
- * picked by its position at the table, so it is stable for a whole game and
- * needs nothing from the engine. Nine heads, each just a head: shoulders cut off
- * by the round frame read as a stray shape. `LINEUP` deals them to seats so a
- * table of four already has two animals at it and a table of six has all four.
+ * Drawn portraits for the Game Night skin (prototype). Nine heads, each just a
+ * head: shoulders cut off by the round frame read as a stray shape. The head
+ * comes from the seat's name (its length, modulo the number of heads), so it
+ * follows the player rather than the chair; the ring colour stays the seat's.
  */
 import styles from './portrait.module.css';
 
@@ -19,14 +18,16 @@ const FACES: readonly string[] = [
   "<g class=\"gn-rough\"><ellipse cx=\"20\" cy=\"17.5\" rx=\"8.3\" ry=\"9\" fill=\"#fbfaf6\" stroke=\"var(--gn-line)\" stroke-width=\"1.6\"/><path d=\"M12.6 11 q-5.5 1 -5 11 q0.5 5 4.5 3.5 q2 -1 1.5 -6 q-0.5 -4 -1 -8.5z\" fill=\"#1d1715\" stroke=\"var(--gn-line)\" stroke-width=\"1.3\"/><path d=\"M27.4 11 q5.5 1 5 11 q-0.5 5 -4.5 3.5 q-2 -1 -1.5 -6 q0.5 -4 1 -8.5z\" fill=\"#1d1715\" stroke=\"var(--gn-line)\" stroke-width=\"1.3\"/><ellipse cx=\"16.8\" cy=\"16.5\" rx=\".9\" ry=\"1.5\" fill=\"var(--gn-line)\"/><ellipse cx=\"23.2\" cy=\"16.5\" rx=\".9\" ry=\"1.5\" fill=\"var(--gn-line)\"/><ellipse cx=\"20\" cy=\"21\" rx=\"2.6\" ry=\"1.9\" fill=\"#1d1715\" stroke=\"var(--gn-line)\" stroke-width=\"1\"/><path d=\"M20 22.8 v1.6 M16.8 24.2 q3.2 2.6 6.4 0\" fill=\"none\" stroke=\"var(--gn-line)\" stroke-width=\"1.1\" stroke-linecap=\"round\"/></g>"
 ];
 
-/** Faces 0–4 are people; 5 mouse, 6 dinosaur, 7 giraffe, 8 beagle. */
-const LINEUP: readonly number[] = [0, 5, 1, 8, 7, 6, 2, 3, 4];
-
 /** The ring colour behind each seat's portrait. */
 export const SEAT_COLOURS: readonly string[] = ['#355C99', '#C64E25', '#4A9471', '#D7A329', '#AC7CEF', '#66CAD8'];
 
-export function Portrait({ seat, size = 36 }: { seat: number; size?: number }) {
-  const face = FACES[LINEUP[seat % LINEUP.length]!]!;
+/** Which head a name gets. */
+export function faceIndex(name: string): number {
+  return name.length % FACES.length;
+}
+
+export function Portrait({ seat, name, size = 36 }: { seat: number; name: string; size?: number }) {
+  const face = FACES[faceIndex(name)]!;
   return (
     <span
       className={styles.portrait}
