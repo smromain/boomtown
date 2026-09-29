@@ -25,7 +25,9 @@
     "lint": "eslint .",
     "test:phone": "vitest run --project phone",
     "phone:build": "npm run build --workspace @boomtown/phone",
-    "phone:dev": "npm run dev --workspace @boomtown/phone"
+    "phone:dev": "npm run dev --workspace @boomtown/phone",
+    "art:export": "vite-node apps/desktop/scripts/art-kit.ts export",
+    "art:import": "vite-node apps/desktop/scripts/art-kit.ts import"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

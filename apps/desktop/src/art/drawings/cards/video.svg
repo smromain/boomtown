@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 96">
+<rect width="300" height="96" fill="var(--gn-sky)"/>
+<rect x="30" y="24" width="240" height="90" fill="var(--gn-wall)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<rect x="98" y="13" width="104" height="18" rx="4" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<g fill="var(--gn-win)"><circle cx="108" cy="22" r="2.4"/><circle cx="122" cy="22" r="2.4"/><circle cx="136" cy="22" r="2.4"/><circle cx="150" cy="22" r="2.4"/><circle cx="164" cy="22" r="2.4"/><circle cx="178" cy="22" r="2.4"/><circle cx="192" cy="22" r="2.4"/></g>
+<path d="M22 32 H278 V42 H22Z" fill="var(--gn-lite)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<g fill="var(--gn-c)"><rect x="22" y="32" width="32" height="10"/><rect x="86" y="32" width="32" height="10"/><rect x="150" y="32" width="32" height="10"/><rect x="214" y="32" width="32" height="10"/></g>
+<path d="M22 42 q8 10 16 0 q8 10 16 0 q8 10 16 0 q8 10 16 0 q8 10 16 0 q8 10 16 0 q8 10 16 0 q8 10 16 0 q8 10 16 0 q8 10 16 0 q8 10 16 0 q8 10 16 0 q8 10 16 0 q8 10 16 0 q8 10 16 0 q8 10 16 0z" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<rect x="46" y="58" width="150" height="40" fill="var(--gn-glass)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<g style="stroke-width:1.6" stroke="var(--gn-line)" stroke-linejoin="round"><rect x="56" y="66" width="12" height="22" fill="var(--gn-line)"/><rect x="72" y="66" width="12" height="22" fill="var(--gn-c)"/><rect x="88" y="66" width="12" height="22" fill="var(--gn-line)"/><rect x="104" y="66" width="12" height="22" fill="var(--gn-sun)"/><rect x="132" y="66" width="12" height="22" fill="var(--gn-line)"/><rect x="148" y="66" width="12" height="22" fill="var(--gn-c)"/><rect x="164" y="66" width="12" height="22" fill="var(--gn-lite)"/></g>
+<rect x="212" y="56" width="40" height="42" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="244" cy="78" r="2" fill="var(--gn-lite)"/>
+</svg>

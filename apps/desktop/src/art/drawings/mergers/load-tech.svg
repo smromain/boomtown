@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -16 92 80">
+<path d="M38 -8 L10 4 M38 -8 L66 4" style="stroke-width:1.4" fill="none" stroke="var(--gn-line)" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M38 -10 q-5 5 0 9" style="stroke-width:2" fill="none" stroke="var(--gn-line)" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="8" y="4" width="60" height="42" rx="6" fill="var(--gn-wall)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<rect x="14" y="10" width="48" height="30" rx="3" fill="var(--gn-t)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="38" cy="25" r="9" style="stroke:var(--gn-lite);stroke-width:1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M29 25 H47 M38 16 q-6 9 0 18 M38 16 q6 9 0 18" style="stroke:var(--gn-lite);stroke-width:1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M30 46 h16 l4 6 h-24z" fill="var(--gn-wall)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<rect x="20" y="52" width="36" height="6" rx="2" fill="var(--gn-wall)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+</svg>

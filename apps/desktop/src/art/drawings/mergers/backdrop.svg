@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 150">
+<rect width="600" height="150" fill="var(--gn-sky)"/>
+<circle cx="566" cy="52" r="14" fill="var(--gn-sun)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<g fill="var(--gn-star)"><circle cx="300" cy="18" r="1.4"/><circle cx="470" cy="12" r="1.2"/><circle cx="28" cy="30" r="1.4"/></g>
+<path d="M424 72 q6 -4 12 0 q6 -4 12 0" style="stroke-width:1.6" fill="none" stroke="var(--gn-line)" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M-4 128 Q150 120 300 128 T604 126 V154 H-4Z" fill="var(--gn-hill)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M-4 138 Q200 132 400 138 T604 136 V154 H-4Z" fill="var(--gn-hill2)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+</svg>

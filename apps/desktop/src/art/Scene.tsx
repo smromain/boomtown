@@ -1,6 +1,11 @@
 import type { Industry } from '@boomtown/engine';
 import { SCENES } from './scenes.js';
 
+/** Each scene wrapped in the wobble filter, built once so React never rewrites it. */
+const MARKUP = Object.fromEntries(
+  Object.entries(SCENES).map(([industry, art]) => [industry, { __html: `<g class="gn-rough">${art}</g>` }]),
+) as Record<Industry, { __html: string }>;
+
 /**
  * One corporation's drawing (Game Night skin, prototype). Coloured by the
  * `--gn-c`/`--gn-ci` custom properties of whatever it sits in, so the card that
@@ -15,7 +20,7 @@ export function Scene({ industry, className }: { industry: Industry; className?:
       viewBox="0 0 300 96"
       preserveAspectRatio={industry === 'video' ? 'xMidYMid slice' : 'xMidYMax slice'}
       aria-hidden
-      dangerouslySetInnerHTML={{ __html: SCENES[industry] }}
+      dangerouslySetInnerHTML={MARKUP[industry]}
     />
   );
 }

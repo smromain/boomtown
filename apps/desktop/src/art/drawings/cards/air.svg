@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 96">
+<rect width="300" height="96" fill="var(--gn-sky)"/>
+<circle cx="286" cy="10" r="8" fill="var(--gn-sun)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M20 22 q6 -4 12 0 q6 -4 12 0" style="stroke-width:1.6" fill="none" stroke="var(--gn-line)" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M-4 74 H304 V100 H-4Z" fill="var(--gn-hill2)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M-4 80 H304 V94 H-4Z" fill="var(--gn-road)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M4 87 H40 M60 87 H96 M116 87 H152 M172 87 H208 M228 87 H264 M284 87 H300" style="stroke:var(--gn-lite);stroke-width:2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="220" y="36" width="16" height="40" fill="var(--gn-wall)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M212 24 H244 L240 38 H216Z" fill="var(--gn-glass)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M210 20 H246 V25 H210Z" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M228 20 V10" fill="none" stroke="var(--gn-line)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M0 70 L70 44.4" style="stroke:var(--gn-trail);stroke-width:2.4;stroke-dasharray:7 5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M72.3 43.9 L65.4 29.3 L73.2 27.3 L86.9 37.3z" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M114.3 29.8 L109.4 17.6 L117.2 17.8 L127.9 27.3z" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<g transform="translate(70 30) rotate(-10)"><path d="M0 14 q30 -8 84 -4 q10 1 12 5 q-2 4 -12 5 q-54 4 -84 -6z" fill="var(--gn-lite)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/></g>
+<path d="M117.2 38.1 L134.8 35.4 L123 58.1 L115.2 59.6z" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<g fill="var(--gn-glass)"><circle cx="102.7" cy="36.6" r="1.5"/><circle cx="109.9" cy="35.2" r="1.5"/><circle cx="118.2" cy="33.7" r="1.5"/><circle cx="126.5" cy="32.2" r="1.5"/><circle cx="133.8" cy="31.0" r="1.5"/><circle cx="140.9" cy="29.8" r="1.5"/></g>
+</svg>
