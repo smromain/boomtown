@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 150">
+<rect x="70" y="50" width="220" height="84" fill="var(--gn-wall)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<rect x="126" y="34" width="108" height="24" rx="4" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<g fill="var(--gn-win)"><circle cx="138" cy="46" r="2.6"/><circle cx="154" cy="46" r="2.6"/><circle cx="170" cy="46" r="2.6"/><circle cx="186" cy="46" r="2.6"/><circle cx="202" cy="46" r="2.6"/><circle cx="218" cy="46" r="2.6"/></g>
+<path d="M62 70 H298 V82 H62Z" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M62 82 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0z" fill="var(--gn-lite)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<rect x="92" y="96" width="130" height="36" fill="var(--gn-glass)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<g style="stroke-width:1.6" stroke="var(--gn-line)" stroke-linejoin="round"><rect x="100" y="104" width="12" height="24" fill="var(--gn-line)"/><rect x="118" y="104" width="12" height="24" fill="var(--gn-c)"/><rect x="136" y="104" width="12" height="24" fill="var(--gn-sun)"/><rect x="160" y="104" width="12" height="24" fill="var(--gn-line)"/><rect x="178" y="104" width="12" height="24" fill="var(--gn-c)"/><rect x="196" y="104" width="12" height="24" fill="var(--gn-lite)"/></g>
+<rect x="236" y="94" width="36" height="38" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="264" cy="114" r="2.2" fill="var(--gn-lite)"/>
+</svg>

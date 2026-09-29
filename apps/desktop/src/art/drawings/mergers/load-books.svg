@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -16 92 80">
+<path d="M38 -8 L10 18 M38 -8 L66 18" style="stroke-width:1.4" fill="none" stroke="var(--gn-line)" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M38 -10 q-5 5 0 9" style="stroke-width:2" fill="none" stroke="var(--gn-line)" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="6" y="18" width="64" height="40" fill="var(--gn-wall)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M2 24 H74 V31 H2Z" fill="var(--gn-t)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M2 31 q4.5 5 9 0 q4.5 5 9 0 q4.5 5 9 0 q4.5 5 9 0 q4.5 5 9 0 q4.5 5 9 0 q4.5 5 9 0 q4.5 5 9 0z" fill="var(--gn-lite)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<rect x="10" y="40" width="38" height="18" fill="var(--gn-glass)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<g style="stroke-width:1.2" stroke="var(--gn-line)" stroke-linejoin="round"><rect x="14" y="44" width="5" height="14" fill="var(--gn-t)"/><rect x="19" y="42" width="5" height="16" fill="var(--gn-lite)"/><rect x="24" y="46" width="6" height="12" fill="#355c99"/><rect x="33" y="43" width="5" height="15" fill="var(--gn-t)"/><rect x="38" y="45" width="5" height="13" fill="var(--gn-lite)"/></g>
+<rect x="54" y="38" width="12" height="20" fill="var(--gn-t)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+</svg>

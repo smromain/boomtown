@@ -152,6 +152,13 @@ a run is real.
   There is a test that fails on a component holding its own sentence.
 - **Styling is CSS Modules**, one module per folder, with the palette in `src/styles/global.css`.
   Colours come from the variables there, never from a literal in a component.
+- **The Game Night drawings are files**, one SVG each in `apps/desktop/src/art/drawings/`, coloured
+  with `var(--gn-*)` tokens so one file serves every company, day and night. Edit them by hand, or
+  send them out for touch-up: `npm run art:export` writes them with plain colours to `art-kit/`, and
+  `npm run art:import -- <folder>` takes an edited folder back. `npm run art:reference`, with the
+  renderer running, adds samples, screenshots and clips of the drawings in the game. `drawings/README.md` is both the
+  artist's instructions and the import's contract; a test takes every drawing out and back and
+  expects it unchanged.
 - **Motion respects `prefers-reduced-motion`.** `beats/useReducedMotion.ts` for components; a media
   query in the module for anything animated in CSS.
 - **Don't hand-edit generated files.** See the table at the end of `architecture.md`.

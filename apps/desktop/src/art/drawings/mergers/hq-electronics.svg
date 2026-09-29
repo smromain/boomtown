@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 150">
+<path d="M42 100 a17 17 0 0 0 32 10z" fill="var(--gn-lite)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M58 106 V132 M58 106 l8 -10" fill="none" stroke="var(--gn-line)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="84" y="56" width="200" height="76" fill="var(--gn-wall)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M252 56 V12 M242 24 H262 M245 36 H259 M252 12 l-10 12 M252 12 l10 12" fill="none" stroke="var(--gn-line)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M236 8 q-8 8 0 16 M268 8 q8 8 0 16 M228 2 q-13 14 0 28 M276 2 q13 14 0 28" style="stroke-width:1.8" fill="none" stroke="var(--gn-line)" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="98" y="64" width="140" height="22" rx="5" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<g fill="var(--gn-lite)"><rect x="107" y="70" width="10" height="10" rx="2"/><rect x="123" y="72" width="104" height="6" rx="3" opacity=".9"/></g>
+<rect x="96" y="94" width="134" height="36" fill="var(--gn-glass)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<g style="stroke-width:1.4" stroke="var(--gn-line)" stroke-linejoin="round"><rect x="102" y="100" width="34" height="24" rx="4" fill="var(--gn-wall)"/><rect x="106" y="104" width="26" height="16" rx="2" fill="var(--gn-win)"/><rect x="142" y="104" width="30" height="20" rx="3" fill="var(--gn-c)"/><circle cx="151" cy="114" r="5" fill="var(--gn-wall)"/><rect x="178" y="98" width="44" height="26" rx="4" fill="var(--gn-wall)"/><rect x="182" y="102" width="36" height="18" rx="2" fill="var(--gn-win)"/></g>
+<rect x="242" y="92" width="32" height="40" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="268" cy="114" r="2.2" fill="var(--gn-lite)"/>
+</svg>

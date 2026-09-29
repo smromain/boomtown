@@ -147,7 +147,7 @@ testable core. Detail in `online-play.md`; the file map:
 
 | Folder | What is in it |
 |---|---|
-| `art/` | `Skyline` (the vector silhouette, four surfaces) and `NightSkyline` (the launch backdrop) |
+| `art/` | `Skyline` (the vector silhouette, four surfaces) and `NightSkyline` (the launch backdrop); the Game Night drawings, one SVG each under `drawings/` (card scenes, merger parts, portraits), loaded by `drawings.ts`, and `kit.ts`, which takes them out to plain colours and back |
 | `audio/` | Effects and music managers, two independent volumes |
 | `beats/` | The beat queue, triggers off engine events, and six beats: founding, buy, merger, motion, endgame, victory |
 | `board/` | The cell model both painters share, the DOM grid (the a11y and test contract), click-to-place, and the two painters: Board View (CSS) and Skyline (`board/skyline/`, three.js, lazy-loaded) |

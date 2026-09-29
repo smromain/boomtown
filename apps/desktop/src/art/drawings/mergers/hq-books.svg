@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 150">
+<path d="M36 132 V86 q0 -10 12 -10" fill="none" stroke="var(--gn-line)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="50" cy="80" r="5" fill="var(--gn-win)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<rect x="62" y="46" width="226" height="86" fill="var(--gn-wall)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<rect x="54" y="40" width="242" height="10" fill="var(--gn-lite)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<rect x="128" y="20" width="94" height="22" rx="4" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M158 34 q8 -6 17 0 q9 -6 17 0 v-8 q-8 -5 -17 0 q-9 -5 -17 0z" fill="var(--gn-lite)" style="stroke-width:1.4" stroke="var(--gn-line)" stroke-linejoin="round"/>
+<path d="M54 60 H296 V72 H54Z" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M58 72 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0 q9 10 18 0z" fill="var(--gn-lite)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<rect x="78" y="88" width="150" height="42" fill="var(--gn-glass)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<g style="stroke-width:1.4" stroke="var(--gn-line)" stroke-linejoin="round"><rect x="86" y="100" width="9" height="30" fill="var(--gn-c)"/><rect x="95" y="96" width="8" height="34" fill="var(--gn-lite)"/><rect x="103" y="102" width="10" height="28" fill="#c64e25"/><rect x="113" y="98" width="7" height="32" fill="var(--gn-c)"/><rect x="120" y="104" width="11" height="26" fill="#355c99"/><rect x="138" y="98" width="9" height="32" fill="var(--gn-lite)"/><rect x="147" y="102" width="9" height="28" fill="var(--gn-c)"/><rect x="156" y="96" width="8" height="34" fill="#4a9471"/><rect x="164" y="100" width="10" height="30" fill="var(--gn-lite)"/><rect x="174" y="104" width="9" height="26" fill="#971d50"/><rect x="183" y="98" width="9" height="32" fill="var(--gn-c)"/><rect x="198" y="106" width="22" height="7" fill="var(--gn-lite)"/><rect x="200" y="113" width="20" height="7" fill="var(--gn-c)"/><rect x="198" y="120" width="22" height="10" fill="#355c99"/></g>
+<rect x="242" y="86" width="32" height="46" fill="var(--gn-c)" stroke="var(--gn-line)" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="268" cy="110" r="2.2" fill="var(--gn-lite)"/>
+</svg>
