@@ -21,6 +21,7 @@
  * Chromium come from the environment, as for capture.mjs.
  */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
@@ -185,8 +186,8 @@ async function samples() {
 async function play(light, ffmpeg) {
   const shots = path.join(OUT, 'screenshots');
   const clips = path.join(OUT, 'clips');
-  const raw = path.join(OUT, '.video', light);
-  for (const dir of [shots, clips, raw]) fs.mkdirSync(dir, { recursive: true });
+  const raw = fs.mkdtempSync(path.join(os.tmpdir(), `art-reference-${light}-`));
+  for (const dir of [shots, clips]) fs.mkdirSync(dir, { recursive: true });
   const size = { width: 1280, height: 800 };
   const context = await browser.newContext({ viewport: size, recordVideo: { dir: raw, size } });
   const page = await context.newPage();
@@ -314,5 +315,4 @@ if (ONLY.has('play')) {
   const ffmpeg = findFfmpeg();
   await Promise.all(LIGHTS.map((light) => play(light, ffmpeg)));
 }
-fs.rmSync(path.join(OUT, '.video'), { recursive: true, force: true });
 await browser.close();
