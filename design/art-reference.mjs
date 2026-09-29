@@ -16,9 +16,9 @@
  *
  *   node design/art-reference.mjs [--out art-kit/reference] [--only samples,play] [--max 600]
  *
- * Clips are cut with ffmpeg as .mp4 when one is found (FFMPEG, or ffmpeg on the
- * PATH); without it the whole game is kept as the browser's .webm. Playwright and
- * Chromium come from the environment, as for capture.mjs.
+ * Clips are recorded from Chromium's screencast and encoded as .mp4 with ffmpeg
+ * (FFMPEG, or ffmpeg on the PATH); without one there are no clips. Playwright
+ * and Chromium come from the environment, as for capture.mjs.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -29,7 +29,7 @@ import { execFileSync } from 'node:child_process';
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env['PLAYWRIGHT_MODULE'] ?? '/opt/node22/lib/node_modules/playwright');
 const EXECUTABLE = process.env['CHROMIUM_PATH'] ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-const URL = process.env['BOOMTOWN_WEB'] ?? 'http://localhost:5173/';
+const WEB = process.env['BOOMTOWN_WEB'] ?? 'http://localhost:5173/';
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -69,7 +69,7 @@ const settle = (light) => (page) =>
 async function samples() {
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: 2 });
   await settle('day')(page);
-  await page.goto(`${URL}?skin=gamenight`);
+  await page.goto(`${WEB}?skin=gamenight`);
   await page.getByRole('button', { name: 'Local game' }).waitFor();
 
   // Build the sheets out of the app's own modules, served by Vite, so they
@@ -182,19 +182,54 @@ async function samples() {
 
 // ---------------------------------------------------------------- play
 
-/** Plays one game, seat 0 played by this script and the rest by bots, recording it. */
+const COPY = JSON.parse(fs.readFileSync(new URL('../apps/desktop/src/copy/constants.json', import.meta.url), 'utf8'));
+const GAME_OVER = [COPY.game.gameOver.label, COPY.beats.victory.label];
+const BEATS = [COPY.beats.founding.label, COPY.beats.merger.label, COPY.beats.endgame.label];
+
+/**
+ * Starts recording the page; the function it returns stops and writes an .mp4.
+ * Frames come from Chromium's screencast with the time each was painted, so a
+ * clip plays at the game's own speed however busy the machine was.
+ */
+async function record(page, ffmpeg) {
+  const cdp = await page.context().newCDPSession(page);
+  const frames = [];
+  cdp.on('Page.screencastFrame', ({ data, metadata, sessionId }) => {
+    frames.push({ data, t: metadata.timestamp });
+    cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
+  });
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: 1280, maxHeight: 800 });
+  return async (file) => {
+    const ended = Date.now() / 1000;
+    await cdp.send('Page.stopScreencast').catch(() => {});
+    await cdp.detach().catch(() => {});
+    if (frames.length === 0) return;
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'art-reference-'));
+    const list = frames.map((frame, i) => {
+      const name = path.join(dir, `${String(i).padStart(5, '0')}.jpg`);
+      fs.writeFileSync(name, Buffer.from(frame.data, 'base64'));
+      const next = frames[i + 1]?.t ?? Math.max(ended, frame.t + 0.04);
+      return `file '${name}'\nduration ${Math.max(0.001, next - frame.t).toFixed(3)}`;
+    });
+    // The concat demuxer takes the last file's duration only if it is listed twice.
+    fs.writeFileSync(path.join(dir, 'list.txt'), `${list.join('\n')}\nfile '${path.join(dir, `${String(frames.length - 1).padStart(5, '0')}.jpg`)}'\n`);
+    execFileSync(ffmpeg, ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', path.join(dir, 'list.txt'),
+      '-vf', 'fps=30,scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '22',
+      '-movflags', '+faststart', '-an', file]);
+    fs.rmSync(dir, { recursive: true, force: true });
+  };
+}
+
+/** Plays one game, seat 0 played by this script and the rest by bots, capturing it. */
 async function play(light, ffmpeg) {
   const shots = path.join(OUT, 'screenshots');
   const clips = path.join(OUT, 'clips');
-  const raw = fs.mkdtempSync(path.join(os.tmpdir(), `art-reference-${light}-`));
   for (const dir of [shots, clips]) fs.mkdirSync(dir, { recursive: true });
-  const size = { width: 1280, height: 800 };
-  const context = await browser.newContext({ viewport: size, recordVideo: { dir: raw, size } });
-  const page = await context.newPage();
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const started = Date.now();
   const at = () => (Date.now() - started) / 1000;
   await settle(light)(page);
-  await page.goto(`${URL}?skin=gamenight`);
+  await page.goto(`${WEB}?skin=gamenight`);
   await page.getByRole('button', { name: 'Local game' }).click();
   await page.waitForTimeout(400);
   await page.getByRole('radio', { name: '4 seats', exact: true }).click();
@@ -204,44 +239,70 @@ async function play(light, ffmpeg) {
   await page.waitForTimeout(1000);
 
   const shot = (name, locator = page) => locator.screenshot({ path: path.join(shots, `${name}-${light}.png`) }).catch(() => {});
-  const moments = { merger: [], founding: [], table: [] };
-  let lastKey = '';
-  let lastTable = 0;
+  const clip = (name) => path.join(clips, `${name}-${light}.mp4`);
+  /** A beat: screenshot it and, while it runs, record it, leaving it to play out untouched. */
+  const capture = async (name, seconds, still) => {
+    const stop = ffmpeg ? await record(page, ffmpeg) : undefined;
+    await page.waitForTimeout(still * 1000);
+    await shot(name);
+    await page.waitForTimeout((seconds - still) * 1000);
+    await stop?.(clip(name));
+  };
+  let mergers = 0;
+  let foundings = 0;
   let tables = 0;
+  let lastKey = '';
+  let keySince = at();
+  let lastTable = 0;
   let turns = 0;
+  let playing; // the stretch-of-play recording, while it runs
   while (at() < MAX_SECONDS) {
+    if (playing && at() > playing.until) {
+      await playing.stop(clip('play'));
+      playing = undefined;
+    }
     const dialogs = page.locator('[role=dialog]:visible');
     const count = await dialogs.count();
-    const key = count ? ((await dialogs.first().getAttribute('aria-label')) ?? 'dialog') : '';
-    if (key !== lastKey && key === 'Merger') {
-      moments.merger.push(at());
-      if (moments.merger.length <= 3) {
-        await page.waitForTimeout(1600);
-        await shot(`merger-${moments.merger.length}`);
-      }
-    } else if (key !== lastKey && key === 'A corporation is founded') {
-      moments.founding.push(at());
-      if (moments.founding.length <= 2) {
-        await page.waitForTimeout(1200);
-        await shot(`founding-${moments.founding.length}`);
-      }
+    // A dialog can close between counting and reading it.
+    const key = count ? ((await dialogs.first().getAttribute('aria-label', { timeout: 1000 }).catch(() => '')) ?? 'dialog') : '';
+    if (key !== lastKey) {
+      keySince = at();
+      if (process.env['ART_REFERENCE_DEBUG']) console.log(light, at().toFixed(0), JSON.stringify(key));
     }
+    const fresh = key !== lastKey;
     lastKey = key;
+    if (GAME_OVER.includes(key)) break;
+    if (key && at() - keySince > 60) {
+      console.log(`play ${light}: stopped, "${key}" held the screen for a minute`);
+      break;
+    }
+    if (fresh && !playing && key === COPY.beats.merger.label && mergers < 3) {
+      await capture(`merger-${++mergers}`, 9, 1.6);
+      continue;
+    }
+    if (fresh && !playing && key === COPY.beats.founding.label && foundings < 2) {
+      await capture(`founding-${++foundings}`, 4, 1.2);
+      continue;
+    }
+    if (BEATS.includes(key) || / bought stock$/.test(key)) {
+      // Beats play out on their own; nudge one only if it holds the screen for long.
+      if (at() - keySince > 15) await page.keyboard.press('Space');
+      await page.waitForTimeout(300);
+      continue;
+    }
     if (!count && at() - lastTable > 40) {
       lastTable = at();
       tables++;
-      moments.table.push(at());
       if (tables <= 4) await shot(`table-${tables}`);
       // The close-ups keep the latest, when the most companies are on the table.
       await shot('corporation-cards', page.getByRole('region', { name: 'Corporations' }));
       await shot('players-heads', page.getByRole('region', { name: 'Shareholders' }));
+      if (tables === 2 && ffmpeg) playing = { stop: await record(page, ffmpeg), until: at() + 30 };
     }
     if (count) {
       await decide(page, dialogs.first(), turns++);
       continue;
     }
-    const over = await page.evaluate(() => !document.querySelector('[aria-label=Story]') && /standings|awards|final/i.test(document.body.textContent ?? ''));
-    if (over) break;
     const tiles = page.locator('[aria-label="Your tiles"] button:enabled');
     const n = await tiles.count();
     if (n) {
@@ -253,24 +314,9 @@ async function play(light, ffmpeg) {
     if ((await end.count()) && (await end.isEnabled().catch(() => false))) await end.click().catch(() => {});
     await page.waitForTimeout(400);
   }
+  if (playing) await playing.stop(clip('play'));
   await page.close();
-  await context.close();
-  const video = fs.readdirSync(raw).find((f) => f.endsWith('.webm'));
-  const full = path.join(raw, video);
-
-  if (!ffmpeg) {
-    fs.renameSync(full, path.join(clips, `game-${light}.webm`));
-    console.log(`play ${light}: no ffmpeg, kept the whole game as clips/game-${light}.webm`);
-  } else {
-    const cut = (from, seconds, name) =>
-      execFileSync(ffmpeg, ['-y', '-loglevel', 'error', '-ss', String(Math.max(0, from)), '-i', full, '-t', String(seconds),
-        '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '24', '-movflags', '+faststart', '-an', path.join(clips, `${name}-${light}.mp4`)]);
-    moments.merger.slice(0, 3).forEach((t, i) => cut(t - 0.4, 9, `merger-${i + 1}`));
-    moments.founding.slice(0, 1).forEach((t) => cut(t - 0.4, 5, 'founding'));
-    if (moments.table.length > 1) cut(moments.table[1], 30, 'play');
-  }
-  fs.rmSync(raw, { recursive: true, force: true });
-  console.log(`play ${light}: ${moments.merger.length} mergers, ${moments.founding.length} foundings in ${at().toFixed(0)}s`);
+  console.log(`play ${light}: ${mergers} mergers, ${foundings} foundings captured in ${at().toFixed(0)}s${ffmpeg ? '' : ' (no ffmpeg, so no clips)'}`);
 }
 
 /** Seat 0's decisions: a modest buy, sell or trade in a merger, otherwise the first choice. */
