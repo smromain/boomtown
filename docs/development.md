@@ -155,7 +155,8 @@ a run is real.
 - **The Game Night drawings are files**, one SVG each in `apps/desktop/src/art/drawings/`, coloured
   with `var(--gn-*)` tokens so one file serves every company, day and night. Edit them by hand, or
   send them out for touch-up: `npm run art:export` writes them with plain colours to `art-kit/`, and
-  `npm run art:import -- <folder>` takes an edited folder back. `drawings/README.md` is both the
+  `npm run art:import -- <folder>` takes an edited folder back. `npm run art:reference`, with the
+  renderer running, adds samples, screenshots and clips of the drawings in the game. `drawings/README.md` is both the
   artist's instructions and the import's contract; a test takes every drawing out and back and
   expects it unchanged.
 - **Motion respects `prefers-reduced-motion`.** `beats/useReducedMotion.ts` for components; a media

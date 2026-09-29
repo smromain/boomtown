@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Boomtown — a web implementation of the board game Acquire, mechanics only, re-themed.",
+  "description": "Boomtown \u2014 a web implementation of the board game Acquire, mechanics only, re-themed.",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -27,7 +27,8 @@
     "phone:build": "npm run build --workspace @boomtown/phone",
     "phone:dev": "npm run dev --workspace @boomtown/phone",
     "art:export": "vite-node apps/desktop/scripts/art-kit.ts export",
-    "art:import": "vite-node apps/desktop/scripts/art-kit.ts import"
+    "art:import": "vite-node apps/desktop/scripts/art-kit.ts import",
+    "art:reference": "node design/art-reference.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

@@ -13,6 +13,18 @@ crane, and a load hung from the crane's hook and swinging. To see a part in plac
 backdrop, a headquarters and the crane together; they share one canvas. A load's slings meet the
 hook at the top of its canvas.
 
+## Reference
+
+`reference/` shows the drawings in the game, so you can judge a change where it will be seen:
+
+- `samples/` has every drawing as the game draws it, by day and by night, in its company colours and
+  with the wobble on its lines, one picture each plus a sheet per kind. `colours-day.png` and
+  `colours-night.png` show one drawing going from the colours in your file to the game's.
+- `screenshots/` has the table, the corporation cards, the players' heads, a company being founded
+  and mergers, from real games.
+- `clips/` has the same games recorded: mergers (watch the crane's swing), a founding, and a stretch
+  of play.
+
 ## Touching them up
 
 - **Keep each canvas the same size and shape**, and keep the file names. Artwork may go past the
@@ -33,6 +45,7 @@ hook at the top of its canvas.
 ```bash
 npm run art:export                 # writes the drawings with plain colours, plus these notes, to art-kit/
 npm run art:import -- <folder>     # takes a touched-up folder back into this one
+npm run art:reference              # adds reference/ to art-kit/ (needs the renderer on :5173)
 ```
 
 The import puts the colour roles back (`var(--gn-*)`), undoes what the editor added (metadata,
