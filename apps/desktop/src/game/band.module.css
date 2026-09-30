@@ -446,3 +446,26 @@
     height: 58px;
   }
 }
+
+/* ---- Card naming experiment: ?fit=wrap (see cardNames.ts) ----
+   Nothing scrolls or clips: the name wraps onto as many lines as it needs, the
+   flavour shows every clause, and the band grows to hold the tallest card. */
+:global(:root[data-card-fit='wrap']) .band,
+:global(:root[data-card-fit='wrap'][data-skin='gamenight']) .band {
+  height: auto;
+  min-height: 236px;
+  align-items: stretch;
+}
+
+:global(:root[data-card-fit='wrap']) .name {
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+:global(:root[data-card-fit='wrap']) .flavour,
+:global(:root[data-card-fit='wrap'][data-skin='gamenight']) .flavour {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}

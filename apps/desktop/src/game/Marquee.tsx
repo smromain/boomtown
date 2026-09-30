@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import styles from './marquee.module.css';
+import { cardNaming } from '../cardNames.js';
 
 /**
  * Text that scrolls itself **only when it overflows** its box — a corporation's
@@ -52,6 +53,16 @@ export function Marquee({
     if (inner.current) ro.observe(inner.current);
     return () => ro.disconnect();
   }, [children, axis]);
+
+  // Card naming experiment (`?fit=wrap`): nothing scrolls, the text wraps to
+  // whatever height it needs.
+  if (cardNaming.fit === 'wrap') {
+    return (
+      <span className={className} style={{ display: 'block', whiteSpace: 'normal', ...style }}>
+        {children}
+      </span>
+    );
+  }
 
   const scrolls = overflow > 1;
   const duration = scrolls ? (overflow / SPEED) * 2 + EDGE_PAUSE * 2 : 0;

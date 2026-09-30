@@ -219,7 +219,11 @@ export function displayNameOf(state: GameState, industry: Industry): string {
  * eaten anything. Nonsense by design, like the derived display name.
  */
 export function flavourOf(state: GameState, industry: Industry): string {
-  return blendedFlavour(state.companies[industry].flavour, state.corporations[industry].eaten);
+  return blendedFlavour(
+    state.companies[industry].flavour,
+    state.corporations[industry].eaten,
+    state.ruleset.mergeNaming,
+  );
 }
 
 export function emptyHoldings(): Record<Industry, number> {

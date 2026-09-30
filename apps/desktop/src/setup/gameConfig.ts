@@ -1,6 +1,7 @@
 import { PRESETS, RULES, type RulesetId, type SetupOptions, type Visibility } from '@boomtown/engine';
 import { loadSettings } from '../settings/settings.js';
 import { copy, fill } from '../copy/copy.js';
+import { withCardNaming } from '../cardNames.js';
 
 export type SeatKind = 'human' | 'bot';
 
@@ -31,7 +32,18 @@ export function defaultConfig(): GameConfig {
     })),
     edition: s.edition,
     visibility: s.visibility,
+    ...seedFromUrl(),
   };
+}
+
+/**
+ * `?seed=<n>` deals a fixed game, bots included, so the card naming experiments
+ * (`cardNames.ts`) can be compared on the same game move for move.
+ */
+function seedFromUrl(): { seed?: number } {
+  if (typeof window === 'undefined' || import.meta.env.MODE === 'test') return {};
+  const seed = Number(new URLSearchParams(window.location.search).get('seed'));
+  return Number.isInteger(seed) && seed > 0 ? { seed } : {};
 }
 
 /**
@@ -51,7 +63,7 @@ export function configError(config: GameConfig): string | null {
 export function toSetupOptions(config: GameConfig): SetupOptions {
   return {
     seats: config.seats.map((seat) => ({ name: seat.name.trim() })),
-    ruleset: PRESETS[config.edition],
+    ruleset: withCardNaming(PRESETS[config.edition]),
     visibility: config.visibility,
     turnOrder: config.seats.map((_, index) => index),
     seed: config.seed ?? Math.floor(Math.random() * 0x7fffffff),

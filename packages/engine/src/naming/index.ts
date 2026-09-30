@@ -13,7 +13,23 @@ export interface MergeNamingConfig {
   readonly collapseSeam: boolean;
   /** Substrings an assembled display name must never contain (`docs/naming.md`). */
   readonly blocklist: readonly string[];
+  /**
+   * How a survivor's name absorbs what it ate. `portmanteau` (the default) is
+   * stem plus fragments; `joined` strings the whole names together the way
+   * Keurig Dr Pepper did, and `joined-ltd` adds a corporate suffix once merged.
+   * Design exercise — absent means `portmanteau`.
+   */
+  readonly style?: 'portmanteau' | 'joined' | 'joined-ltd';
+  /**
+   * How flavour lines combine. `blend` (the default) splices the head of the
+   * survivor's line to the tails of what it ate; `join` keeps every line whole.
+   * Design exercise — absent means `blend`.
+   */
+  readonly flavourStyle?: 'blend' | 'join';
 }
+
+/** The suffix `joined-ltd` hangs on a merged name. */
+const LTD = ' Ltd.';
 
 export const DEFAULT_MERGE_NAMING: MergeNamingConfig = {
   enabled: true,
@@ -99,6 +115,7 @@ export function displayName(
   isBlocked: (name: string) => boolean = (name) => isBlockedName(name, config.blocklist),
 ): string {
   if (!config.enabled || eaten.length === 0) return baseName;
+  if (config.style === 'joined' || config.style === 'joined-ltd') return joinedName(baseName, eaten, config.style);
 
   let head = stem(baseName, config);
   for (const record of eaten) {
@@ -113,6 +130,24 @@ export function displayName(
     head = next;
   }
   return head;
+}
+
+/**
+ * Whole names, side by side: "Fotomatic Pan-Canadian", then "Fotomatic
+ * Pan-Canadian Radio Hut". What was eaten keeps the name it traded under, nested
+ * history included; a leading "The" and an inner suffix are dropped so the
+ * words read as one company.
+ */
+function joinedName(baseName: string, eaten: readonly EatenRecord[], style: 'joined' | 'joined-ltd'): string {
+  const parts = [
+    baseName,
+    ...eaten.map((record) => {
+      let name = record.displayName;
+      if (name.endsWith(LTD)) name = name.slice(0, -LTD.length);
+      return name.replace(/^The\s+/, '');
+    }),
+  ];
+  return parts.join(' ') + (style === 'joined-ltd' ? LTD : '');
 }
 
 /** The survivor inherits every flavour line it swallowed, in order. */
@@ -142,9 +177,14 @@ function flavourTail(line: string, frac: number): string {
  * swallowed, in acquisition order. It will not make sense — that is the joke
  * (`docs/naming.md`). An unmerged corporation keeps its line verbatim.
  */
-export function blendedFlavour(ownFlavour: string, eaten: readonly EatenRecord[]): string {
+export function blendedFlavour(
+  ownFlavour: string,
+  eaten: readonly EatenRecord[],
+  config: MergeNamingConfig = DEFAULT_MERGE_NAMING,
+): string {
   const lines = accretedFlavour(ownFlavour, eaten);
   if (lines.length === 1) return ownFlavour;
+  if (config.flavourStyle === 'join') return lines.map((line) => line.trim()).join(' · ');
   const [own, ...swallowed] = lines;
   const parts = [flavourHead(own!, 0.55), ...swallowed.map((line) => flavourTail(line, 0.5))];
   return parts
