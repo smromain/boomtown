@@ -239,6 +239,11 @@
   gap: 9px;
 }
 
+/* A long name used to squeeze the mark to nothing. */
+.sideHead > svg {
+  flex-shrink: 0;
+}
+
 .sideName {
   min-width: 0;
   font-size: 20px;
