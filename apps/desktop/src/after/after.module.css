@@ -135,10 +135,14 @@
 }
 
 .panelTitle {
+  min-width: 0;
   font-size: 19px;
+  /* A merged name is one word that can run past any width. */
+  overflow-wrap: anywhere;
 }
 
 .panelNote {
+  flex-shrink: 0;
   font-size: 11px;
   color: var(--muted);
 }
@@ -235,8 +239,17 @@
   gap: 9px;
 }
 
+/* A long name used to squeeze the mark to nothing. */
+.sideHead > svg {
+  flex-shrink: 0;
+}
+
 .sideName {
+  min-width: 0;
   font-size: 20px;
+  line-height: 1.15;
+  /* A merged name is one long word; break it rather than let it leave the panel. */
+  overflow-wrap: anywhere;
 }
 
 .sideFlavour {
