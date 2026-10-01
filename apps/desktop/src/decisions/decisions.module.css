@@ -107,7 +107,9 @@
 .foundTier {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  /* Tall enough that a hovered card's lift and gold ring clear the card above
+     it and the tier's terms. */
+  gap: 1rem;
   min-width: 0;
 }
 
@@ -123,7 +125,7 @@
 /* Said once per tier, which is most of the clutter gone: the opening price and
    bonus are properties of the tier, not of the corporation. */
 .foundTierTerms {
-  margin: 0 0 0.15rem;
+  margin: 0 0 0.35rem;
   font-size: 0.72rem;
   color: var(--muted);
 }
