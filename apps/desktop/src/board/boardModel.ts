@@ -4,6 +4,7 @@ import type { ClientView } from '@boomtown/client-core';
 import { useAnyView, useGameClient, useGameState, useLocalActiveView } from '../client/GameClientProvider.js';
 import { latestMerger } from '../game/story.js';
 import { cellTargets, placementFor, type CellTarget } from './pick.js';
+import { useRackPreview } from './rackPreview.js';
 
 /**
  * What each cell of the board *is*, apart from how it is drawn.
@@ -73,6 +74,9 @@ export interface BoardModel {
   readonly mergedAt: TileId | null;
   /** The most recently placed tile, anywhere on the board. Skyline's changes radiate from it. */
   readonly lastPlaced: TileId | null;
+  /** The rack tile under the pointer, to mark where it would go. Your own tile,
+   *  written by the rack — the board reads no hand for it. */
+  readonly preview: TileId | null;
   /** Dispatch a placement on `tile`, or do nothing when the click is not a legal move. */
   readonly pick: (tile: TileId) => void;
 }
@@ -97,6 +101,7 @@ export function useBoardModel(spectating: boolean): BoardModel | null {
   const busy = useGameState((state) => state.inFlight != null);
   // Null before any merger, which simply means no stagger.
   const mergedAt = useGameState((state) => latestMerger(state.log)?.placedTile ?? null) as TileId | null;
+  const preview = useRackPreview();
   const lastPlaced = useGameState((state) => {
     for (let i = state.log.length - 1; i >= 0; i--) {
       const event = state.log[i]!;
@@ -129,6 +134,6 @@ export function useBoardModel(spectating: boolean): BoardModel | null {
       if (command) client.dispatch(command);
     };
     const { cols, rows } = view.ruleset.board;
-    return { view, cols, rows, cells, busy, spectating, mergedAt, lastPlaced, pick };
-  }, [view, cells, busy, spectating, mergedAt, lastPlaced, client]);
+    return { view, cols, rows, cells, busy, spectating, mergedAt, lastPlaced, preview, pick };
+  }, [view, cells, busy, spectating, mergedAt, lastPlaced, preview, client]);
 }

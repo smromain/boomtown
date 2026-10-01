@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import type { HandTileEffect } from '@boomtown/client-core';
+import { setRackPreview, useRackPreview } from '../board/rackPreview.js';
 import { useGameClient, useGameState } from '../client/GameClientProvider.js';
 import { useOwnView } from '../client/ownView.js';
 import styles from './game.module.css';
@@ -36,11 +38,27 @@ const EFFECT_LABEL: Record<HandTileEffect, string> = {
  * placement; `playable` comes from the board alone. Without the explicit
  * `activeSeat === you` gate the rack would look live off-turn and dispatch a
  * `place-tile` the engine could only reject.
+ *
+ * **Hovering a tile shows where it goes on the board**, on any turn. Off-turn
+ * the board marks nothing of yours, so this is how you find your tiles on it
+ * while you plan. The disabled button still hears the pointer; it only refuses
+ * the click.
  */
 export function TileRack() {
   const view = useOwnView();
   const busy = useGameState((state) => state.inFlight != null);
   const client = useGameClient();
+  const preview = useRackPreview();
+  const hand = view?.handTiles;
+
+  // A tile that leaves the hand (placed, or the screen handed to another seat
+  // in hot-seat) takes its preview with it: the pointer may never leave a
+  // button that has been swapped out from under it.
+  useEffect(() => {
+    if (preview && !hand?.some((t) => t.tile === preview)) setRackPreview(null);
+  }, [hand, preview]);
+  useEffect(() => () => setRackPreview(null), []);
+
   if (!view) return null;
 
   // A spectator's view carries no hand; so does a player whose bag has run dry.
@@ -60,6 +78,8 @@ export function TileRack() {
             data-effect={effect}
             disabled={busy || !yourTurn || !playable || view.step !== 'place'}
             onClick={() => client.dispatch({ type: 'place-tile', seat: view.you, tile })}
+            onPointerEnter={() => setRackPreview(tile)}
+            onPointerLeave={() => setRackPreview(null)}
           >
             <span className={`tabnum ${styles.rackTileId}`}>{tile}</span>
             <span className={styles.rackTileEffect}>{EFFECT_LABEL[effect]}</span>
