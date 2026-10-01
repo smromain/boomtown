@@ -22,18 +22,35 @@ export interface LobbyRecord {
   readonly started: boolean;
   /** Whether a couch table created this room (#62). */
   readonly table: boolean;
+  /**
+   * Everything below is what the room used to hold only in memory, and so lost
+   * every time Cloudflare evicted it — which in a quiet lobby is within seconds.
+   * A knock vanished from the table while the phone still said its name was on
+   * the big screen; a player whose phone was locked came back to find their
+   * seat open and their token refused; the QR code turned into "code expired".
+   */
+  /** Human seats and the tokens that hold them, present or away. */
+  readonly seated: readonly { seat: number; token: string; name: string }[];
+  /** Open seats handed to a bot by closing the door in the lobby. */
+  readonly filled: number[];
+  /** Who is at the door, and who was turned away (connection ids). */
+  readonly knocks: readonly { id: string; connectionId: string; name: string; at: number }[];
+  readonly declined: string[];
+  /** The live ticket, or null once retired, and when the directory forgets it. */
+  readonly ticket: string | null;
+  readonly ticketExpiresAt: number | null;
+  /** The couch table's current token (#62), so a table that was away can come back. */
+  readonly tableToken: string | null;
 }
 
 /**
- * The same record as read back. `ejected`, `started` and `table` are optional
+ * The same record as read back. Everything but the host and the lock is optional
  * because rooms written before those fields existed are still on disk; each
- * defaults to the pre-existing behaviour (nothing ejected, not started, no table).
+ * defaults to the pre-existing behaviour (nothing ejected, not started, no table,
+ * and seats restored only from the connections still open).
  */
-export type StoredLobbyRecord = Omit<LobbyRecord, 'ejected' | 'started' | 'table'> & {
-  readonly ejected?: number[];
-  readonly started?: boolean;
-  readonly table?: boolean;
-};
+export type StoredLobbyRecord = Pick<LobbyRecord, 'hostSeat' | 'locked'> &
+  Partial<Omit<LobbyRecord, 'hostSeat' | 'locked'>>;
 
 const CONFIG_KEY = 'config';
 const LOBBY_KEY = 'lobby';
