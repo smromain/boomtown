@@ -80,7 +80,7 @@ export function TutorialHost({ placement }: { placement: 'rail' | 'float' }) {
 
   return (
     <aside className={styles.host} data-placement={placement} aria-label={t.label} aria-live="polite">
-      <Portrait seat={0} name={t.host} size={placement === 'rail' ? 52 : 64} guest={HOST} />
+      <Portrait seat={0} name={t.host} size={placement === 'rail' ? 72 : 80} guest={HOST} />
       <div ref={card} className={styles.card}>
         <div className={styles.head}>
           <span className={styles.name}>{t.host}</span>
