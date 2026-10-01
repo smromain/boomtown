@@ -89,21 +89,27 @@
    would change all four at once. */
 
 .foundContent {
-  width: min(44rem, 92vw);
+  /* Wide enough that the roomier gaps below come out of the margins rather
+     than the cards. */
+  width: min(48rem, 92vw);
   max-width: 92vw;
 }
 
 .foundTiers {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
+  /* Room enough that a card's hover ring and lift never touch the next
+     column's card. */
+  gap: 1.5rem;
   align-items: start;
 }
 
 .foundTier {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  /* Tall enough that a hovered card's lift and gold ring clear the card above
+     it and the tier's terms. */
+  gap: 1rem;
   min-width: 0;
 }
 
@@ -119,7 +125,7 @@
 /* Said once per tier, which is most of the clutter gone: the opening price and
    bonus are properties of the tier, not of the corporation. */
 .foundTierTerms {
-  margin: 0 0 0.15rem;
+  margin: 0 0 0.35rem;
   font-size: 0.72rem;
   color: var(--muted);
 }
@@ -534,7 +540,9 @@
 
 :global(:root[data-skin='gamenight']) .foundOption:hover {
   transform: translateY(-2px);
-  box-shadow: var(--elev-2), 0 0 0 3px var(--gold);
+  /* The ring goes first so it paints on top: --elev-2's hard 3px edge would
+     otherwise cover the ring along the card's bottom. */
+  box-shadow: 0 0 0 3px var(--gold), var(--elev-2);
 }
 
 :global(:root[data-skin='gamenight']) .foundScene {
