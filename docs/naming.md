@@ -162,6 +162,13 @@ founded again.
 | `mergeNaming.collapseSeam` | `true` | drop a doubled letter where a fragment joins |
 | `mergeNaming.flavour` | `concat` | the survivor inherits every flavour line it swallowed |
 | `pool.onePerIndustry` | `true` | seven drawn per game, one from each industry |
+| `mergeNaming.style` | `portmanteau` | *experiment:* `joined` strings whole names together (Keurig Dr Pepper); `joined-ltd` adds "Ltd." |
+| `mergeNaming.flavourStyle` | `blend` | *experiment:* `join` keeps every flavour line whole, separated by `·` |
+
+The two experiment keys are reachable from the app with `?names=joined|joined-ltd` and
+`?taglines=joined` on a new local game; `?fit=wrap` makes every name and flavour wrap instead of
+scroll, and `?seed=<n>` deals the same game (bots included) so the variants compare move for move.
+See `apps/desktop/src/cardNames.ts`.
 
 Lowering `stem` toward 0.6 makes names drift further from where they started. Worth playtesting,
 not deciding up front.

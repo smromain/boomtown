@@ -235,3 +235,31 @@ describe('blendedFlavour (spliced like the display name)', () => {
     expect(blended).toContain('over everywhere');
   });
 });
+
+describe('joined names and flavour (card naming experiment)', () => {
+  const joined = { ...DEFAULT_MERGE_NAMING, style: 'joined' as const, flavourStyle: 'join' as const };
+  const rec = (displayName: string, flavours: string[] = []): EatenRecord => ({ displayName, flavours });
+
+  it('strings whole names together, nested history included', () => {
+    expect(displayName('Fotomatic', [], joined)).toBe('Fotomatic');
+    expect(displayName('Fotomatic', [rec('Pan-Canadian')], joined)).toBe('Fotomatic Pan-Canadian');
+    const inner = displayName('Radio Hut', [rec('The Record Empire')], joined);
+    expect(inner).toBe('Radio Hut Record Empire');
+    expect(displayName('Fotomatic', [rec('Pan-Canadian'), rec(inner)], joined)).toBe(
+      'Fotomatic Pan-Canadian Radio Hut Record Empire',
+    );
+  });
+
+  it('hangs one Ltd. on the end, never in the middle', () => {
+    const ltd = { ...joined, style: 'joined-ltd' as const };
+    const inner = displayName('Enrun', [rec('Noquia')], ltd);
+    expect(inner).toBe('Enrun Noquia Ltd.');
+    expect(displayName('Webflicks', [rec(inner)], ltd)).toBe('Webflicks Enrun Noquia Ltd.');
+  });
+
+  it('keeps every flavour line whole', () => {
+    expect(blendedFlavour('be kind, rewind', [rec('Panatl', ['the glamour of air travel'])], joined)).toBe(
+      'be kind, rewind · the glamour of air travel',
+    );
+  });
+});
