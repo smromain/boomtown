@@ -65,6 +65,16 @@ export function TutorialHost({ placement }: { placement: 'rail' | 'float' }) {
   const { active } = useActiveBeat();
   const [doneWith, setDoneWith] = useState(false);
 
+  // While she is in the rail, prompts centre beside her (`decisions.module.css`).
+  useEffect(() => {
+    if (placement !== 'rail') return;
+    const root = document.documentElement;
+    root.dataset.tutorial = '';
+    return () => {
+      delete root.dataset.tutorial;
+    };
+  }, [placement]);
+
   // Replay the shake on every nudge.
   const card = useRef<HTMLDivElement>(null);
   useEffect(() => {

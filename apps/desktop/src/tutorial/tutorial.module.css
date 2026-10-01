@@ -1,7 +1,7 @@
 /*
  * The tutorial's host: a head and a speech card. At the top of the rail during
  * play; in the corner once the end screen has the table. Either way above a
- * decision's overlay (z-index 60), so the line can be read beside the prompt.
+ * decision's overlay (`decisions.module.css`), so the line can be read beside the prompt.
  */
 .host {
   z-index: 70;
