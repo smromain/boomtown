@@ -12,8 +12,16 @@ import styles from './tutorial.module.css';
 
 const t = copy.tutorial;
 
-/** Ripley, a Russian blue drawn for the tutorial alone, on the pink of her tag. */
-const HOST: Guest = guest('hosts/ripley', '#E8A0BF');
+/** Ripley, a Russian blue drawn for the tutorial alone, on the pink of her tag. Her eyes and ears move (`tutorial.module.css`). */
+const HOST: Guest = guest(
+  [
+    ['hosts/ripley-ear-left', 'rp-ear-l'],
+    ['hosts/ripley-ear-right', 'rp-ear-r'],
+    'hosts/ripley-head',
+    ['hosts/ripley-eyes', 'rp-eyes'],
+  ],
+  '#E8A0BF',
+);
 
 /** What the host says on each step, with the companies named. */
 function lineFor(step: Step, yours: string, theirs: string): string {

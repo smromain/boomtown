@@ -16,7 +16,7 @@ const bring = (file: string, was = LOAD) => importDrawing(dom, file, was, 'merge
 
 describe('the art kit', () => {
   it('finds every drawing', () => {
-    expect(names).toHaveLength(34);
+    expect(names).toHaveLength(37);
   });
 
   it.each(names)('takes %s out and back unchanged', (name) => {

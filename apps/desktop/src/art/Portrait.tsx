@@ -26,9 +26,18 @@ export interface Guest {
   readonly ring: string;
 }
 
-/** A guest head from a drawing under `drawings/`, with the same wobble as the seats' heads. Build it once, at module level. */
-export function guest(name: string, ring: string): Guest {
-  return { face: { __html: `<g class="gn-rough">${drawing(name)}</g>` }, ring };
+/**
+ * A guest head from drawings under `drawings/`, with the same wobble as the
+ * seats' heads. Each part is a drawing on the same canvas, stacked in order;
+ * a part given a class is wrapped in a group carrying it, which is how a part
+ * gets its motion (the files stay plain, as the art kit needs them). Build it
+ * once, at module level.
+ */
+export function guest(parts: readonly (string | readonly [name: string, className: string])[], ring: string): Guest {
+  const art = parts
+    .map((part) => (typeof part === 'string' ? drawing(part) : `<g class="${part[1]}">${drawing(part[0])}</g>`))
+    .join('');
+  return { face: { __html: `<g class="gn-rough">${art}</g>` }, ring };
 }
 
 export function Portrait({

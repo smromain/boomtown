@@ -108,3 +108,71 @@
     box-shadow: 0 0 0 2px var(--accent);
   }
 }
+
+/*
+ * Ripley blinks now and then and twitches an ear, one at a time, so the host
+ * reads as alive without pulling the eye from the board. The groups are the
+ * parts of her drawing (`drawings/hosts/ripley-*.svg`), named in `TutorialHost`.
+ */
+.host :global(.rp-eyes) {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rp-blink 5.2s ease-in-out infinite;
+}
+
+.host :global(.rp-ear-l),
+.host :global(.rp-ear-r) {
+  transform-box: fill-box;
+  animation: rp-twitch 9s ease-in-out infinite;
+}
+
+.host :global(.rp-ear-l) {
+  transform-origin: 80% 100%;
+  --rp-tilt: -9deg;
+  animation-delay: 2.4s;
+}
+
+.host :global(.rp-ear-r) {
+  transform-origin: 20% 100%;
+  --rp-tilt: 9deg;
+  animation-delay: 6.8s;
+}
+
+@keyframes rp-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes rp-twitch {
+  0%,
+  88%,
+  100% {
+    transform: rotate(0);
+  }
+  90% {
+    transform: rotate(var(--rp-tilt));
+  }
+  92% {
+    transform: rotate(0);
+  }
+  94% {
+    transform: rotate(calc(var(--rp-tilt) * 0.6));
+  }
+  96% {
+    transform: rotate(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .host :global(.rp-eyes),
+  .host :global(.rp-ear-l),
+  .host :global(.rp-ear-r) {
+    animation: none;
+  }
+}

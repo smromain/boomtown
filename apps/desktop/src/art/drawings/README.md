@@ -7,7 +7,7 @@ These are the illustrations from Boomtown's Game Night look, one SVG per drawing
 | `cards/` | The scene on each company's card, one per industry | 300 × 96 |
 | `mergers/` | The merger picture, in parts: `backdrop`, one `hq-` building per industry (the company that survives), the `crane`, one `load-` per industry (the company being taken over, hanging from the crane), and the `swing-arrow` | 600 × 150; each `load-` is 92 × 80 |
 | `portraits/` | The players' heads | 40 × 40 |
-| `hosts/` | Ripley, the tutorial's host — a head like the players', never dealt to a seat | 40 × 40 |
+| `hosts/` | Ripley, the tutorial's host — a head like the players', never dealt to a seat. In parts, because her eyes blink and her ears twitch: `ripley-ear-left`, `ripley-ear-right`, `ripley-head` and `ripley-eyes`, stacked in that order on one canvas | 40 × 40 |
 
 A merger picture is put together from its parts in the game: the backdrop, a headquarters, the
 crane, and a load hung from the crane's hook and swinging. To see a part in place, open the
