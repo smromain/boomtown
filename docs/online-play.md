@@ -70,7 +70,10 @@ joiner can drive alone.
 - A knock expires after **5 minutes** (`KNOCK_TTL_MS`).
 - A decline **sticks** — the declined connection id cannot knock again, so "turn away" does not mean
   "wait a second and try again".
-- The host can `set-locked` to stop accepting knocks entirely once everyone has arrived.
+- The host can `set-locked` to stop accepting knocks entirely once everyone has arrived. In the
+  lobby, closing the door also hands every open seat to a bot, so the table can start with whoever
+  is there; opening it again gives those seats back. A knock already waiting can still be admitted,
+  and takes a bot's place. Once the game is dealt the door only decides who may knock.
 - The host can `eject` a seat, which hands it to a bot. It never reopens: a seat returning to `open`
   mid-game could be claimed by whoever knocked next, handing a stranger someone else's holdings.
 - The room knows which seat created the game and refuses `admit`, `decline`, `set-locked` and
@@ -88,6 +91,21 @@ re-binds that seat. No password, no email, nothing that outlives the game. The t
 exist), and it **rotates on every resume**, so a captured token is worth a single reconnect rather
 than the rest of the game. A seat stays reserved by its token while its player is away — a dropped
 connection is a pause, not a forfeit.
+
+### What the room keeps while it sleeps
+
+Cloudflare evicts a hibernating room within seconds of its last message, and a lobby waiting on a
+phone is exactly that quiet. Sockets survive the eviction; memory does not. So everything a wake
+needs is in the room's own storage, in the lobby record, written before the change it records is
+sent: each human seat with its current token and name, the knock queue and the declined
+connections, the live ticket, the seats a closed door filled, and the couch table's token. On wake
+the room keeps only the knocks whose socket is still open, and binds a surviving connection to a
+seat only if it holds that seat's current token.
+
+These used to live only in memory, and that was the "I'm in on my phone, but I'm not on the
+screen" bug: the knock disappeared from the table while the phone still said its name was on the big
+screen, a player whose phone was locked came back to an open seat and a refused token, and the QR
+code turned into "code expired" after the first wake.
 
 ## What the room refuses
 

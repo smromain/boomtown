@@ -386,12 +386,12 @@ describe('GameRoom — a couch table (#62)', () => {
     const r = couch();
     const token = await r.becomeTable('table-conn');
     r.markDisconnected('table-conn');
-    expect(r.reconnectTable('not-the-token', 'x')).toBeNull();
-    const rotated = r.reconnectTable(token, 'table-2');
+    expect(await r.reconnectTable('not-the-token', 'x')).toBeNull();
+    const rotated = await r.reconnectTable(token, 'table-2');
     expect(rotated).not.toBeNull();
     expect(rotated).not.toBe(token);
     expect(r.isTable('table-2')).toBe(true);
-    expect(r.reconnectTable(token, 'table-3')).toBeNull();
+    expect(await r.reconnectTable(token, 'table-3')).toBeNull();
   });
 
   it('plays bots inline for a table that never asked to be paced', async () => {

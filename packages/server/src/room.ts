@@ -54,7 +54,8 @@ export default class BoomtownRoom extends Server<Env> {
    */
   override async onStart(): Promise<void> {
     const store = this.ctx.storage as unknown as KeyValueStore;
-    this.game = await GameRoom.rehydrate(this.name, store);
+    const live = new Set([...this.getConnections()].map((connection) => connection.id));
+    this.game = await GameRoom.rehydrate(this.name, store, live);
     roomLog(this.name, 'onStart', {
       rehydrated: this.game !== null,
       connections: [...this.getConnections()].length,
@@ -67,8 +68,18 @@ export default class BoomtownRoom extends Server<Env> {
         continue;
       }
       if (state && 'seat' in state && typeof state.seat === 'number' && typeof state.token === 'string') {
+        if (this.game && !this.game.restoreSeat(state.seat, state.token, state.name ?? '', connection.id)) {
+          // Storage says this seat is held by another token: the socket was
+          // left behind by a phone that has since come back. Let it go.
+          roomLog(this.name, 'closing a connection whose seat moved on while the room slept', {
+            seat: state.seat,
+            connection: connection.id,
+          });
+          connection.setState(null);
+          connection.close();
+          continue;
+        }
         this.seatByConnection.set(connection.id, state.seat);
-        this.game?.restoreSeat(state.seat, state.token, state.name ?? '', connection.id);
       }
     }
     // If the wake resumed bot turns, deliver those updates to the live seats.
@@ -132,7 +143,7 @@ export default class BoomtownRoom extends Server<Env> {
     // never be mistaken for a player.
     if (this.game && token) {
       const previous = this.game.tableConnection();
-      const rotated = this.game.reconnectTable(token, connection.id);
+      const rotated = await this.game.reconnectTable(token, connection.id);
       if (rotated) {
         roomLog(this.name, 'reconnected the table by token', { connection: connection.id });
         // A socket the table left behind (a sleeping laptop's) still carries
@@ -179,6 +190,7 @@ export default class BoomtownRoom extends Server<Env> {
           other.close();
         }
         this.seatByConnection.set(connection.id, bound.seat);
+        await this.game.persistLobby();
         // The token rotated on use: persist and return the new one, never the
         // one that was presented. Sending back the old token would keep a
         // captured credential alive for the rest of the game.
@@ -299,7 +311,7 @@ export default class BoomtownRoom extends Server<Env> {
         // The creator is the host, and takes the first seat without knocking —
         // there is nobody to admit them. Whichever seat that turns out to be
         // (seat 0 may be configured as a bot) is persisted as the host seat.
-        const seated = this.seatSender(sender);
+        const seated = await this.seatSender(sender);
         if (seated !== null) {
           this.game.hostSeat = seated;
           await this.game.persistLobby();
@@ -331,6 +343,7 @@ export default class BoomtownRoom extends Server<Env> {
           sender.close();
           return;
         }
+        await this.game.persistLobby();
         roomLog(this.name, 'someone knocked', { knock: knock.id, name: knock.name });
         this.sendTo(sender, { type: 'waiting' });
         this.broadcastRoomState();
@@ -351,6 +364,7 @@ export default class BoomtownRoom extends Server<Env> {
           });
           return;
         }
+        await this.game!.persistLobby();
         const waiting = this.getConnection(knock.connectionId);
         if (message.type === 'decline') {
           roomLog(this.name, 'host declined a knock', { knock: knock.id });
@@ -370,7 +384,7 @@ export default class BoomtownRoom extends Server<Env> {
           return;
         }
         roomLog(this.name, 'host admitted a knock', { knock: knock.id, name: knock.name });
-        this.seatSender(waiting);
+        await this.seatSender(waiting);
         return;
       }
 
@@ -415,8 +429,7 @@ export default class BoomtownRoom extends Server<Env> {
 
       case 'set-locked': {
         if (!this.requireHost(sender)) return;
-        this.game!.door.locked = message.locked;
-        await this.game!.persistLobby();
+        await this.game!.setLocked(message.locked);
         roomLog(this.name, 'host set the door', { locked: message.locked });
         this.broadcastRoomState();
         return;
@@ -497,7 +510,7 @@ export default class BoomtownRoom extends Server<Env> {
     const wasTable = this.game?.isTable(connection.id) ?? false;
     this.seatByConnection.delete(connection.id);
     this.guards.release(connection.id);
-    this.game?.door.dropConnection(connection.id);
+    if (this.game?.door.dropConnection(connection.id)) await this.game.persistLobby();
     this.game?.markDisconnected(connection.id);
     this.broadcastRoomState();
     // A table that walks away mid-beat takes its pacing with it: the bots it
@@ -541,12 +554,12 @@ export default class BoomtownRoom extends Server<Env> {
   private seatFromState(connection: Connection): Seat | undefined {
     const state = connection.state as { seat?: Seat; token?: string; name?: string } | null;
     if (!state || typeof state.seat !== 'number' || typeof state.token !== 'string') return undefined;
+    if (!this.game?.restoreSeat(state.seat, state.token, state.name ?? '', connection.id)) return undefined;
     this.seatByConnection.set(connection.id, state.seat);
-    this.game?.restoreSeat(state.seat, state.token, state.name ?? '', connection.id);
     return state.seat;
   }
 
-  private seatSender(sender: Connection): number | null {
+  private async seatSender(sender: Connection): Promise<number | null> {
     if (!this.game) return null;
     // Blank rather than an invented default: `SeatTable` owns what a nameless
     // seat is called, so there is one rule instead of three edges guessing.
@@ -560,13 +573,17 @@ export default class BoomtownRoom extends Server<Env> {
       return null;
     }
     this.seatByConnection.set(sender.id, bound.seat);
+    this.game.door.dropConnection(sender.id);
+    // Durable before the welcome goes out: a seat that exists only in memory is
+    // gone the next time the room sleeps, and its token with it.
+    await this.game.persistLobby();
     sender.setState({ seat: bound.seat, token, name });
     roomLog(this.name, 'seated a player', { seat: bound.seat, name, connection: sender.id });
     this.sendTo(sender, { type: 'welcome', seat: bound.seat, token });
     // A ticket that has done its job stops being a way in at all, rather than
-    // idling until its TTL. Nobody else can be seated here anyway.
-    if (this.game.seats.allSeatsFilled()) void this.retireTicket();
-    this.game.door.dropConnection(sender.id);
+    // idling until its TTL. Nobody else can be seated here anyway — unless bots
+    // are only holding seats at a closed door, which opening it gives back.
+    if (this.game.seats.allSeatsFilled() && this.game.seats.filledSeats().length === 0) void this.retireTicket();
     this.broadcastRoomState();
     return bound.seat;
   }
@@ -665,7 +682,10 @@ export default class BoomtownRoom extends Server<Env> {
   private async retireTicket(): Promise<void> {
     const ticket = this.game?.ticket;
     if (!ticket) return;
-    if (this.game) this.game.ticket = null;
+    if (this.game) {
+      this.game.ticket = null;
+      await this.game.persistLobby();
+    }
     try {
       await this.directory(ticket, { method: 'DELETE' });
       roomLog(this.name, 'retired the ticket — every seat is taken');

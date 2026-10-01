@@ -300,3 +300,146 @@ function currentView(room: GameRoom, seat: number) {
   const msg = room.currentUpdateFor(seat);
   return msg && msg.type === 'update' ? msg.view : null;
 }
+
+// --- what a quiet lobby used to forget ------------------------------------
+//
+// Cloudflare evicts a hibernating room within seconds of the last message, and
+// a lobby waiting on a phone is exactly that quiet. Everything the room held
+// only in memory went with it: the knock on the table's screen, the seat of a
+// phone that was locked, the ticket behind the QR code, the table's token.
+
+describe('a lobby that sleeps between knocks', () => {
+  async function couchRoom(code: string) {
+    const store = new MemoryStore();
+    const room = new GameRoom(code, config({ seatCount: 4 }), store);
+    await room.persistConfig();
+    room.ticket = 'ABCD2345';
+    const tableToken = await room.becomeTable('table');
+    return { store, room, tableToken };
+  }
+
+  it('still has the knock waiting when the phone stayed connected', async () => {
+    const { store, room } = await couchRoom('Z1');
+    const knock = room.door.knock('phone', 'Ana', Date.now())!;
+    await room.persistLobby();
+
+    const woken = (await GameRoom.rehydrate('Z1', store, new Set(['table', 'phone'])))!;
+    expect(woken.door.list(Date.now())).toEqual([{ id: knock.id, name: 'Ana' }]);
+    expect(woken.door.take(knock.id, Date.now())?.connectionId).toBe('phone');
+  });
+
+  it('drops a knock whose phone went away while the room slept', async () => {
+    const { store, room } = await couchRoom('Z2');
+    room.door.knock('phone', 'Ana', Date.now());
+    await room.persistLobby();
+    const woken = (await GameRoom.rehydrate('Z2', store, new Set(['table'])))!;
+    expect(woken.door.list(Date.now())).toEqual([]);
+  });
+
+  it('keeps the seat of a player who was away, and takes them back by token', async () => {
+    const { store, room } = await couchRoom('Z3');
+    room.join('Ana', 'tok-a', 'phone');
+    await room.persistLobby();
+    room.markDisconnected('phone');
+
+    const woken = (await GameRoom.rehydrate('Z3', store, new Set(['table'])))!;
+    expect(woken.roomState().seats[0]).toMatchObject({ kind: 'human', name: 'Ana', connected: false });
+    expect(woken.reconnect('tok-a', 'phone-2')?.seat).toBe(0);
+  });
+
+  it('will not bind a connection left behind with a spent token', async () => {
+    const { store, room } = await couchRoom('Z4');
+    room.join('Ana', 'tok-a', 'phone');
+    const back = room.reconnect('tok-a', 'phone-2')!;
+    await room.persistLobby();
+
+    const woken = (await GameRoom.rehydrate('Z4', store, new Set(['phone', 'phone-2'])))!;
+    expect(woken.restoreSeat(0, 'tok-a', 'Ana', 'phone')).toBe(false);
+    expect(woken.restoreSeat(0, back.token, 'Ana', 'phone-2')).toBe(true);
+    expect(woken.seats.seatForConnection('phone-2')).toBe(0);
+  });
+
+  it('keeps the ticket, so the QR code does not turn into "code expired"', async () => {
+    const { store } = await couchRoom('Z5');
+    const woken = (await GameRoom.rehydrate('Z5', store))!;
+    expect(woken.roomState().ticket).toBe('ABCD2345');
+  });
+
+  it('knows the table when it comes back after the room slept', async () => {
+    const { store, room, tableToken } = await couchRoom('Z6');
+    room.markDisconnected('table');
+    const woken = (await GameRoom.rehydrate('Z6', store))!;
+    expect(await woken.reconnectTable(tableToken, 'table-2')).not.toBeNull();
+    expect(woken.isTable('table-2')).toBe(true);
+  });
+
+  it('still restores seats from connections for a room stored before seats were', async () => {
+    const store = new MemoryStore();
+    await new CommandLog(store).saveConfig(config());
+    await new CommandLog(store).saveLobby({ hostSeat: 0, locked: false } as never);
+    const woken = (await GameRoom.rehydrate('Z7', store))!;
+    expect(woken.restoreSeat(0, 'tok-a', 'Ana', 'c1')).toBe(true);
+    expect(woken.roomState().seats[0]).toMatchObject({ kind: 'human', name: 'Ana' });
+  });
+});
+
+describe('closing the door in the lobby', () => {
+  async function lobby(code: string) {
+    const store = new MemoryStore();
+    const room = new GameRoom(code, config({ seatCount: 4, bots: { 3: 7 } }), store);
+    await room.persistConfig();
+    await room.becomeTable('table');
+    room.join('Ana', 'tok-a', 'phone-a');
+    return { store, room };
+  }
+
+  it('hands every open seat to a bot, so the game can start', async () => {
+    const { room } = await lobby('D1');
+    await room.setLocked(true);
+    expect(room.roomState().seats.map((s) => s.kind)).toEqual(['human', 'bot', 'bot', 'bot']);
+    expect(room.roomState().seats.map((s) => s.name)).toEqual(['Ana', 'Bot 2', 'Bot 3', 'Bot 4']);
+    const started = await room.start();
+    expect('error' in started).toBe(false);
+  });
+
+  it('gives those seats back when the door opens again', async () => {
+    const { room } = await lobby('D2');
+    await room.setLocked(true);
+    await room.setLocked(false);
+    // The configured bot stays a bot; only the seats the door filled reopen.
+    expect(room.roomState().seats.map((s) => s.kind)).toEqual(['human', 'open', 'open', 'bot']);
+  });
+
+  it('lets someone who knocked before it closed take a bot’s place', async () => {
+    const { room } = await lobby('D3');
+    await room.setLocked(true);
+    expect(room.join('Bo', 'tok-b', 'phone-b')).toEqual({ seat: 1 });
+    expect(room.roomState().seats.map((s) => s.kind)).toEqual(['human', 'human', 'bot', 'bot']);
+  });
+
+  it('survives the room sleeping, and the bots it filled play the game', async () => {
+    const { store, room } = await lobby('D4');
+    await room.setLocked(true);
+    const woken = (await GameRoom.rehydrate('D4', store, new Set(['table', 'phone-a'])))!;
+    woken.restoreSeat(0, 'tok-a', 'Ana', 'phone-a');
+    expect(woken.roomState().seats.map((s) => s.kind)).toEqual(['human', 'bot', 'bot', 'bot']);
+    const started = await woken.start();
+    if ('error' in started) throw new Error('start');
+    // Ana opens; every bot move that follows is legal and the turn comes back.
+    const view = currentView(woken, 0)!;
+    await woken.command(0, { type: 'place-tile', seat: 0, tile: view.yourHand[0]! });
+    expect(woken.isPlaying()).toBe(true);
+  });
+
+  it('only locks once the game is dealt', async () => {
+    const { room } = await lobby('D5');
+    room.join('Bo', 'tok-b', 'phone-b');
+    room.join('Cy', 'tok-c', 'phone-c');
+    const started = await room.start();
+    if ('error' in started) throw new Error('start');
+    await room.setLocked(true);
+    await room.setLocked(false);
+    expect(room.roomState().seats.map((s) => s.kind)).toEqual(['human', 'human', 'human', 'bot']);
+    expect(room.join('Dee', 'tok-d', 'phone-d')).toBeNull();
+  });
+});

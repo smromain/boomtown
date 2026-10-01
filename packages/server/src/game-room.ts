@@ -94,9 +94,6 @@ export class GameRoom {
     this.config = config.seed !== undefined ? config : { ...config, seed: drawSeed() };
     this.seats = new SeatTable(this.config);
     this.log = new CommandLog(store);
-    for (const [seat, level] of Object.entries(this.config.bots)) {
-      this.policies.set(Number(seat), heuristicPolicy({ level }));
-    }
     this.botRngState = botRng(this.config.seed!);
     roomLog(code, 'game room constructed', {
       seatCount: this.config.seatCount,
@@ -107,8 +104,16 @@ export class GameRoom {
     });
   }
 
-  /** Rehydrate a woken room from its stored config + command log (KTD13, R7). */
-  static async rehydrate(code: string, store: KeyValueStore): Promise<GameRoom | null> {
+  /**
+   * Rehydrate a woken room from its stored config + command log (KTD13, R7).
+   * `live` is the ids of the connections that stayed open while it slept, which
+   * is what decides whose knocks are still waiting.
+   */
+  static async rehydrate(
+    code: string,
+    store: KeyValueStore,
+    live: ReadonlySet<string> = new Set(),
+  ): Promise<GameRoom | null> {
     const log = new CommandLog(store);
     const config = await log.loadConfig<RoomConfig>();
     if (!config) return null;
@@ -120,11 +125,15 @@ export class GameRoom {
       room.door.locked = lobby.locked;
       room.started = lobby.started ?? false;
       room.seats.restoreEjected(lobby.ejected ?? []);
-      for (const seat of lobby.ejected ?? []) {
-        if (!room.policies.has(seat)) {
-          room.policies.set(seat, heuristicPolicy({ level: room.seats.botDifficulty(seat) }));
-        }
-      }
+      room.seats.restoreFilled(lobby.filled ?? []);
+      // Seats first, from storage, so a player who was away when the room went
+      // to sleep still holds their seat — and so the base game below is dealt
+      // with real names rather than `Seat N`.
+      room.seatsPersisted = lobby.seated !== undefined;
+      for (const { seat, token, name } of lobby.seated ?? []) room.seats.restore(seat, token, name, null);
+      room.door.restore(lobby, live);
+      room.ticket = lobby.ticket ?? null;
+      if (room.tableHosted && lobby.tableToken) room.table = { token: lobby.tableToken, connectionId: null };
     }
     const commands = await log.loadAll();
     // Bot names are known deterministically here; human names arrive later as
@@ -175,6 +184,13 @@ export class GameRoom {
     return room;
   }
 
+  /**
+   * Whether this room's storage holds its seats. False only for a room written
+   * before it did, whose seats can come back from nowhere but the connections
+   * still open — which is exactly how a seat whose player was away got lost.
+   */
+  private seatsPersisted = false;
+
   /** Bot updates produced during a wake, handed to the adapter to dispatch once. */
   pendingWakeUpdates: Outbound[] = [];
 
@@ -210,15 +226,56 @@ export class GameRoom {
    */
   private table: { token: string; connectionId: string | null } | null = null;
 
-  /** Write the lobby facts a wake must not lose: host, lock, ejected seats, started, table. */
+  /**
+   * Write the lobby facts a wake must not lose: host, lock, seats and their
+   * tokens, the door, the ticket, started, table. Call it after anything that
+   * changes one of them, before the change is observable.
+   */
   async persistLobby(): Promise<void> {
+    const door = this.door.snapshot();
     await this.log.saveLobby({
       hostSeat: this.hostSeat,
       locked: this.door.locked,
       ejected: this.seats.ejectedSeats(),
       started: this.started,
       table: this.tableHosted,
+      seated: this.seats.seated(),
+      filled: this.seats.filledSeats(),
+      knocks: door.knocks,
+      declined: door.declined,
+      ticket: this.ticket,
+      tableToken: this.table?.token ?? null,
     });
+    this.seatsPersisted = true;
+  }
+
+  /**
+   * Close or open the door. In the lobby, closing it hands every open seat to a
+   * bot — nobody else is coming, so the table can start with who is here — and
+   * opening it again gives those seats back. Once the game is dealt the seats
+   * are the game's, and the door only says whether anyone may knock.
+   */
+  async setLocked(locked: boolean): Promise<void> {
+    this.door.locked = locked;
+    if (this.phase === 'lobby' && !this.started) {
+      const changed = locked ? this.seats.fillOpenSeats() : this.seats.reopenFilledSeats();
+      if (changed.length > 0) {
+        roomLog(this.code, locked ? 'filled the open seats with bots' : 'reopened the seats bots were holding', {
+          seats: changed,
+        });
+      }
+    }
+    await this.persistLobby();
+  }
+
+  /** The policy that plays `seat`, made the first time a bot sits there. */
+  private policyFor(seat: Seat): Policy {
+    let policy = this.policies.get(seat);
+    if (!policy) {
+      policy = heuristicPolicy({ level: this.seats.botDifficulty(seat) });
+      this.policies.set(seat, policy);
+    }
+    return policy;
   }
 
   // --- the couch table (#62) --------------------------------------------
@@ -244,12 +301,15 @@ export class GameRoom {
    * a captured one buys a single reconnect. Returns the fresh token, or null if
    * this is not the table's token.
    */
-  reconnectTable(token: string, connectionId: string): string | null {
+  async reconnectTable(token: string, connectionId: string): Promise<string | null> {
     if (!this.table || !tokensMatch(this.table.token, token)) return null;
     const rotated = mintToken();
     this.table = { token: rotated, connectionId };
     // A new connection has not asked to be waited on yet.
     this.paced = false;
+    // Durable before it is sent: a table whose laptop sleeps through the
+    // room's own sleep must still be recognised when it comes back.
+    await this.persistLobby();
     return rotated;
   }
 
@@ -297,6 +357,9 @@ export class GameRoom {
     if (!this.tableHosted) return;
     // A live binding is the truth; persisted state only fills an empty one.
     if (this.table?.connectionId) return;
+    // A stored token says which connection is the table: one left behind by a
+    // table that has since come back holds a spent token and is not it.
+    if (this.table && !tokensMatch(this.table.token, token)) return;
     this.table = { token, connectionId };
   }
 
@@ -325,9 +388,6 @@ export class GameRoom {
    */
   async ejectSeat(seat: Seat): Promise<Outbound[] | null> {
     if (!this.seats.eject(seat)) return null;
-    if (!this.policies.has(seat)) {
-      this.policies.set(seat, heuristicPolicy({ level: this.seats.botDifficulty(seat) }));
-    }
     await this.persistLobby();
     roomLog(this.code, 'a seat was ejected and is now played by a bot', { seat });
     return [
@@ -369,9 +429,13 @@ export class GameRoom {
     );
   }
 
-  /** A fresh joiner takes a seat, or `null` if the room is full. */
+  /**
+   * A fresh joiner takes a seat, or `null` if the room is full. In the lobby a
+   * seat a bot is holding at a closed door counts as free: the host can still
+   * let in someone who knocked before it closed. The caller persists.
+   */
   join(name: string, token: string, connectionId: string): { seat: Seat } | null {
-    return this.seats.join(name, token, connectionId);
+    return this.seats.join(name, token, connectionId, { replaceFilled: this.phase === 'lobby' && !this.started });
   }
 
   /**
@@ -386,14 +450,30 @@ export class GameRoom {
 
   /**
    * Restore a seat<-token<-connection binding after a hibernation wake. The
-   * `SeatTable` is rebuilt empty from config on `rehydrate`; the adapter feeds
-   * each live connection's persisted `{ seat, token }` back through here.
+   * `rehydrate` restores every seat from storage with no connection; the
+   * adapter then feeds each live connection's persisted `{ seat, token }` back
+   * through here. Returns false when the connection does not hold the seat, and
+   * the adapter should let it go.
    */
-  restoreSeat(seat: Seat, token: string, name: string, connectionId: string): void {
-    // The stored name, not the raw one: `SeatTable` trims, caps and
-    // de-duplicates, and patching the unnormalised name into engine state below
-    // would leave the two disagreeing about what this seat is called.
-    const stored = this.seats.restore(seat, token, name, connectionId);
+  restoreSeat(seat: Seat, token: string, name: string, connectionId: string): boolean {
+    let stored: string;
+    if (this.seats.isSeated(seat)) {
+      // Storage already says who sits here. A connection is theirs only if it
+      // holds the seat's current token; one holding a spent token was left
+      // behind by a phone that has since reconnected, and binding it would hand
+      // the seat back to a socket nobody is looking at.
+      if (!this.seats.holds(seat, token)) return false;
+      stored = this.seats.restore(seat, token, name, connectionId);
+    } else if (!this.seatsPersisted && !this.seats.isBot(seat)) {
+      // A room from before seats were stored: the connection is all there is.
+      // The stored name, not the raw one: `SeatTable` trims, caps and
+      // de-duplicates, and patching the unnormalised name into engine state
+      // below would leave the two disagreeing about what this seat is called.
+      stored = this.seats.restore(seat, token, name, connectionId);
+    } else {
+      // Ejected, or never this connection's: storage is the truth.
+      return false;
+    }
     // On a hibernation wake the replay base is built with `Seat N` placeholders
     // (the SeatTable is empty until the adapter feeds connections back through
     // here). Names are cosmetic and never affect the deal, so patch the real
@@ -404,6 +484,7 @@ export class GameRoom {
         seats: this.state.seats.map((s, i) => (i === seat ? { ...s, name: stored } : s)),
       };
     }
+    return true;
   }
 
   markDisconnected(connectionId: string): void {
@@ -570,7 +651,7 @@ export class GameRoom {
       // Paced to the table (#62): one bot move per `ready`, and the adapter
       // arms a cap so this can never become a stall.
       if (this.isPaced() && !this.tableReady) return out;
-      const policy = this.policies.get(seat)!;
+      const policy = this.policyFor(seat);
       const choice = policy.chooseMove(this.state, seat, this.botRngState);
       if (!choice) return out;
       this.botRngState = choice.rng;

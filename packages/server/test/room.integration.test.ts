@@ -652,6 +652,40 @@ describe('online room — a couch table (#62)', () => {
     expect(anaView.view.yourHand).toHaveLength(6);
   });
 
+  it('fills the empty seats with bots when the table closes the door, and plays them', async () => {
+    const { room, table } = await openTable({ seatCount: 4, edition: 'boomtown', visibility: 'hidden', bots: {}, seed: 5 });
+    const ana = client(room, { name: 'Ana' });
+    await ana.open;
+    await admit(table, ana);
+
+    table.send({ type: 'set-locked', locked: true });
+    let state = ((await table.next('room-state')) as RoomStateOf).state;
+    while (!state.locked) state = ((await table.next('room-state')) as RoomStateOf).state;
+    expect(state.seats.map((seat) => seat.kind)).toEqual(['human', 'bot', 'bot', 'bot']);
+
+    // Opening it again gives the seats back to the door.
+    table.send({ type: 'set-locked', locked: false });
+    while (state.locked) state = ((await table.next('room-state')) as RoomStateOf).state;
+    expect(state.seats.map((seat) => seat.kind)).toEqual(['human', 'open', 'open', 'open']);
+
+    table.send({ type: 'set-locked', locked: true });
+    table.send({ type: 'start' });
+    const first = (await table.next('table-update')) as TableUpdateOf;
+    expect(first.view.status).toBe('playing');
+    // Ana opens, and the three bots the door seated play the round back to her.
+    let view = (await ana.next('update')) as UpdateOf;
+    let botsMoved = false;
+    for (let safety = 0; safety < 60; safety += 1) {
+      const mine = view.view.activeSeat === 0 || view.view.pendingDecision?.seat === 0;
+      if (!mine) botsMoved = true;
+      else if (botsMoved && view.view.step === 'place') break;
+      else ana.send({ type: 'command', command: pickBuyingMove(view.view) });
+      view = (await ana.next('update', 8000)) as UpdateOf;
+    }
+    expect(botsMoved).toBe(true);
+    expect(view.view.activeSeat).toBe(0);
+  });
+
   it('sends the table the public view and no purchase amounts while the phones play', async () => {
     const { room, table } = await openTable();
     const ana = client(room, { name: 'Ana' });

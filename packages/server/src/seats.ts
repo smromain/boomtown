@@ -51,12 +51,18 @@ export class SeatTable {
    * and the seat would deal differently on the next wake.
    */
   private readonly ejected = new Set<number>();
+  /**
+   * Open seats handed to a bot when the host closed the door in the lobby.
+   * Unlike an ejection this is undone by opening the door again, because nobody
+   * has sat there: the seat goes back to open and the next knock can take it.
+   */
+  private readonly filled = new Set<number>();
 
   constructor(private readonly config: RoomConfig) {}
 
-  /** Seat indices played by a bot: configured at creation, or ejected since. */
+  /** Seat indices played by a bot: configured at creation, ejected since, or filled at a closed door. */
   private botSeats(): Set<number> {
-    return new Set([...Object.keys(this.config.bots).map(Number), ...this.ejected]);
+    return new Set([...Object.keys(this.config.bots).map(Number), ...this.ejected, ...this.filled]);
   }
 
   /** Every seat index 0..seatCount-1. */
@@ -99,18 +105,28 @@ export class SeatTable {
    * Assign a fresh joiner to the first open human seat. Returns the seat and a
    * minted token, or `null` when every human seat is taken (`room-full`).
    */
-  join(name: string, token: string, connectionId: string): { seat: number } | null {
-    const seat = this.firstOpenSeat();
+  join(
+    name: string,
+    token: string,
+    connectionId: string,
+    { replaceFilled = false }: { replaceFilled?: boolean } = {},
+  ): { seat: number } | null {
+    let seat = this.firstOpenSeat();
+    // A bot holding a seat at a closed door gives it up to a person the host
+    // lets in — only ever in the lobby, which is the caller's to say.
+    if (seat === null && replaceFilled) seat = this.filledSeats()[0] ?? null;
     if (seat === null) return null;
+    this.filled.delete(seat);
     this.humans.set(seat, { token, name: this.nameFor(seat, name), connectionId });
     return { seat };
   }
 
   /**
-   * Restore a seat occupant from persisted connection state after a hibernation
-   * wake (the in-memory map was lost; `connection.setState` survived).
+   * Restore a seat occupant after a hibernation wake: from the room's own
+   * storage with no connection (`seated()` below), or from a live connection's
+   * persisted state.
    */
-  restore(seat: number, token: string, name: string, connectionId: string): string {
+  restore(seat: number, token: string, name: string, connectionId: string | null): string {
     // `nameFor` excludes this seat from the taken set, so restoring a name the
     // seat already holds does not walk it up to "Ana (2)" on every wake.
     const stored = this.nameFor(seat, name);
@@ -168,6 +184,58 @@ export class SeatTable {
   /** Restore ejections after a wake. */
   restoreEjected(seats: readonly number[]): void {
     for (const seat of seats) this.ejected.add(seat);
+  }
+
+  /**
+   * Hand every open seat to a bot: the host closed the door, so nobody else is
+   * coming. Returns the seats filled, which is empty when none were open.
+   */
+  fillOpenSeats(): number[] {
+    const seats: number[] = [];
+    for (let seat = this.firstOpenSeat(); seat !== null; seat = this.firstOpenSeat()) {
+      this.filled.add(seat);
+      seats.push(seat);
+    }
+    return seats;
+  }
+
+  /** Give the seats `fillOpenSeats` took back to the door. Only ever in the lobby. */
+  reopenFilledSeats(): number[] {
+    const seats = [...this.filled].sort((a, b) => a - b);
+    this.filled.clear();
+    return seats;
+  }
+
+  /** Seats filled at a closed door — persisted, like ejections. */
+  filledSeats(): number[] {
+    return [...this.filled].sort((a, b) => a - b);
+  }
+
+  restoreFilled(seats: readonly number[]): void {
+    for (const seat of seats) this.filled.add(seat);
+  }
+
+  /**
+   * Every human seat with its token and name, for the room to persist. A seat
+   * whose player is away holds nothing but this: their socket is gone, so a
+   * hibernation wake cannot read it back from the connection the way it reads a
+   * present player's.
+   */
+  seated(): { seat: number; token: string; name: string }[] {
+    return [...this.humans]
+      .sort(([a], [b]) => a - b)
+      .map(([seat, { token, name }]) => ({ seat, token, name }));
+  }
+
+  /** Whether `token` is the one `seat` is held by. Constant-time, like `reconnect`. */
+  holds(seat: number, token: string): boolean {
+    const occupant = this.humans.get(seat);
+    return occupant !== undefined && tokensMatch(occupant.token, token);
+  }
+
+  /** Whether a human holds `seat`, present or away. */
+  isSeated(seat: number): boolean {
+    return this.humans.has(seat);
   }
 
   /** Mark a human's seat disconnected (keeps the seat reserved by token). */

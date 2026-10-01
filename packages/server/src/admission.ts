@@ -77,11 +77,13 @@ export class Door {
     return entry;
   }
 
-  /** Drop a knock because its connection went away. */
-  dropConnection(connectionId: string): void {
+  /** Drop a knock because its connection went away. True when there was one. */
+  dropConnection(connectionId: string): boolean {
+    let dropped = false;
     for (const [id, entry] of this.waiting) {
-      if (entry.connectionId === connectionId) this.waiting.delete(id);
+      if (entry.connectionId === connectionId) dropped = this.waiting.delete(id) || dropped;
     }
+    return dropped;
   }
 
   /** Knocks still waiting, oldest first — the order a host works through them. */
@@ -90,6 +92,23 @@ export class Door {
     return [...this.waiting.values()]
       .sort((a, b) => a.at - b.at)
       .map(({ id, name }) => ({ id, name }));
+  }
+
+  /** Who is waiting and who was turned away, for the room to persist. */
+  snapshot(): { knocks: Knock[]; declined: string[] } {
+    return { knocks: [...this.waiting.values()], declined: [...this.declined] };
+  }
+
+  /**
+   * Put the door back as it was before a hibernation wake, keeping only the
+   * knocks whose connection is still open: a phone that closed its socket while
+   * the room slept is not waiting any more, and will knock again if it comes back.
+   */
+  restore(saved: { knocks?: readonly Knock[]; declined?: readonly string[] }, live: ReadonlySet<string>): void {
+    for (const knock of saved.knocks ?? []) {
+      if (live.has(knock.connectionId)) this.waiting.set(knock.id, knock);
+    }
+    for (const id of saved.declined ?? []) this.declined.add(id);
   }
 
   /** Forget knocks nobody answered. A door that never forgets is a queue that only grows. */
