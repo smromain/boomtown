@@ -162,14 +162,19 @@ export interface CorpReferenceData {
   readonly ladder: readonly (LadderRung & { readonly current: boolean })[];
   /** The next size band and its price, or null in the top band / unfounded. */
   readonly nextStep: { readonly atSize: number; readonly price: number } | null;
-  /** What each shareholder would collect if the corporation went defunct now. */
+  /**
+   * What each shareholder would collect if the corporation went defunct now —
+   * or null at a closed table where some seat's holdings are hidden from you,
+   * since a ranking built only from what you can see would be a guess dressed
+   * as a fact (it would crown you primary on any holding at all).
+   */
   readonly payouts: readonly {
     readonly seat: number;
     readonly name: string;
     readonly shares: number;
     readonly tier: 'primary' | 'secondary' | 'tertiary' | null;
     readonly amount: number;
-  }[];
+  }[] | null;
 }
 
 /** Everything the single-corporation reference modal shows for one industry. */
@@ -191,7 +196,8 @@ export function corpReference(view: ClientView, industry: Industry): CorpReferen
     .filter((h) => h.shares > 0)
     .sort((a, b) => b.shares - a.shares);
 
-  const payouts = holders.map((h, rank) => {
+  const booksClosed = view.seats.some((seat) => seat.holdings == null);
+  const payouts = booksClosed ? null : holders.map((h, rank) => {
     if (!bonus) return { ...h, tier: null, amount: 0 } as const;
     if (rank === 0) return { ...h, tier: 'primary' as const, amount: bonus.primary };
     if (rank === 1) {
