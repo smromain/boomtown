@@ -210,6 +210,22 @@
   box-shadow: 0 0 0 2px var(--accent);
 }
 
+/* The rack tile under the pointer, found on the board: a solid accent square
+   that lifts off the plate, loud enough to spot across the board at a glance.
+   Placed after the kinds so it wins over the playable ring and its pulse. */
+.cell[data-preview] {
+  position: relative;
+  z-index: 1;
+  background: color-mix(in srgb, var(--accent) 22%, var(--cell-empty));
+  color: var(--accent);
+  font-weight: 700;
+  box-shadow:
+    inset 0 0 0 3px var(--accent),
+    0 6px 12px -4px rgba(60, 45, 30, 0.5);
+  transform: translateZ(8px);
+  animation: none;
+}
+
 /* headquarters marker: a badge with the industry mark, over the tiny coord */
 .hq {
   display: flex;

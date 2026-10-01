@@ -12,6 +12,7 @@ import { StoryCard } from './StoryCard.js';
 import { TileRack } from './TileRack.js';
 import { TurnHandoff } from './TurnHandoff.js';
 import { DecisionModal } from '../decisions/DecisionModal.js';
+import { Board } from '../board/Board.js';
 import { defaultConfig } from './../setup/gameConfig.js';
 import { currentMerger, latestMerger } from './story.js';
 import { NAMES, flush, mergedName, renderPanel, seedCorp } from '../testing/harness.js';
@@ -203,6 +204,36 @@ describe('TileRack', () => {
     for (const tile of ['2B', '6E']) {
       expect(screen.getByRole('button', { name: new RegExp(tile) })).toBeDisabled();
     }
+  });
+
+  it('hovering a tile off-turn marks its spot on the board, and leaving clears it', async () => {
+    await renderPanel(
+      <>
+        <TileRack />
+        <Board spectating />
+      </>,
+      {
+        localSeats: [0],
+        controls: [0],
+        craft: (state) => {
+          state.hands[0] = ['2B', '6E'];
+          state.turnPointer = 1;
+        },
+      },
+    );
+    const grid = screen.getByRole('grid', { name: 'Board' });
+    const marked = () => [...grid.querySelectorAll('[data-preview]')].map((c) => c.getAttribute('aria-label'));
+    const tile = screen.getByRole('button', { name: /6E/ });
+    expect(tile).toBeDisabled();
+
+    await act(async () => {
+      await userEvent.hover(tile);
+    });
+    expect(marked()).toEqual(['6E']);
+    await act(async () => {
+      await userEvent.unhover(tile);
+    });
+    expect(marked()).toEqual([]);
   });
 
   it('never shows a non-local seat\'s hand, even holding its view (leak guard)', async () => {

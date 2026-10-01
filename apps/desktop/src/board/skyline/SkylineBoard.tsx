@@ -96,8 +96,9 @@ export default function SkylineBoard({ model }: { model: BoardModel }) {
   }, [plan, held, model.lastPlaced]);
 
   useEffect(() => {
-    sceneRef.current?.setHighlight(hover, focus);
-  }, [hover, focus]);
+    // A rack tile under the pointer marks its lot the way hovering the lot does.
+    sceneRef.current?.setHighlight(hover ?? model.preview, focus);
+  }, [hover, focus, model.preview]);
 
   // `[` and `]` turn by a quarter, `0` resets the view — unless a text field
   // has focus, the same guard the header uses for `?` and F1.

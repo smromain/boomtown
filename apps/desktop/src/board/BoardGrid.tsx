@@ -29,7 +29,7 @@ function cellLabel(cell: RenderCell, view: ClientView): string {
  * the same grid, transparent, over its canvas (#70).
  */
 export function BoardGrid({ model }: { model: BoardModel }) {
-  const { cols, rows, cells, view, busy, spectating, mergedAt, pick } = model;
+  const { cols, rows, cells, view, busy, spectating, mergedAt, preview, pick } = model;
   const patterns = useIndustryPatterns();
   return (
     <div className={styles.stage}>
@@ -75,6 +75,7 @@ export function BoardGrid({ model }: { model: BoardModel }) {
                   key={c.tile}
                   cell={c}
                   disabled={busy || c.kind !== 'playable'}
+                  previewed={c.tile === preview}
                   onPick={pick}
                   view={view}
                   sweepMs={sweepDelay(c.tile, mergedAt)}
@@ -96,6 +97,7 @@ function RowFragment({ children }: { children: React.ReactNode }) {
 function BoardCell({
   cell,
   disabled,
+  previewed,
   onPick,
   view,
   sweepMs,
@@ -103,6 +105,7 @@ function BoardCell({
 }: {
   cell: RenderCell;
   disabled: boolean;
+  previewed: boolean;
   onPick: (tile: TileId) => void;
   view: ClientView;
   sweepMs: number;
@@ -164,6 +167,7 @@ function BoardCell({
         role="gridcell"
         className={styles.cell}
         data-kind="playable"
+        data-preview={previewed || undefined}
         disabled={disabled}
         aria-label={label}
         onClick={() => onPick(cell.tile)}
@@ -174,7 +178,14 @@ function BoardCell({
   }
 
   return (
-    <div role="gridcell" className={styles.cell} data-kind={cell.kind} style={style} aria-label={label}>
+    <div
+      role="gridcell"
+      className={styles.cell}
+      data-kind={cell.kind}
+      data-preview={previewed || undefined}
+      style={style}
+      aria-label={label}
+    >
       {cell.kind === 'dead' ? <s>{cell.tile}</s> : content}
     </div>
   );
