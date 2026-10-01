@@ -443,3 +443,31 @@ describe('closing the door in the lobby', () => {
     expect(room.join('Dee', 'tok-d', 'phone-d')).toBeNull();
   });
 });
+
+describe('keeping the code on screen working', () => {
+  it('wants a ticket only while the lobby is open and has a seat left', async () => {
+    const room = new GameRoom('T1', config({ seatCount: 3 }), new MemoryStore());
+    await room.persistConfig();
+    await room.becomeTable('table');
+    expect(room.wantsTicket()).toBe(true);
+    await room.setLocked(true); // the door filled every seat with a bot
+    expect(room.wantsTicket()).toBe(false);
+    await room.setLocked(false);
+    room.join('Ana', 't1', 'c1');
+    room.join('Bo', 't2', 'c2');
+    expect(room.wantsTicket()).toBe(true);
+    room.join('Cy', 't3', 'c3');
+    expect(room.wantsTicket()).toBe(false);
+  });
+
+  it('remembers when the ticket lapses across a wake', async () => {
+    const store = new MemoryStore();
+    const room = new GameRoom('T2', config(), store);
+    await room.persistConfig();
+    room.ticket = 'ABCD2345';
+    room.ticketExpiresAt = 1_000_000;
+    await room.becomeTable('table');
+    const woken = (await GameRoom.rehydrate('T2', store))!;
+    expect(woken.ticketExpiresAt).toBe(1_000_000);
+  });
+});

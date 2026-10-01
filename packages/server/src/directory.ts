@@ -27,6 +27,13 @@ import type { Env } from './env.js';
 /** How long a ticket resolves for. Long enough to read one out and have it typed back. */
 export const TICKET_TTL_MS = 15 * 60 * 1000;
 
+/**
+ * How long before expiry a room still waiting for players renews its ticket.
+ * Renewing re-claims the same ticket, so the code on screen never changes; the
+ * lead is generous because the renewal rides an alarm, not a precise timer.
+ */
+export const TICKET_RENEW_LEAD_MS = 3 * 60 * 1000;
+
 const ENTRY_KEY = 'entry';
 
 interface TicketEntry {

@@ -49,7 +49,11 @@ Four things a joiner might have, and what each is worth:
 A room is addressed by **160 bits** (`mintRoomAddress`, 32 characters of a no-lookalike alphabet)
 that the creator mints and nobody speaks. The **eight-character ticket** a player shares is a
 separate object: the room claims it from a `directory` party at creation, it resolves to the address
-for **15 minutes** (`TICKET_TTL_MS`), and it is retired the moment the last seat fills.
+for **15 minutes** (`TICKET_TTL_MS`), and it is retired the moment the last seat fills. While the
+lobby still has an open seat, an open door and someone connected, the room renews it a few minutes
+before it lapses (`TICKET_RENEW_LEAD_MS`, on the room's alarm) by re-claiming the same ticket, so
+the code on screen keeps working however long the table waits. A closed door lets it lapse;
+opening the door again re-claims it, or mints a new one if it was taken meanwhile.
 
 These used to be one thing, and that was the weakness. When the room *was* its code, the address
 space was however large a code a person can read out — about a billion, which is unguessable among

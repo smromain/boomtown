@@ -133,6 +133,7 @@ export class GameRoom {
       for (const { seat, token, name } of lobby.seated ?? []) room.seats.restore(seat, token, name, null);
       room.door.restore(lobby, live);
       room.ticket = lobby.ticket ?? null;
+      room.ticketExpiresAt = lobby.ticketExpiresAt ?? null;
       if (room.tableHosted && lobby.tableToken) room.table = { token: lobby.tableToken, connectionId: null };
     }
     const commands = await log.loadAll();
@@ -195,11 +196,27 @@ export class GameRoom {
   pendingWakeUpdates: Outbound[] = [];
 
   /**
-   * The ticket this room is currently shareable by, or null once it expired or
-   * was retired. Set by the adapter after the directory accepts a claim; not
-   * persisted, because a ticket outlives neither its TTL nor the lobby.
+   * The ticket this room is currently shareable by, or null once it was
+   * retired. Set by the adapter after the directory accepts a claim, and
+   * persisted with the lobby so a wake does not lose the code on screen.
    */
   ticket: string | null = null;
+  /**
+   * When the directory stops resolving `ticket`, or null when unknown (a room
+   * stored before this was). The adapter renews the ticket ahead of it while
+   * the lobby still wants people (`wantsTicket`).
+   */
+  ticketExpiresAt: number | null = null;
+
+  /**
+   * Whether the code on screen should keep working: still in the lobby, the
+   * door open, and a seat left for someone to take. A table that has filled,
+   * closed its door or dealt has no use for a way in, so it is left to lapse.
+   */
+  wantsTicket(): boolean {
+    if (this.phase !== 'lobby' || this.started || this.door.locked) return false;
+    return !this.seats.allSeatsFilled();
+  }
 
   /** Who is waiting at the door, and whether it is open at all. */
   readonly door = new Door();
@@ -244,6 +261,7 @@ export class GameRoom {
       knocks: door.knocks,
       declined: door.declined,
       ticket: this.ticket,
+      ticketExpiresAt: this.ticketExpiresAt,
       tableToken: this.table?.token ?? null,
     });
     this.seatsPersisted = true;

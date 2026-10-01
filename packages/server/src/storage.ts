@@ -36,8 +36,9 @@ export interface LobbyRecord {
   /** Who is at the door, and who was turned away (connection ids). */
   readonly knocks: readonly { id: string; connectionId: string; name: string; at: number }[];
   readonly declined: string[];
-  /** The live ticket, or null once retired. */
+  /** The live ticket, or null once retired, and when the directory forgets it. */
   readonly ticket: string | null;
+  readonly ticketExpiresAt: number | null;
   /** The couch table's current token (#62), so a table that was away can come back. */
   readonly tableToken: string | null;
 }

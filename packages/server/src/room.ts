@@ -9,6 +9,7 @@ import { mintToken } from './tokens.js';
 import { LIFECYCLE, isIdle, lastActivity, purge, touch, type AlarmStore } from './lifecycle.js';
 import type { KeyValueStore } from './storage.js';
 import { configError, humanlessRoom } from './seats.js';
+import { TICKET_RENEW_LEAD_MS } from './directory.js';
 import type { Env } from './env.js';
 
 /**
@@ -217,7 +218,10 @@ export default class BoomtownRoom extends Server<Env> {
     const now = Date.now();
     const last = await lastActivity(store);
     if (!isIdle(last, now)) {
-      await this.alarms()?.setAlarm((last ?? now) + LIFECYCLE.idleExpiryMs);
+      // The alarm is shared: it may have fired to renew the ticket rather than
+      // to expire the room.
+      await this.keepTicket();
+      await this.armAlarm((last ?? now) + LIFECYCLE.idleExpiryMs);
       return;
     }
     const deleted = await purge(store);
@@ -298,7 +302,8 @@ export default class BoomtownRoom extends Server<Env> {
         }
         this.game = new GameRoom(this.name, message.config, this.ctx.storage as unknown as KeyValueStore);
         await this.game.persistConfig();
-        this.game.ticket = await this.claimTicket();
+        this.setTicket(await this.claimTicket());
+        await this.armAlarm();
         // Couch mode (#62): the creator is the table. It takes no seat — every
         // seat is filled by a phone knocking — and hosts in its own right.
         if (message.table) {
@@ -430,6 +435,10 @@ export default class BoomtownRoom extends Server<Env> {
       case 'set-locked': {
         if (!this.requireHost(sender)) return;
         await this.game!.setLocked(message.locked);
+        // Opening the door again in the lobby wants a code that works, and the
+        // old one may have lapsed while it was shut.
+        if (!message.locked) await this.keepTicket();
+        await this.armAlarm();
         roomLog(this.name, 'host set the door', { locked: message.locked });
         this.broadcastRoomState();
         return;
@@ -649,7 +658,58 @@ export default class BoomtownRoom extends Server<Env> {
   }
 
   private async touchRoom(): Promise<void> {
-    await touch(this.ctx.storage as unknown as KeyValueStore, this.alarms(), Date.now());
+    const now = Date.now();
+    await touch(this.ctx.storage as unknown as KeyValueStore, this.alarms(), now);
+    await this.armAlarm(now + LIFECYCLE.idleExpiryMs);
+  }
+
+  /**
+   * Point the room's one alarm at whichever comes first: the idle deadline, or
+   * — while the lobby still wants people — the moment the ticket needs
+   * renewing. Without the second, a table left waiting showed a QR code that
+   * had silently stopped working fifteen minutes after it opened.
+   */
+  private async armAlarm(idleAt?: number): Promise<void> {
+    const alarms = this.alarms();
+    if (!alarms) return;
+    const deadline =
+      idleAt ??
+      ((await lastActivity(this.ctx.storage as unknown as KeyValueStore)) ?? Date.now()) + LIFECYCLE.idleExpiryMs;
+    const renewAt =
+      this.game?.wantsTicket() && this.game.ticketExpiresAt !== null
+        ? this.game.ticketExpiresAt - TICKET_RENEW_LEAD_MS
+        : null;
+    await alarms.setAlarm(renewAt !== null && renewAt < deadline ? Math.max(renewAt, Date.now()) : deadline);
+  }
+
+  /**
+   * Keep the code on screen working while the lobby wants people and someone
+   * is here to see it. Re-claims the same ticket, which the directory extends
+   * because it already points here; only if that fails is a new one minted and
+   * the screen told.
+   */
+  private async keepTicket(): Promise<void> {
+    const game = this.game;
+    if (!game?.wantsTicket()) return;
+    if ([...this.getConnections()].length === 0) return;
+    const due = game.ticket === null || game.ticketExpiresAt === null ||
+      Date.now() >= game.ticketExpiresAt - TICKET_RENEW_LEAD_MS;
+    if (!due) return;
+    const before = game.ticket;
+    const claimed = await this.claimTicket(before);
+    if (!claimed) return;
+    this.setTicket(claimed);
+    await game.persistLobby();
+    roomLog(this.name, claimed.ticket === before ? 'renewed the ticket' : 'replaced the ticket', {
+      expiresAt: claimed.expiresAt,
+    });
+    if (claimed.ticket !== before) this.broadcastRoomState();
+  }
+
+  private setTicket(claimed: { ticket: string; expiresAt: number } | null): void {
+    if (!this.game) return;
+    this.game.ticket = claimed?.ticket ?? null;
+    this.game.ticketExpiresAt = claimed?.expiresAt ?? null;
   }
 
   /**
@@ -658,17 +718,20 @@ export default class BoomtownRoom extends Server<Env> {
    * than failing room creation, because a room with no ticket is still
    * perfectly playable by anyone holding its address.
    */
-  private async claimTicket(): Promise<string | null> {
+  private async claimTicket(renew: string | null = null): Promise<{ ticket: string; expiresAt: number } | null> {
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const ticket = mintTicket();
+      // The first try at a renewal is the ticket already on screen; the
+      // directory extends it because it already points at this room.
+      const ticket = attempt === 0 && renew ? renew : mintTicket();
       try {
         const response = await this.directory(ticket, {
           method: 'POST',
           body: JSON.stringify({ address: this.name }),
         });
         if (response.ok) {
+          const { expiresAt } = (await response.json()) as { expiresAt: number };
           roomLog(this.name, 'claimed a ticket', { attempt: attempt + 1 });
-          return ticket;
+          return { ticket, expiresAt };
         }
       } catch (error) {
         roomWarn(this.name, 'ticket claim failed', { error: String(error) });
@@ -683,7 +746,7 @@ export default class BoomtownRoom extends Server<Env> {
     const ticket = this.game?.ticket;
     if (!ticket) return;
     if (this.game) {
-      this.game.ticket = null;
+      this.setTicket(null);
       await this.game.persistLobby();
     }
     try {
