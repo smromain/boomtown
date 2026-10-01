@@ -3,7 +3,7 @@ import { useStore } from 'zustand';
 import { useGameState } from '../client/GameClientProvider.js';
 import { useActiveBeat } from '../beats/BeatContext.js';
 import { coversTheScreen } from '../beats/beatTriggers.js';
-import { Portrait, type Guest } from '../art/Portrait.js';
+import { Portrait, guest, type Guest } from '../art/Portrait.js';
 import { Button } from '../ui/Button.js';
 import { copy, fill } from '../copy/copy.js';
 import { YOU, companiesOf, type Step } from './script.js';
@@ -12,8 +12,8 @@ import styles from './tutorial.module.css';
 
 const t = copy.tutorial;
 
-/** The beagle, on a ring no seat uses. */
-const HOST: Guest = { face: 8, ring: '#E07A5F' };
+/** Ripley, a Russian blue drawn for the tutorial alone, on the pink of her tag. */
+const HOST: Guest = guest('hosts/ripley', '#E8A0BF');
 
 /** What the host says on each step, with the companies named. */
 function lineFor(step: Step, yours: string, theirs: string): string {
@@ -37,7 +37,7 @@ function lineFor(step: Step, yours: string, theirs: string): string {
 }
 
 /**
- * The tutorial's host: one of the advisor heads, at the top of the rail,
+ * The tutorial's host: Ripley, at the top of the rail,
  * saying what the step wants. It sits above a decision's overlay, so the line
  * stays readable beside the prompt it is about, and moves to the corner once
  * the end screen has taken the table. It stands aside while a beat has the screen —

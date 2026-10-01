@@ -1018,14 +1018,14 @@
   },
   "tutorial": {
     "label": "Tutorial",
-    "host": "Biscuit",
+    "host": "Ripley",
     "hostRole": "your guide",
     "you": "Rookie",
     "rivals": ["Mae", "Dot"],
     "start": "Let’s play",
     "done": "Got it",
     "steps": {
-      "welcome": "I’m Biscuit. This is a short game. Build companies, buy their shares, and finish with the most money.",
+      "welcome": "I’m Ripley. This is a short game. Build companies, buy their shares, and finish with the most money.",
       "place": "Every turn starts with a tile. Play 7F, next to the loose tile on 6F.",
       "found": "Touching tiles make a company, and you get to found it. Pick any one. The founder gets a free share.",
       "buy": "Now buy up to three shares. Take some {yours}: if it’s ever taken over, its biggest holder gets paid.",

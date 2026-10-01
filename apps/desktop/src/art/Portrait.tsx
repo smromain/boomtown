@@ -5,7 +5,7 @@
  * so a table of default names (all the same length) still mixes. The ring colour
  * is the seat's.
  */
-import { drawingsIn } from './drawings.js';
+import { drawing, drawingsIn } from './drawings.js';
 import styles from './portrait.module.css';
 
 /** The heads, in file-name order (`drawings/portraits/`), each wrapped in the wobble filter once. */
@@ -21,9 +21,14 @@ export function faceIndex(name: string, seat: number): number {
 
 /** A head that belongs to nobody at the table — the tutorial's host — with its own ring colour. */
 export interface Guest {
-  /** Index into the heads, in file-name order. */
-  readonly face: number;
+  /** The drawing, already wrapped for `dangerouslySetInnerHTML` (see `guest`). */
+  readonly face: { readonly __html: string };
   readonly ring: string;
+}
+
+/** A guest head from a drawing under `drawings/`, with the same wobble as the seats' heads. Build it once, at module level. */
+export function guest(name: string, ring: string): Guest {
+  return { face: { __html: `<g class="gn-rough">${drawing(name)}</g>` }, ring };
 }
 
 export function Portrait({
@@ -37,7 +42,7 @@ export function Portrait({
   size?: number;
   guest?: Guest;
 }) {
-  const face = FACES[guest ? guest.face % FACES.length : faceIndex(name, seat)]!;
+  const face = guest?.face ?? FACES[faceIndex(name, seat)]!;
   return (
     <span
       className={styles.portrait}
