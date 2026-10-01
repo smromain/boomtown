@@ -13,7 +13,8 @@ const TIER_WORD = { primary: 'primary', secondary: 'secondary', tertiary: 'terti
 
 /**
  * The single-corporation stock reference — its own tier ladder with the current
- * row marked, and what every shareholder would collect if it went defunct now.
+ * row marked, and what every shareholder would collect if it went defunct now
+ * (left out at a closed table, where other seats' holdings are not yours to see).
  * Opened by clicking a corporation card in the band.
  *
  * Reads the **active seat's** view (like the band that opens it), not
@@ -123,11 +124,11 @@ export function CorpReference({
               </table>
 
               <footer className={styles.corpFoot}>
-                <div className={styles.statLabel}>{c.corp.payoutHeading}</div>
-                {data.payouts.length === 0 ? (
+                {data.payouts && <div className={styles.statLabel}>{c.corp.payoutHeading}</div>}
+                {data.payouts && data.payouts.length === 0 ? (
                   <p className={styles.corpFlavour}>{fill(c.corp.nobodyHolds, { name: data.name })}</p>
                 ) : (
-                  data.payouts.map((p) => (
+                  data.payouts?.map((p) => (
                     <div key={p.seat} className={styles.payoutRow}>
                       <span>
                         {p.name}

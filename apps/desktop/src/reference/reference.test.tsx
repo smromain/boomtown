@@ -55,9 +55,27 @@ describe('priceReference helpers', () => {
     state.seats[2]!.holdings.video = 5;
     const data = corpReference(clientView(state, 0), 'video');
 
-    expect(data.payouts[0]).toMatchObject({ seat: 2, tier: 'primary' });
-    expect(data.payouts[1]).toMatchObject({ seat: 0, tier: 'tertiary' }); // classic = 2-tier
+    expect(data.payouts?.[0]).toMatchObject({ seat: 2, tier: 'primary' });
+    expect(data.payouts?.[1]).toMatchObject({ seat: 0, tier: 'tertiary' }); // classic = 2-tier
     expect(data.ladder.find((r) => r.current)?.label).toBe('4');
+  });
+
+  it('corpReference gives no payouts at a closed table, where others’ holdings are hidden', () => {
+    const state = createGame({
+      seats: [{ name: 'A' }, { name: 'B' }, { name: 'C' }],
+      seed: 1,
+      turnOrder: [0, 1, 2],
+      ruleset: PRESETS.classic,
+      visibility: 'hidden',
+    });
+    seedCorp(state, 'video', ['2A', '3A', '4A', '5A']);
+    state.seats[0]!.holdings.video = 2;
+    state.seats[2]!.holdings.video = 5;
+    const data = corpReference(clientView(state, 0), 'video');
+
+    // seat 0 sees only its own 2 shares; ranking on that would crown it primary
+    expect(data.payouts).toBeNull();
+    expect(data.you.shares).toBe(2);
   });
 
   it('foundingOptions lists unfounded corps richest tier first, with opening value', () => {
@@ -119,6 +137,9 @@ describe('CorpReference modal', () => {
     const { client } = await renderPanel(
       <CorpReference industry="video" onClose={() => {}} onOpenChart={() => {}} />,
       {
+        // an open table: the payout preview needs everyone's holdings
+        edition: 'classic',
+        visibility: 'open',
         craft: (state) => {
           seedCorp(state, 'video', ['2A', '3A', '4A', '5A', '6A']); // tier 3, size 5
           state.seats[0]!.holdings.video = 3;
@@ -134,6 +155,22 @@ describe('CorpReference modal', () => {
     expect(dialog).toHaveTextContent(/Ana/); // holder name
   });
 
+  it('leaves out the payout preview at a closed table', async () => {
+    await renderPanel(<CorpReference industry="video" onClose={() => {}} onOpenChart={() => {}} />, {
+      visibility: 'hidden',
+      craft: (state) => {
+        seedCorp(state, 'video', ['2A', '3A', '4A', '5A', '6A']);
+        state.seats[0]!.holdings.video = 3;
+        state.seats[1]!.holdings.video = 5;
+      },
+    });
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('Tier 3 ladder');
+    expect(dialog).not.toHaveTextContent('If it paid out today');
+    expect(dialog).not.toHaveTextContent(/primary/);
+    expect(within(dialog).getByRole('button', { name: 'See the full chart' })).toBeInTheDocument();
+  });
+
   it('is closed when no industry is passed', async () => {
     await renderPanel(<CorpReference industry={null} onClose={() => {}} onOpenChart={() => {}} />);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -141,6 +178,8 @@ describe('CorpReference modal', () => {
 
   it('reports the seat on the clock, not seat 0 (regression: showed Player 1 on Player 2’s turn)', async () => {
     await renderPanel(<CorpReference industry="video" onClose={() => {}} onOpenChart={() => {}} />, {
+      edition: 'classic',
+      visibility: 'open',
       craft: (state) => {
         seedCorp(state, 'video', ['2A', '3A', '4A', '5A', '6A']); // tier 3, size 5 -> $700
         state.turnPointer = 1; // Ben is on the clock
