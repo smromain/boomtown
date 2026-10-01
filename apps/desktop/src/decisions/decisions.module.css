@@ -1,6 +1,9 @@
 .overlay {
   position: fixed;
   inset: 0;
+  /* Above the band's raised badges (z-index 1), below the beats, the hand-off
+     card and the tutorial's host (45 and up). */
+  z-index: 10;
   background: rgba(0, 0, 0, 0.55);
 }
 
@@ -9,11 +12,13 @@
 .overlayOpaque {
   position: fixed;
   inset: 0;
+  z-index: 10;
   background: var(--bg);
 }
 
 .content {
   position: fixed;
+  z-index: 10;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -32,6 +37,15 @@
 .buyContent {
   width: min(30rem, 92vw);
   max-width: 92vw;
+}
+
+/* In the tutorial the host speaks from the top of the rail, so a prompt
+   centres over the board beside it instead of the window, where a wide one
+   ran under her. The rail's width is `.column`'s basis in `game.module.css`. */
+:global(html[data-tutorial]) .content {
+  --tutorial-room: calc(100vw - 54px - clamp(20rem, 30vw, 26rem));
+  left: calc(18px + var(--tutorial-room) / 2);
+  max-width: calc(var(--tutorial-room) - 24px);
 }
 
 .content h2 {

@@ -5,6 +5,7 @@ import { useGameClient, useGameState } from '../client/GameClientProvider.js';
 import { useOwnView } from '../client/ownView.js';
 import styles from './game.module.css';
 import { copy } from '../copy/copy.js';
+import { useTutorialHint } from '../tutorial/TutorialContext.js';
 
 const EFFECT_LABEL: Record<HandTileEffect, string> = {
   nothing: 'idle',
@@ -48,6 +49,7 @@ export function TileRack() {
   const view = useOwnView();
   const busy = useGameState((state) => state.inFlight != null);
   const client = useGameClient();
+  const hint = useTutorialHint();
   const preview = useRackPreview();
   const hand = view?.handTiles;
 
@@ -76,6 +78,7 @@ export function TileRack() {
             type="button"
             className={styles.rackTile}
             data-effect={effect}
+            data-hint={tile === hint || undefined}
             disabled={busy || !yourTurn || !playable || view.step !== 'place'}
             onClick={() => client.dispatch({ type: 'place-tile', seat: view.you, tile })}
             onPointerEnter={() => setRackPreview(tile)}

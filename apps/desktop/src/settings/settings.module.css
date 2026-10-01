@@ -7,6 +7,8 @@
  */
 .settings {
   position: fixed;
+  /* Over its overlay, which is `decisions.module.css`'s. */
+  z-index: 10;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);

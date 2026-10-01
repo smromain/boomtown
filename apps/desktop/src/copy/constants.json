@@ -17,7 +17,8 @@
       "name": "Couch game",
       "note": "one screen · phones as hands"
     },
-    "settings": "Settings"
+    "settings": "Settings",
+    "tutorial": "Learn to play"
   },
   "online": {
     "screenLabel": "Online game",
@@ -1014,5 +1015,31 @@
     "bodyOnline": "Your seat is held for you — the room keeps it, and you can rejoin with the same link. The table plays on without you until you do.",
     "confirm": "Leave the game",
     "cancel": "Stay at the table"
+  },
+  "tutorial": {
+    "label": "Tutorial",
+    "host": "Ripley",
+    "hostRole": "your guide",
+    "you": "Rookie",
+    "rivals": ["Mae", "Dot"],
+    "start": "Let’s play",
+    "done": "Got it",
+    "steps": {
+      "welcome": "I’m Ripley. This is a short game. Build companies, buy their shares, and finish with the most money.",
+      "place": "Every turn starts with a tile. Play 7F, next to the loose tile on 6F.",
+      "found": "Touching tiles make a company, and you get to found it. Pick any one. The founder gets a free share.",
+      "buy": "Now buy up to three shares. Take some {yours}: if it’s ever taken over, its biggest holder gets paid.",
+      "rivals": "Your rivals play the same way. Their books are closed, so you can’t see their cash or shares.",
+      "grow": "Play 6G. A tile touching a company joins it.",
+      "buyMore": "A bigger company has pricier shares. Buy some, or skip.",
+      "rivalsAgain": "Watch {theirs}. It’s growing toward {yours}.",
+      "merge": "Play 8F to join {yours} to {theirs}. The bigger company takes over the smaller.",
+      "merger": "Your rivals settle their {yours} shares too.",
+      "dispose": "{yours} is gone, and you were paid for holding the most of it. Sell its shares, trade two for one {theirs}, or keep them in case it comes back.",
+      "safe": "{theirs} has 11 tiles or more, so it’s safe: nobody can take it over.",
+      "motion": "Two companies are safe, so you can call a vote to end the game. Each share in a safe company is a vote. Move to liquidate.",
+      "vote": "Your rivals vote.",
+      "over": "That’s the game. Every company pays its biggest holders, every share is sold, and the most money wins. You’re ready."
+    }
   }
 }

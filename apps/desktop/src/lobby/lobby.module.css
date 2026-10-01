@@ -195,6 +195,11 @@
 /* Settings is not a way into the game, so it does not get a plate — it is a
    chip on the chrome, the weight the tray strip gives a name nobody is
    choosing right now. */
+.launchChips {
+  display: flex;
+  gap: 0.6rem;
+}
+
 .launchChip {
   display: inline-flex;
   align-items: center;

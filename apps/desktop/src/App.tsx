@@ -10,7 +10,8 @@ import { DebugBeatPreview } from './beats/debug/DebugBeatPreview.js';
 import { NetLogOverlay } from './debug/NetLogOverlay.js';
 import type { PreviewKind } from './beats/debug/fixtures.js';
 import { configFromRoom, type OnlineGame } from './online/onlineGame.js';
-import { Cog6ToothIcon, GlobeAltIcon, TvIcon, UsersIcon } from '@heroicons/react/24/solid';
+import { AcademicCapIcon, Cog6ToothIcon, GlobeAltIcon, TvIcon, UsersIcon } from '@heroicons/react/24/solid';
+import { startTutorial } from './tutorial/startTutorial.js';
 import { copy } from './copy/copy.js';
 import { NightSkyline } from './art/NightSkyline.js';
 import logoUrl from './assets/boomtown-logo.png';
@@ -141,10 +142,20 @@ export function App() {
                   </span>
                 </button>
               </div>
-              <button type="button" className={styles.launchChip} onClick={() => setSettingsOpen(true)}>
-                <Cog6ToothIcon width={13} height={13} aria-hidden />
-                {copy.menu.settings}
-              </button>
+              <div className={styles.launchChips}>
+                <button
+                  type="button"
+                  className={styles.launchChip}
+                  onClick={() => void startTutorial().then((game) => setScreen({ kind: 'playing-local', game }))}
+                >
+                  <AcademicCapIcon width={13} height={13} aria-hidden />
+                  {copy.menu.tutorial}
+                </button>
+                <button type="button" className={styles.launchChip} onClick={() => setSettingsOpen(true)}>
+                  <Cog6ToothIcon width={13} height={13} aria-hidden />
+                  {copy.menu.settings}
+                </button>
+              </div>
             </div>
             <SettingsDialog
               open={settingsOpen}

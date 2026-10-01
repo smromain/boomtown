@@ -30,6 +30,8 @@ import type { GameState } from '@boomtown/engine';
 import styles from './game.module.css';
 import { isGameNight } from '../skin.js';
 import { GameNightDefs } from '../art/Scene.js';
+import { TutorialProvider, useTutorial } from '../tutorial/TutorialContext.js';
+import { TutorialHost } from '../tutorial/TutorialHost.js';
 
 /**
  * The playing surface: the board on the left, a right rail carrying the story,
@@ -68,22 +70,24 @@ export function GameScreen({
     <GameClientProvider client={game.client} localSeats={game.localSeats}>
       <HotSeatProvider>
         <ReferenceProvider>
-          <BeatProvider>
-            <PlayArea
-              config={game.config}
-              nudgeBots={game.nudgeBots}
-              snapshot={game.snapshot}
-              onExit={onExit}
-              online={online}
-            />
-            <DecisionModal />
-            <TurnModal />
-            <TurnHandoff config={game.config} />
-            <ErrorToast />
-            <BeatOrchestrator />
-            <BotHold pause={game.pauseBots} />
-            {game.paceTable && <TablePace pace={game.paceTable} />}
-          </BeatProvider>
+          <TutorialProvider tutorial={game.tutorial}>
+            <BeatProvider>
+              <PlayArea
+                config={game.config}
+                nudgeBots={game.nudgeBots}
+                snapshot={game.snapshot}
+                onExit={onExit}
+                online={online}
+              />
+              <DecisionModal />
+              <TurnModal />
+              <TurnHandoff config={game.config} />
+              <ErrorToast />
+              <BeatOrchestrator />
+              <BotHold pause={game.pauseBots} />
+              {game.paceTable && <TablePace pace={game.paceTable} />}
+            </BeatProvider>
+          </TutorialProvider>
         </ReferenceProvider>
       </HotSeatProvider>
     </GameClientProvider>
@@ -164,6 +168,7 @@ function PlayArea({
 }) {
   const over = useGameState((state) => state.status === 'over');
   const localTurn = useIsLocalTurn();
+  const tutorial = useTutorial();
   // The end screen names the winner, so it waits for the victory beat to have
   // announced them — `over` alone put the standings on screen a second before
   // the curtain dropped. Until then the board stays up, finished but unspoiled;
@@ -186,6 +191,7 @@ function PlayArea({
         {finished ? (
           <div className={styles.afterSlot}>
             <GameOver onLeave={onExit} />
+            {tutorial && <TutorialHost placement="float" />}
           </div>
         ) : (
         <div className={styles.middle}>
@@ -209,6 +215,7 @@ function PlayArea({
             )}
           </div>
           <div className={styles.column} data-rail>
+            {tutorial && <TutorialHost placement="rail" />}
             <StoryCard />
             <Shareholders />
             <MotionPanel />
