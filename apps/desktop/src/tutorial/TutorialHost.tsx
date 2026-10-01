@@ -12,7 +12,7 @@ import styles from './tutorial.module.css';
 
 const t = copy.tutorial;
 
-/** Ripley, a Russian blue drawn for the tutorial alone, on the pink of her tag. Her eyes and ears move (`tutorial.module.css`). */
+/** Ripley, a Russian blue drawn for the tutorial alone, on a teal that sets off her pink collar. Her eyes and ears move (`tutorial.module.css`). */
 const HOST: Guest = guest(
   [
     ['hosts/ripley-ear-left', 'rp-ear-l'],
@@ -20,7 +20,7 @@ const HOST: Guest = guest(
     'hosts/ripley-head',
     ['hosts/ripley-eyes', 'rp-eyes'],
   ],
-  '#E8A0BF',
+  '#3E8C8F',
 );
 
 /** What the host says on each step, with the companies named. */
