@@ -540,7 +540,9 @@
 
 :global(:root[data-skin='gamenight']) .foundOption:hover {
   transform: translateY(-2px);
-  box-shadow: var(--elev-2), 0 0 0 3px var(--gold);
+  /* The ring goes first so it paints on top: --elev-2's hard 3px edge would
+     otherwise cover the ring along the card's bottom. */
+  box-shadow: 0 0 0 3px var(--gold), var(--elev-2);
 }
 
 :global(:root[data-skin='gamenight']) .foundScene {
