@@ -17,6 +17,7 @@ import { VisibilityChoice } from './VisibilityChoice.js';
 import { Button } from '../ui/Button.js';
 import { copy, fill } from '../copy/copy.js';
 import form from './form.module.css';
+import type { Tutorial } from '../tutorial/startTutorial.js';
 
 export interface StartedGame {
   readonly client: GameClient;
@@ -42,6 +43,8 @@ export interface StartedGame {
   paceTable?: (holding: boolean) => void;
   /** The authoritative state, for dev diagnostics. Local games only. */
   snapshot?: () => GameState;
+  /** Present when this table is the tutorial: the host reads its steps from it. */
+  tutorial?: Tutorial;
 }
 
 export function NewGame({

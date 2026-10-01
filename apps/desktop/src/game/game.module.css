@@ -924,6 +924,25 @@
   border-color: var(--accent);
 }
 
+/* The tile the tutorial's host is asking for. */
+.rackTile[data-hint] .rackTileId {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent);
+  animation: hint 1.4s ease-in-out infinite;
+}
+
+@keyframes hint {
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rackTile[data-hint] .rackTileId {
+    animation: none;
+  }
+}
+
 .rackTileEffect {
   font-size: 10px;
   letter-spacing: 0.08em;

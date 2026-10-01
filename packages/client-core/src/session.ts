@@ -34,9 +34,20 @@ export class GameSession {
   private readonly initial: GameState | null;
   private readonly log: Command[] = [];
 
-  constructor(init: SetupOptions | { readonly snapshot: GameState }) {
-    this.state = 'snapshot' in init ? init.snapshot : createGame(init);
-    this.initial = 'snapshot' in init ? null : this.state;
+  /**
+   * A session starts from setup options (a fresh deal), from a snapshot (a
+   * restore, with no history), or from `start` — a state that is the beginning
+   * of its own history, as the tutorial's scripted table is. The last keeps a
+   * record to replay, so its end screen has the whole game to show.
+   */
+  constructor(init: SetupOptions | { readonly snapshot: GameState } | { readonly start: GameState }) {
+    if ('snapshot' in init) {
+      this.state = init.snapshot;
+      this.initial = null;
+    } else {
+      this.state = 'start' in init ? init.start : createGame(init);
+      this.initial = this.state;
+    }
   }
 
   /** Rebuild a session from a persisted snapshot (U17). */

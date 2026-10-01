@@ -9,8 +9,17 @@ export interface BotSeat {
 }
 
 export interface BotDriverOptions {
-  /** Bot seats and their difficulty (1–10). Human seats are simply absent. */
-  readonly bots: readonly { readonly seat: Seat; readonly level: number }[];
+  /**
+   * Bot seats and their difficulty (1–10). Human seats are simply absent.
+   * `script`, when given, is asked first and plays whatever it returns; null
+   * hands the move to the seat's ordinary policy. The tutorial uses it to deal
+   * its rivals a fixed game.
+   */
+  readonly bots: readonly {
+    readonly seat: Seat;
+    readonly level: number;
+    readonly script?: (state: GameState, seat: Seat) => Command | null;
+  }[];
   /**
    * Reads the authoritative state a policy needs. In hot-seat this is
    * `session.snapshot()`; the server (U16) will pass its own room state. Kept as
@@ -67,6 +76,20 @@ export interface BotDriver {
   nudge: () => void;
 }
 
+/** A policy that plays `script`'s move when it has one, and `policy`'s otherwise. */
+function scripted(
+  policy: Policy,
+  script: ((state: GameState, seat: Seat) => Command | null) | undefined,
+): Policy {
+  if (!script) return policy;
+  return {
+    chooseMove: (state, seat, rng) => {
+      const command = script(state, seat);
+      return command ? { command, rng } : policy.chooseMove(state, seat, rng);
+    },
+  };
+}
+
 /**
  * Drives the bot seats of a local game. It subscribes to the client store and,
  * whenever the seat that owes a command is a bot, asks that bot's policy and
@@ -90,7 +113,7 @@ export function attachBotDriver(
   options: BotDriverOptions,
 ): BotDriver & (() => void) {
   const policies = new Map<Seat, Policy>(
-    options.bots.map(({ seat, level }) => [seat, heuristicPolicy({ level })]),
+    options.bots.map(({ seat, level, script }) => [seat, scripted(heuristicPolicy({ level }), script)]),
   );
   const thinkMs = options.thinkMs ?? 600;
   // How long a bot may be owed a move before the watchdog steps in. Deep-search

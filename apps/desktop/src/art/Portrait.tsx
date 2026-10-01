@@ -19,12 +19,29 @@ export function faceIndex(name: string, seat: number): number {
   return (name.length + seat) % FACES.length;
 }
 
-export function Portrait({ seat, name, size = 36 }: { seat: number; name: string; size?: number }) {
-  const face = FACES[faceIndex(name, seat)]!;
+/** A head that belongs to nobody at the table — the tutorial's host — with its own ring colour. */
+export interface Guest {
+  /** Index into the heads, in file-name order. */
+  readonly face: number;
+  readonly ring: string;
+}
+
+export function Portrait({
+  seat,
+  name,
+  size = 36,
+  guest,
+}: {
+  seat: number;
+  name: string;
+  size?: number;
+  guest?: Guest;
+}) {
+  const face = FACES[guest ? guest.face % FACES.length : faceIndex(name, seat)]!;
   return (
     <span
       className={styles.portrait}
-      style={{ width: size, height: size, background: SEAT_COLOURS[seat % SEAT_COLOURS.length] }}
+      style={{ width: size, height: size, background: guest?.ring ?? SEAT_COLOURS[seat % SEAT_COLOURS.length] }}
       aria-hidden
     >
       <svg viewBox="0 0 40 40">

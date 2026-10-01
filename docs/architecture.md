@@ -162,6 +162,7 @@ testable core. Detail in `online-play.md`; the file map:
 | `reference/` | The stock reference chart, generated from the ruleset |
 | `settings/` | The settings dialog, the persisted `Settings` (with migrations), and `buildInfo` — the version and build date stamped in at build time |
 | `setup/` | The new-game screen: edition, seats, visibility |
+| `tutorial/` | Learn to play: a three-turn Boomtown table dealt mid-game (`script.ts`) with scripted rivals (the bot driver's `script` hook), a gate on `dispatch` that turns away moves off the script, and the host, a portrait at the top of the rail that says what each step wants |
 | `ui/` | `Button`, `Panel`, `clipboard` |
 
 ## How a command travels

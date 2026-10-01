@@ -1,0 +1,110 @@
+/*
+ * The tutorial's host: a head and a speech card. At the top of the rail during
+ * play; in the corner once the end screen has the table. Either way above a
+ * decision's overlay (z-index 60), so the line can be read beside the prompt.
+ */
+.host {
+  z-index: 70;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.host[data-placement='rail'] {
+  position: relative;
+  flex-shrink: 0;
+  align-items: flex-start;
+}
+
+.host[data-placement='float'] {
+  position: fixed;
+  right: 18px;
+  bottom: 52px;
+  width: 416px;
+}
+
+.host[data-placement='rail'] .card {
+  flex: 1;
+  min-width: 0;
+}
+
+.host[data-placement='rail'] .card::before {
+  top: 18px;
+  bottom: auto;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px 12px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  box-shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  bottom: 22px;
+  width: 12px;
+  height: 12px;
+  background: var(--surface);
+  border-left: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  transform: rotate(45deg);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.name {
+  font-weight: 900;
+  font-size: 13px;
+}
+
+.role {
+  font-weight: 800;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.line {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.card[data-nudge] {
+  animation: nudge 0.4s ease;
+}
+
+@keyframes nudge {
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card[data-nudge] {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+}
