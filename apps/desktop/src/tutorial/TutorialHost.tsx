@@ -12,12 +12,14 @@ import styles from './tutorial.module.css';
 
 const t = copy.tutorial;
 
-/** Ripley, a Russian blue drawn for the tutorial alone, on a teal that sets off her pink collar. Her eyes and ears move (`tutorial.module.css`). */
+/** Ripley, a Russian blue drawn for the tutorial alone, on a teal that sets off her pink collar. Her eyes, ears and tongue move (`tutorial.module.css`). */
 const HOST: Guest = guest(
   [
     ['hosts/ripley-ear-left', 'rp-ear-l'],
     ['hosts/ripley-ear-right', 'rp-ear-r'],
     'hosts/ripley-head',
+    ['hosts/ripley-tongue', 'rp-tongue'],
+    'hosts/ripley-mouth',
     ['hosts/ripley-eyes', 'rp-eyes'],
   ],
   '#3E8C8F',

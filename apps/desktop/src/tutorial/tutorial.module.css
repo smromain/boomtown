@@ -110,7 +110,8 @@
 }
 
 /*
- * Ripley blinks now and then and twitches an ear, one at a time, so the host
+ * Ripley blinks now and then, twitches an ear and pokes the tip of her tongue
+ * out (a blep), one at a time, so the host
  * reads as alive without pulling the eye from the board. The groups are the
  * parts of her drawing (`drawings/hosts/ripley-*.svg`), named in `TutorialHost`.
  */
@@ -136,6 +137,14 @@
   transform-origin: 20% 100%;
   --rp-tilt: 9deg;
   animation-delay: 6.8s;
+}
+
+/* Tucked away at rest, so with motion reduced she simply has no tongue out. */
+.host :global(.rp-tongue) {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  transform: scaleY(0);
+  animation: rp-blep 12s ease-out infinite;
 }
 
 @keyframes rp-blink {
@@ -169,7 +178,24 @@
   }
 }
 
+@keyframes rp-blep {
+  0%,
+  48%,
+  66%,
+  100% {
+    transform: scaleY(0);
+  }
+  51% {
+    transform: scaleY(1.15);
+  }
+  53%,
+  63% {
+    transform: scaleY(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .host :global(.rp-tongue),
   .host :global(.rp-eyes),
   .host :global(.rp-ear-l),
   .host :global(.rp-ear-r) {
